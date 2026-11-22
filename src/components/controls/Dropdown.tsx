@@ -1,9 +1,11 @@
-import { Check } from '@phosphor-icons/react';
-import { Dropdown as AntDropdown, Input, Space, theme } from 'antd';
+import { CaretDown, Check } from '@phosphor-icons/react';
+import { Dropdown as AntDropdown, Space } from 'antd';
 import type { MenuProps } from 'antd';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 
+import { groupDropdownItems } from './dropdown-items';
+import { Input } from './FormControls';
 import { Button } from './SurfaceControls';
 
 export type DropdownStyle = 'classic' | 'shortcut' | 'described' | 'selectable' | 'searchable';
@@ -28,31 +30,37 @@ export interface DropdownProps {
   onSelect: (key: string) => void;
 }
 
+export interface SplitDropdownProps extends DropdownProps {
+  menuLabel: string;
+  onAction: () => void;
+}
+
 type MenuItems = NonNullable<MenuProps['items']>;
 
-export function Dropdown({
+function ActionDropdown({
   label,
   items,
   style = 'classic',
   selectedKey,
   searchLabel = 'Menüde ara',
   onSelect,
-}: DropdownProps) {
-  const { token } = theme.useToken();
+  menuLabel,
+  onAction,
+}: DropdownProps & Partial<Pick<SplitDropdownProps, 'menuLabel' | 'onAction'>>) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const triggerId = useId();
   const popupId = useId();
   const restoreFocus = useRef(false);
+  const menuItemSelector =
+    ':is([role="menuitem"], [role="menuitemradio"]):not([aria-disabled="true"])';
 
   useEffect(() => {
     if (!open) return;
     const frame = requestAnimationFrame(() => {
       const popup = document.getElementById(`${popupId}-surface`);
       popup
-        ?.querySelector<HTMLElement>(
-          style === 'searchable' ? 'input' : '[role="menuitem"]:not([aria-disabled="true"])',
-        )
+        ?.querySelector<HTMLElement>(style === 'searchable' ? 'input' : menuItemSelector)
         ?.focus();
     });
     return () => cancelAnimationFrame(frame);
@@ -61,8 +69,7 @@ export function Dropdown({
   useLayoutEffect(() => {
     if (!open && restoreFocus.current) {
       restoreFocus.current = false;
-      const frame = requestAnimationFrame(() => document.getElementById(triggerId)?.focus());
-      return () => cancelAnimationFrame(frame);
+      document.getElementById(triggerId)?.focus();
     }
   }, [open, triggerId]);
 
@@ -84,10 +91,7 @@ export function Dropdown({
         event.preventDefault();
         event.stopPropagation();
         restoreFocus.current = true;
-        setOpen(false);
-        setQuery('');
-        const frame = requestAnimationFrame(() => document.getElementById(triggerId)?.focus());
-        return () => cancelAnimationFrame(frame);
+        close();
       }
     }
 
@@ -95,16 +99,32 @@ export function Dropdown({
     return () => window.removeEventListener('keydown', dismiss, true);
   }, [open, popupId, triggerId]);
 
-  const visibleItems = items.filter((item) =>
-    item.label.toLocaleLowerCase('tr').includes(query.trim().toLocaleLowerCase('tr')),
-  );
-  const regularItems = visibleItems.filter((item) => !item.danger);
-  const dangerItems = visibleItems.filter((item) => item.danger);
+  const { regular, danger } = groupDropdownItems(items, query, style === 'shortcut');
+
+  function handlePopupKey(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.target instanceof HTMLInputElement && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
+      const options = event.currentTarget.querySelectorAll<HTMLElement>(menuItemSelector);
+      const option = event.key === 'ArrowDown' ? options.item(0) : options.item(options.length - 1);
+      if (option) {
+        event.preventDefault();
+        option.focus();
+      }
+    } else if (event.key === ' ' && event.target instanceof HTMLElement) {
+      const option = event.target.closest<HTMLElement>(menuItemSelector);
+      if (option) {
+        event.preventDefault();
+        option.click();
+      }
+    }
+  }
 
   function buildItem(item: DropdownItem): MenuItems[number] {
     return {
       key: item.key,
       disabled: item.disabled ?? false,
+      ...(style === 'selectable'
+        ? { role: 'menuitemradio', 'aria-checked': selectedKey === item.key }
+        : {}),
       icon: item.icon,
       danger: item.danger ?? false,
       label: (
@@ -119,36 +139,21 @@ export function Dropdown({
   }
 
   const menuItems: MenuItems = [];
-  if (style === 'shortcut') {
-    const grouped = new Map<string | undefined, DropdownItem[]>();
-    for (const item of regularItems) {
-      const group = grouped.get(item.group) ?? [];
-      group.push(item);
-      grouped.set(item.group, group);
-    }
-    for (const [group, entries] of grouped) {
-      if (group && menuItems.length > 0) menuItems.push({ type: 'divider' });
-      if (group) menuItems.push({ type: 'group', label: group, children: entries.map(buildItem) });
-      else menuItems.push(...entries.map(buildItem));
-    }
-  } else {
-    menuItems.push(...regularItems.map(buildItem));
+  for (const [group, entries] of regular) {
+    if (menuItems.length > 0) menuItems.push({ type: 'divider' });
+    if (group) menuItems.push({ type: 'group', label: group, children: entries.map(buildItem) });
+    else menuItems.push(...entries.map(buildItem));
   }
-  if (regularItems.length > 0 && dangerItems.length > 0) menuItems.push({ type: 'divider' });
-  menuItems.push(...dangerItems.map(buildItem));
+  if (menuItems.length > 0 && danger.length > 0) menuItems.push({ type: 'divider' });
+  menuItems.push(...danger.map(buildItem));
 
-  return (
+  const dropdown = (
     <AntDropdown
       open={open}
       align={{ offset: [0, 0] }}
-      overlayClassName="atonota-dropdown-popup"
-      overlayStyle={
-        {
-          '--dropdown-danger-text': token.colorTextLightSolid,
-          '--dropdown-danger-background': token.colorError,
-        } as CSSProperties
-      }
-
+      placement={onAction ? 'bottomRight' : 'bottomLeft'}
+      overlayClassName={`atonota-dropdown-popup atonota-control-popup atonota-dropdown-${style}`}
+      transitionName="atonota-popup-motion"
       trigger={['click']}
       onOpenChange={(next) => (next ? setOpen(true) : close())}
       menu={{
@@ -163,7 +168,12 @@ export function Dropdown({
         },
       }}
       popupRender={(menu) => (
-        <div id={`${popupId}-surface`}>
+        <div
+          id={`${popupId}-surface`}
+          onKeyDown={handlePopupKey}
+          aria-hidden={!open}
+          {...(!open ? { inert: '' } : {})}
+        >
           {style === 'searchable' && (
             <Input
               aria-label={searchLabel}
@@ -172,18 +182,36 @@ export function Dropdown({
             />
           )}
           {menu}
+          {menuItems.length === 0 && <p role="status">Sonuç yok.</p>}
         </div>
       )}
     >
       <Button
         id={triggerId}
         className="atonota-dropdown-trigger"
+        aria-label={menuLabel}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? popupId : undefined}
       >
-        {label}
+        {onAction ? <CaretDown aria-hidden /> : label}
       </Button>
     </AntDropdown>
   );
+  if (!onAction) return dropdown;
+
+  return (
+    <Space.Compact className="atonota-split-dropdown" data-open={open || undefined}>
+      <Button onClick={onAction}>{label}</Button>
+      {dropdown}
+    </Space.Compact>
+  );
+}
+
+export function Dropdown(props: DropdownProps) {
+  return <ActionDropdown {...props} />;
+}
+
+export function SplitDropdown(props: SplitDropdownProps) {
+  return <ActionDropdown {...props} />;
 }
