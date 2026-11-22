@@ -6,7 +6,18 @@ import { runAgent } from './runAgent';
 import type { AgentEvent, AgentRequest, AgentTransport, AssistantMessage } from './types';
 
 const request = (text: string): AgentRequest => ({
+  intent: 'message',
   message: { role: 'user', text },
+  history: [],
+});
+
+const approval = (blockId: string): AgentRequest => ({
+  intent: 'message',
+  message: {
+    role: 'user',
+    text: 'Onaylıyorum',
+    action: { kind: 'confirm', blockId, decision: 'approved', title: 't' },
+  },
   history: [],
 });
 
@@ -34,12 +45,13 @@ describe('runAgent', () => {
     });
     expect(result.phase).toBe('done');
     expect(result.steps.map((s) => s.status)).toEqual(['success', 'success', 'success']);
+    expect(result.steps.every((s) => s.tool.length > 0)).toBe(true);
     expect(result.text).toContain('gelir');
     expect(result.ui.map((b) => b.type)).toEqual(['kpis', 'chart', 'choices']);
     expect(updates.length).toBeGreaterThan(3);
   });
 
-  it('sunucu adım göndermezse adım göstermez', async () => {
+  it('sunucu araç olayı göndermezse adım göstermez', async () => {
     const events: AgentEvent[] = [{ type: 'text', delta: 'Tamam.' }, { type: 'done' }];
     const result = await runAgent({
       transport: createMockTransport({ delayMs: 1, events: () => events }),
@@ -102,7 +114,7 @@ describe('runAgent', () => {
     const result = await runAgent({
       transport: streamOf([
         'data: bozuk-json\n\n',
-        'data: {"type":"step","key":"a","title":"Okundu","status":"uydurma"}\n\n',
+        'data: {"type":"tool","key":"a","tool":"orders.read","title":"Okundu","status":"uydurma"}\n\n',
         encodeAgentEvent({ type: 'text', delta: 'Merhaba' }),
         encodeAgentEvent({ type: 'done' }),
       ]),
@@ -150,17 +162,85 @@ describe('runAgent', () => {
   it('onay kararını yeni mesaj olarak işler ve gerçek işlem yapmadığını söyler', async () => {
     const result = await runAgent({
       transport: createMockTransport({ delayMs: 1 }),
+      request: approval('notify-delay'),
+      signal: new AbortController().signal,
+      onUpdate: () => undefined,
+    });
+    expect(result.text).toContain('gerçek bir işlem yapılmadı');
+  });
+
+  it('izinli olmayan araç olayını ve düşünce olayını göstermez', async () => {
+    const result = await runAgent({
+      transport: streamOf([
+        'data: {"type":"step","key":"a","title":"Eski adım","status":"success"}\n\n',
+        'data: {"type":"thought","text":"İç düşünce"}\n\n',
+        'data: {"type":"reasoning","text":"İç düşünce"}\n\n',
+        'data: {"type":"tool","key":"b","tool":"shell.exec","title":"Komut","status":"success"}\n\n',
+        encodeAgentEvent({
+          type: 'tool',
+          key: 'c',
+          tool: 'orders.read',
+          title: 'Siparişler okundu',
+          status: 'success',
+        }),
+        encodeAgentEvent({ type: 'done' }),
+      ]),
+      request: request('x'),
+      signal: new AbortController().signal,
+      onUpdate: () => undefined,
+    });
+    expect(result.steps).toEqual([
+      { key: 'c', tool: 'orders.read', title: 'Siparişler okundu', status: 'success' },
+    ]);
+  });
+
+  it('sahte sunucu aynı onayı ikinci kez reddeder', async () => {
+    const transport = createMockTransport({ delayMs: 1 });
+    const run = () =>
+      runAgent({
+        transport,
+        request: approval('notify-delay'),
+        signal: new AbortController().signal,
+        onUpdate: () => undefined,
+      });
+    expect((await run()).phase).toBe('done');
+    const second = await run();
+    expect(second.phase).toBe('error');
+    expect(second.error).toBe('Bu onay zaten kullanıldı. İşlem yeniden yapılmadı.');
+  });
+
+  it('durum sorgusu onayı yeniden işlemez, işlemin durumunu söyler', async () => {
+    const transport = createMockTransport({ delayMs: 1 });
+    await runAgent({
+      transport,
+      request: approval('notify-delay'),
+      signal: new AbortController().signal,
+      onUpdate: () => undefined,
+    });
+    const status = await runAgent({
+      transport,
       request: {
-        message: {
-          role: 'user',
-          text: 'Onaylıyorum',
-          action: { kind: 'confirm', blockId: 'notify-delay', decision: 'approved', title: 't' },
-        },
+        intent: 'status',
+        actionId: 'notify-delay',
+        message: { role: 'user', text: 'İşlemin durumunu sor' },
         history: [],
       },
       signal: new AbortController().signal,
       onUpdate: () => undefined,
     });
-    expect(result.text).toContain('gerçek bir işlem yapılmadı');
+    expect(status.phase).toBe('done');
+    expect(status.text).toContain('Onayınız sunucuya bir kez ulaştı');
+    const unknown = await runAgent({
+      transport,
+      request: {
+        intent: 'status',
+        actionId: 'baska-islem',
+        message: { role: 'user', text: 'İşlemin durumunu sor' },
+        history: [],
+      },
+      signal: new AbortController().signal,
+      onUpdate: () => undefined,
+    });
+    expect(unknown.text).toContain('Onayınız sunucuya ulaşmadı');
   });
 });
