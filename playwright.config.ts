@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4173;
+// Birden çok çalışma ağacı aynı makinede test koşabilir. Kapı E2E_PORT ile değişir.
+const PORT = Number(process.env['E2E_PORT'] ?? 4173);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 /**
@@ -22,7 +23,9 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command: 'npm run build && npm run preview',
+    // Tarayıcı testleri gerçek arka uca bağlanmaz. Derleme sahte sunucuyu (MSW) açar.
+    command: `npm run build && npx vite preview --port ${PORT} --strictPort --host 127.0.0.1`,
+    env: { VITE_API_MOCKS: 'on' },
     url: BASE_URL,
     reuseExistingServer: !process.env['CI'],
     timeout: 120_000,

@@ -13,7 +13,10 @@
     "preview": "vite preview --port 4173 --strictPort",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "typecheck": "npm run api:types:check && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "api:types": "node contracts/generate-types.mjs",
+    "api:types:check": "node contracts/generate-types.mjs --check",
+    "contracts:sync": "node contracts/sync.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
