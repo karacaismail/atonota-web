@@ -20,15 +20,19 @@ interface Plan {
   ui?: unknown[];
 }
 
-function lastUserAction(history: AgentRequest['history']) {
+function lastAssistantText(history: AgentRequest['history']): string | undefined {
   for (let i = history.length - 1; i >= 0; i -= 1) {
     const m = history[i];
-    if (m?.role === 'user') return m.action;
+    if (m?.role === 'assistant' && m.text) return m.text;
   }
   return undefined;
 }
 
-function planFor(request: AgentRequest, received: ReadonlySet<string>): Plan {
+function planFor(
+  request: AgentRequest,
+  received: ReadonlySet<string>,
+  newId: (prefix: string) => string,
+): Plan {
   if (request.intent === 'status') {
     const reached = request.actionId !== undefined && received.has(request.actionId);
     return reached
@@ -40,12 +44,6 @@ function planFor(request: AgentRequest, received: ReadonlySet<string>): Plan {
           steps: [],
           text: 'Onayınız sunucuya ulaşmadı. Hiçbir işlem yapılmadı. İsterseniz isteği yeniden yazın.',
         };
-  }
-  if (request.intent === 'regenerate' && lastUserAction(request.history)) {
-    return {
-      steps: [],
-      text: 'Son yanıtı yeniden yazdım. Onayınız yeniden işlenmedi.',
-    };
   }
 
   const { action } = request.message;
@@ -150,7 +148,7 @@ function planFor(request: AgentRequest, received: ReadonlySet<string>): Plan {
         },
         {
           type: 'confirm',
-          id: 'notify-delay',
+          id: newId('notify-delay'),
           title: '12 müşteriye gecikme bildirimi gönderilsin mi?',
           summary: '12 müşteriye e-posta ve SMS gider. Gönderim geri alınamaz.',
           changes: [
@@ -175,7 +173,7 @@ function planFor(request: AgentRequest, received: ReadonlySet<string>): Plan {
       ui: [
         {
           type: 'form',
-          id: 'stock-rule',
+          id: newId('stock-rule'),
           title: 'Stok uyarı kuralı',
           submitLabel: 'Kaydet',
           fields: [
@@ -212,6 +210,15 @@ function planFor(request: AgentRequest, received: ReadonlySet<string>): Plan {
       ],
     };
   }
+  // Yeniden üretme isteği tanınan bir soru değilse son yanıt yeniden yazılır.
+  // Sahte sunucu geçmişteki onaya bakmaz. Sözleşme gereği onay yalnız message.action alanındadır.
+  const previous = request.intent === 'regenerate' ? lastAssistantText(request.history) : undefined;
+  if (previous) {
+    return {
+      steps: [],
+      text: `Son yanıtı yeniden yazdım. Hiçbir işlem yeniden yapılmadı. ${previous}`,
+    };
+  }
   return {
     steps: [],
     text: 'Bunu yapabilirim. Hangi yönden ilerleyelim?',
@@ -228,12 +235,25 @@ function planFor(request: AgentRequest, received: ReadonlySet<string>): Plan {
   };
 }
 
+/**
+ * Her yeni işlem için yeni onay kimliği üretir. Sözleşme gereği gerçek sunucu da
+ * aynı soru yeniden sorulsa bile yeni kimlik verir.
+ */
+export function createIdFactory(): (prefix: string) => string {
+  let next = 0;
+  return (prefix) => {
+    next += 1;
+    return `${prefix}-${next}`;
+  };
+}
+
 /** Planı olay sırasına çevirir: araç olayları, metin parçaları, bloklar, bitiş. */
 export function planEvents(
   request: AgentRequest,
   received: ReadonlySet<string> = new Set(),
+  newId: (prefix: string) => string = createIdFactory(),
 ): AgentEvent[] {
-  const plan = planFor(request, received);
+  const plan = planFor(request, received, newId);
   const events: AgentEvent[] = [];
   plan.steps.forEach(([tool, title], index) => {
     events.push({ type: 'tool', key: `s${index}`, tool, title, status: 'pending' });
@@ -251,7 +271,11 @@ export interface MockTransportOptions {
   /** İki olay arasındaki bekleme, ms. */
   delayMs?: number;
   /** Testler için olay listesini değiştirir. */
-  events?: (request: AgentRequest, received: ReadonlySet<string>) => AgentEvent[];
+  events?: (
+    request: AgentRequest,
+    received: ReadonlySet<string>,
+    newId: (prefix: string) => string,
+  ) => AgentEvent[];
 }
 
 /**
@@ -274,8 +298,9 @@ export function createMockTransport({
   events = planEvents,
 }: MockTransportOptions = {}): AgentTransport {
   const received = new Set<string>();
+  const newId = createIdFactory();
   return (request, signal) => {
-    const queue = admit(request, received) ?? events(request, received);
+    const queue = admit(request, received) ?? events(request, received, newId);
     const encoder = new TextEncoder();
     let index = 0;
     const stream = new ReadableStream<Uint8Array>({

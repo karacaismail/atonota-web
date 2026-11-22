@@ -1,7 +1,7 @@
 import { useXAgent, useXChat } from '@ant-design/x';
 import { useCallback, useRef } from 'react';
 
-import type { GenUIAction } from '@/genui';
+import type { GenUIAction, GenUIActionResult, GenUIDecisions } from '@/genui';
 
 import { emptyAssistant, runAgent } from '../agent';
 import type { AgentIntent, AgentTransport, ChatMessage, UserMessage } from '../agent';
@@ -36,12 +36,33 @@ export function actionToMessage(action: GenUIAction): UserMessage {
   }
 }
 
-/** Onay ya da form kararının işlem kimliği. Soru eyleminde kimlik yoktur. */
+/**
+ * Mesajın bağlı olduğu işlem kimliği.
+ * Onay ya da form kararında blok kimliğidir. Durum sorgusunda sorulan kimliktir.
+ * Soru eyleminde kimlik yoktur.
+ */
 export function actionIdOf(message: ChatMessage | undefined): string | undefined {
-  if (message?.role !== 'user' || !message.action || message.action.kind === 'ask') {
-    return undefined;
-  }
+  if (message?.role !== 'user') return undefined;
+  if (message.statusOf) return message.statusOf;
+  if (!message.action || message.action.kind === 'ask') return undefined;
   return message.action.blockId;
+}
+
+/** Sohbet geçmişindeki onay ve form kararlarını blok kimliğine göre toplar. */
+export function decisionsOf(messages: readonly ChatMessage[]): GenUIDecisions {
+  const decisions: Record<string, 'approved' | 'rejected'> = {};
+  for (const message of messages) {
+    if (message.role !== 'user' || !message.action || message.action.kind === 'ask') continue;
+    decisions[message.action.blockId] = message.action.decision;
+  }
+  return decisions;
+}
+
+/** Geçmişe giden mesajdan onay verisini çıkarır. Onay yalnız kendi isteğinde gider. */
+function withoutAction(message: ChatMessage): ChatMessage {
+  if (message.role !== 'user' || !message.action) return message;
+  const { action: _action, ...rest } = message;
+  return rest;
 }
 
 function isFinished(message: ChatMessage): boolean {
@@ -73,7 +94,7 @@ export function useStudioChat(transport: AgentTransport) {
         request: {
           intent,
           message: message as UserMessage,
-          history: messages.filter((m) => m !== message && isFinished(m)),
+          history: messages.filter((m) => m !== message && isFinished(m)).map(withoutAction),
           ...(actionId ? { actionId } : {}),
         },
         signal: controller.signal,
@@ -100,17 +121,17 @@ export function useStudioChat(transport: AgentTransport) {
   const last = messages[messages.length - 1];
   const busy = last?.status === 'loading' || last?.status === 'updating';
 
-  /** Mesajı gönderir. Sohbet kabul ederse `true` döner. */
+  /** Mesajı gönderir. Sonuç bloğa iletilir. */
   const send = useCallback(
-    (message: UserMessage): boolean => {
-      if (busy) return false;
+    (message: UserMessage): GenUIActionResult => {
+      if (busy) return 'busy';
       const actionId = actionIdOf(message);
       if (actionId) {
-        if (usedActions.current.has(actionId)) return false;
+        if (usedActions.current.has(actionId)) return 'used';
         usedActions.current.add(actionId);
       }
       onRequest({ message, intent: 'message' });
-      return true;
+      return 'accepted';
     },
     [busy, onRequest],
   );
@@ -139,7 +160,11 @@ export function useStudioChat(transport: AgentTransport) {
         setMessages((all) => all.filter((m) => m.id !== assistantId));
         onRequest(
           failed
-            ? { message: { role: 'user', text: STATUS_TEXT }, intent: 'status', actionId }
+            ? {
+                message: { role: 'user', text: STATUS_TEXT, statusOf: actionId },
+                intent: 'status',
+                actionId,
+              }
             : { message: { role: 'user', text: REGENERATE_TEXT }, intent: 'regenerate' },
         );
         return;

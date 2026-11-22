@@ -125,7 +125,7 @@ test.describe('AI Studio', () => {
     const log = page.getByRole('log');
     await expect(log).toContainText('gerçek bir işlem yapılmadı', { timeout: 15_000 });
     await page.getByRole('button', { name: 'Yeniden üret' }).last().click();
-    await expect(log).toContainText('Onayınız yeniden işlenmedi', { timeout: 15_000 });
+    await expect(log).toContainText('Hiçbir işlem yeniden yapılmadı', { timeout: 15_000 });
     await expect(log).not.toContainText('zaten kullanıldı');
     await expect(page.getByText(/^Onaylıyorum/)).toHaveCount(1);
   });
@@ -251,24 +251,25 @@ test.describe('AI Studio', () => {
     await input.click();
     // Üzerine gelme rengi odak sayılmaz. Ölçümden önce fare alandan çekilir.
     await page.mouse.move(0, 0);
+    // Renk geçişi biter bitmez kenar dinlenme rengine dönmüş olmalı.
+    await expect.poll(async () => (await input.evaluate(edges)).colors).toEqual(restInput.colors);
     const mouseInput = await input.evaluate(edges);
-    expect(mouseInput.colors).toEqual(restInput.colors);
     expect(mouseInput.shadow).not.toMatch(ring);
     expect(mouseInput.outline).toBe(true);
 
     // Dokunma alanı katmanı select kutusundadır. Tıklama kutuya yapılır.
     await form.locator('.ant-select').first().click();
     await page.mouse.move(0, 0);
+    await expect.poll(async () => (await select.evaluate(edges)).colors).toEqual(restSelect.colors);
     const mouseSelect = await select.evaluate(edges);
-    expect(mouseSelect.colors).toEqual(restSelect.colors);
     expect(mouseSelect.shadow).not.toMatch(ring);
     await page.keyboard.press('Escape');
 
     // Klavye odağı: kenar rengi yine değişmez, yalnız alt çizgi görünür.
     await page.keyboard.press('Tab');
     await input.focus();
+    await expect.poll(async () => (await input.evaluate(edges)).colors).toEqual(restInput.colors);
     const keyInput = await input.evaluate(edges);
-    expect(keyInput.colors).toEqual(restInput.colors);
     expect(keyInput.shadow).not.toMatch(ring);
     expect(keyInput.shadow).toContain('inset');
     expect(keyInput.outline).toBe(true);

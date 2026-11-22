@@ -19,6 +19,11 @@ export interface UserMessage {
   files?: string[];
   /** GenUI bloğundan gelen kullanıcı kararı (U4). */
   action?: GenUIAction;
+  /**
+   * Durum sorgusu mesajında sorulan işlemin kimliği.
+   * Sorgu da koparsa yeniden deneme bu kimlikle yine durum sorar.
+   */
+  statusOf?: string;
 }
 
 export type AssistantPhase = 'waiting' | 'streaming' | 'done' | 'cancelled' | 'error';
@@ -43,7 +48,16 @@ export type ChatMessage = UserMessage | AssistantMessage;
  */
 export type AgentIntent = 'message' | 'regenerate' | 'status';
 
-/** Sunucuya giden istek. Geçmiş yalnız tamamlanmış mesajları içerir. */
+/**
+ * Sunucuya giden istek. Geçmiş yalnız tamamlanmış mesajları içerir.
+ *
+ * Onay sözleşmesi:
+ * - Sunucu yalnız `message.action` alanındaki onayı işler.
+ * - Sunucu geçmişteki mesajları onay saymaz. Arayüz de geçmişte onay verisi göndermez.
+ * - Sunucu her yeni işlem için yeni bir onay kimliği üretir.
+ * - Sunucu aynı onay kimliğinin ikinci kullanımını reddeder.
+ * - Sunucu `status` isteğinde işlemi yeniden yapmaz. Yalnız durumunu söyler.
+ */
 export interface AgentRequest {
   intent: AgentIntent;
   message: UserMessage;

@@ -1,14 +1,9 @@
 import { CheckCircle, Warning, XCircle } from '@phosphor-icons/react';
 import { Alert, Button } from 'antd';
-import { useState } from 'react';
 
-import type { ConfirmBlock, GenUIActionHandler } from '../types';
+import type { ConfirmBlock, GenUIActionHandler, GenUIDecision } from '../types';
 import { ChangeTable } from './ChangeTable';
-
-type Decision = 'approved' | 'rejected';
-
-export const BUSY_NOTE = 'Yanıt bitince onay verebilirsiniz.';
-export const FAILED_NOTE = 'Onay gönderilemedi. Yanıt bitince yeniden deneyin.';
+import { BUSY_NOTE, FAILED_NOTE, USED_NOTE, useDecision } from './useDecision';
 
 /**
  * Sabit onay ekranı (U4, AX-4, AX-6). Kendi başına işlem yapmaz.
@@ -20,24 +15,21 @@ export function ConfirmView({
   block,
   onAction,
   busy = false,
+  decided,
 }: {
   block: ConfirmBlock;
   onAction: GenUIActionHandler;
   busy?: boolean;
+  decided?: GenUIDecision | undefined;
 }) {
-  const [decision, setDecision] = useState<Decision | null>(null);
-  const [failed, setFailed] = useState(false);
+  const { decision, notice, locked, apply } = useDecision(decided);
 
-  const decide = (next: Decision) => {
-    if (decision || busy) return;
-    const accepted = onAction({
-      kind: 'confirm',
-      blockId: block.id,
-      decision: next,
-      title: block.title,
-    });
-    if (accepted) setDecision(next);
-    setFailed(!accepted);
+  const decide = (next: GenUIDecision) => {
+    if (locked || busy) return;
+    apply(
+      next,
+      onAction({ kind: 'confirm', blockId: block.id, decision: next, title: block.title }),
+    );
   };
 
   if (decision) {
@@ -68,21 +60,24 @@ export function ConfirmView({
       <p className="genui-summary">{block.summary}</p>
       <ChangeTable changes={block.changes} />
       {busy && <p className="genui-muted-text">{BUSY_NOTE}</p>}
-      {failed && <Alert type="error" showIcon message={FAILED_NOTE} role="alert" />}
-      <div className="genui-actions">
-        <Button
-          size="small"
-          type="primary"
-          danger={block.danger ?? false}
-          disabled={busy}
-          onClick={() => decide('approved')}
-        >
-          {block.confirmLabel}
-        </Button>
-        <Button size="small" disabled={busy} onClick={() => decide('rejected')}>
-          {block.cancelLabel}
-        </Button>
-      </div>
+      {notice === 'busy' && <Alert type="error" showIcon message={FAILED_NOTE} role="alert" />}
+      {notice === 'used' && <Alert type="warning" showIcon message={USED_NOTE} role="alert" />}
+      {!locked && (
+        <div className="genui-actions">
+          <Button
+            size="small"
+            type="primary"
+            danger={block.danger ?? false}
+            disabled={busy}
+            onClick={() => decide('approved')}
+          >
+            {block.confirmLabel}
+          </Button>
+          <Button size="small" disabled={busy} onClick={() => decide('rejected')}>
+            {block.cancelLabel}
+          </Button>
+        </div>
+      )}
     </section>
   );
 }

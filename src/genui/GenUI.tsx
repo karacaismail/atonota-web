@@ -4,7 +4,7 @@ import type { ComponentType } from 'react';
 
 import { JsonView } from './blocks/JsonView';
 import { GENUI_REGISTRY, type BlockProps } from './registry';
-import type { GenUIActionHandler, GenUIBlock, KnownBlock } from './types';
+import type { GenUIActionHandler, GenUIBlock, GenUIDecisions, KnownBlock } from './types';
 import { useGenuiVars } from './useGenuiVars';
 
 export interface GenUIProps {
@@ -13,9 +13,11 @@ export interface GenUIProps {
   onAction: GenUIActionHandler;
   /** Sohbet yanıt beklerken `true`. Onay ve form düğmeleri kapanır. */
   busy?: boolean;
+  /** Sohbet geçmişinden çıkarılan kararlar. Blok kimliğine göre okunur. */
+  decisions?: GenUIDecisions;
 }
 
-export function GenUI({ blocks, onAction, busy = false }: GenUIProps) {
+export function GenUI({ blocks, onAction, busy = false, decisions = {} }: GenUIProps) {
   const vars = useGenuiVars();
   if (blocks.length === 0) return null;
   return (
@@ -23,7 +25,9 @@ export function GenUI({ blocks, onAction, busy = false }: GenUIProps) {
       {blocks.map((block, index) => {
         if (block.type === 'unknown') return <JsonView key={index} raw={block.raw} />;
         const View = GENUI_REGISTRY[block.type] as ComponentType<BlockProps<KnownBlock>>;
-        return <View key={index} block={block} onAction={onAction} busy={busy} />;
+        const decided =
+          block.type === 'confirm' || block.type === 'form' ? decisions[block.id] : undefined;
+        return <View key={index} block={block} onAction={onAction} busy={busy} decided={decided} />;
       })}
     </div>
   );

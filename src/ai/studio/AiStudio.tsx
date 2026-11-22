@@ -16,7 +16,7 @@ import { App, Button, Drawer, Tag } from 'antd';
 import type { GetProp } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { GenUIAction } from '@/genui';
+import type { GenUIAction, GenUIActionResult } from '@/genui';
 import { useGenuiVars } from '@/genui/useGenuiVars';
 import { OwlMark } from '@/mascot';
 
@@ -28,7 +28,7 @@ import { AnswerActions } from './AnswerActions';
 import { AssistantBody } from './AssistantBody';
 import { ConversationsPanel, type StudioConversation } from './ConversationsPanel';
 import { SLASH_COMMANDS, WELCOME_PROMPTS } from './content';
-import { actionToMessage, useStudioChat } from './useStudioChat';
+import { actionToMessage, decisionsOf, useStudioChat } from './useStudioChat';
 import { FILE_NAME_ONLY_NOTE, Workspace } from './Workspace';
 
 /**
@@ -90,6 +90,9 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
 
   const fileNames = files.map((f) => f.name);
 
+  // Kararlar sohbet geçmişinden çıkar. Sohbet değişip geri gelince bloklar kilitli kalır.
+  const decisions = useMemo(() => decisionsOf(messages.map((m) => m.message)), [messages]);
+
   const latestSteps = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const m = messages[i]?.message;
@@ -99,15 +102,15 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
   }, [messages]);
 
   const submit = useCallback(
-    (text: string): boolean => {
+    (text: string): GenUIActionResult => {
       const trimmed = text.trim();
-      if (!trimmed || busy) return false;
-      const accepted = send({
+      if (!trimmed || busy) return 'busy';
+      const result = send({
         role: 'user',
         text: trimmed,
         ...(fileNames.length ? { files: fileNames } : {}),
       });
-      if (!accepted) return false;
+      if (result !== 'accepted') return result;
       setValue('');
       setConversations((all) =>
         all.map((c) =>
@@ -116,13 +119,13 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
             : c,
         ),
       );
-      return true;
+      return 'accepted';
     },
     [activeKey, busy, fileNames, send],
   );
 
   const onAction = useCallback(
-    (action: GenUIAction): boolean =>
+    (action: GenUIAction): GenUIActionResult =>
       action.kind === 'ask' ? submit(action.text) : send(actionToMessage(action)),
     [send, submit],
   );
@@ -232,6 +235,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
             onRetry={() => regenerate(key)}
             retryKind={retryKind(id)}
             busy={busy}
+            decisions={decisions}
             simulated={source.simulated}
           />
         ) : null,

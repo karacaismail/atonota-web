@@ -260,4 +260,22 @@ describe('runAgent', () => {
     expect(ids).toHaveLength(2);
     expect(ids[0]).not.toBe(ids[1]);
   });
+
+  it('yeniden üretme geçmişte onay olmasa da son yanıtı yeniden yazar', async () => {
+    const result = await runAgent({
+      transport: createMockTransport({ delayMs: 1 }),
+      request: {
+        intent: 'regenerate',
+        message: { role: 'user', text: 'Son yanıtı yeniden yaz.' },
+        history: [
+          { role: 'user', text: 'Onaylıyorum: Bildirim' },
+          { role: 'assistant', text: 'Onayınızı aldım.', steps: [], ui: [], phase: 'done' },
+        ],
+      },
+      signal: new AbortController().signal,
+      onUpdate: () => undefined,
+    });
+    expect(result.text).toContain('Hiçbir işlem yeniden yapılmadı');
+    expect(result.text).toContain('Onayınızı aldım.');
+  });
 });

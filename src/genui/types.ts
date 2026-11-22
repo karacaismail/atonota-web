@@ -62,6 +62,8 @@ export interface ConfirmBlock {
   type: 'confirm';
   /**
    * İşlem kimliği. Sunucu onayı bu kimliğe bağlar.
+   * Sözleşme: sunucu her yeni işlem için yeni bir kimlik üretir.
+   * Aynı soru yeniden sorulsa da kimlik yenidir.
    * Onay tek kullanımlıktır. Aynı kimlik ikinci kez gönderilmez.
    */
   id: string;
@@ -119,10 +121,23 @@ export type BlockType = KnownBlock['type'];
 export type FormValues = Record<string, string | string[]>;
 
 /**
- * Eylemi alan işlev. Eylem sohbete kabul edildiyse `true` döner.
- * `false` dönerse blok kilitlenmez ve kullanıcıya durum gösterilir.
+ * Eylemin sonucu.
+ * - `accepted`: sohbet kararı aldı. Blok kilitlenir.
+ * - `busy`: sohbet meşgul. Blok açık kalır, kullanıcı sonra yeniden dener.
+ * - `used`: bu onay daha önce gönderildi. Blok kilitlenir, karar yeniden gitmez.
  */
-export type GenUIActionHandler = (action: GenUIAction) => boolean;
+export type GenUIActionResult = 'accepted' | 'busy' | 'used';
+
+/** Eylemi alan işlev. */
+export type GenUIActionHandler = (action: GenUIAction) => GenUIActionResult;
+
+export type GenUIDecision = 'approved' | 'rejected';
+
+/**
+ * Sohbet geçmişinden çıkarılan kararlar. Anahtar blok kimliğidir.
+ * Blok yeniden çizilince kararı buradan okur. Örnek: sohbet değişip geri gelince.
+ */
+export type GenUIDecisions = Readonly<Record<string, GenUIDecision>>;
 
 /**
  * Bloktan çıkan kullanıcı eylemi.

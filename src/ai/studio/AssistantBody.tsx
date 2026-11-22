@@ -3,7 +3,7 @@ import { Wrench } from '@phosphor-icons/react';
 import { Alert, Button } from 'antd';
 
 import { GenUI, GenUISkeleton } from '@/genui';
-import type { GenUIActionHandler } from '@/genui';
+import type { GenUIActionHandler, GenUIDecisions } from '@/genui';
 
 import type { AssistantMessage } from '../agent';
 import { SIMULATED_TOOLS_NOTE, toChainItems } from './chain';
@@ -19,6 +19,7 @@ export function AssistantBody({
   onRetry,
   retryKind,
   busy,
+  decisions,
   simulated,
 }: {
   message: AssistantMessage;
@@ -27,6 +28,7 @@ export function AssistantBody({
   /** `status`: önceki mesaj onaydır. Yeniden deneme işlemin durumunu sorar. */
   retryKind: 'status' | 'retry';
   busy: boolean;
+  decisions: GenUIDecisions;
   simulated: boolean;
 }) {
   const streaming = message.phase === 'streaming';
@@ -50,7 +52,9 @@ export function AssistantBody({
         </p>
       )}
       {streaming && <GenUISkeleton />}
-      {message.phase === 'done' && <GenUI blocks={message.ui} onAction={onAction} busy={busy} />}
+      {message.phase === 'done' && (
+        <GenUI blocks={message.ui} onAction={onAction} busy={busy} decisions={decisions} />
+      )}
       {message.phase === 'cancelled' && <p className="ai-note">Yanıt durduruldu.</p>}
       {message.phase === 'error' && (
         <Alert

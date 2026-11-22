@@ -6,13 +6,15 @@ import { ConfirmView } from './blocks/ConfirmView';
 import { FormView } from './blocks/FormView';
 import { KpisView } from './blocks/KpisView';
 import { TableView } from './blocks/TableView';
-import type { BlockType, GenUIActionHandler, KnownBlock } from './types';
+import type { BlockType, GenUIActionHandler, GenUIDecision, KnownBlock } from './types';
 
 export interface BlockProps<T extends KnownBlock> {
   block: T;
   onAction: GenUIActionHandler;
   /** Sohbet yanıt beklerken `true`. Eylem düğmeleri kapanır. */
   busy?: boolean;
+  /** Sohbet geçmişindeki karar. Varsa blok kilitli çizilir. */
+  decided?: GenUIDecision | undefined;
 }
 
 type Registry = {

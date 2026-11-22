@@ -2,11 +2,16 @@ import { CheckCircle, Lightning, XCircle } from '@phosphor-icons/react';
 import { Alert, Button, Checkbox, Form, Input, Select, Tag } from 'antd';
 import { useState } from 'react';
 
-import type { FieldChange, FormBlock, FormField, FormValues, GenUIActionHandler } from '../types';
+import type {
+  FieldChange,
+  FormBlock,
+  FormField,
+  FormValues,
+  GenUIActionHandler,
+  GenUIDecision,
+} from '../types';
 import { ChangeTable } from './ChangeTable';
-import { BUSY_NOTE, FAILED_NOTE } from './ConfirmView';
-
-type Decision = 'approved' | 'rejected';
+import { BUSY_NOTE, FAILED_NOTE, USED_NOTE, useDecision } from './useDecision';
 
 function initialValues(fields: FormField[]): FormValues {
   const values: FormValues = {};
@@ -65,29 +70,28 @@ export function FormView({
   block,
   onAction,
   busy = false,
+  decided,
 }: {
   block: FormBlock;
   onAction: GenUIActionHandler;
   busy?: boolean;
+  decided?: GenUIDecision | undefined;
 }) {
   const [form] = Form.useForm<FormValues>();
   const [initial] = useState(() => initialValues(block.fields));
   const [pending, setPending] = useState<FormValues | null>(null);
-  const [decision, setDecision] = useState<Decision | null>(null);
-  const [failed, setFailed] = useState(false);
-  const locked = decision !== null;
+  const { decision, notice, locked, apply } = useDecision(decided);
 
-  const send = (next: Decision, values?: FormValues) => {
+  const send = (next: GenUIDecision, values?: FormValues) => {
     if (locked || busy) return;
-    const accepted = onAction({
+    const result = onAction({
       kind: 'form',
       blockId: block.id,
       decision: next,
       title: block.title,
       ...(values ? { values } : {}),
     });
-    if (accepted) setDecision(next);
-    setFailed(!accepted);
+    apply(next, result);
   };
 
   const tag =
@@ -95,9 +99,11 @@ export function FormView({
       ? 'Onay gönderildi'
       : decision === 'rejected'
         ? 'Vazgeçildi'
-        : pending
-          ? 'Değişikliği kontrol edin'
-          : 'Taslak, onayınızı bekliyor';
+        : notice === 'used'
+          ? 'Daha önce gönderildi'
+          : pending
+            ? 'Değişikliği kontrol edin'
+            : 'Taslak, onayınızı bekliyor';
 
   return (
     <section data-genui="form" className="genui-card genui-form">
@@ -137,9 +143,10 @@ export function FormView({
         )}
 
         {busy && !locked && <p className="genui-muted-text">{BUSY_NOTE}</p>}
-        {failed && <Alert type="error" showIcon message={FAILED_NOTE} role="alert" />}
+        {notice === 'busy' && <Alert type="error" showIcon message={FAILED_NOTE} role="alert" />}
+        {notice === 'used' && <Alert type="warning" showIcon message={USED_NOTE} role="alert" />}
 
-        {locked ? (
+        {locked && !decision ? null : decision ? (
           <p role="status" className="genui-done-line">
             {decision === 'approved' ? (
               <CheckCircle weight="fill" aria-hidden />

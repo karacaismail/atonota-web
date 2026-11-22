@@ -30,6 +30,7 @@ export function useGenuiVars(): CSSProperties {
         '--ai-bg-e': token.colorBgElevated,
         '--ai-fill': token.colorFillSecondary,
         '--ai-border': token.colorBorderSecondary,
+        '--ai-border-control': token.colorBorder,
         '--ai-success': token.colorSuccess,
         '--ai-success-bg': token.colorSuccessBg,
         '--ai-error': token.colorError,
