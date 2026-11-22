@@ -9,3 +9,4 @@ test-results/
 .pane/
 .DS_Store
 *.log
+worktrees/
