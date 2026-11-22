@@ -82,29 +82,53 @@ function borderOf(el: HTMLElement) {
   };
 }
 
-/** R7 + R8 + R10: sonucu CSS değişkenlerine ve veri niteliklerine yazar. */
-export function applyResult(el: HTMLElement, result: HitResult): void {
-  if (!result.active) {
-    clearElement(el);
-    return;
-  }
-  if (getComputedStyle(el).position === 'static') {
-    el.style.position = 'relative';
-  }
-  el.classList.add(HIT_CLASS);
-  el.style.setProperty('--hit-t', `${round2(result.offset.t)}px`);
-  el.style.setProperty('--hit-r', `${round2(result.offset.r)}px`);
-  el.style.setProperty('--hit-b', `${round2(result.offset.b)}px`);
-  el.style.setProperty('--hit-l', `${round2(result.offset.l)}px`);
-  const e = result.extension;
-  el.dataset['hit'] = [e.t, e.r, e.b, e.l].map(round2).join(' ');
-  el.dataset['hitVisible'] = `${round2(result.visible.width)} × ${round2(result.visible.height)}`;
-  el.dataset['hitArea'] = `${round2(result.hit.width)} × ${round2(result.hit.height)}`;
-  el.dataset['hitOk'] = result.meetsMinTarget ? '1' : '0';
-  el.dataset['hitLimited'] = result.limitedByNeighbour ? '1' : '0';
+/** Yalnız değer değişince yazar; böylece motorun kendi yazımı yeni bir hesaplama tetiklemez. */
+function setVar(el: HTMLElement, name: string, value: string): boolean {
+  if (el.style.getPropertyValue(name) === value) return false;
+  el.style.setProperty(name, value);
+  return true;
+}
+function setData(el: HTMLElement, key: string, value: string): boolean {
+  if (el.dataset[key] === value) return false;
+  el.dataset[key] = value;
+  return true;
 }
 
-export function clearElement(el: HTMLElement): void {
+/** R7 + R8 + R10: sonucu CSS değişkenlerine ve veri niteliklerine yazar. Değişiklik olduysa true döner. */
+export function applyResult(el: HTMLElement, result: HitResult): boolean {
+  if (!result.active) {
+    return clearElement(el);
+  }
+  let changed = false;
+  if (getComputedStyle(el).position === 'static') {
+    el.style.position = 'relative';
+    changed = true;
+  }
+  if (!el.classList.contains(HIT_CLASS)) {
+    el.classList.add(HIT_CLASS);
+    changed = true;
+  }
+  changed = setVar(el, '--hit-t', `${round2(result.offset.t)}px`) || changed;
+  changed = setVar(el, '--hit-r', `${round2(result.offset.r)}px`) || changed;
+  changed = setVar(el, '--hit-b', `${round2(result.offset.b)}px`) || changed;
+  changed = setVar(el, '--hit-l', `${round2(result.offset.l)}px`) || changed;
+  const e = result.extension;
+  changed = setData(el, 'hit', [e.t, e.r, e.b, e.l].map(round2).join(' ')) || changed;
+  changed =
+    setData(
+      el,
+      'hitVisible',
+      `${round2(result.visible.width)} × ${round2(result.visible.height)}`,
+    ) || changed;
+  changed =
+    setData(el, 'hitArea', `${round2(result.hit.width)} × ${round2(result.hit.height)}`) || changed;
+  changed = setData(el, 'hitOk', result.meetsMinTarget ? '1' : '0') || changed;
+  changed = setData(el, 'hitLimited', result.limitedByNeighbour ? '1' : '0') || changed;
+  return changed;
+}
+
+export function clearElement(el: HTMLElement): boolean {
+  if (!el.classList.contains(HIT_CLASS) && el.dataset['hit'] === undefined) return false;
   el.classList.remove(HIT_CLASS);
   delete el.dataset['hit'];
   delete el.dataset['hitVisible'];
@@ -114,7 +138,11 @@ export function clearElement(el: HTMLElement): void {
   for (const k of ['--hit-t', '--hit-r', '--hit-b', '--hit-l']) {
     el.style.removeProperty(k);
   }
+  return true;
 }
+
+/** Motorun son geçişte yazdığı öğeler. Bu öğelerin style/class mutasyonları yeni hesap tetiklemez. */
+const writtenByEngine = new WeakSet<Element>();
 
 /** Bir kez hesaplar ve uygular. Testler ve manuel yenileme için dışa açıktır. */
 export function computeOnce(options: HitAreaEngineOptions = {}): HitResult[] {
@@ -146,10 +174,44 @@ export function computeOnce(options: HitAreaEngineOptions = {}): HitResult[] {
   const results = computeHitAreas(targets, obstacles, computeOptions);
   for (const r of results) {
     const el = byId.get(r.id);
-    if (el) applyResult(el, r);
+    if (el && applyResult(el, r)) writtenByEngine.add(el);
   }
   document.dispatchEvent(new CustomEvent(HIT_UPDATE_EVENT, { detail: results }));
   return results;
+}
+
+/**
+ * R11: Select'in +%12 katmanı (::after) kök öğeye aittir; tıklama kök öğeye düşer ve antd'nin
+ * seçici üzerindeki dinleyicisine ulaşmaz. Motor, kök öğeye düşen mousedown olayını seçiciye aktarır.
+ * Böylece genişletilmiş alan da listeyi açar. Disabled Select'e dokunulmaz.
+ */
+export function relaySelectMouseDown(event: MouseEvent): boolean {
+  const t = event.target;
+  if (!(t instanceof Element) || !t.classList.contains('ant-select')) return false;
+  if (t.classList.contains('ant-select-disabled')) return false;
+  const selector = t.querySelector<HTMLElement>('.ant-select-selector');
+  if (!selector) return false;
+  event.stopPropagation();
+  event.preventDefault();
+  selector.dispatchEvent(
+    new MouseEvent('mousedown', {
+      bubbles: true,
+      cancelable: true,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      button: event.button,
+    }),
+  );
+  t.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+  return true;
+}
+
+export function installSelectRelay(doc: Document = document): () => void {
+  const handler = (ev: MouseEvent) => {
+    relaySelectMouseDown(ev);
+  };
+  doc.addEventListener('mousedown', handler, true);
+  return () => doc.removeEventListener('mousedown', handler, true);
 }
 
 export interface HitAreaEngine {
@@ -179,7 +241,21 @@ export function startHitAreaEngine(options: HitAreaEngineOptions = {}): HitAreaE
     else setTimeout(run, 0);
   };
 
-  const mutation = typeof MutationObserver !== 'undefined' ? new MutationObserver(schedule) : null;
+  const onMutations = (records: MutationRecord[]) => {
+    const relevant = records.some((rec) => {
+      if (rec.type !== 'attributes') return true;
+      const target = rec.target;
+      // Motorun kendi yazdığı style/class ve data-hit-* değişiklikleri döngü yaratmasın.
+      if (target instanceof Element && writtenByEngine.has(target)) {
+        const n = rec.attributeName ?? '';
+        if (n === 'style' || n === 'class' || n.startsWith('data-hit')) return false;
+      }
+      return true;
+    });
+    if (relevant) schedule();
+  };
+  const mutation =
+    typeof MutationObserver !== 'undefined' ? new MutationObserver(onMutations) : null;
   mutation?.observe(observeRoot, {
     childList: true,
     subtree: true,
@@ -189,6 +265,7 @@ export function startHitAreaEngine(options: HitAreaEngineOptions = {}): HitAreaE
   const resize = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null;
   if (observeRoot instanceof Element) resize?.observe(observeRoot);
   window.addEventListener('resize', schedule);
+  const uninstallRelay = installSelectRelay(document);
   const fonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts;
   fonts?.ready.then(schedule, () => undefined);
   schedule();
@@ -200,6 +277,7 @@ export function startHitAreaEngine(options: HitAreaEngineOptions = {}): HitAreaE
       mutation?.disconnect();
       resize?.disconnect();
       window.removeEventListener('resize', schedule);
+      uninstallRelay();
     },
   };
 }

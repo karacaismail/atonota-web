@@ -107,6 +107,34 @@ export const link = {
   dark: { color: s.primary.color, hover: s.primary.hover, active: s.primary.active },
 } as const;
 
+/**
+ * Yer tutucu metni. antd varsayılanı siyah %25 ve beyaz %25'tir; AA (4.5:1) sınırının altındadır.
+ * Opaklık, giriş zemininde 4.5:1 veren en küçük değere programatik çıkar.
+ * Açık temada zemin antd varsayılan kapsayıcı rengidir; koyu temada kaynak giriş zemini.
+ */
+export const placeholder = {
+  light: hexToRgba(
+    '#000000',
+    minAlphaForContrast({
+      text: '#000000',
+      startAlpha: 0.25,
+      background: antdThemeApi.getDesignToken().colorBgContainer,
+      backgroundAlpha: 1,
+      surfaces: [antdThemeApi.getDesignToken().colorBgContainer],
+    }),
+  ),
+  dark: hexToRgba(
+    '#ffffff',
+    minAlphaForContrast({
+      text: '#ffffff',
+      startAlpha: 0.25,
+      background: s.darkPalette.input,
+      backgroundAlpha: 1,
+      surfaces: [s.darkPalette.input],
+    }),
+  ),
+} as const;
+
 export const radius = {
   control: s.radius.default,
   card: s.cards.radius,
@@ -246,6 +274,8 @@ export const layout = {
   sidebarWidth: s.sidebar.widthExpanded,
   sidebarRailWidth: s.sidebar.widthCollapsed,
   cardPadding: s.cards.padding,
+  /** Dar form sütunu (giriş, parola, kısa ayar). Kaynak ölçeğinden türetilir: 10 orta buton yüksekliği = 420 px. */
+  formMaxWidth: sizes.button.md.height * 10,
 } as const;
 
 /**

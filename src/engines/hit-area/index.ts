@@ -22,6 +22,8 @@ export {
   clearElement,
   collectTargets,
   computeOnce,
+  installSelectRelay,
+  relaySelectMouseDown,
   startHitAreaEngine,
   type HitAreaEngine,
   type HitAreaEngineOptions,

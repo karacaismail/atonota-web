@@ -1,8 +1,8 @@
 import { render } from '@testing-library/react';
 import { Input } from 'antd';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { collectTargets, computeOnce, HIT_SUFFIX_CLASS } from './engine';
+import { collectTargets, computeOnce, HIT_SUFFIX_CLASS, installSelectRelay } from './engine';
 import { HitSuffix } from './HitSuffix';
 
 function mockRect(el: HTMLElement, left: number, top: number, width: number, height: number) {
@@ -125,5 +125,65 @@ describe('dokunma alanı motoru (DOM)', () => {
     computeOnce();
     expect(b.classList.contains('hit')).toBe(false);
     expect(b.dataset['hitArea']).toBeUndefined();
+  });
+});
+
+describe('R11: Select kök tıklaması seçiciye aktarılır', () => {
+  function select(disabled = false) {
+    const root = document.createElement('div');
+    root.className = 'ant-select' + (disabled ? ' ant-select-disabled' : '');
+    const selector = document.createElement('div');
+    selector.className = 'ant-select-selector';
+    const input = document.createElement('input');
+    selector.appendChild(input);
+    root.appendChild(selector);
+    document.body.appendChild(root);
+    return { root, selector, input };
+  }
+
+  it('kök öğeye düşen mousedown seçiciye gider ve input odaklanır', () => {
+    const stop = installSelectRelay();
+    const { root, selector, input } = select();
+    const seen: Event[] = [];
+    selector.addEventListener('mousedown', (ev) => seen.push(ev));
+    const ev = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    root.dispatchEvent(ev);
+    expect(seen).toHaveLength(1);
+    expect(ev.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(input);
+    stop();
+  });
+
+  it('disabled Select aktarılmaz', () => {
+    const stop = installSelectRelay();
+    const { root, selector } = select(true);
+    const seen: Event[] = [];
+    selector.addEventListener('mousedown', (ev) => seen.push(ev));
+    root.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    expect(seen).toHaveLength(0);
+    stop();
+  });
+
+  it('seçiciye doğrudan gelen mousedown ikinci kez üretilmez', () => {
+    const stop = installSelectRelay();
+    const { selector } = select();
+    const seen: Event[] = [];
+    selector.addEventListener('mousedown', (ev) => seen.push(ev));
+    selector.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    expect(seen).toHaveLength(1);
+    stop();
+  });
+});
+
+describe('motor kendi yazımıyla döngüye girmez', () => {
+  it('ikinci hesap değişiklik yazmaz', () => {
+    const b = button('Kaydet');
+    mockRect(b, 0, 0, 100, 42);
+    computeOnce();
+    const before = b.getAttribute('style');
+    const spy = vi.spyOn(b.style, 'setProperty');
+    computeOnce();
+    expect(spy).not.toHaveBeenCalled();
+    expect(b.getAttribute('style')).toBe(before);
   });
 });

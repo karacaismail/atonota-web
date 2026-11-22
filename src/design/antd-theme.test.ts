@@ -56,6 +56,17 @@ describe('buildAntdTheme', () => {
     expect(buildAntdTheme('dark').components?.Button?.primaryColor).toBe(primary.dark.text);
   });
 
+  it('yer tutucu rengi her iki temada en az 4.5:1 verir', () => {
+    const lightBg = antdThemeApi.getDesignToken().colorBgContainer;
+    const light = String(buildAntdTheme('light').token?.colorTextPlaceholder);
+    const dark = String(buildAntdTheme('dark').token?.colorTextPlaceholder);
+    const alpha = (rgba: string) => Number(rgba.match(/[\d.]+/g)?.[3] ?? 1);
+    expect(contrastRatio(blendOver('#000000', alpha(light), lightBg), lightBg)).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(blendOver('#ffffff', alpha(dark), designSource.darkPalette.input), designSource.darkPalette.input),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('açık tema koyu paleti taşımaz', () => {
     const { token, components } = buildAntdTheme('light');
     expect(token?.colorBgLayout).toBeUndefined();
