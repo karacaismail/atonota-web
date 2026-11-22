@@ -1,0 +1,217 @@
+import type { Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+
+const isCompact = (page: Page) => {
+  const v = page.viewportSize();
+  return !!v && (v.width <= 767 || v.height <= 499);
+};
+
+async function overflowX(page: Page) {
+  return page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+}
+
+const PAGES = [
+  '/',
+  '/satis/teklif',
+  '/satis/teklif?gorunum=kanban',
+  '/satis/teklif?gorunum=pivot',
+  '/satis/teklif?durum=hata',
+  '/satis/teklif?durum=yukleniyor',
+  '/satis/teklif?durum=bos',
+  '/satis/teklif?durum=canli',
+  '/satis/teklif/TEK-0003',
+];
+
+test.describe('yatay taşma', () => {
+  for (const url of PAGES) {
+    test(`taşma yok: ${url}`, async ({ page }) => {
+      await page.goto(url);
+      await expect(page.locator('.shell')).toBeVisible();
+      await page.waitForTimeout(400);
+      expect(await overflowX(page)).toBeLessThanOrEqual(0);
+    });
+  }
+
+  test('telefonda açık çekmece taşma yapmaz', async ({ page }) => {
+    test.skip(!isCompact(page), 'yalnız telefon kabuğu');
+    await page.goto('/satis/teklif');
+    await page.getByRole('button', { name: 'Menüyü aç' }).click();
+    await expect(page.getByRole('dialog', { name: 'Menü' })).toBeVisible();
+    await page.getByRole('button', { name: 'Satış', exact: true }).click();
+    await expect(page.getByRole('group', { name: 'Satış' })).toBeVisible();
+    expect(await overflowX(page)).toBeLessThanOrEqual(0);
+  });
+});
+
+test.describe('klavye ile flyout', () => {
+  test('odak açar, sağ ok içeri girer, Escape kapatır', async ({ page }) => {
+    test.skip(isCompact(page), 'telefonda panel çekmece içinde açılır');
+    await page.goto('/');
+    const parent = page.getByRole('button', { name: 'Satış', exact: true });
+    await parent.focus();
+    const fly = page.getByRole('group', { name: 'Satış' });
+    await expect(fly).toBeVisible();
+    await expect(page.locator('body')).toHaveAttribute('data-focus-dim', 'on');
+
+    // F1: sidebar sağ kenarına 8 px boşlukla bitişir.
+    // F6 hareketi bitince ölçülür.
+    await expect(fly).toHaveCSS('opacity', '1');
+    await page.waitForTimeout(250);
+    const sb = await page.locator('.shell-sb').boundingBox();
+    const fb = await fly.boundingBox();
+    expect(sb && fb && Math.round(fb.x - (sb.x + sb.width))).toBe(8);
+
+    // F2: panel merkezi üst öğe merkezine denk gelir (taşma yoksa).
+    const pb = await parent.boundingBox();
+    if (pb && fb) {
+      expect(Math.abs(fb.y + fb.height / 2 - (pb.y + pb.height / 2))).toBeLessThanOrEqual(1);
+    }
+
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('link', { name: /^Teklifler/ })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('link', { name: 'Siparişler' })).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(fly).toBeHidden();
+    await expect(parent).toBeFocused();
+    await expect(page.locator('body')).not.toHaveAttribute('data-focus-dim', 'on');
+  });
+
+  test('Tab ile gezinince odak göstergesi halka değildir', async ({ page }) => {
+    test.skip(isCompact(page), 'geniş ekran');
+    await page.goto('/');
+    await page.getByRole('link', { name: 'Ana sayfa' }).focus();
+    await page.keyboard.press('Tab');
+    const focused = page.locator(':focus');
+    const outline = await focused.evaluate((el) => getComputedStyle(el).outlineStyle);
+    expect(outline).toBe('none');
+    const line = await focused.evaluate((el) => getComputedStyle(el, '::after').opacity);
+    expect(line).toBe('1');
+  });
+
+  test('fare ile üzerine gelince açılır, ayrılınca kapanır', async ({ page }) => {
+    test.skip(isCompact(page), 'telefonda hover yok');
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Stok', exact: true }).hover();
+    await expect(page.getByRole('group', { name: 'Stok' })).toBeVisible();
+    await page.mouse.move(900, 600);
+    await expect(page.getByRole('group', { name: 'Stok' })).toBeHidden();
+  });
+});
+
+test.describe('telefon kabuğu', () => {
+  test('çekmece açılır, flyout dokunmayla açılır, sayfaya gider', async ({ page }) => {
+    test.skip(!isCompact(page), 'yalnız telefon kabuğu');
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Menüyü aç' }).click();
+    const drawer = page.getByRole('dialog', { name: 'Menü' });
+    await expect(drawer).toBeVisible();
+    await page.getByRole('button', { name: 'Satış', exact: true }).click();
+    await page.getByRole('link', { name: 'Siparişler' }).click();
+    await expect(page).toHaveURL(/\/satis\/siparis$/);
+    await expect(drawer).toBeHidden();
+    await expect(page.getByRole('heading', { level: 1, name: 'Siparişler' })).toBeVisible();
+  });
+
+  test('Escape çekmeceyi kapatır ve odak menü düğmesine döner', async ({ page }) => {
+    test.skip(!isCompact(page), 'yalnız telefon kabuğu');
+    await page.goto('/');
+    const menu = page.getByRole('button', { name: 'Menüyü aç' });
+    await menu.click();
+    await expect(page.getByRole('dialog', { name: 'Menü' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Menü' })).toBeHidden();
+    await expect(menu).toBeFocused();
+  });
+});
+
+test.describe('yön değişimi', () => {
+  test('telefonda açık panel ve odak korunur', async ({ page }) => {
+    test.skip(!isCompact(page), 'yalnız telefon kabuğu');
+    const v = page.viewportSize();
+    test.skip(!v, '');
+    if (!v) return;
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Menüyü aç' }).click();
+    await page.getByRole('button', { name: 'Satış', exact: true }).click();
+    const link = page.getByRole('link', { name: 'Siparişler' });
+    await link.focus();
+    await page.setViewportSize({ width: v.height, height: v.width });
+    await expect(page.getByRole('group', { name: 'Satış' })).toBeVisible();
+    await expect(link).toBeFocused();
+    await page.setViewportSize(v);
+    await expect(page.getByRole('group', { name: 'Satış' })).toBeVisible();
+    await expect(link).toBeFocused();
+    expect(await overflowX(page)).toBeLessThanOrEqual(0);
+  });
+
+  test('geniş ekranda açık flyout ve odak korunur', async ({ page }) => {
+    test.skip(isCompact(page), 'geniş ekran');
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Satış', exact: true }).focus();
+    await page.keyboard.press('ArrowRight');
+    const link = page.getByRole('link', { name: /^Teklifler/ });
+    await expect(link).toBeFocused();
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await expect(page.getByRole('group', { name: 'Satış' })).toBeVisible();
+    await expect(link).toBeFocused();
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await expect(page.getByRole('group', { name: 'Satış' })).toBeVisible();
+    await expect(link).toBeFocused();
+  });
+});
+
+test.describe('header', () => {
+  test('görünüm seçimi adrese yazılır ve geri tuşu çalışır', async ({ page }) => {
+    await page.goto('/satis/teklif');
+    await expect(page.getByRole('heading', { level: 1, name: 'Teklifler' })).toBeVisible();
+    await page.locator('label', { has: page.getByRole('radio', { name: 'Kanban' }) }).click();
+    await expect(page).toHaveURL(/gorunum=kanban/);
+    await expect(
+      page
+        .getByRole('list')
+        .filter({ has: page.getByRole('listitem') })
+        .first(),
+    ).toBeVisible();
+    await page.goBack();
+    await expect(page).not.toHaveURL(/gorunum=/);
+  });
+
+  test('hata durumunda yeniden dene vardır', async ({ page }) => {
+    await page.goto('/satis/teklif?durum=hata');
+    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Yeniden dene' })).toBeVisible();
+  });
+
+  test('formda değişiklik kaydedilmemiş durumunu gösterir', async ({ page }) => {
+    await page.goto('/satis/teklif/TEK-0003');
+    await expect(page.getByText('3 / 24')).toBeVisible();
+    await page.getByLabel('Başlık').fill('Yeni başlık');
+    await expect(page.getByText('1 değişiklik kaydedilmedi')).toBeVisible();
+    await page.getByRole('button', { name: 'Vazgeç' }).click();
+    await expect(page.getByText('1 değişiklik kaydedilmedi')).toBeHidden();
+  });
+
+  test('metin boyutu kaynak alt sınırın altına inmez', async ({ page }) => {
+    await page.goto('/satis/teklif');
+    await page.waitForTimeout(400);
+    const min = await page.evaluate(() => {
+      let m = Infinity;
+      for (const el of document.querySelectorAll<HTMLElement>('.shell *')) {
+        if (!el.childNodes.length) continue;
+        const hasText = [...el.childNodes].some(
+          (n) => n.nodeType === 3 && (n.textContent ?? '').trim(),
+        );
+        if (!hasText || el.closest('.shell-vh')) continue;
+        const r = el.getBoundingClientRect();
+        if (!r.width) continue;
+        m = Math.min(m, parseFloat(getComputedStyle(el).fontSize));
+      }
+      return m;
+    });
+    expect(min).toBeGreaterThanOrEqual(12);
+  });
+});

@@ -1,0 +1,53 @@
+import config from '@design-source/control-size-config.json';
+import { describe, expect, it } from 'vitest';
+
+import { shellTokens } from './tokens';
+
+describe('shellTokens', () => {
+  it('sidebar ölçülerini kaynak dosyadan alır', () => {
+    expect(shellTokens.sidebar.widthExpanded).toBe(config.sidebar.widthExpanded);
+    expect(shellTokens.sidebar.widthCollapsed).toBe(config.sidebar.widthCollapsed);
+    expect(shellTokens.sidebar.item.height).toBe(config.sidebar.item.height);
+    expect(shellTokens.flyout.width).toBe(config.sidebar.flyout.width);
+    expect(shellTokens.flyout.gap).toBe(config.sidebar.flyout.gap);
+    expect(shellTokens.flyout.closeDelay).toBe(config.sidebar.flyout.closeDelay);
+  });
+
+  it('flyout açılış gecikmesini ve hareketini kaynak metinden çıkarır', () => {
+    // F4: 60 ms açılış. F6: 180 ms fade + 6 px kayma.
+    expect(shellTokens.flyout.openDelay).toBe(60);
+    expect(shellTokens.flyout.duration).toBe(180);
+    expect(shellTokens.flyout.shift).toBe(6);
+  });
+
+  it('rail anahtarı hareketini kaynak metinden çıkarır', () => {
+    expect(shellTokens.rail.duration).toBe(520);
+    expect(shellTokens.rail.easing).toBe('cubic-bezier(.65,0,.35,1)');
+  });
+
+  it('alt kart renklerini kaynak metinden çıkarır', () => {
+    expect(shellTokens.footer.dark).toBe('#0C0C0F');
+    expect(shellTokens.footer.light).toBe('#1B2230');
+  });
+
+  it('odak perdesi değerlerini kaynak dosyadan alır', () => {
+    expect(shellTokens.focusDim.duration).toBe(config.focusDim.duration);
+    expect(shellTokens.focusDim.light.opacity).toBe(config.focusDim.opacity);
+    expect(shellTokens.focusDim.dark.color).toBe(config.focusDim.dark.color);
+  });
+
+  it('header ölçülerini kaynak dosyadan alır', () => {
+    expect(shellTokens.header.titleSize).toBe(config.header.settings.titleSize);
+    expect(shellTokens.header.titleLineHeight).toBe(config.header.settings.titleLineHeight);
+    expect(shellTokens.header.buttonHeight).toBe(config.header.settings.buttonHeight);
+  });
+
+  it('görünüm türlerini ve veri durumlarını kaynak sırasıyla verir', () => {
+    expect(shellTokens.header.viewTypes.map((v) => v.value)).toEqual(
+      config.header.viewTypes.map((v) => v.value),
+    );
+    expect(shellTokens.header.dataStates.map((v) => v.value)).toEqual(
+      config.header.dataStates.map((v) => v.value),
+    );
+  });
+});
