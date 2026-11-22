@@ -1,14 +1,86 @@
+import type { DocTypeMeta } from '@/api';
+import { sampleDocTypeMeta } from '@/mocks/fixtures';
 import fixture from './fixtures/example-collection.json';
 import { createDefinition, parsePage } from './model';
 import type { CollectionSource } from './types';
 
 /**
- * Temporary contract-shaped fixture. It uses the Meta message envelope and the
- * CollectionPage response validator. Remove this module's in-memory query adapter
- * when api-client exports its contract-backed MSW handlers; keep fixture validation.
- * It is never imported by the production collection entry.
+ * Preview and test adapter. Metadata derives from `api-client`'s `sampleDocTypeMeta`
+ * (`platform_core.api.meta.get_doctype`) and extends its schema with preview fields for
+ * group, date and duration roles.
+ *
+ * Kaldırma koşulu: `api-client` tipli Frappe `/api/v2/document` istemcisini ve sahte
+ * işleyicisini `main` dalına getirdiğinde yerel `exampleSource` liste uyarlayıcısı ve
+ * `fixtures/example-collection.json` kaldırılır, doğrudan tipli istemciye bağlanılır.
+ * Üretim koleksiyon girişinden içe aktarılmaz.
  */
-export const exampleMeta = fixture.metadata.message;
+const previewFields: DocTypeMeta['schema']['fields'] = [
+  {
+    fieldname: 'subject',
+    fieldtype: 'Data',
+    label: 'İş',
+    component: 'Input',
+    in_list_view: true,
+    read_only: true,
+    sensitivity: 'standard',
+  },
+  {
+    fieldname: 'status',
+    fieldtype: 'Select',
+    label: 'Durum',
+    component: 'Select',
+    in_list_view: true,
+    in_standard_filter: true,
+    choices: [
+      { value: 'Open', label: 'Açık' },
+      { value: 'In Progress', label: 'Sürüyor' },
+      { value: 'Done', label: 'Bitti' },
+    ],
+    read_only: true,
+    sensitivity: 'standard',
+  },
+  {
+    fieldname: 'start_date',
+    fieldtype: 'Date',
+    label: 'Başlangıç',
+    component: 'DatePicker',
+    in_list_view: true,
+    read_only: true,
+    sensitivity: 'standard',
+  },
+  {
+    fieldname: 'end_date',
+    fieldtype: 'Date',
+    label: 'Bitiş',
+    component: 'DatePicker',
+    in_list_view: true,
+    read_only: true,
+    sensitivity: 'standard',
+  },
+  {
+    fieldname: 'hours',
+    fieldtype: 'Float',
+    label: 'Süre (saat)',
+    component: 'InputNumber',
+    in_list_view: true,
+    read_only: true,
+    sensitivity: 'standard',
+  },
+];
+
+export const exampleMeta: DocTypeMeta = {
+  ...sampleDocTypeMeta,
+  schema: {
+    ...sampleDocTypeMeta.schema,
+    name: 'Example Task',
+    module: 'Example',
+    title_field: 'subject',
+    search_fields: 'subject',
+    sort_field: 'name',
+    fields: previewFields,
+  },
+};
+
 export const exampleDefinition = createDefinition(exampleMeta, {
   label: 'Örnek işler',
   groupField: 'status',
@@ -16,8 +88,10 @@ export const exampleDefinition = createDefinition(exampleMeta, {
   endField: 'end_date',
   durationField: 'hours',
 });
+
 const rows = parsePage(fixture.list).data;
-/** Only this example source performs local queries. API adapters must send the entire request to the server. */
+
+/** Yalnız bu örnek kaynak yerel sorgu çalıştırır. Üretim bağlantısı isteği `/api/v2/document` ucuna gönderir. */
 export const exampleSource: CollectionSource = {
   kind: 'example',
   async list(request, signal) {

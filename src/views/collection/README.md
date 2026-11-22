@@ -1,23 +1,27 @@
 # Koleksiyon görünümleri
 
 Koleksiyon varsayılan olarak yalnız tabloyu sunar.
-Ana uygulama bağlantısını foundation işi yapar.
+Ana uygulama bağlantısını `foundation` ve `shell` işleri yapar.
 
 ## Kullanım
 
 Bileşen, ortak tema ve React Router sağlayıcısının içinde çalışır.
+Metadata tanımı `api-client` işinin `getDocType` çağrısından gelir:
 
 ```tsx
-const definition = createDefinition(metadata.message, {
-  label: 'Örnek işler',
-  groupField: 'status',
-  startField: 'start_date',
-  endField: 'end_date',
-  durationField: 'hours',
+const docType = await apiClient.getDocType('Örnek Kayıt', undefined, { signal });
+if (docType.status !== 'fresh') return;
+
+const definition = createDefinition(docType.meta, {
+  label: 'Örnek kayıtlar',
 });
 
 <CollectionView definition={definition} source={collectionSource} mode="dark" />;
 ```
+
+`apiClient.getDocType`, `/api/method/platform_core.api.meta.get_doctype` ucunu çağırır ve `message` zarfını açarak doğrulanmış `DocTypeMeta` nesnesini `meta` alanında döndürür.
+Geliştirme ve testlerde `src/mocks/` içindeki `sampleDocTypeMeta` sahte yanıtı bu ucu sözleşmeye uygun biçimde karşılar.
+Özet veya zaman görünümlerinin alan rolleri (`groupField`, `startField`, `endField`, `durationField`) gerekirse `createDefinition` ikinci parametresinde verilir.
 
 Başlık, `label` alanındaki Türkçe etiketten gelir.
 Etiket verilmezse başlık “Kayıtlar” olur.
@@ -29,8 +33,7 @@ Oturum kapanınca koleksiyon bileşenini kaldırın.
 
 ## Veri ve önbellek
 
-`createDefinition`, arka ucun `Meta` yanıtını okur.
-Metot yanıtındaki `message` alanını bu işleve verin.
+`createDefinition`, `apiClient.getDocType` yanıtındaki `DocTypeMeta` nesnesini okur.
 Katalog sürümleri 1 ve 2 desteklenir.
 Bilinmeyen sürüm ve kesilmiş tanım reddedilir.
 Gizli alanlar ve parola alanları gösterilmez.
@@ -38,7 +41,9 @@ Hassasiyet işareti korunur. Bu işaret kullanıcıya yetki vermez.
 Bilinmeyen çizici güvenli düz metin gösterir.
 Metne JSON tırnakları eklenmez. HTML çalıştırılmaz.
 
-`CollectionSource.list(request, signal)` liste isteğini veri kaynağına iletir.
+Liste ve sayfalama için Frappe `/api/v2/document` ucu kullanılacaktır.
+`api-client` bu uç için tipli istemciyi ve sahte işleyiciyi kurmaktadır.
+Tipli istemci `main` dalına girdiğinde `CollectionSource.list(request, signal)` doğrudan o istemciye bağlanacaktır.
 İstek gereken alanları, süzgeçleri, sıralamayı ve sayfa sınırını içerir.
 Eşit sıralama değerlerinde kayıt kimliği ikinci sırayı belirler.
 Yanıt şu biçimdedir:
@@ -47,12 +52,11 @@ Yanıt şu biçimdedir:
 {
   data: [{ name: 'EXAMPLE-001', subject: 'Örnek iş' }],
   has_next_page: false,
-  // total isteğe bağlıdır. Sunucu vermiyorsa eklemeyin.
+  // total isteğe bağlıdır. Frappe /api/v2/document toplam sayı döndürmez.
 }
 ```
 
-API bağlantısı yetki hatalarını `CollectionError('unauthorized', ...)` biçimine çevirir.
-Bunlar 401 ve 403 yanıtlarıdır.
+API bağlantısı yetki hatalarını (`forbidden`, `session_expired`, 401 ve 403) `CollectionError('unauthorized', ...)` biçimine çevirir.
 Diğer hatalarda kullanıcı yeniden deneyebilir.
 Hatalı sayfadan “Önceki sayfa” düğmesiyle dönülebilir.
 Ham sunucu hatası gösterilmez. Geç yanıt yeni sonucu değiştirmez.
@@ -73,13 +77,14 @@ Ortak sorgu önbelleği sunulunca bu dosya onunla değiştirilmelidir.
 
 ## Geçici örnek kaynak
 
-Ortak API istemcisi bu dalda henüz hazır değildir.
-`fixtures/example-collection.json` sözleşme biçimindeki örnek yanıtları tutar.
-Metadata yanıtı `message` alanındadır. Liste yanıtı `list` alanındadır.
-`example.ts` bu dosyayı doğrular ve örnek liste isteğini uygular.
-Bu kaynak gerçek API veya MSW bağlantısı değildir.
-API işi MSW işleyicilerini sununca bu geçici kaynak kaldırılmalıdır.
-Bağlantıda aynı metadata ve liste sözleşmeleri kullanılmalıdır.
+Ortak `api-client` (`@/api` ve `@/mocks`) `main` dalına birleşmiştir.
+`example.ts`, metadata zarfını doğrudan `api-client` işinin `sampleDocTypeMeta` sahte yanıtına (`@/mocks`) ve `DocTypeMeta` türüne (`@/api`) bağlar; önizleme görünüm rollerini göstermek için yalnız örnek alan listesini genişletir.
+`model.test.ts`, `apiClient.getDocType` çağrısını `src/mocks/node` sahte sunucusu üzerinden çalıştırarak `createDefinition` uyumunu doğrular.
+
+`main` dalındaki sahte sunucuda genel belge listesi henüz yoktur; yalnız `/api/resource/Leave Application` bulunur.
+Liste ve sayfalama için Frappe `/api/v2/document` ucu kullanılacaktır ve `api-client` tipli istemciyi hazırlamaktadır.
+`fixtures/example-collection.json` yalnız `/api/v2/document` yanıt biçimindeki geçici liste satırlarını tutar.
+Kaldırma koşulu: `api-client` tipli `/api/v2/document` istemcisini ve MSW işleyicisini `main` dalına getirdiğinde `example.ts` içindeki yerel liste uyarlayıcısı ve `fixtures/example-collection.json` kaldırılır, doğrudan tipli istemciye bağlanılır.
 Örnek ekranda “Örnek veri” yazısı görünür.
 Üretim giriş dosyası örnek kaynağı içe aktarmaz.
 
@@ -91,9 +96,9 @@ Bunlar Kanban, Pivot, Rapor, Gantt ve Timesheet görünümleridir.
 Adres bu görünümlerden birini istese de tablo açılır.
 Kapalı görünümün JavaScript dosyası indirilmez.
 
-Arka uç sözleşmesinde gruplu sayım ve toplam ucu yoktur.
-Bu nedenle kapalı görünümler üretim için hazır sayılmaz.
-Sunucu özetleri bağlanmadan ayarı ana uygulamada açmayın.
+Gruplu sayım ve toplam için arka uç yeni uç yazmaktadır.
+O uç ve tipli `api-client` bağlantısı `main` dalına gelene kadar özet görünümler kapalı kalır.
+Sunucu özet ucu bağlanmadan ayarı ana uygulamada açmayın.
 Ayar açıkken örnek görünümler yalnız gelen sayfayı hesaplar.
 Örnek ekran bu sınırı belirtir.
 Sunucu toplamı veya tam veri raporu iddiası yoktur.
@@ -108,7 +113,7 @@ Bu teslimde kayıt değiştiren toplu işlem yoktur.
 
 ## Adres durumu
 
-Adres şu alanları taşır.
+Adres şu alanları taşır:
 `view`, `page`, `size`, `search`, `sort`, `direction`, `filter`, `value`.
 
 Sayfa boyutu 10, 20 veya 50 kayıttır.
@@ -122,18 +127,15 @@ Gizli bilgileri adres süzgeçlerine yazmayın.
 Üretim bileşeni ana uygulamanın `ConfigProvider` temasını kullanır.
 Koleksiyon ortak tema veya motor başlatmaz.
 `collection-tokens.ts` yalnız koleksiyonun yerleşim ve renk eşlemesini yapar.
-Ortak değişken adları foundation kaynağından okunmuştur.
+Ortak değişken adları `foundation` kaynağından okunmuştur.
 Örnekler `--font-ui`, `--radius` ve `--shadow-dropdown` adlarıdır.
 Hareket değişkenleri `--motion-duration-*` ve `--motion-easing-*` adlarını kullanır.
 Dokunma motoru `--hit-t/r/b/l` değerlerini sağlar.
 Odak modu `html[data-focus-mode="keyboard"]` alanından okunur.
 
-Bu dalda ortak dışa aktarımlar henüz boştur.
-Önizleme bu yüzden geçici bağlantılar kullanır.
-Bunlar `preview/TemporaryFoundation.tsx` ve aynı klasördeki geçici dosyalardır.
-Bu dosyalar üretim girişinden yüklenmez.
-Foundation dışa aktarımları gelince geçici dosyaları kaldırın.
-Yerlerine şu ortak işlevleri bağlayın:
+Bu dalda `src/design/` ve `src/engines/` dışa aktarımları henüz boştur.
+Bu nedenle `collection.css` içindeki odak ve dokunma alanı kuralları ile `preview/` klasöründeki geçici köprü dosyaları korunmaktadır.
+Her kopyanın başında kaldırma koşulu yazılıdır: `foundation` `main` dalına girince bu kopyalar silinir ve yerlerine şu ortak işlevler bağlanır:
 
 - `buildAntdTheme`
 - `ensureDesignStyles`
@@ -143,7 +145,7 @@ Yerlerine şu ortak işlevleri bağlayın:
 Kontroller antd'nin açık bileşen alanlarını kullanır.
 Stil kurallarında iç sınıf seçicisi veya öncelik zorlaması yoktur.
 Azaltılmış harekette Select kapanış animasyonu başlatılmaz.
-Önizleme temasında hareket de kapatılır.
+Dokunmatik kaydırma sonrası tarayıcının son dokunma noktasında ürettiği hareketsiz `mousemove` olayı, klavyeyle seçilen etkin Select seçeneğini sıfırlamaz; gerçek fare hareketi seçeneği değiştirmeye devam eder.
 Klavye odağı normal temada tek alt çizgiyle görünür.
 Tablo kendi içinde yatay kayar. Sayfa yatay taşmaz.
 Görünür metinler bu teslimde en az 14 CSS px değerindedir.
@@ -160,10 +162,8 @@ npm run test:e2e
 ```
 
 Tarayıcı testleri `src/views/collection/e2e/*.spec.ts` konumundadır.
-Ayrı, kalıcı Playwright ayarı kaldırıldı.
-Foundation kök ayarda bu yolu kapsamalıdır.
-Kök derleme örnek ekranı da servis etmelidir.
-Bu dalda kök bağlantı henüz doğrulanmadı.
+Kök `playwright.config.ts` bu dalda hâlâ yalnız `./tests/e2e` klasörünü koşar.
+`foundation` kök ayarda `src/views/**/e2e` yolunu kapsamalı ve önizleme sunucusunu bağlamalıdır.
 Yerel kontrol için kullanılan geçici ayar Git'e girmez.
 Güncel komutlar ve sonuçlar `VERIFICATION.md` dosyasındadır.
 Firefox proje kararı gereği çalıştırılmaz.

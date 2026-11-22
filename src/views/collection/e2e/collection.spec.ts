@@ -37,6 +37,13 @@ test('expanded input and select targets work without covering their centers', as
     /_0$/,
   );
   await page.locator('.collection-popup:visible').evaluate(async (element) => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
     await Promise.all(
       element.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
     );

@@ -21,7 +21,7 @@ describe('collection contract and URL', () => {
   it('preserves validated record and field sensitivity without hiding authorized fields', () => {
     const meta = structuredClone(exampleMeta);
     meta.schema.sensitivity = 'restricted';
-    meta.schema.fields = meta.schema.fields.map((field) => ({
+    meta.schema.fields = meta.schema.fields.map((field): (typeof meta.schema.fields)[number] => ({
       ...field,
       sensitivity: 'restricted',
     }));

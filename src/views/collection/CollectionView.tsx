@@ -60,6 +60,10 @@ export interface CollectionViewProps {
   definition: CollectionDefinition;
   source: CollectionSource;
   mode?: 'dark' | 'light';
+  /**
+   * Gruplu sayım ve toplam için arka uç yeni uç yazıyor.
+   * O uç ve tipli `api-client` bağlantısı `main` dalına gelene kadar özet görünümler kapalı kalır.
+   */
   enableExperimentalCollectionViews?: boolean;
 }
 export function CollectionView({
