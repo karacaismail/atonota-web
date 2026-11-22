@@ -263,6 +263,75 @@ describe('cihaz kurulumları (oturumlar)', () => {
     });
   });
 
+  it('UUID olmayan sayfa anahtarı için istek göndermez', async () => {
+    await expect(api().listInstallations('ORNEK')).rejects.toMatchObject({
+      kind: 'invalid_request',
+      code: 'invalid_uuid',
+    });
+    expect(requests).toHaveLength(0);
+  });
+
+  describe('sahte sunucu PWA isteğini sözleşmeye göre denetler', () => {
+    const path = `${SITE}/api/method/platform_core.api.mobile_pwa.v1_list_installations`;
+    const validHeaders = {
+      'Content-Type': 'application/json',
+      Origin: SITE,
+      'X-Frappe-CSRF-Token': SAMPLE_CSRF_TOKEN,
+      'X-Mobile-App-Version': '0.1.0',
+      'X-Mobile-Contract-Version': '1',
+    };
+
+    async function send(headers: Record<string, string>, body: unknown = {}) {
+      const response = await fetch(path, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
+      return { status: response.status, body: (await response.json()) as { code?: string } };
+    }
+
+    it('geçerli istek 200 alır', async () => {
+      expect((await send(validHeaders)).status).toBe(200);
+    });
+
+    it('sürüm başlığı eksikse reddeder', async () => {
+      const { 'X-Mobile-App-Version': _omit, ...headers } = validHeaders;
+      expect(await send(headers)).toMatchObject({
+        status: 400,
+        body: { code: 'invalid_client_version' },
+      });
+    });
+
+    it('sözleşme sürümü başlığı eksikse reddeder', async () => {
+      const { 'X-Mobile-Contract-Version': _omit, ...headers } = validHeaders;
+      expect(await send(headers)).toMatchObject({
+        status: 400,
+        body: { code: 'unsupported_contract_version' },
+      });
+    });
+
+    it('farklı kökten gelen isteği reddeder', async () => {
+      expect(await send({ ...validHeaders, Origin: 'https://kotu.example.test' })).toMatchObject({
+        status: 403,
+        body: { code: 'pwa_request_forbidden' },
+      });
+    });
+
+    it('UUID olmayan sayfa anahtarını reddeder', async () => {
+      expect(await send(validHeaders, { after: 'ORNEK' })).toMatchObject({
+        status: 400,
+        body: { code: 'invalid_uuid' },
+      });
+    });
+
+    it('bilinmeyen gövde alanını reddeder', async () => {
+      expect(await send(validHeaders, { sonraki: 'x' })).toMatchObject({
+        status: 400,
+        body: { code: 'invalid_request' },
+      });
+    });
+  });
+
   it('bozuk kurulum kaydını reddeder', async () => {
     mockServer.use(
       http.post('*/api/method/platform_core.api.mobile_pwa.v1_list_installations', () =>

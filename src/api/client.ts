@@ -586,6 +586,9 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       after?: string,
       options: RequestOptions = {},
     ): Promise<{ installations: Installation[]; nextAfter: string | null }> {
+      if (after !== undefined && !UUID_PATTERN.test(after)) {
+        throw new ApiError({ kind: 'invalid_request', status: 0, code: 'invalid_uuid' });
+      }
       const page = await unwrap(
         mobile.POST('/platform_core.api.mobile_pwa.v1_list_installations', {
           ...signalOf(options),

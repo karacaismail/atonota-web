@@ -77,27 +77,38 @@ const SERVER_TIME = 1795340000;
 const MOCK_INSTALLATION_PAGE = 2;
 
 /** PWA uçları oturum ve CSRF ister. Hata gövdesi `code` alanını taşır. */
+function pwaError(status: number, code: string) {
+  return HttpResponse.json({ server_time: SERVER_TIME, code }, { status });
+}
+
+const APP_VERSION_PATTERN = /^[0-9]{1,5}\.[0-9]{1,5}\.[0-9]{1,5}$/;
+
+/**
+ * PWA uçlarının sözleşme denetimi: oturum, CSRF, köken ve iki sürüm başlığı.
+ * Tarayıcıdaki işçi `Origin` başlığını göremeyebilir. Bu yüzden başlık yoksa geçer.
+ * Başlık varsa isteğin kendi kökeniyle aynı olmalıdır.
+ */
 function pwaGuard(request: Request): Response | undefined {
-  if (request.headers.has('Authorization')) {
-    return HttpResponse.json(
-      { server_time: SERVER_TIME, code: 'mixed_authentication' },
-      { status: 403 },
-    );
-  }
-  if (!mockState.signedIn) {
-    return HttpResponse.json(
-      { server_time: SERVER_TIME, code: 'pwa_session_required' },
-      { status: 401 },
-    );
-  }
+  if (request.headers.has('Authorization')) return pwaError(403, 'mixed_authentication');
+  if (!mockState.signedIn) return pwaError(401, 'pwa_session_required');
   if (request.headers.get('X-Frappe-CSRF-Token') !== SAMPLE_CSRF_TOKEN) {
-    return HttpResponse.json(
-      { server_time: SERVER_TIME, code: 'pwa_request_forbidden' },
-      { status: 403 },
-    );
+    return pwaError(403, 'pwa_request_forbidden');
+  }
+  const origin = request.headers.get('Origin');
+  if (origin !== null && origin !== new URL(request.url).origin) {
+    return pwaError(403, 'pwa_request_forbidden');
+  }
+  if (request.headers.get('X-Mobile-Contract-Version') !== '1') {
+    return pwaError(400, 'unsupported_contract_version');
+  }
+  if (!APP_VERSION_PATTERN.test(request.headers.get('X-Mobile-App-Version') ?? '')) {
+    return pwaError(400, 'invalid_client_version');
   }
   return undefined;
 }
+
+const INSTALLATION_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const LEAVE_FIELDS = new Set([
   'name',
@@ -459,13 +470,18 @@ export const handlers = [
     async ({ request }) => {
       const failure = pwaGuard(request);
       if (failure) return failure;
-      const body = (await request.json()) as { after?: string };
+      const body = (await request.json()) as Record<string, unknown>;
+      if (Object.keys(body).some((key) => key !== 'after')) return pwaError(400, 'invalid_request');
+      if (body.after !== undefined) {
+        if (typeof body.after !== 'string' || !INSTALLATION_ID_PATTERN.test(body.after)) {
+          return pwaError(400, 'invalid_uuid');
+        }
+      }
+      const after = typeof body.after === 'string' ? body.after : undefined;
       const sorted = [...mockState.installations].sort((a, b) =>
         a.installation_id.localeCompare(b.installation_id),
       );
-      const rest = body.after
-        ? sorted.filter((item) => item.installation_id > (body.after ?? ''))
-        : sorted;
+      const rest = after ? sorted.filter((item) => item.installation_id > after) : sorted;
       const page = rest.slice(0, MOCK_INSTALLATION_PAGE);
       const nextAfter = rest.length > page.length ? (page.at(-1)?.installation_id ?? null) : null;
       return HttpResponse.json({
