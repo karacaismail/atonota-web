@@ -33,6 +33,19 @@ function wrap(node: React.ReactNode, client: ModuleClient) {
 afterEach(cleanup);
 
 describe('explicit approval', () => {
+  it('loads only the signed-in profile from the shared client', async () => {
+    render(
+      wrap(<AccountPage />, {
+        getProfile: vi.fn().mockResolvedValue({
+          name: 'example-user',
+          fullName: 'Örnek Kişi',
+          roles: ['Örnek rol'],
+        }),
+      }),
+    );
+    expect(await screen.findByText('Örnek Kişi')).toBeVisible();
+    expect(screen.getByText('Örnek rol')).toBeVisible();
+  });
   it('rejects a detail response for a different proposal', async () => {
     render(
       wrap(<AiOperationsPage />, {

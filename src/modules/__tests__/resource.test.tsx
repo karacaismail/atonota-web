@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { useRead } from '../data';
 import { ModuleProvider } from '../runtime';
 function Probe({ request }: { request: (signal: AbortSignal) => Promise<string> }) {
-  const load = useCallback(request, [request]);
+  const load = useCallback((signal: AbortSignal) => request(signal), [request]);
   const { state } = useRead(load, 'record');
   return <p>{state.status === 'ready' ? state.data : state.status}</p>;
 }

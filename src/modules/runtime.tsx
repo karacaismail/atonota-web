@@ -6,6 +6,7 @@ export interface RequestOptions {
 }
 /** Normalized, schema-checked results from the shared API client. No fetch or session logic lives here. */
 export interface ModuleClient {
+  getProfile?: (options: RequestOptions) => Promise<unknown>;
   listLeaveApplications?: (
     query: { limit_start: number; limit_page_length: number; order_by: 'modified desc, name asc' },
     options: RequestOptions,

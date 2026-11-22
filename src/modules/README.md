@@ -40,6 +40,20 @@ Bu ekranlar eksik bağlantıyı açıkça bildirir.
 Öneri geçmişi, ayrıntılı işlem günlüğü gibi sunulmaz.
 Arka uç sahibi sözleşmeleri tamamlayınca `api-client` sahibi istemciyi bağlar.
 
+## Ortak istemciyi bağlama
+
+`createModuleClient(session.api)` ortak istemciyi modüllere bağlar.
+`ModuleProvider` bu istemciyi `client` alanında alır.
+`tenant` alanı site kökünü taşır.
+`user` alanı oturumdaki kullanıcı adını taşır.
+`mode` alanı örnek veri ile canlı veriyi ayırır.
+Sağlayıcı, `AuthGate` içinde kalmalıdır.
+
+Profil, kabuk başlangıç verisindeki kullanıcıdan okunur.
+Okunan kullanıcı adı oturumdaki kullanıcı adıyla uyuşmalıdır.
+`pressOrigin` verilirse ortak Press adres denetimi çalışır.
+`accountSecurityUrl` verilirse adresin kimlik sunucusuna ait olduğu denetlenir.
+
 ## Doğrulama
 
 Çalışma dizini depo köküdür.

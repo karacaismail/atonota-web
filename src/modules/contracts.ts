@@ -211,6 +211,14 @@ export function parseExplanation(value: unknown) {
     }),
   };
 }
+export function parseProfile(value: unknown) {
+  const source = object(value);
+  return {
+    name: text(source['name']),
+    fullName: text(source['fullName']),
+    roles: array(source['roles'], text),
+  };
+}
 export function displayValue(value: unknown): string {
   if (value === undefined) return '';
   if (typeof value === 'string') return value;

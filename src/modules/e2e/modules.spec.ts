@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { object, text } from '../contracts';
 
 const pageCases: [string, string][] = [
   ['account', 'Hesap'],
@@ -22,21 +23,41 @@ for (const [path, title] of pageCases) {
         .filter((element) => element.getBoundingClientRect().width > 0)
         .map((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
     );
-    expect(fontSizes.every((size) => size >= 12)).toBe(true);
+    expect(fontSizes.every((size) => size >= 14)).toBe(true);
     expect((await new AxeBuilder({ page }).include('.module-page').analyze()).violations).toEqual(
       [],
     );
   });
 }
 
-test('account route does not load unrelated module screens', async ({ page }) => {
-  const scripts: string[] = [];
-  page.on('request', (request) => {
-    if (request.resourceType() === 'script') scripts.push(request.url());
-  });
+test('account only requests its production assets and shared dependencies', async ({ page }) => {
+  const response = await page.request.get('/.vite/manifest.json');
+  expect(response.ok()).toBe(true);
+  const manifest = object(await response.json());
+  const collect = (key: string, seen = new Set<string>()): Set<string> => {
+    if (seen.has(key)) return new Set();
+    seen.add(key);
+    const entry = object(manifest[key]);
+    const assets = new Set([text(entry['file'])]);
+    if (Array.isArray(entry['css'])) for (const css of entry['css']) assets.add(text(css));
+    if (Array.isArray(entry['imports']))
+      for (const dependency of entry['imports'])
+        for (const asset of collect(text(dependency), seen)) assets.add(asset);
+    return assets;
+  };
+  const entryKey = 'src/modules/account/Page.tsx';
+  const allowed = new Set([...collect('index.html'), ...collect(entryKey)]);
+  const forbidden = new Set<string>();
+  for (const [id] of pageCases)
+    if (id !== 'account')
+      for (const asset of collect(`src/modules/${id}/Page.tsx`))
+        if (!allowed.has(asset)) forbidden.add(asset);
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(new URL(request.url()).pathname.slice(1)));
   await page.goto('/account');
   await expect(page.getByRole('heading', { name: 'Hesap', exact: true, level: 1 })).toBeVisible();
-  expect(scripts.filter((url) => /ai-operations|administration|site-plan/.test(url))).toEqual([]);
+  expect(requests).toContain(text(object(manifest[entryKey])['file']));
+  expect(requests.filter((path) => forbidden.has(path))).toEqual([]);
 });
 
 test('a leave approval requires review and keeps the original record version', async ({ page }) => {
