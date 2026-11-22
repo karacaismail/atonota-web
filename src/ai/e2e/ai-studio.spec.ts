@@ -1,6 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const PAGE = '/src/ai/dev/studio.html';
+/**
+ * AI Studio tarayıcı testleri. Sayfa üretim derlemesinde `/panel/ai` yolundadır.
+ * Yol `src/app/routes.ts` dosyasında kayıtlıdır. Kök Playwright ayarı bu klasörü koşar.
+ */
+const PAGE = '/panel/ai';
+const WIDE = 1140;
+
+async function open(page: Page) {
+  await page.goto(PAGE);
+  await expect(page.getByRole('textbox', { name: 'Asistana mesaj yazın' })).toBeVisible();
+}
 
 async function horizontalOverflow(page: Page) {
   return page.evaluate(
@@ -30,48 +40,95 @@ async function smallestFont(page: Page) {
   });
 }
 
+/** Öğedeki metnin kaç satıra yayıldığını sayar. */
+async function lineCount(page: Page, selector: string) {
+  return page
+    .locator(selector)
+    .first()
+    .evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+    });
+}
+
+/** Odaktaki öğenin çerçevesi ve alt çizgi göstergesi. */
+async function focusLook(page: Page) {
+  return page.evaluate(() => {
+    const el = document.activeElement as HTMLElement | null;
+    if (!el) return null;
+    const style = getComputedStyle(el);
+    return {
+      label: el.getAttribute('aria-label') ?? el.textContent?.trim() ?? '',
+      outline: style.outlineStyle === 'none' || style.outlineWidth === '0px',
+      indicator: style.boxShadow.includes('inset'),
+    };
+  });
+}
+
+async function waitConfirm(page: Page) {
+  const confirm = page.locator('[data-genui="confirm"]');
+  await expect(confirm).toBeVisible({ timeout: 15_000 });
+  return confirm;
+}
+
 test.describe('AI Studio', () => {
   test('boş durumda yatay taşmaz', async ({ page }) => {
-    await page.goto(PAGE);
+    await open(page);
     await expect(page.getByText('Merhaba, ben Atonota asistanı')).toBeVisible();
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
     expect(await smallestFont(page)).toBeGreaterThanOrEqual(12);
   });
 
-  test('tablo ve onay bloğuyla yatay taşmaz', async ({ page }) => {
-    await page.goto(PAGE);
+  test('tablo ve onay bloğuyla yatay taşmaz, açıklama sarılır', async ({ page }) => {
+    await open(page);
     await ask(page, 'Geciken siparişleri bul');
-    const confirm = page.locator('[data-genui="confirm"]');
-    await expect(confirm).toBeVisible({ timeout: 15_000 });
+    await waitConfirm(page);
     await expect(page.locator('[data-genui="table"]')).toBeVisible();
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
     expect(await smallestFont(page)).toBeGreaterThanOrEqual(12);
-    // Sipariş başlığı sözcük ortasından bölünmez.
-    const header = page.locator('[data-genui="table"] th', { hasText: 'Sipariş' }).first();
-    const lines = await header.evaluate((el) => {
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      const tops = new Set([...range.getClientRects()].map((r) => Math.round(r.top)));
-      return tops.size;
-    });
-    expect(lines).toBeLessThanOrEqual(1);
+    expect(await lineCount(page, '[data-genui="table"] th')).toBe(1);
+    expect(await lineCount(page, '[data-genui="table"] td.genui-cell-id')).toBe(1);
+    expect(await lineCount(page, '[data-genui="table"] td.genui-cell-text')).toBeGreaterThan(1);
   });
 
-  test('onay vermeden işlem mesajı oluşmaz, onayla yeni mesaj gelir', async ({ page }) => {
-    await page.goto(PAGE);
+  test('onay ekranı önce ve sonra değerini gösterir', async ({ page }) => {
+    await open(page);
     await ask(page, 'Geciken siparişleri bul');
-    const confirm = page.locator('[data-genui="confirm"]');
-    await expect(confirm).toBeVisible({ timeout: 15_000 });
+    const confirm = await waitConfirm(page);
+    const table = confirm.getByRole('table', { name: 'Değişecek alanlar' });
+    await expect(table.getByRole('columnheader', { name: 'Önce' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'Sonra' })).toBeVisible();
+    await expect(table.getByText('Gönderilmedi')).toBeVisible();
+  });
+
+  test('onaylanınca yeni mesaj gelir, yeniden üret onayı tekrar göndermez', async ({ page }) => {
+    await open(page);
+    await ask(page, 'Geciken siparişleri bul');
+    const confirm = await waitConfirm(page);
     await expect(page.getByText(/^Onaylıyorum/)).toHaveCount(0);
     await confirm.getByRole('button', { name: 'Gönder' }).click();
-    await expect(page.getByText(/^Onaylıyorum/)).toBeVisible();
-    await expect(page.getByRole('log')).toContainText('gerçek bir işlem yapılmadı', {
-      timeout: 15_000,
-    });
+    await expect(page.getByText(/^Onaylıyorum/)).toHaveCount(1);
+    const log = page.getByRole('log');
+    await expect(log).toContainText('gerçek bir işlem yapılmadı', { timeout: 15_000 });
+    await page.getByRole('button', { name: 'Yeniden üret' }).last().click();
+    await expect(log).toContainText('Onayınız yeniden işlenmedi', { timeout: 15_000 });
+    await expect(log).not.toContainText('zaten kullanıldı');
+    await expect(page.getByText(/^Onaylıyorum/)).toHaveCount(1);
+  });
+
+  test('yanıt akarken eski onay düğmesi kapalıdır', async ({ page }) => {
+    await open(page);
+    await ask(page, 'Geciken siparişleri bul');
+    const confirm = await waitConfirm(page);
+    await expect(page.getByRole('button', { name: 'Mesajı gönder' })).toBeVisible();
+    await ask(page, 'Bu haftanın satış özetini çıkar');
+    await expect(confirm.getByRole('button', { name: 'Gönder' })).toBeDisabled();
+    await expect(confirm).toContainText('Yanıt bitince onay verebilirsiniz.');
   });
 
   test('iptal akışı durdurur', async ({ page }) => {
-    await page.goto(PAGE);
+    await open(page);
     await ask(page, 'Bu haftanın satış özetini çıkar');
     await page.getByRole('button', { name: 'Yanıtı durdur' }).click();
     await expect(page.getByText('Yanıt durduruldu.')).toBeVisible();
@@ -81,11 +138,8 @@ test.describe('AI Studio', () => {
   });
 
   test('dar ekranda çekmeceler açılır ve taşmaz', async ({ page }, info) => {
-    test.skip(
-      (page.viewportSize()?.width ?? 0) >= 1140,
-      `${info.project.name}: geniş ekranda çekmece yok`,
-    );
-    await page.goto(PAGE);
+    test.skip((page.viewportSize()?.width ?? 0) >= WIDE, `${info.project.name}: çekmece yok`);
+    await open(page);
     await page.getByRole('button', { name: 'Sohbetleri aç' }).click();
     await expect(page.getByRole('navigation', { name: 'Sohbetler' })).toBeVisible();
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
@@ -95,25 +149,26 @@ test.describe('AI Studio', () => {
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
   });
 
-  test('azaltılmış harekette baykuş durur', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto(PAGE);
-    const owl = page.locator('svg.owl').first();
-    await expect(owl).toHaveClass(/is-still/);
-    expect(await owl.evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
-    await expect(page.locator('svg.owl animateMotion')).toHaveCount(0);
+  test('klavye odağı çevreleyen halka çizmez, alt çizgiyle görünür', async ({ page }, info) => {
+    test.skip((page.viewportSize()?.width ?? 0) >= WIDE, `${info.project.name}: çekmece yok`);
+    await open(page);
+    await page.keyboard.press('Tab');
+    const first = await focusLook(page);
+    expect(first).toMatchObject({ label: 'Sohbetleri aç', outline: true, indicator: true });
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    expect(await focusLook(page)).toMatchObject({ label: 'Sohbetleri aç', outline: true });
+
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('navigation', { name: 'Sohbetler' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Sohbetleri aç' })).toBeFocused();
+    expect(await focusLook(page)).toMatchObject({ outline: true, indicator: true });
   });
 
-  test('hareket açıkken baykuş parçacıkları döner', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.goto(PAGE);
-    const owl = page.locator('svg.owl').first();
-    expect(await owl.evaluate((el) => getComputedStyle(el).animationName)).toBe('owl-float');
-    expect(await page.locator('svg.owl').first().locator('animateMotion').count()).toBe(3);
-  });
-
-  test('mesaj kutusu odakta çevreleyen halka çizmez', async ({ page }) => {
-    await page.goto(PAGE);
+  test('fareyle odakta gösterge çıkmaz', async ({ page }) => {
+    await open(page);
     await page.getByRole('textbox', { name: 'Asistana mesaj yazın' }).click();
     const ring = await page.locator('.ai-sender .ant-sender').evaluate((el) => {
       const after = getComputedStyle(el, '::after');
@@ -126,5 +181,21 @@ test.describe('AI Studio', () => {
     expect(ring.color).not.toBe('rgb(0, 170, 204)');
     expect(ring.width).toBe('1px');
     expect(ring.outline).toBe('none');
+  });
+
+  test('azaltılmış harekette baykuş durur', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await open(page);
+    const owl = page.locator('svg.owl').first();
+    await expect(owl).toHaveClass(/is-still/);
+    await expect(page.locator('svg.owl animateMotion')).toHaveCount(0);
+  });
+
+  test('hareket açıkken baykuş parçacıkları döner', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await open(page);
+    const owl = page.locator('svg.owl').first();
+    expect(await owl.evaluate((el) => getComputedStyle(el).animationName)).toBe('owl-float');
+    expect(await owl.locator('animateMotion').count()).toBe(3);
   });
 });
