@@ -44,6 +44,7 @@ test('keyboard focus, selection and menu dismissal work', async ({ page }) => {
 
   await page.keyboard.press('Enter');
   await expect(page.getByRole('menu')).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Düzenle' })).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toBeHidden();

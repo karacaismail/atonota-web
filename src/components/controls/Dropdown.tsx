@@ -1,7 +1,7 @@
 import { Check } from '@phosphor-icons/react';
 import { Button, Dropdown as AntDropdown, Input, Space } from 'antd';
 import type { MenuProps } from 'antd';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 export type DropdownStyle = 'classic' | 'shortcut' | 'described' | 'selectable' | 'searchable';
@@ -38,8 +38,30 @@ export function Dropdown({
 }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const trigger = useRef<HTMLButtonElement>(null);
+  const triggerId = useId();
   const popupId = useId();
+  const restoreFocus = useRef(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => {
+      const popup = document.getElementById(`${popupId}-surface`);
+      popup
+        ?.querySelector<HTMLElement>(
+          style === 'searchable' ? 'input' : '[role="menuitem"]:not([aria-disabled="true"])',
+        )
+        ?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, popupId, style]);
+
+  useLayoutEffect(() => {
+    if (!open && restoreFocus.current) {
+      restoreFocus.current = false;
+      const frame = requestAnimationFrame(() => document.getElementById(triggerId)?.focus());
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [open, triggerId]);
 
   function close() {
     setOpen(false);
@@ -50,16 +72,25 @@ export function Dropdown({
     if (!open) return;
 
     function dismiss(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
+      const target = event.target;
+      const popup = document.getElementById(`${popupId}-surface`);
+      const insideDropdown =
+        target instanceof Node &&
+        (document.getElementById(triggerId)?.contains(target) || popup?.contains(target));
+      if (event.key === 'Escape' && insideDropdown) {
+        event.preventDefault();
+        event.stopPropagation();
+        restoreFocus.current = true;
         setOpen(false);
         setQuery('');
-        trigger.current?.focus();
+        const frame = requestAnimationFrame(() => document.getElementById(triggerId)?.focus());
+        return () => cancelAnimationFrame(frame);
       }
     }
 
-    document.addEventListener('keydown', dismiss);
-    return () => document.removeEventListener('keydown', dismiss);
-  }, [open]);
+    window.addEventListener('keydown', dismiss, true);
+    return () => window.removeEventListener('keydown', dismiss, true);
+  }, [open, popupId, triggerId]);
 
   const visibleItems = items.filter((item) =>
     item.label.toLocaleLowerCase('tr').includes(query.trim().toLocaleLowerCase('tr')),
@@ -106,7 +137,7 @@ export function Dropdown({
   return (
     <AntDropdown
       open={open}
-      autoFocus
+
       trigger={['click']}
       onOpenChange={(next) => (next ? setOpen(true) : close())}
       menu={{
@@ -115,28 +146,26 @@ export function Dropdown({
         selectable: style === 'selectable',
         selectedKeys: selectedKey === undefined ? [] : [selectedKey],
         onClick: ({ key }) => {
+          restoreFocus.current = true;
           close();
-          trigger.current?.focus();
           onSelect(key);
         },
       }}
-      popupRender={(menu) =>
-        style === 'searchable' ? (
-          <div>
+      popupRender={(menu) => (
+        <div id={`${popupId}-surface`}>
+          {style === 'searchable' && (
             <Input
               aria-label={searchLabel}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
-            {menu}
-          </div>
-        ) : (
-          menu
-        )
-      }
+          )}
+          {menu}
+        </div>
+      )}
     >
       <Button
-        ref={trigger}
+        id={triggerId}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? popupId : undefined}
