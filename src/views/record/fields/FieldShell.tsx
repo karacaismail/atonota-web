@@ -1,4 +1,3 @@
-import { Tag } from 'antd';
 import { type ReactNode, useId } from 'react';
 
 import { formatRecordMessage } from '../messages';
@@ -64,9 +63,9 @@ export function FieldShell(props: FieldShellProps) {
             ) : null}
           </label>
           {field.sensitivity === 'restricted' ? (
-            <Tag bordered={false} color="warning">
+            <span className="rv-pill rv-pill--warning">
               {formatRecordMessage(locale, 'restrictedBadge')}
-            </Tag>
+            </span>
           ) : null}
         </div>
       ) : (

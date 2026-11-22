@@ -137,7 +137,7 @@ export function SafeFormattedView(props: {
         const key = `${block.kind}-${index}`;
         switch (block.kind) {
           case 'heading':
-            return <h4 key={key}>{block.text}</h4>;
+            return <h3 key={key}>{block.text}</h3>;
           case 'code':
             return (
               <pre key={key}>

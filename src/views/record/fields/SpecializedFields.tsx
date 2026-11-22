@@ -7,7 +7,7 @@ import {
   Trash,
   UploadSimple,
 } from '@phosphor-icons/react';
-import { Button, ColorPicker, Input, InputNumber, Rate, Tag, Upload } from 'antd';
+import { Button, ColorPicker, Input, InputNumber, Rate, Upload } from 'antd';
 import { type PointerEvent, useRef, useState } from 'react';
 
 import { formatRecordMessage } from '../messages';
@@ -74,11 +74,11 @@ export function AttachField(props: AttachFieldProps) {
 
         {filePath ? (
           safeUrl ? (
-            <Tag bordered={false}>{filePath}</Tag>
+            <span className="rv-pill rv-pill--neutral">{filePath}</span>
           ) : (
-            <Tag bordered={false} color="warning">
+            <span className="rv-pill rv-pill--warning">
               {formatRecordMessage(locale, 'attachUnsafeUrlBlocked')}
-            </Tag>
+            </span>
           )
         ) : readOnly ? (
           <span className="rv-readonly-box" role="textbox" aria-readonly="true">
@@ -204,12 +204,12 @@ export function SignatureField(props: SignatureFieldProps) {
       ) : null}
 
       <div className="rv-attach-row">
-        <Tag bordered={false} color={hasSignature ? 'processing' : 'default'}>
+        <span className={hasSignature ? 'rv-pill rv-pill--primary' : 'rv-pill rv-pill--neutral'}>
           {formatRecordMessage(
             locale,
             hasSignature ? 'signatureSignedBadge' : 'signatureEmptyBadge',
           )}
-        </Tag>
+        </span>
         {!readOnly ? (
           <>
             <span className="rv-field-help">

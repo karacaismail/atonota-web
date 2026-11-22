@@ -167,7 +167,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
   }
 
   if (entry.canonicalType === 'Heading') {
-    return <h4 className="rv-section-title">{field.label ?? field.fieldname}</h4>;
+    return <h3 className="rv-section-title">{field.label ?? field.fieldname}</h3>;
   }
 
   if (entry.canonicalType === 'HTML') {

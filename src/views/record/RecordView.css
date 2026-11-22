@@ -218,6 +218,43 @@
   font-weight: var(--rv-font-weight-lg);
 }
 
+.rv-pill {
+  display: inline-flex;
+  align-items: center;
+  height: var(--rv-tag-h);
+  padding: 0 var(--rv-space-sm);
+  border-radius: calc(var(--rv-tag-h) / 2);
+  font-size: var(--rv-font-min);
+  line-height: var(--rv-font-min-lh);
+  font-weight: var(--rv-font-weight-md);
+  white-space: nowrap;
+}
+
+.rv-pill--primary {
+  color: var(--rv-pill-primary-fg);
+  background-color: var(--rv-pill-primary-bg);
+}
+
+.rv-pill--success {
+  color: var(--rv-pill-success-fg);
+  background-color: var(--rv-pill-success-bg);
+}
+
+.rv-pill--warning {
+  color: var(--rv-pill-warning-fg);
+  background-color: var(--rv-pill-warning-bg);
+}
+
+.rv-pill--danger {
+  color: var(--rv-pill-danger-fg);
+  background-color: var(--rv-pill-danger-bg);
+}
+
+.rv-pill--neutral {
+  color: var(--rv-color-text-secondary);
+  background-color: var(--rv-color-elevated);
+}
+
 .rv-section-description {
   margin: 0 0 var(--rv-space-md);
   font-size: var(--rv-font-min);

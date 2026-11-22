@@ -122,7 +122,7 @@ export function ChildTableField(props: ChildTableFieldProps) {
   if (!readOnly) {
     columns.push({
       key: '_actions',
-      title: '',
+      title: formatRecordMessage(locale, 'tableActionsColumn'),
       width: 56,
       render: (_val: unknown, _row: Record<string, unknown>, rowIndex: number) => (
         <Button
