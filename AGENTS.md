@@ -88,12 +88,12 @@ Proje sahibinin genel kuralları bu depoda da geçerlidir. İki kural için bu p
 
 - Yeni ve anlamlı davranışta önce test yazılır. Test önce başarısız olmalıdır.
 - Her bileşen 320, 360, 375, 390 px, yatay telefon, tablet ve masaüstünde denenir.
-- Kapılar: `npm run lint`, `npm run typecheck`, `npm test` ve `npm run test:e2e`.
+- Teslimden önce şu dört kapı geçmelidir: `npm run lint`, `npm run typecheck`, `npm test` ve `npm run test:e2e`.
 - Çalıştırılmayan denetim `not_run` diye raporlanır.
 
 ## Git
 
-- Yazar ve committer: `karacaismail <35493655+karacaismail@users.noreply.github.com>`.
+- Commit'in yazarı ve committer'ı şu kimliktir: `karacaismail <35493655+karacaismail@users.noreply.github.com>`.
 - Yapay zekâ ortak yazar satırı ve imzası eklenmez.
 - Pane panelinde commit şu önekle atılır: `env -u GIT_COMMITTER_NAME -u GIT_COMMITTER_EMAIL git commit`.
 - `--no-verify` kullanılmaz. Yazar koruması atlatılmaz.
