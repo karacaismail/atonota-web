@@ -184,7 +184,11 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
     return error;
   }
 
-  async function fail(response: Response, body: unknown): Promise<never> {
+  async function fail(
+    response: Response,
+    body: unknown,
+    { notify = true }: { notify?: boolean } = {},
+  ): Promise<never> {
     let error = toApiError(response.status, body, response.headers);
     if (error.kind === 'forbidden' && error.needsSessionCheck) {
       error =
@@ -192,7 +196,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           ? new ApiError({ kind: 'session_expired', status: error.status, code: error.code })
           : new ApiError({ kind: 'forbidden', status: error.status, code: error.code });
     }
-    if (error.kind === 'session_expired') throw sessionExpired(error);
+    if (error.kind === 'session_expired' && notify) throw sessionExpired(error);
     throw error;
   }
 
@@ -206,10 +210,12 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   async function unwrap<T>(
     pending: Promise<FetchResult>,
     guard: Guard<T>,
-    options: RequestOptions = {},
+    options: RequestOptions & { notifySessionExpired?: boolean } = {},
   ): Promise<T> {
     const { data, error, response } = await settle(pending, options.signal);
-    if (!response.ok) return fail(response, error);
+    if (!response.ok) {
+      return fail(response, error, { notify: options.notifySessionExpired ?? true });
+    }
     const value = readMessage(data);
     if (!guard(value)) throw new ApiError({ kind: 'invalid_response', status: response.status });
     sessionExpiredNotified = false;
@@ -221,7 +227,10 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   }
 
   return {
-    /** Oturumdaki kullanıcının adını döner. */
+    /**
+     * Oturumdaki kullanıcının adını döner.
+     * Bu uç oturumu yoklar. Oturum yoksa hata verir ama girişe yönlendirme başlatmaz.
+     */
     getLoggedUser(options: RequestOptions = {}): Promise<string> {
       return unwrap(
         shell.GET('/api/method/frappe.auth.get_logged_user', {
@@ -229,7 +238,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           cache: 'no-store',
         }),
         isUserName,
-        options,
+        { ...options, notifySessionExpired: false },
       );
     },
 

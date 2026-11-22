@@ -50,22 +50,107 @@ export const isLoginUrl: Guard<LoginUrl> = (value): value is LoginUrl =>
 export const isLogoutUrl: Guard<LogoutUrl> = (value): value is LogoutUrl =>
   isRecord(value) && isString(value.logout_url);
 
+function isOptional(value: unknown, check: (item: unknown) => boolean): boolean {
+  return value === undefined || check(value);
+}
+
+function isNullable(check: (item: unknown) => boolean) {
+  return (value: unknown) => value === null || check(value);
+}
+
+const isFlag = isNullable((value) => typeof value === 'number' || typeof value === 'boolean');
+const isNullableNumber = isNullable((value) => typeof value === 'number');
+const isFilterValue = isNullable(
+  (value) => typeof value === 'string' || Array.isArray(value) || isRecord(value),
+);
+
+const SIDEBAR_ITEM_TEXT = ['icon', 'label', 'link_to', 'link_type', 'tab', 'type', 'url'];
+const SIDEBAR_ITEM_FLAGS = [
+  'child',
+  'collapsible',
+  'derived',
+  'hidden',
+  'is_default_module',
+  'keep_closed',
+  'open_in_new_tab',
+  'show_arrow',
+];
+
+function isSidebarItem(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return (
+    SIDEBAR_ITEM_TEXT.every((key) => isOptional(value[key], isNullableString)) &&
+    SIDEBAR_ITEM_FLAGS.every((key) => isOptional(value[key], isFlag)) &&
+    isOptional(value.key, isString) &&
+    isOptional(value.indent, isNullableNumber) &&
+    isOptional(value.filters, isFilterValue) &&
+    isOptional(value.route_options, isFilterValue) &&
+    isOptional(
+      value.report,
+      (report) =>
+        isRecord(report) &&
+        isOptional(report.ref_doctype, isNullableString) &&
+        isOptional(report.report_type, isNullableString),
+    )
+  );
+}
+
+function isSidebar(value: unknown): boolean {
+  if (!isRecord(value) || !isString(value.name) || !isRecord(value.data)) return false;
+  const data = value.data;
+  return (
+    ['app', 'header_icon', 'module', 'module_onboarding'].every((key) =>
+      isOptional(data[key], isNullableString),
+    ) &&
+    ['computed', 'customized'].every((key) => isOptional(data[key], isFlag)) &&
+    isOptional(data.label, isString) &&
+    isOptional(data.name, isString) &&
+    isOptional(data.workspaces, isStringArray) &&
+    isOptional(data.items, (items) => Array.isArray(items) && items.every(isSidebarItem))
+  );
+}
+
+function isWorkspace(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.name) &&
+    isString(value.title) &&
+    isNullableString(value.app) &&
+    isNullableString(value.icon) &&
+    isNullableString(value.module) &&
+    isNullableString(value.parent_page)
+  );
+}
+
+function isFormatting(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isNullableString(value.currency) &&
+    isString(value.number_format) &&
+    isString(value.rounding_method) &&
+    isString(value.time_zone)
+  );
+}
+
+/** Açılış verisini liste öğeleriyle birlikte denetler. Menü bozuksa yanıt reddedilir. */
 export const isBootstrap: Guard<Bootstrap> = (value): value is Bootstrap => {
   if (!isRecord(value)) return false;
-  const { user, formatting } = value;
+  const { user } = value;
   return (
     isRecord(user) &&
     isString(user.name) &&
     isString(user.full_name) &&
     isString(user.language) &&
     isStringArray(user.roles) &&
-    isRecord(formatting) &&
-    isString(formatting.time_zone) &&
+    isFormatting(value.formatting) &&
     isStringArray(value.installed_apps) &&
     Array.isArray(value.sidebars) &&
+    value.sidebars.every(isSidebar) &&
     Array.isArray(value.workspaces) &&
+    value.workspaces.every(isWorkspace) &&
     isString(value.meta_hash) &&
-    isString(value.perm_version)
+    isString(value.perm_version) &&
+    isOptional(value.truncated, (flag) => flag === true)
   );
 };
 

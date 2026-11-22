@@ -16,6 +16,11 @@ describe('toApiError', () => {
     );
   });
 
+  it.each([500, 502, 503, 504])('%i yanıtı oturum işareti taşısa da sunucu hatasıdır', (status) => {
+    const error = toApiError(status, { exc_type: 'SessionExpired', session_expired: 1 });
+    expect(error.kind).not.toBe('session_expired');
+  });
+
   it('Frappe 15 yanıtında session_expired işaretli 403 oturum bitimidir', () => {
     expect(toApiError(403, { exc_type: 'PermissionError', session_expired: 1 }).kind).toBe(
       'session_expired',

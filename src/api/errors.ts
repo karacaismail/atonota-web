@@ -100,6 +100,12 @@ export function toApiError(status: number, body: unknown, headers?: Headers): Ap
   const base = { status, code, retryAfterSeconds };
   const sessionFlag = isRecord(body) && body.session_expired === 1;
 
+  // Sunucu hatası her zaman önce gelir. Gövdedeki oturum işareti 5xx yanıtında yok sayılır.
+  // Böylece sunucu arızası kullanıcıyı girişe göndermez.
+  if (status >= 500) {
+    const kind = status === 502 || status === 503 || status === 504 ? 'unavailable' : 'unknown';
+    return new ApiError({ ...base, kind });
+  }
   if (code === 'CSRFTokenError') return new ApiError({ ...base, kind: 'csrf' });
   if (status === 401 || (code !== undefined && SESSION_CODES.has(code)) || sessionFlag) {
     return new ApiError({ ...base, kind: 'session_expired' });
@@ -118,10 +124,6 @@ export function toApiError(status: number, body: unknown, headers?: Headers): Ap
       return new ApiError({ ...base, kind: 'conflict' });
     case 429:
       return new ApiError({ ...base, kind: 'rate_limited' });
-    case 502:
-    case 503:
-    case 504:
-      return new ApiError({ ...base, kind: 'unavailable' });
     case 400:
     case 413:
     case 417:

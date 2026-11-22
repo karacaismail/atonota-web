@@ -2,7 +2,7 @@
 import { http, HttpResponse } from 'msw';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { SAMPLE_CSRF_TOKEN, SAMPLE_USER } from '@/mocks/fixtures';
+import { SAMPLE_CSRF_TOKEN, SAMPLE_USER, sampleBootstrap } from '@/mocks/fixtures';
 import { mockState, resetMockState } from '@/mocks/handlers';
 import { mockServer } from '@/mocks/node';
 
@@ -226,6 +226,64 @@ describe('API istemcisi', () => {
     await vi.waitFor(() => expect(headersSent).toBe(true));
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('503 yanıtı oturum işareti taşısa da girişe yönlendirmez', async () => {
+    mockServer.use(
+      http.get('*/api/method/platform_core.api.shell.get_bootstrap', () =>
+        HttpResponse.json({ exc_type: 'SessionExpired', session_expired: 1 }, { status: 503 }),
+      ),
+    );
+    const { api, onSessionExpired } = setup();
+    await expect(api.getBootstrap()).rejects.toMatchObject({ kind: 'unavailable' });
+    expect(onSessionExpired).not.toHaveBeenCalled();
+  });
+
+  it('oturum sorgusunun 401 yanıtı girişe yönlendirme başlatmaz', async () => {
+    mockState.signedIn = false;
+    const { api, onSessionExpired } = setup();
+    await expect(api.getLoggedUser()).rejects.toMatchObject({ kind: 'session_expired' });
+    expect(onSessionExpired).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['boş menü öğesi', { sidebars: [null] }],
+    ['adsız menü', { sidebars: [{ data: {} }] }],
+    ['bozuk menü kaydı', { sidebars: [{ name: 'Örnek', data: { items: [null] } }] }],
+    ['bozuk menü etiketi', { sidebars: [{ name: 'Örnek', data: { items: [{ label: 3 }] } }] }],
+    ['bozuk çalışma alanı', { workspaces: [{ name: 1 }] }],
+    ['bozuk biçim ayarı', { formatting: { time_zone: 'Europe/Istanbul' } }],
+  ])('açılış verisinde %s varsa yanıtı reddeder', async (_label, patch) => {
+    mockServer.use(
+      http.get('*/api/method/platform_core.api.shell.get_bootstrap', () =>
+        HttpResponse.json({ message: { ...sampleBootstrap, ...patch } }),
+      ),
+    );
+    const { api } = setup();
+    await expect(api.getBootstrap()).rejects.toMatchObject({ kind: 'invalid_response' });
+  });
+
+  it('menü kayıtları sözleşmeye uyan açılış verisini kabul eder', async () => {
+    mockServer.use(
+      http.get('*/api/method/platform_core.api.shell.get_bootstrap', () =>
+        HttpResponse.json({
+          message: {
+            ...sampleBootstrap,
+            sidebars: [
+              {
+                name: 'Örnek',
+                data: {
+                  label: 'Örnek',
+                  items: [{ label: 'Örnek kayıt', type: 'Link', link_to: 'Örnek Kayıt', child: 0 }],
+                },
+              },
+            ],
+          },
+        }),
+      ),
+    );
+    const { api } = setup();
+    await expect(api.getBootstrap()).resolves.toMatchObject({ sidebars: [{ name: 'Örnek' }] });
   });
 
   it('DocType tanımını ETag ile okur ve 304 yanıtını ayırır', async () => {
