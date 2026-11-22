@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { RecordApiError } from '../adapter';
 import { CatalogField } from '../catalog';
 import type {
   DocField,
@@ -28,7 +29,7 @@ const BASE_META: DocTypeMeta = {
   mobile_cache_allowed: false,
 };
 
-describe('LinkField & Dynamic Link server search (Goal 4, RE-7)', () => {
+describe('LinkField & Dynamic Link server search (Goal 4, RE-7, Review 2 Finding 7)', () => {
   it('searches on server via antd Select and selects returned option', async () => {
     const user = userEvent.setup();
     const searchLink = vi.fn(async (params: LinkSearchParams): Promise<readonly LinkOption[]> => {
@@ -92,6 +93,62 @@ describe('LinkField & Dynamic Link server search (Goal 4, RE-7)', () => {
     expect(onChange).toHaveBeenCalledWith('employee', 'HR-EMP-001');
   });
 
+  it('shows error message and Retry button instead of "No matching records" when link search fails (Review 2 Finding 7)', async () => {
+    const user = userEvent.setup();
+    let failSearch = true;
+
+    const searchLink = vi.fn(async (): Promise<readonly LinkOption[]> => {
+      if (failSearch) {
+        throw new RecordApiError({
+          code: 'network',
+          message: 'Arama sunucusuna ulaşılamadı.',
+        });
+      }
+      return [{ value: 'EMP-OK', label: 'Kurtarılan Çalışan' }];
+    });
+
+    const adapter: RecordDataAdapter = {
+      getDocTypeMeta: vi.fn(),
+      getRecord: vi.fn(),
+      saveRecord: vi.fn(),
+      searchLink,
+    };
+
+    const linkField: DocField = {
+      fieldname: 'approver',
+      fieldtype: 'Link',
+      label: 'Onaylayıcı',
+      options: 'User',
+      read_only: false,
+      component: 'link',
+      sensitivity: 'standard',
+    };
+
+    render(
+      <CatalogField
+        field={linkField}
+        value=""
+        doc={{ approver: '' }}
+        doctype="Leave Application"
+        meta={BASE_META}
+        adapter={adapter}
+        locale="tr"
+        onChange={vi.fn()}
+      />,
+    );
+
+    const combobox = screen.getByRole('combobox', { name: /Onaylayıcı/ });
+    await user.click(combobox);
+
+    await screen.findByText('Arama sunucusuna ulaşılamadı.');
+    expect(screen.queryByText('Eşleşen kayıt yok')).toBeNull();
+
+    failSearch = false;
+    await user.click(screen.getByRole('button', { name: 'Yeniden dene' }));
+
+    await screen.findByText('Kurtarılan Çalışan');
+  });
+
   it('aborts previous search request and ignores stale responses (RE-7)', async () => {
     const user = userEvent.setup();
     const resolvers: {
@@ -149,7 +206,6 @@ describe('LinkField & Dynamic Link server search (Goal 4, RE-7)', () => {
     const latest = resolvers[resolvers.length - 1];
     expect(earlier?.signal?.aborted).toBe(true);
 
-    // Resolve latest first, then stale earlier response
     latest?.resolve([{ value: 'DEP-NEW', label: 'Güncel Departman' }]);
     await screen.findByText('Güncel Departman');
 

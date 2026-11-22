@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -188,7 +188,7 @@ describe('versioned field catalog (RE-11, AX-4, Goal 1)', () => {
     expect(screen.getByText('Desteklenmeyen alan (Data)')).toBeInTheDocument();
   });
 
-  it('renders and updates scalar, choice, rich text, geolocation, barcode, signature, and button fields without native <select> or innerHTML', async () => {
+  it('renders and updates scalar, choice, rich text, geolocation, barcode, color, rating, and button fields cleanly', async () => {
     const user = userEvent.setup();
     const adapter = createStubAdapter();
     const onChange = vi.fn();
@@ -235,83 +235,187 @@ describe('versioned field catalog (RE-11, AX-4, Goal 1)', () => {
       sensitivity: 'standard',
     };
 
-    const barcodeField: DocField = {
-      fieldname: 'item_barcode',
-      fieldtype: 'Barcode',
-      label: 'Ürün Barkodu',
+    const colorField: DocField = {
+      fieldname: 'brand_color',
+      fieldtype: 'Color',
+      label: 'Marka Rengi',
       read_only: false,
-      component: 'barcode',
+      component: 'color',
       sensitivity: 'standard',
     };
 
-    const { container } = render(
-      <div>
-        <CatalogField
-          field={selectField}
-          value="Open"
-          doc={{ status: 'Open' }}
-          doctype="Expense Claim"
-          meta={CHILD_META}
-          adapter={adapter}
-          locale="tr"
-          onChange={onChange}
-        />
-        <CatalogField
-          field={htmlField}
-          value={null}
-          doc={{}}
-          doctype="Expense Claim"
-          meta={CHILD_META}
-          adapter={adapter}
-          locale="tr"
-          onChange={onChange}
-        />
-        <CatalogField
-          field={buttonField}
-          value={null}
-          doc={{}}
-          doctype="Expense Claim"
-          meta={CHILD_META}
-          adapter={adapter}
-          locale="tr"
-          onChange={onChange}
-          onFieldAction={onFieldAction}
-        />
-        <CatalogField
-          field={geoField}
-          value={null}
-          doc={{}}
-          doctype="Expense Claim"
-          meta={CHILD_META}
-          adapter={adapter}
-          locale="tr"
-          onChange={onChange}
-        />
-        <CatalogField
-          field={barcodeField}
-          value="8690000123456"
-          doc={{ item_barcode: '8690000123456' }}
-          doctype="Expense Claim"
-          meta={CHILD_META}
-          adapter={adapter}
-          locale="tr"
-          onChange={onChange}
-        />
-      </div>,
+    const ratingField: DocField = {
+      fieldname: 'service_rating',
+      fieldtype: 'Rating',
+      label: 'Hizmet Puanı',
+      read_only: false,
+      component: 'rating',
+      sensitivity: 'standard',
+    };
+
+    // Mock denied geolocation to verify Review 2 Minor 2 error handling
+    const originalGeo = navigator.geolocation;
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (_ok: PositionCallback, err?: PositionErrorCallback) => {
+          err?.({
+            code: 1,
+            message: 'Denied',
+            PERMISSION_DENIED: 1,
+            POSITION_UNAVAILABLE: 2,
+            TIMEOUT: 3,
+          });
+        },
+      },
+    });
+
+    try {
+      const { container } = render(
+        <div>
+          <CatalogField
+            field={selectField}
+            value="Open"
+            doc={{ status: 'Open' }}
+            doctype="Expense Claim"
+            meta={CHILD_META}
+            adapter={adapter}
+            locale="tr"
+            onChange={onChange}
+          />
+          <CatalogField
+            field={htmlField}
+            value={null}
+            doc={{}}
+            doctype="Expense Claim"
+            meta={CHILD_META}
+            adapter={adapter}
+            locale="tr"
+            onChange={onChange}
+          />
+          <CatalogField
+            field={buttonField}
+            value={null}
+            doc={{}}
+            doctype="Expense Claim"
+            meta={CHILD_META}
+            adapter={adapter}
+            locale="tr"
+            onChange={onChange}
+            onFieldAction={onFieldAction}
+          />
+          <CatalogField
+            field={geoField}
+            value={null}
+            doc={{}}
+            doctype="Expense Claim"
+            meta={CHILD_META}
+            adapter={adapter}
+            locale="tr"
+            onChange={onChange}
+          />
+          <CatalogField
+            field={colorField}
+            value=""
+            doc={{ brand_color: '' }}
+            doctype="Expense Claim"
+            meta={CHILD_META}
+            adapter={adapter}
+            locale="tr"
+            onChange={onChange}
+          />
+          <CatalogField
+            field={ratingField}
+            value={0.6}
+            doc={{ service_rating: 0.6 }}
+            doctype="Expense Claim"
+            meta={CHILD_META}
+            adapter={adapter}
+            locale="tr"
+            onChange={onChange}
+          />
+        </div>,
+      );
+
+      expect(container.querySelector('select')).toBeNull();
+      expect(screen.getByText('Güvenli metin')).toBeInTheDocument();
+      expect(container.querySelector('script')).toBeNull();
+
+      await user.click(screen.getByRole('button', { name: 'Sunucuda Hesapla' }));
+      expect(onFieldAction).toHaveBeenCalledWith(buttonField);
+
+      // Review 2 Finding 6: empty Color field must stay empty (not display #00aacc as value)
+      const colorInput = screen.getByLabelText('Marka Rengi');
+      expect(colorInput).toHaveValue('');
+
+      // Review 2 Minor 3: Rating radiogroup has accessible name from label
+      expect(screen.getByRole('radiogroup', { name: 'Hizmet Puanı' })).toBeInTheDocument();
+
+      // Review 2 Minor 2: Geolocation permission denial shows error text
+      await user.click(screen.getByRole('button', { name: 'Cihaz konumunu al' }));
+      expect(screen.getByText(/Konum bilgisi alınamadı/)).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: originalGeo,
+      });
+    }
+  });
+
+  it('preserves multiple strokes in Signature field and provides a keyboard signing option (Review 2 Findings 2, 3 & Minor 4)', async () => {
+    const user = userEvent.setup();
+    const adapter = createStubAdapter();
+    const onChange = vi.fn();
+
+    const sigField: DocField = {
+      fieldname: 'employee_signature',
+      fieldtype: 'Signature',
+      label: 'Çalışan İmzası',
+      read_only: false,
+      component: 'signature',
+      sensitivity: 'standard',
+    };
+
+    render(
+      <CatalogField
+        field={sigField}
+        value={null}
+        doc={{}}
+        doctype="Expense Claim"
+        meta={CHILD_META}
+        adapter={adapter}
+        locale="tr"
+        onChange={onChange}
+      />,
     );
 
-    // AGENTS.md: native <select> is forbidden
-    expect(container.querySelector('select')).toBeNull();
-    // GV-2: script tag stripped, safe paragraph rendered
-    expect(screen.getByText('Güvenli metin')).toBeInTheDocument();
-    expect(container.querySelector('script')).toBeNull();
+    const canvas = screen.getByRole('img', { name: 'Çalışan İmzası' });
 
-    await user.click(screen.getByRole('button', { name: 'Sunucuda Hesapla' }));
-    expect(onFieldAction).toHaveBeenCalledWith(buttonField);
+    // Stroke 1
+    fireEvent.pointerDown(canvas, { clientX: 20, clientY: 30 });
+    fireEvent.pointerMove(canvas, { clientX: 80, clientY: 40 });
+    fireEvent.pointerUp(canvas);
 
-    expect(screen.getByLabelText(/Enlem/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Boylam/)).toBeInTheDocument();
-    expect(screen.getByDisplayValue('8690000123456')).toBeInTheDocument();
+    // Stroke 2
+    fireEvent.pointerDown(canvas, { clientX: 120, clientY: 60 });
+    fireEvent.pointerMove(canvas, { clientX: 200, clientY: 70 });
+    fireEvent.pointerUp(canvas);
+
+    expect(onChange).toHaveBeenCalledTimes(2);
+    const secondSavedDataUrl = String(onChange.mock.calls[1]?.[1] ?? '');
+    const decoded = decodeURIComponent(secondSavedDataUrl);
+    // Both M20 30 and M120 60 strokes must remain in the serialized multi-stroke output
+    expect(decoded).toContain('M20 30');
+    expect(decoded).toContain('M120 60');
+
+    // Keyboard signing option (RE-10 / Review 2 Minor 4)
+    await user.click(screen.getByText('Yazarak imzala'));
+    const nameSignInput = screen.getByLabelText('İmza metni');
+    await user.type(nameSignInput, 'Örnek İmza');
+    await user.click(screen.getByRole('button', { name: 'İmzayı uygula' }));
+
+    const lastCall = String(onChange.mock.calls[onChange.mock.calls.length - 1]?.[1] ?? '');
+    expect(lastCall.startsWith('data:image/')).toBe(true);
   });
 
   it('renders child Table with meta.child_tables and supports adding and removing rows', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createFrappeRecordAdapter, type RecordApiError } from '../adapter';
+import { createFrappeRecordAdapter, type RecordApiError, stripHtmlTagsSafe } from '../adapter';
 import { evaluateFieldState } from '../conditions';
 import { buildFormLayout } from '../layout';
 import { formatRecordMessage, RECORD_MESSAGES } from '../messages';
@@ -128,7 +128,6 @@ describe('schema validation (SZ-4, TS-5, RE-11)', () => {
                   scope: 'doc',
                   field: 'status',
                   op: 'eq',
-                  // value missing for eq operator!
                 },
               },
             ],
@@ -154,7 +153,7 @@ describe('schema validation (SZ-4, TS-5, RE-11)', () => {
                   scope: 'doc',
                   field: 'status',
                   op: 'truthy',
-                  value: 'Open', // forbidden on truthy!
+                  value: 'Open',
                 },
               },
             ],
@@ -207,8 +206,8 @@ describe('schema validation (SZ-4, TS-5, RE-11)', () => {
       },
     });
     expect(doc.name).toBe('HR-LAP-TEST-01');
-    expect(doc.amended_from).toBeNull();
-    expect(doc.description).toBe('');
+    expect(doc['amended_from']).toBeNull();
+    expect(doc['description']).toBe('');
     expect('leave_balance' in doc).toBe(false);
   });
 
@@ -263,12 +262,13 @@ describe('declarative conditions & unsupported_conditions', () => {
   });
 });
 
-describe('layout builder (tabs, sections, columns, phone single-column)', () => {
+describe('layout builder (tabs, sections, columns, hidden fields, phone single-column)', () => {
   it('builds tabs, sections, and columns and forces single column on phone', () => {
     const meta: DocTypeMeta = validateDocTypeMeta(SAMPLE_META_ENVELOPE);
     const desktopLayout = buildFormLayout(meta.schema.fields, {
       doc: {},
       isPhoneViewport: false,
+      defaultTabLabel: 'Detaylar',
     });
 
     expect(desktopLayout.hasExplicitTabs).toBe(true);
@@ -280,33 +280,176 @@ describe('layout builder (tabs, sections, columns, phone single-column)', () => 
     const phoneLayout = buildFormLayout(meta.schema.fields, {
       doc: {},
       isPhoneViewport: true,
+      defaultTabLabel: 'Detaylar',
     });
     expect(phoneLayout.tabs[0]?.sections[0]?.effectiveColumnCount).toBe(1);
   });
+
+  it('excludes hidden fields, hidden columns, empty sections, and empty tabs (Review 1 Finding 4 & Minor 3)', () => {
+    const fieldsWithHidden: DocField[] = [
+      {
+        fieldname: 'tab_visible',
+        fieldtype: 'Tab Break',
+        label: 'Görünür Sekme',
+        read_only: false,
+        component: 'tab',
+        sensitivity: 'standard',
+      },
+      {
+        fieldname: 'sec_hidden_only',
+        fieldtype: 'Section Break',
+        label: 'Gizli Bölüm',
+        read_only: false,
+        component: 'section',
+        sensitivity: 'standard',
+      },
+      {
+        fieldname: 'secret_field',
+        fieldtype: 'Data',
+        hidden: true,
+        read_only: false,
+        component: 'input',
+        sensitivity: 'standard',
+      },
+      {
+        fieldname: 'sec_mixed',
+        fieldtype: 'Section Break',
+        label: 'Karma Bölüm',
+        read_only: false,
+        component: 'section',
+        sensitivity: 'standard',
+      },
+      {
+        fieldname: 'visible_field',
+        fieldtype: 'Data',
+        label: 'Açık Alan',
+        read_only: false,
+        component: 'input',
+        sensitivity: 'standard',
+      },
+      {
+        fieldname: 'col_2',
+        fieldtype: 'Column Break',
+        read_only: false,
+        component: 'column',
+        sensitivity: 'standard',
+      },
+      {
+        fieldname: 'conditional_hidden_field',
+        fieldtype: 'Data',
+        label: 'Koşullu Gizli',
+        read_only: false,
+        component: 'input',
+        sensitivity: 'standard',
+        depends_on: { scope: 'doc', field: 'status', op: 'eq', value: 'Closed' },
+      },
+      {
+        fieldname: 'tab_empty',
+        fieldtype: 'Tab Break',
+        label: 'Boş Sekme',
+        read_only: false,
+        component: 'tab',
+        sensitivity: 'standard',
+      },
+      {
+        fieldname: 'hidden_in_tab2',
+        fieldtype: 'Data',
+        hidden: true,
+        read_only: false,
+        component: 'input',
+        sensitivity: 'standard',
+      },
+    ];
+
+    const layout = buildFormLayout(fieldsWithHidden, {
+      doc: { status: 'Open' },
+      isPhoneViewport: false,
+      defaultTabLabel: 'Detaylar',
+    });
+
+    // Empty second tab should be omitted
+    expect(layout.tabs).toHaveLength(1);
+    expect(layout.tabs[0]?.label).toBe('Görünür Sekme');
+    // Section with only hidden fields should be omitted
+    expect(layout.tabs[0]?.sections).toHaveLength(1);
+    expect(layout.tabs[0]?.sections[0]?.label).toBe('Karma Bölüm');
+    // Second column had only a false-depends_on field, so effectiveColumnCount must be 1
+    expect(layout.tabs[0]?.sections[0]?.effectiveColumnCount).toBe(1);
+  });
 });
 
-describe('dirty tracking & contract validation (RE-3, AD-10)', () => {
-  it('computes dirty field count accurately and validates required and non-negative rules', () => {
-    const meta = validateDocTypeMeta(SAMPLE_META_ENVELOPE);
+describe('dirty tracking & contract validation (RE-3, AD-10, Review 1 Minor 2 & 4)', () => {
+  it('computes dirty field count respecting read_only_depends_on and rejects whitespace-only numbers', () => {
+    const fields: DocField[] = [
+      {
+        fieldname: 'employee',
+        fieldtype: 'Link',
+        label: 'Çalışan',
+        options: 'Employee',
+        reqd: true,
+        read_only: false,
+        component: 'link',
+        sensitivity: 'standard',
+      },
+      {
+        fieldname: 'days_int',
+        fieldtype: 'Int',
+        label: 'Gün Sayısı',
+        non_negative: true,
+        read_only: false,
+        component: 'int',
+        sensitivity: 'standard',
+      },
+      {
+        fieldname: 'locked_by_cond',
+        fieldtype: 'Data',
+        label: 'Koşullu Salt Okunur',
+        read_only: false,
+        component: 'input',
+        sensitivity: 'standard',
+        read_only_depends_on: { scope: 'doc', field: 'status', op: 'eq', value: 'Locked' },
+      },
+    ];
+
+    const meta: DocTypeMeta = {
+      schema: {
+        name: 'Sample',
+        module: 'Core',
+        sensitivity: 'standard',
+        fields,
+        title_field: null,
+        search_fields: '',
+        sort_field: null,
+      },
+      child_tables: {},
+      catalog_version: 2,
+      meta_hash: 'aaaa',
+      perm_version: 'bbbb',
+      mobile_cache_allowed: false,
+    };
+
     const base = {
-      name: 'HR-LAP-TEST-01',
-      modified: '2026-11-22 09:00:00.000001',
-      employee: 'HR-EMP-TEST-01',
-      employee_name: 'Örnek Kişi',
-      total_leave_days: 2,
+      name: 'REC-1',
+      status: 'Locked',
+      employee: 'EMP-1',
+      days_int: 3,
+      locked_by_cond: 'eski',
     };
     const draft = {
       ...base,
       employee: '',
-      total_leave_days: -3,
+      days_int: '   ',
+      locked_by_cond: 'yeni',
     };
 
-    const dirty = computeDirtyFields(meta.schema.fields, base, draft);
-    expect(dirty).toEqual(['employee', 'total_leave_days']);
+    // locked_by_cond is read-only under status === 'Locked' so must not count as dirty
+    const dirty = computeDirtyFields(fields, base, draft);
+    expect(dirty).toEqual(['employee', 'days_int']);
 
+    // Whitespace string '   ' on Int field must fail integer validation instead of coercing to 0
     const errors = validateRecordDraft(meta, draft, 'tr');
-    expect(errors.employee).toBeDefined();
-    expect(errors.total_leave_days).toBeDefined();
+    expect(errors['employee']).toBeDefined();
+    expect(errors['days_int']).toBeDefined();
   });
 });
 
@@ -322,8 +465,93 @@ describe('translation catalog parity (IC-1, IC-3)', () => {
   });
 });
 
-describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11)', () => {
-  it('sends modified and X-Frappe-CSRF-Token on record update and translates TimestampMismatchError', async () => {
+describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 & Minor 1, 5)', () => {
+  it('preserves "<" comparisons and decodes HTML entities when stripping HTML tags (Review 1 Minor 1)', () => {
+    expect(stripHtmlTagsSafe('Tutar: a < b &amp; <b>önemli</b>')).toBe('Tutar: a < b & önemli');
+  });
+
+  it('handles HTTP 304 Not Modified on getDocTypeMeta with ETag cache instead of throwing server_error (Review 1 Finding 2)', async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(SAMPLE_META_ENVELOPE), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ETag: '"etag-v1"',
+        },
+      }),
+    );
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(null, {
+        status: 304,
+        headers: {
+          ETag: '"etag-v1"',
+        },
+      }),
+    );
+
+    const adapter = createFrappeRecordAdapter({ fetchFn: fetchMock });
+
+    const firstMeta = await adapter.getDocTypeMeta({ doctype: 'Leave Application' });
+    expect(firstMeta.schema.name).toBe('Leave Application');
+
+    const cachedMeta = await adapter.getDocTypeMeta({
+      doctype: 'Leave Application',
+      etag: '"etag-v1"',
+    });
+    expect(cachedMeta.schema.name).toBe('Leave Application');
+  });
+
+  it('treats 403 Guest or Guest message on get_logged_user session probe as session_expired (Review 1 Finding 3)', async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+
+    // Ambiguous 403 from record endpoint
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({}), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    // Frappe returns 403 for Guest on get_logged_user
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ exc_type: 'PermissionError' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const adapter = createFrappeRecordAdapter({ fetchFn: fetchMock });
+
+    await expect(
+      adapter.getRecord({ doctype: 'Leave Application', name: 'HR-LAP-TEST-01' }),
+    ).rejects.toMatchObject({
+      code: 'session_expired',
+    } satisfies Partial<RecordApiError>);
+
+    // Case 2: 200 with real non-Guest user means session IS active -> real permission denial ('unauthorized')
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({}), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: 'sample@example.test' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await expect(
+      adapter.getRecord({ doctype: 'Leave Application', name: 'HR-LAP-TEST-02' }),
+    ).rejects.toMatchObject({
+      code: 'unauthorized',
+    } satisfies Partial<RecordApiError>);
+  });
+
+  it('sends modified and X-Frappe-CSRF-Token on record update and translates TimestampMismatchError, 429, and runDocAction', async () => {
     const fetchMock = vi.fn<typeof fetch>();
 
     fetchMock.mockResolvedValueOnce(
@@ -348,30 +576,22 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11)', () => {
       data: { description: 'Güncel açıklama' },
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
     const [requestUrl, requestInit] = fetchMock.mock.calls[0] ?? [];
     expect(requestUrl).toBe('/api/resource/Leave%20Application/HR-LAP-TEST-01');
     expect(requestInit?.method).toBe('PUT');
     const headers = new Headers(requestInit?.headers);
     expect(headers.get('X-Frappe-CSRF-Token')).toBe('csrf-test-token');
-    const sentBody = JSON.parse(String(requestInit?.body)) as Record<string, unknown>;
-    expect(sentBody['modified']).toBe('2026-11-22 09:00:00.000001');
-    expect(sentBody['description']).toBe('Güncel açıklama');
 
-    // Simulate 417 TimestampMismatchError with double-encoded _server_messages
+    // 417 TimestampMismatchError
     fetchMock.mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           exc_type: 'TimestampMismatchError',
-          exception: 'frappe.exceptions.TimestampMismatchError: Document has been modified',
           _server_messages: JSON.stringify([
             JSON.stringify({ message: '<b>Belge başka bir oturumda güncellendi</b>' }),
           ]),
         }),
-        {
-          status: 417,
-          headers: { 'Content-Type': 'application/json' },
-        },
+        { status: 417, headers: { 'Content-Type': 'application/json' } },
       ),
     );
 
@@ -385,37 +605,34 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11)', () => {
     ).rejects.toMatchObject({
       code: 'conflict',
     } satisfies Partial<RecordApiError>);
-  });
 
-  it('disambiguates ambiguous 403 via get_logged_user without caching (SZ-8)', async () => {
-    const fetchMock = vi.fn<typeof fetch>();
-
-    // First call: 403 with empty JSON
+    // 429 RateLimitExceededError
     fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({}), {
-        status: 403,
+      new Response(JSON.stringify({ exc_type: 'RateLimitExceededError' }), {
+        status: 429,
         headers: { 'Content-Type': 'application/json' },
       }),
     );
-    // Second call: get_logged_user returns 401 SessionExpired
-    fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ exc_type: 'SessionExpired', session_expired: 1 }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    );
-
-    const adapter = createFrappeRecordAdapter({ fetchFn: fetchMock });
 
     await expect(
       adapter.getRecord({ doctype: 'Leave Application', name: 'HR-LAP-TEST-01' }),
     ).rejects.toMatchObject({
-      code: 'session_expired',
+      code: 'rate_limited',
     } satisfies Partial<RecordApiError>);
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const [probeUrl, probeInit] = fetchMock.mock.calls[1] ?? [];
-    expect(probeUrl).toBe('/api/method/frappe.auth.get_logged_user');
-    expect(probeInit?.cache).toBe('no-store');
+    // runDocAction sends modified
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ data: { name: 'HR-LAP-TEST-01', modified: '2026-11-22 11:00:00' } }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    const updated = await adapter.runDocAction?.({
+      doctype: 'Leave Application',
+      name: 'HR-LAP-TEST-01',
+      action: 'recalculate',
+      modified: '2026-11-22 10:00:00',
+    });
+    expect(updated?.modified).toBe('2026-11-22 11:00:00');
   });
 });

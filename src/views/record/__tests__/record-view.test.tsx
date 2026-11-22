@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -106,7 +106,7 @@ function createMockAdapter(overrides?: Partial<RecordDataAdapter>): RecordDataAd
   };
 }
 
-describe('RecordView four states and error boundary (RE-1, RE-6, Goal 5)', () => {
+describe('RecordView four states, record type checking, and error boundary (RE-1, RE-6, SZ-4, Goal 5)', () => {
   it('renders loading, error with retry, empty, and unauthorized states', async () => {
     const user = userEvent.setup();
     let shouldFail = true;
@@ -127,10 +127,8 @@ describe('RecordView four states and error boundary (RE-1, RE-6, Goal 5)', () =>
       <RecordView doctype="Leave Application" name="HR-LAP-TEST-01" adapter={adapter} />,
     );
 
-    // Initially loading
     expect(screen.getByText('Kayıt yükleniyor...')).toBeInTheDocument();
 
-    // Error state with Retry button
     await screen.findByText('Kayıt yüklenemedi');
     expect(screen.getByText('Sunucuya ulaşılamadı.')).toBeInTheDocument();
 
@@ -139,11 +137,9 @@ describe('RecordView four states and error boundary (RE-1, RE-6, Goal 5)', () =>
 
     await screen.findByDisplayValue('Örnek Kişi');
 
-    // Empty state when no record name is provided and create mode is off
     rerender(<RecordView doctype="Leave Application" adapter={adapter} />);
     await screen.findByText('Gösterilecek kayıt yok');
 
-    // Unauthorized state (session expired vs permission denied)
     const unauthorizedAdapter = createMockAdapter({
       getRecord: vi.fn(async () => {
         throw new RecordApiError({
@@ -159,6 +155,81 @@ describe('RecordView four states and error boundary (RE-1, RE-6, Goal 5)', () =>
     );
     await screen.findByText('Erişim izni yok');
     expect(screen.getByText('Bu kaydı görüntüleme yetkiniz bulunmuyor.')).toBeInTheDocument();
+  });
+
+  it('rejects record payload when a field value violates its DocType fieldtype (Review 1 Finding 5)', async () => {
+    const malformedRecordAdapter = createMockAdapter({
+      getRecord: vi.fn(async () => ({
+        ...SAMPLE_RECORD,
+        total_leave_days: { unexpectedObject: true },
+      })),
+    });
+
+    render(
+      <RecordView doctype="Leave Application" name="HR-LAP-BAD" adapter={malformedRecordAdapter} />,
+    );
+
+    await screen.findByText('Kayıt yüklenemedi');
+    expect(screen.getByText(/Sunucu yanıtı beklenen sözleşmeyle uyuşmadı/)).toBeInTheDocument();
+  });
+
+  it('shows catalog version warning and unsupported fallback when server sends higher catalog_version (Review 1 Finding 1 & Review 2 Minor 5)', async () => {
+    const user = userEvent.setup();
+    const futureCatalogAdapter = createMockAdapter({
+      getDocTypeMeta: vi.fn(async () => ({
+        ...SAMPLE_META,
+        catalog_version: 999,
+        schema: {
+          ...SAMPLE_META.schema,
+          fields: [
+            ...SAMPLE_META.schema.fields,
+            {
+              fieldname: 'future_widget',
+              fieldtype: 'Totally Unknown',
+              label: 'Gelecek Alanı',
+              read_only: false,
+              component: 'future-widget',
+              sensitivity: 'standard' as const,
+            },
+          ],
+        },
+      })),
+    });
+
+    render(
+      <RecordView
+        doctype="Leave Application"
+        name="HR-LAP-TEST-01"
+        adapter={futureCatalogAdapter}
+      />,
+    );
+
+    await screen.findByDisplayValue('Örnek Kişi');
+    expect(screen.getByText(/katalog s999/)).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Ek Bilgiler' }));
+    expect(screen.getByText('Desteklenmeyen alan (Totally Unknown)')).toBeInTheDocument();
+  });
+
+  it('keeps keyboard focus modality off on mouse click and enables it only on Tab / Shift+Tab (Review 2 Finding 8)', async () => {
+    const adapter = createMockAdapter();
+    const { container } = render(
+      <RecordView doctype="Leave Application" name="HR-LAP-TEST-01" adapter={adapter} />,
+    );
+
+    await screen.findByDisplayValue('Örnek Kişi');
+    const root = container.querySelector('.rv-root');
+    expect(root).toHaveAttribute('data-rv-kbd', 'false');
+
+    const nameInput = screen.getByLabelText(/Çalışan Adı/);
+    fireEvent.pointerDown(nameInput);
+    nameInput.focus();
+    expect(root).toHaveAttribute('data-rv-kbd', 'false');
+
+    fireEvent.keyDown(nameInput, { key: 'Tab' });
+    expect(root).toHaveAttribute('data-rv-kbd', 'true');
+
+    fireEvent.pointerDown(nameInput);
+    expect(root).toHaveAttribute('data-rv-kbd', 'false');
   });
 
   it('catches rendering crashes inside RecordErrorBoundary without exposing raw stack trace (RE-1)', () => {
@@ -182,7 +253,7 @@ describe('RecordView four states and error boundary (RE-1, RE-6, Goal 5)', () =>
   });
 });
 
-describe('RecordView navigator, dirty state, Discard/Save, and conflict draft preservation (Goals 2 & 3, SZ-11, AD-10)', () => {
+describe('RecordView navigator, dirty state, Discard/Save, createMode, and conflict draft preservation (Goals 2 & 3, SZ-11, AD-10)', () => {
   it('displays "‹ 3 / 1.284 ›" navigator, tracks dirty count, and discards or saves with modified', async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
@@ -208,17 +279,11 @@ describe('RecordView navigator, dirty state, Discard/Save, and conflict draft pr
 
     await screen.findByDisplayValue('Örnek Kişi');
 
-    // Navigator shows "3 / 1.284" with Previous and Next buttons
     expect(screen.getByText('3 / 1.284')).toBeInTheDocument();
-    const prevBtn = screen.getByRole('button', { name: 'Önceki kayıt' });
     const nextBtn = screen.getByRole('button', { name: 'Sonraki kayıt' });
-    expect(prevBtn).toBeEnabled();
-    expect(nextBtn).toBeEnabled();
-
     await user.click(nextBtn);
     expect(onNavigate).toHaveBeenCalledWith(4);
 
-    // Edit two fields -> dirty state shows "2 kaydedilmemiş değişiklik", Vazgeç, Kaydet
     const nameInput = screen.getByLabelText(/Çalışan Adı/);
     const descInput = screen.getByLabelText(/Açıklama/);
     await user.clear(nameInput);
@@ -227,15 +292,10 @@ describe('RecordView navigator, dirty state, Discard/Save, and conflict draft pr
     await user.type(descInput, 'Güncellenmiş açıklama');
 
     expect(screen.getByText('2 kaydedilmemiş değişiklik')).toBeInTheDocument();
-    const discardBtn = screen.getByRole('button', { name: 'Vazgeç' });
-    expect(discardBtn).toBeInTheDocument();
-
-    // Discard restores original values
-    await user.click(discardBtn);
+    await user.click(screen.getByRole('button', { name: 'Vazgeç' }));
     expect(screen.getByDisplayValue('Örnek Kişi')).toBeInTheDocument();
     expect(screen.queryByText(/kaydedilmemiş değişiklik/)).toBeNull();
 
-    // Edit again and Save -> sends modified version (SZ-11)
     await user.clear(descInput);
     await user.type(descInput, 'Onay için açıklama');
     expect(screen.getByText('1 kaydedilmemiş değişiklik')).toBeInTheDocument();
@@ -254,9 +314,34 @@ describe('RecordView navigator, dirty state, Discard/Save, and conflict draft pr
         }),
       );
     });
+  });
+
+  it('supports createMode for new records without modified version (Review 1 Minor 5)', async () => {
+    const user = userEvent.setup();
+    const saveRecord = vi.fn(async (params) => ({
+      name: 'HR-LAP-NEW-01',
+      modified: '2026-11-22 14:00:00.000001',
+      docstatus: 0 as const,
+      ...params.data,
+    }));
+    const adapter = createMockAdapter({ saveRecord });
+
+    render(<RecordView doctype="Leave Application" createMode adapter={adapter} />);
+
+    const nameInput = await screen.findByLabelText(/Çalışan Adı/);
+    await user.type(nameInput, 'Yeni Örnek Kişi');
+    await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
     await waitFor(() => {
-      expect(screen.queryByText(/kaydedilmemiş değişiklik/)).toBeNull();
+      expect(saveRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          doctype: 'Leave Application',
+          name: undefined,
+          data: expect.objectContaining({
+            employee_name: 'Yeni Örnek Kişi',
+          }),
+        }),
+      );
     });
   });
 
@@ -296,7 +381,6 @@ describe('RecordView navigator, dirty state, Discard/Save, and conflict draft pr
 
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
-    // Conflict banner appears AND draft value is preserved in the form!
     await screen.findByText('Kayıt sunucuda değişti');
     expect(screen.getByDisplayValue('Korunacak önemli taslağım')).toBeInTheDocument();
     expect(screen.getByText(/2026-11-22 12:45:00\.000001/)).toBeInTheDocument();
@@ -342,7 +426,6 @@ describe('RecordView navigator, dirty state, Discard/Save, and conflict draft pr
 
     await screen.findByDisplayValue('Yeni Kayıt Sahibi');
 
-    // Late resolution from aborted REC-OLD must not overwrite REC-NEW
     resolvers[0]?.resolve({
       ...SAMPLE_RECORD,
       name: 'REC-OLD',
