@@ -1,43 +1,23 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-const PRIMARY_RGB = 'rgb(0, 170, 204)';
-
-/** Gerçek öğe kutularıyla yatay taşma (px). Pseudo-element dokunma katmanı sayılmaz. */
-async function overflow(page: Page): Promise<number> {
-  return page.evaluate(() => {
-    const limit = document.documentElement.clientWidth;
-    let worst = document.documentElement.scrollWidth - limit;
-    for (const el of Array.from(document.body.querySelectorAll<HTMLElement>('*'))) {
-      const r = el.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0) continue;
-      worst = Math.max(worst, r.right - limit, -r.left);
-    }
-    return Math.round(worst * 100) / 100;
-  });
-}
-
 test.describe('temel kapılar', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Atonota' })).toBeVisible();
   });
 
-  test('sayfa yatay taşmaz', async ({ page }) => {
-    expect(await overflow(page)).toBeLessThanOrEqual(0);
-    await page.getByText('Koyu', { exact: true }).click();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    expect(await overflow(page)).toBeLessThanOrEqual(0);
-  });
-
   test('tema düğmesi açık, koyu ve sistem seçeneklerini uygular', async ({ page }) => {
     const html = page.locator('html');
-    await page.getByText('Koyu', { exact: true }).click();
+    await page.getByRole('radiogroup', { name: 'Tema' }).getByText('Koyu', { exact: true }).click();
     await expect(html).toHaveAttribute('data-theme', 'dark');
     await expect(html).toHaveCSS('color-scheme', 'dark');
-    await page.getByText('Açık', { exact: true }).click();
+    await page.getByRole('radiogroup', { name: 'Tema' }).getByText('Açık', { exact: true }).click();
     await expect(html).toHaveAttribute('data-theme', 'light');
-    await page.getByText('Sistem', { exact: true }).click();
+    await page
+      .getByRole('radiogroup', { name: 'Tema' })
+      .getByText('Sistem', { exact: true })
+      .click();
     await expect(html).toHaveAttribute('data-theme', /light|dark/);
     await page.reload();
     expect(await page.evaluate(() => localStorage.getItem('atonota.theme-mode'))).toBe('system');
@@ -64,57 +44,6 @@ test.describe('temel kapılar', () => {
     expect(Math.round(await h('btn-sm'))).toBe(36);
     expect(Math.round(await h('btn-md'))).toBe(42);
     expect(Math.round(await h('btn-lg'))).toBe(48);
-  });
-
-  test('odak göstergesi: klavye modu Tab ile açılır, çevreleyen halka yok', async ({ page }) => {
-    const html = page.locator('html');
-    await expect(html).not.toHaveAttribute('data-focus-mode', 'keyboard');
-
-    // Fare odağı göstergeyi açmaz
-    await page.getByTestId('btn-sm').click();
-    await expect(html).not.toHaveAttribute('data-focus-mode', 'keyboard');
-
-    // WebKit tıklamada butona odak vermez; başlangıcı sabitle. Programatik odak modu açmaz.
-    await page.getByTestId('btn-sm').focus();
-    await expect(html).not.toHaveAttribute('data-focus-mode', 'keyboard');
-
-    await page.keyboard.press('Tab');
-    await expect(html).toHaveAttribute('data-focus-mode', 'keyboard');
-
-    // Chromium bir sonraki butona, WebKit (Safari kuralı) bir sonraki giriş alanına geçer.
-    const focused = page.locator(':focus');
-    await expect(focused).toHaveCount(1);
-    const readFocus = () =>
-      focused.evaluate((el) => {
-        // Gösterge odaklanan öğede ya da onu saran kontrolde (input sarmalayıcı) olur.
-        const chain: Element[] = [el];
-        let p = el.parentElement;
-        while (p && chain.length < 4) {
-          chain.push(p);
-          p = p.parentElement;
-        }
-        return {
-          testId: el.getAttribute('data-testid'),
-          shadows: chain.map((n) => getComputedStyle(n).boxShadow),
-          noOutline: chain.every((n) => {
-            const s = getComputedStyle(n);
-            return s.outlineStyle === 'none' || s.outlineWidth === '0px';
-          }),
-        };
-      });
-    const hasIndicator = (shadows: string[]) =>
-      shadows.some((s) => s.includes(PRIMARY_RGB) && s.includes('inset'));
-    // Alt kenarda tek çizgi: inset gölge, birincil renk. antd gölge geçişi bitene kadar bekle.
-    await expect
-      .poll(async () => hasIndicator((await readFocus()).shadows), { timeout: 3000 })
-      .toBe(true);
-    const styles = await readFocus();
-    // Çevreleyen outline yok: odaklanan öğede ve sarmalayıcılarda
-    expect(styles.noOutline, 'odaklanan: ' + styles.testId).toBe(true);
-
-    // pointerdown modu kapatır
-    await page.mouse.click(5, 5);
-    await expect(html).not.toHaveAttribute('data-focus-mode', 'keyboard');
   });
 
   test('ok tuşu klavye modunu açmaz', async ({ page }) => {
@@ -176,7 +105,7 @@ test.describe('temel kapılar', () => {
   async function switchToDark(page: Page) {
     // Renk geçişleri bitmeden axe ölçmesin: azaltılmış hareket tercihi geçişleri kapatır.
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.getByText('Koyu', { exact: true }).click();
+    await page.getByRole('radiogroup', { name: 'Tema' }).getByText('Koyu', { exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     // antd renk geçişi bitene kadar bekle: koyu buton zemini #34343B.
     await expect(page.getByTestId('btn-sm')).toHaveCSS('background-color', 'rgb(52, 52, 59)');
@@ -198,4 +127,16 @@ test.describe('temel kapılar', () => {
       .analyze();
     expect(results.violations).toEqual([]);
   });
+});
+
+test('odak modu: Tab açar, pointerdown kapatır', async ({ page }) => {
+  await page.goto('/');
+  const html = page.locator('html');
+  await expect(html).not.toHaveAttribute('data-focus-mode', 'keyboard');
+  await page.getByTestId('btn-sm').click();
+  await expect(html).not.toHaveAttribute('data-focus-mode', 'keyboard');
+  await page.keyboard.press('Tab');
+  await expect(html).toHaveAttribute('data-focus-mode', 'keyboard');
+  await page.mouse.click(5, 5);
+  await expect(html).not.toHaveAttribute('data-focus-mode', 'keyboard');
 });

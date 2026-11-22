@@ -12,7 +12,10 @@ const chromium = devices['Desktop Chrome'];
 const webkit = devices['Desktop Safari'];
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  // Tek test kapısı: kök testleri ve her işin kendi e2e klasörü. Ayrı Playwright ayarı gerekmez.
+  testDir: '.',
+  testMatch: ['tests/e2e/**/*.spec.ts', 'src/**/e2e/**/*.spec.ts'],
+  testIgnore: ['**/node_modules/**', '**/dist/**', '**/.pane/**', '**/.serena/**', '**/.git/**'],
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 1 : 0,
@@ -24,7 +27,8 @@ export default defineConfig({
   },
   webServer: {
     // Tarayıcı testleri gerçek arka uca bağlanmaz. Derleme sahte sunucuyu (MSW) açar.
-    command: `npm run build && npx vite preview --port ${PORT} --strictPort --host 127.0.0.1`,
+    // Deneme sayfaları yalnız e2e derlemesinde açılır (vite --mode e2e). Üretim derlemesine girmez.
+    command: `npm run build:e2e && npx vite preview --port ${PORT} --strictPort --host 127.0.0.1`,
     env: { VITE_API_MOCKS: 'on' },
     url: BASE_URL,
     reuseExistingServer: !process.env['CI'],

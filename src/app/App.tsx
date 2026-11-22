@@ -1,5 +1,7 @@
-import { Button, Flex, Input, Select, Space, Typography } from 'antd';
+import { Button, Flex, Input, Select, Space, Table, Typography } from 'antd';
+import { useState } from 'react';
 
+import { FOCUS_DIM_SOURCE_CLASS, useFocusDim } from '@/engines/focus-dim';
 import { HitSuffix } from '@/engines/hit-area';
 
 import { AppProviders } from './AppProviders';
@@ -11,10 +13,69 @@ const sizeOptions = [
   { value: 'lg', label: 'Büyük' },
 ];
 
-/** Temel önizleme sayfası. Kabuk işi bu sayfanın yerini alır. */
+/** Geniş tablo örneği: sütunlar sıkışmaz, tablo kendi kapsayıcısında kayar. */
+const tableColumns = [
+  { title: 'Kayıt adı', dataIndex: 'name', key: 'name', minWidth: 'var(--table-col-min-title)' },
+  {
+    title: 'Belge türü',
+    dataIndex: 'docType',
+    key: 'docType',
+    minWidth: 'var(--table-col-min-text)',
+  },
+  { title: 'Tarih', dataIndex: 'date', key: 'date', minWidth: 'var(--table-col-min-date)' },
+  { title: 'Tutar', dataIndex: 'amount', key: 'amount', minWidth: 'var(--table-col-min-number)' },
+  { title: 'Durum', dataIndex: 'status', key: 'status', minWidth: 'var(--table-col-min-text)' },
+].map(({ minWidth, ...col }) => ({
+  ...col,
+  onHeaderCell: () => ({ style: { minWidth } }),
+  onCell: () => ({ style: { minWidth } }),
+}));
+
+const tableRows = [
+  {
+    key: '1',
+    name: 'Örnek Kayıt 1',
+    docType: 'Teklif',
+    date: '23 Kasım 2026',
+    amount: '1.250,00',
+    status: 'Açık',
+  },
+  {
+    key: '2',
+    name: 'Örnek Kayıt 2',
+    docType: 'Sipariş',
+    date: '22 Kasım 2026',
+    amount: '980,50',
+    status: 'Onaylı',
+  },
+];
+
+/** Odak perdesini deneme düğmesi. Açan öğe perdenin üstünde kalır. */
+function FocusDimDemo() {
+  const [open, setOpen] = useState(false);
+  useFocusDim(open, 'demo');
+  return (
+    <Button
+      data-testid="dim-toggle"
+      className={FOCUS_DIM_SOURCE_CLASS}
+      aria-pressed={open}
+      onClick={() => setOpen((v) => !v)}
+    >
+      {open ? 'Perdeyi kapat' : 'Perdeyi aç'}
+    </Button>
+  );
+}
+
+/** Temel önizleme sayfası. Kabuk işi birleşince App içinde ShellApp çizilir. */
 export function FoundationPage() {
   return (
-    <main style={{ padding: 'var(--btn-h-sm)', maxWidth: 960, marginInline: 'auto' }}>
+    <main
+      style={{
+        padding: 'var(--space-lg) var(--space-md)',
+        maxWidth: 'var(--content-max-width)',
+        marginInline: 'auto',
+      }}
+    >
       <Flex vertical gap="large">
         <Flex justify="space-between" align="center" wrap gap="small">
           <Typography.Title level={1} style={{ margin: 0 }}>
@@ -43,8 +104,9 @@ export function FoundationPage() {
             <Button disabled data-testid="btn-disabled">
               Pasif
             </Button>
+            <FocusDimDemo />
           </Flex>
-          <Space.Compact style={{ marginTop: 16 }} data-testid="compact">
+          <Space.Compact style={{ marginTop: 'var(--space-md)' }} data-testid="compact">
             <Button data-testid="compact-left">Sol</Button>
             <Button data-testid="compact-right">Sağ</Button>
           </Space.Compact>
@@ -67,6 +129,15 @@ export function FoundationPage() {
               Yardım için <a href="#yardim">yardım sayfasına</a> bakın.
             </Typography.Paragraph>
           </Flex>
+        </section>
+
+        <section aria-labelledby="table-title" data-testid="wide-table">
+          <Typography.Title level={2} id="table-title">
+            Geniş tablo
+          </Typography.Title>
+          <div data-scroll-x tabIndex={0} role="region" aria-labelledby="table-title">
+            <Table columns={tableColumns} dataSource={tableRows} pagination={false} size="middle" />
+          </div>
         </section>
       </Flex>
     </main>
