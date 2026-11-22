@@ -35,9 +35,13 @@ function generate(name, outDir) {
   if (!existsSync(input)) throw new Error(`Sözleşme yok: ${input}`);
   const output = join(outDir, `${name}.ts`);
   const bin = (tool) => join(root, 'node_modules', '.bin', tool);
-  execFileSync(bin('openapi-typescript'), [input, '--output', output, '--alphabetize'], {
-    stdio: ['ignore', 'ignore', 'inherit'],
-  });
+  execFileSync(
+    bin('openapi-typescript'),
+    [input, '--output', output, '--alphabetize', '--empty-objects-unknown'],
+    {
+      stdio: ['ignore', 'ignore', 'inherit'],
+    },
+  );
   writeFileSync(output, HEADER + readFileSync(output, 'utf8'));
   // Proje biçim ayarı kullanılır. Böylece `npm run lint` üretilen dosyada takılmaz.
   execFileSync(

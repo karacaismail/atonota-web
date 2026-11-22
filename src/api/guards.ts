@@ -1,0 +1,175 @@
+// Yanıtları ekrandan önce denetleyen işlevler (SZ-4, TS-5).
+// Dış veri `unknown` sayılır. Yalnız kullanılan alanlar denetlenir.
+import type { components as AiComponents } from './generated/platform_core-ai';
+import type { components as IdentityComponents } from './generated/platform_core-identity';
+import type { components as GatewayComponents } from './generated/platform_core-model-gateway';
+import type { components as ShellComponents } from './generated/platform_core-shell';
+
+export type LoginUrl = IdentityComponents['schemas']['LoginUrl'];
+export type LogoutUrl = IdentityComponents['schemas']['LogoutUrl'];
+export type Bootstrap = ShellComponents['schemas']['Bootstrap'];
+export type DocTypeMeta = ShellComponents['schemas']['Meta'];
+export type Proposal = AiComponents['schemas']['Proposal'];
+export type ApprovalOutcome = AiComponents['schemas']['ApprovalOutcome'];
+export type CompletionRequest = GatewayComponents['schemas']['Completion'];
+export type CompletionResult = GatewayComponents['schemas']['Result'];
+export type JsonRpcResponse = AiComponents['schemas']['JsonRpcResponse'];
+
+export type Guard<T> = (value: unknown) => value is T;
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(isString);
+}
+
+/** Frappe yanıt zarfını açar: `{ "message": ... }`. */
+export function readMessage(body: unknown): unknown {
+  return isRecord(body) ? body.message : undefined;
+}
+
+export const isUserName: Guard<string> = (value): value is string =>
+  isString(value) && value.length > 0;
+
+export const isLoginUrl: Guard<LoginUrl> = (value): value is LoginUrl =>
+  isRecord(value) &&
+  isString(value.login_url) &&
+  isString(value.brand_name) &&
+  isString(value.label);
+
+export const isLogoutUrl: Guard<LogoutUrl> = (value): value is LogoutUrl =>
+  isRecord(value) && isString(value.logout_url);
+
+export const isBootstrap: Guard<Bootstrap> = (value): value is Bootstrap => {
+  if (!isRecord(value)) return false;
+  const { user, formatting } = value;
+  return (
+    isRecord(user) &&
+    isString(user.name) &&
+    isString(user.full_name) &&
+    isString(user.language) &&
+    isStringArray(user.roles) &&
+    isRecord(formatting) &&
+    isString(formatting.time_zone) &&
+    isStringArray(value.installed_apps) &&
+    Array.isArray(value.sidebars) &&
+    Array.isArray(value.workspaces) &&
+    isString(value.meta_hash) &&
+    isString(value.perm_version)
+  );
+};
+
+function isDocTypeSchema(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return (
+    isString(value.name) &&
+    (value.sensitivity === 'standard' || value.sensitivity === 'restricted') &&
+    Array.isArray(value.fields) &&
+    value.fields.every(
+      (field) =>
+        isRecord(field) &&
+        isString(field.fieldname) &&
+        isString(field.fieldtype) &&
+        isNullableString(field.component) &&
+        typeof field.read_only === 'boolean' &&
+        (field.sensitivity === 'standard' || field.sensitivity === 'restricted'),
+    )
+  );
+}
+
+export const isDocTypeMeta: Guard<DocTypeMeta> = (value): value is DocTypeMeta =>
+  isRecord(value) &&
+  isDocTypeSchema(value.schema) &&
+  isRecord(value.child_tables) &&
+  Object.values(value.child_tables).every(isDocTypeSchema) &&
+  typeof value.catalog_version === 'number' &&
+  isString(value.meta_hash) &&
+  isString(value.perm_version) &&
+  typeof value.mobile_cache_allowed === 'boolean';
+
+const PROPOSAL_STATUSES = new Set(['pending', 'rejected', 'expired', 'consumed']);
+const PROPOSAL_RESULTS = new Set(['', 'unknown', 'succeeded', 'failed']);
+const PREVIEW_ACTIONS = new Set([
+  'create',
+  'update',
+  'submit',
+  'cancel',
+  'delete',
+  'app_tool',
+  'admin',
+]);
+
+export function isPreview(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.action) &&
+    PREVIEW_ACTIONS.has(value.action) &&
+    isString(value.summary) &&
+    (value.changes === undefined ||
+      (Array.isArray(value.changes) &&
+        value.changes.every(
+          (change) => isRecord(change) && isString(change.fieldname) && 'new' in change,
+        )))
+  );
+}
+
+export const isProposal: Guard<Proposal> = (value): value is Proposal =>
+  isRecord(value) &&
+  isString(value.proposal_id) &&
+  isString(value.status) &&
+  PROPOSAL_STATUSES.has(value.status) &&
+  isString(value.result) &&
+  PROPOSAL_RESULTS.has(value.result) &&
+  isString(value.tool) &&
+  typeof value.destructive === 'boolean' &&
+  typeof value.billable === 'boolean' &&
+  isPreview(value.preview) &&
+  isString(value.digest) &&
+  /^[0-9a-f]{64}$/.test(value.digest) &&
+  isString(value.expires_at) &&
+  isString(value.created_at);
+
+export const isProposalList: Guard<{ proposals: Proposal[]; has_next_page: boolean }> = (
+  value,
+): value is { proposals: Proposal[]; has_next_page: boolean } =>
+  isRecord(value) &&
+  Array.isArray(value.proposals) &&
+  value.proposals.every(isProposal) &&
+  typeof value.has_next_page === 'boolean';
+
+export const isApprovalOutcome: Guard<ApprovalOutcome> = (value): value is ApprovalOutcome =>
+  isRecord(value) &&
+  typeof value.executed === 'boolean' &&
+  (value.deny_reason === undefined || isNullableString(value.deny_reason)) &&
+  isProposal(value.proposal);
+
+export const isCompletionResult: Guard<CompletionResult> = (value): value is CompletionResult =>
+  isRecord(value) &&
+  isString(value.text) &&
+  Array.isArray(value.tool_calls) &&
+  value.tool_calls.every(
+    (call) =>
+      isRecord(call) && isString(call.id) && isString(call.name) && isRecord(call.arguments),
+  ) &&
+  isRecord(value.usage) &&
+  isString(value.model) &&
+  isString(value.api);
+
+export const isJsonRpcResponse: Guard<JsonRpcResponse> = (value): value is JsonRpcResponse =>
+  isRecord(value) &&
+  value.jsonrpc === '2.0' &&
+  (value.result === undefined || isRecord(value.result)) &&
+  (value.error === undefined ||
+    (isRecord(value.error) &&
+      typeof value.error.code === 'number' &&
+      isString(value.error.message)));

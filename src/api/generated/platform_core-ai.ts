@@ -332,7 +332,7 @@ export interface components {
         | 'tools/call'
         | 'notifications/initialized';
       /** @description Carries `name` and `arguments` for `tools/call`. */
-      params?: Record<string, never>;
+      params?: Record<string, unknown>;
     };
     JsonRpcResponse: {
       error?: {
@@ -343,7 +343,7 @@ export interface components {
       /** @constant */
       jsonrpc: '2.0';
       /** @description ToolResult for `tools/call`, tool definitions for `tools/list`. */
-      result?: Record<string, never>;
+      result?: Record<string, unknown>;
     };
     McpResourceMetadata: {
       authorization_servers: string[];
@@ -365,7 +365,7 @@ export interface components {
         old?: unknown;
       }[];
       /** @description Extra data from the preview function of the application tool. */
-      details?: Record<string, never>;
+      details?: Record<string, unknown>;
       summary: string;
     };
     Proposal: {
@@ -456,7 +456,7 @@ export interface components {
       }[];
       isError: boolean;
       /** @description On success, the result of the tool. On denial, the `error` object. */
-      structuredContent?: Record<string, never>;
+      structuredContent?: Record<string, unknown>;
     };
   };
   responses: never;

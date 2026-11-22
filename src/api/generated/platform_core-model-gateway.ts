@@ -145,12 +145,12 @@ export interface components {
       /** @description AI Route document name */
       route: string;
       /** @description Optional JSON Schema for structured output */
-      schema?: Record<string, never>;
+      schema?: Record<string, unknown>;
       tools?: {
         description?: string;
         name: string;
         /** @description JSON Schema for the tool arguments */
-        parameters: Record<string, never>;
+        parameters: Record<string, unknown>;
       }[];
     };
     /** @description Three-letter uppercase currency code matching the usage record. */
@@ -193,7 +193,7 @@ export interface components {
       model: string;
       text: string;
       tool_calls: {
-        arguments: Record<string, never>;
+        arguments: Record<string, unknown>;
         id: string;
         name: string;
       }[];
@@ -472,7 +472,7 @@ export interface operations {
     requestBody?: {
       content: {
         /** @example {} */
-        'application/json': Record<string, never>;
+        'application/json': Record<string, unknown>;
       };
     };
     responses: {

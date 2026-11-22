@@ -1,0 +1,338 @@
+// Ortak API istemcisi (SZ-5). Bileşenler arka uca yalnız bu istemciyle bağlanır.
+//
+// Oturum aynı kökteki Frappe çereziyle yürür. Tarayıcı erişim belirteci tutmaz.
+// Yazan istek `X-Frappe-CSRF-Token` başlığını taşır (SZ-7). `Authorization` başlığı hiç gönderilmez.
+import createClient, { type Client, type Middleware } from 'openapi-fetch';
+
+import type { ApiConfig } from './config';
+import type { CsrfStore } from './csrf';
+import { ApiError, toApiError } from './errors';
+import type { paths as AiPaths } from './generated/platform_core-ai';
+import type { paths as IdentityPaths } from './generated/platform_core-identity';
+import type { paths as GatewayPaths } from './generated/platform_core-model-gateway';
+import type { paths as ShellPaths } from './generated/platform_core-shell';
+import {
+  type ApprovalOutcome,
+  type Bootstrap,
+  type CompletionRequest,
+  type CompletionResult,
+  type DocTypeMeta,
+  type Guard,
+  type JsonRpcResponse,
+  type LoginUrl,
+  type LogoutUrl,
+  type Proposal,
+  isApprovalOutcome,
+  isBootstrap,
+  isCompletionResult,
+  isDocTypeMeta,
+  isJsonRpcResponse,
+  isLoginUrl,
+  isLogoutUrl,
+  isProposal,
+  isProposalList,
+  isUserName,
+  readMessage,
+} from './guards';
+
+export interface ApiClientDeps {
+  config: ApiConfig;
+  csrf: CsrfStore;
+  /** Oturum bitince bir kez çağrılır. Örneğin kullanıcıyı girişe yönlendirir. */
+  onSessionExpired?: (error: ApiError) => void;
+}
+
+export interface RequestOptions {
+  signal?: AbortSignal;
+}
+
+export type DocTypeResult =
+  | { status: 'fresh'; meta: DocTypeMeta; etag: string | undefined }
+  | { status: 'not_modified'; etag: string | undefined };
+
+export interface JsonRpcRequest {
+  jsonrpc: '2.0';
+  id?: string | number;
+  method:
+    | 'initialize'
+    | 'server/discover'
+    | 'ping'
+    | 'tools/list'
+    | 'tools/call'
+    | 'notifications/initialized';
+  params?: Record<string, unknown>;
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const EMPTY_BODY_STATUSES = new Set([202, 204, 304]);
+
+function isJsonResponse(response: Response): boolean {
+  const type = response.headers.get('Content-Type') ?? '';
+  return /^application\/(.+\+)?json\b/i.test(type);
+}
+
+/** Zaman aşımı ve ağ hatasını ortak türe çeviren fetch. Kullanıcı iptali olduğu gibi iletilir. */
+function timedFetch(timeoutMs: number) {
+  return async (request: Request): Promise<Response> => {
+    const timer = AbortSignal.timeout(timeoutMs);
+    const signal = AbortSignal.any([request.signal, timer]);
+    try {
+      return await globalThis.fetch(new Request(request, { signal }));
+    } catch (error) {
+      if (request.signal.aborted) throw error;
+      if (timer.aborted) throw new ApiError({ kind: 'timeout', status: 0 });
+      throw new ApiError({ kind: 'network', status: 0 });
+    }
+  };
+}
+
+export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDeps) {
+  let sessionExpiredNotified = false;
+
+  const headerMiddleware: Middleware = {
+    onRequest({ request }) {
+      request.headers.delete('Authorization');
+      request.headers.set('Accept', 'application/json');
+      if (!SAFE_METHODS.has(request.method)) {
+        const token = csrf.get();
+        if (token) request.headers.set('X-Frappe-CSRF-Token', token);
+      }
+      return request;
+    },
+    onResponse({ response }) {
+      // Başarılı yanıt JSON olmalıdır (SZ-5). Aksi hâlde yanıt okunmaz.
+      if (response.ok && !EMPTY_BODY_STATUSES.has(response.status) && !isJsonResponse(response)) {
+        throw new ApiError({ kind: 'invalid_response', status: response.status });
+      }
+      return response;
+    },
+  };
+
+  function make<Paths extends object>(
+    baseUrl: string,
+    timeoutMs = config.timeoutMs,
+  ): Client<Paths> {
+    const client = createClient<Paths>({
+      baseUrl,
+      credentials: config.credentials,
+      fetch: timedFetch(timeoutMs),
+    });
+    client.use(headerMiddleware);
+    return client;
+  }
+
+  const methodRoot = `${config.siteUrl}/api/method`;
+  const identity = make<IdentityPaths>(methodRoot);
+  const ai = make<AiPaths>(methodRoot);
+  const shell = make<ShellPaths>(config.siteUrl);
+  const gateway = make<GatewayPaths>(config.siteUrl, config.modelTimeoutMs);
+
+  /** Belirsiz 403 için oturumu ayrı ve önbelleksiz istekle doğrular (SZ-8). */
+  async function sessionIsAlive(): Promise<boolean> {
+    try {
+      const response = await timedFetch(config.timeoutMs)(
+        new Request(`${methodRoot}/frappe.auth.get_logged_user`, {
+          method: 'GET',
+          credentials: config.credentials,
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        }),
+      );
+      if (!response.ok || !isJsonResponse(response)) return false;
+      const user = readMessage(await response.json());
+      return isUserName(user) && user !== 'Guest';
+    } catch {
+      // Doğrulama yapılamadıysa oturum bitmiş sayılmaz. Asıl hata gösterilir.
+      return true;
+    }
+  }
+
+  function sessionExpired(error: ApiError): ApiError {
+    if (!sessionExpiredNotified) {
+      sessionExpiredNotified = true;
+      onSessionExpired?.(error);
+    }
+    return error;
+  }
+
+  async function fail(response: Response, body: unknown): Promise<never> {
+    let error = toApiError(response.status, body, response.headers);
+    if (error.kind === 'forbidden' && error.needsSessionCheck) {
+      error = (await sessionIsAlive())
+        ? new ApiError({ kind: 'forbidden', status: error.status, code: error.code })
+        : new ApiError({ kind: 'session_expired', status: error.status, code: error.code });
+    }
+    if (error.kind === 'session_expired') throw sessionExpired(error);
+    throw error;
+  }
+
+  interface FetchResult {
+    data?: unknown;
+    error?: unknown;
+    response: Response;
+  }
+
+  /** Yanıtı denetler ve `message` alanını döner. */
+  async function unwrap<T>(pending: Promise<FetchResult>, guard: Guard<T>): Promise<T> {
+    const { data, error, response } = await pending;
+    if (!response.ok) return fail(response, error);
+    const value = readMessage(data);
+    if (!guard(value)) throw new ApiError({ kind: 'invalid_response', status: response.status });
+    sessionExpiredNotified = false;
+    return value;
+  }
+
+  function signalOf(options: RequestOptions): { signal?: AbortSignal } {
+    return options.signal ? { signal: options.signal } : {};
+  }
+
+  return {
+    /** Oturumdaki kullanıcının adını döner. */
+    getLoggedUser(options: RequestOptions = {}): Promise<string> {
+      return unwrap(
+        shell.GET('/api/method/frappe.auth.get_logged_user', {
+          ...signalOf(options),
+          cache: 'no-store',
+        }),
+        isUserName,
+      );
+    },
+
+    /** Keycloak giriş adresini sunucudan ister. `state`, PKCE ve `nonce` sunucuda üretilir. */
+    getLoginUrl(redirectTo?: string, options: RequestOptions = {}): Promise<LoginUrl> {
+      return unwrap(
+        identity.POST('/platform_core.api.auth.get_login_url', {
+          ...signalOf(options),
+          body: redirectTo === undefined ? {} : { redirect_to: redirectTo },
+        }),
+        isLoginUrl,
+      );
+    },
+
+    /** Frappe oturumunu kapatır. Keycloak çıkış adresini döner. */
+    logout(options: RequestOptions = {}): Promise<LogoutUrl> {
+      return unwrap(
+        identity.POST('/platform_core.api.auth.logout', signalOf(options)),
+        isLogoutUrl,
+      );
+    },
+
+    /** Kabuğun açılış verisini okur: kullanıcı, roller, uygulamalar ve kenar çubuğu. */
+    getBootstrap(options: RequestOptions = {}): Promise<Bootstrap> {
+      return unwrap(
+        shell.GET('/api/method/platform_core.api.shell.get_bootstrap', signalOf(options)),
+        isBootstrap,
+      );
+    },
+
+    /**
+     * Sunucunun DocType tanımından ürettiği sayfa tanımını okur (RE-11).
+     * `etag` verilirse sunucu değişiklik yoksa 304 döner.
+     */
+    async getDocType(
+      doctype: string,
+      etag?: string,
+      options: RequestOptions = {},
+    ): Promise<DocTypeResult> {
+      const result = await shell.GET('/api/method/platform_core.api.meta.get_doctype', {
+        ...signalOf(options),
+        params: {
+          query: { doctype, surface: 'web' },
+          ...(etag ? { header: { 'If-None-Match': etag } } : {}),
+        },
+      });
+      const nextEtag = result.response.headers.get('ETag') ?? undefined;
+      if (result.response.status === 304) return { status: 'not_modified', etag: nextEtag ?? etag };
+      const meta = await unwrap(Promise.resolve(result), isDocTypeMeta);
+      return { status: 'fresh', meta, etag: nextEtag };
+    },
+
+    /** MCP ucuna tek JSON-RPC isteği gönderir. Oturum çereziyle çağrılır. */
+    async callMcp(rpc: JsonRpcRequest, options: RequestOptions & { conversationId?: string } = {}) {
+      const headers: Record<string, string> = { 'MCP-Protocol-Version': '2025-11-25' };
+      if (options.conversationId) headers['Mcp-Conversation-Id'] = options.conversationId;
+      const result = await ai.POST('/platform_core.api.ai.mcp', {
+        ...signalOf(options),
+        body: rpc,
+        headers,
+      });
+      if (!result.response.ok) return fail(result.response, result.error);
+      if (!isJsonRpcResponse(result.data)) {
+        throw new ApiError({ kind: 'invalid_response', status: result.response.status });
+      }
+      return result.data satisfies JsonRpcResponse;
+    },
+
+    listProposals(
+      query: { status?: Proposal['status']; limit?: number; start?: number } = {},
+      options: RequestOptions = {},
+    ) {
+      return unwrap(
+        ai.GET('/platform_core.api.ai.list_proposals', { ...signalOf(options), params: { query } }),
+        isProposalList,
+      );
+    },
+
+    getProposal(proposalId: string, options: RequestOptions = {}): Promise<Proposal> {
+      return unwrap(
+        ai.GET('/platform_core.api.ai.get_proposal', {
+          ...signalOf(options),
+          params: { query: { proposal_id: proposalId } },
+        }),
+        isProposal,
+      );
+    },
+
+    /** İnsan onayı. Yalnız kullanıcı onay düğmesine bastığında çağrılır. Özet `getProposal` yanıtından gelir. */
+    approveProposal(
+      proposalId: string,
+      digest: string,
+      options: RequestOptions = {},
+    ): Promise<ApprovalOutcome> {
+      return unwrap(
+        ai.POST('/platform_core.api.ai.approve_proposal', {
+          ...signalOf(options),
+          body: { proposal_id: proposalId, digest },
+        }),
+        isApprovalOutcome,
+      );
+    },
+
+    rejectProposal(proposalId: string, options: RequestOptions = {}): Promise<Proposal> {
+      return unwrap(
+        ai.POST('/platform_core.api.ai.reject_proposal', {
+          ...signalOf(options),
+          body: { proposal_id: proposalId },
+        }),
+        isProposal,
+      );
+    },
+
+    resolveProposal(
+      proposalId: string,
+      outcome: 'succeeded' | 'failed',
+      options: RequestOptions = {},
+    ): Promise<Proposal> {
+      return unwrap(
+        ai.POST('/platform_core.api.ai.resolve_proposal', {
+          ...signalOf(options),
+          body: { proposal_id: proposalId, outcome },
+        }),
+        isProposal,
+      );
+    },
+
+    /** Model geçidinden yanıt ister. Model anahtarı sunucudadır (AX-2). */
+    complete(request: CompletionRequest, options: RequestOptions = {}): Promise<CompletionResult> {
+      return unwrap(
+        gateway.POST('/api/method/platform_core.api.model.complete', {
+          ...signalOf(options),
+          body: request,
+        }),
+        isCompletionResult,
+      );
+    },
+  };
+}
+
+export type ApiClient = ReturnType<typeof createApiClient>;

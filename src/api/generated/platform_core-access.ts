@@ -527,7 +527,7 @@ export interface operations {
         };
         content: {
           'application/json': {
-            message: (unknown[] | Record<string, never>)[];
+            message: (unknown[] | Record<string, unknown>)[];
           };
         };
       };
@@ -581,7 +581,7 @@ export interface operations {
         };
         content: {
           'application/json': {
-            message: Record<string, never>;
+            message: Record<string, unknown>;
           };
         };
       };

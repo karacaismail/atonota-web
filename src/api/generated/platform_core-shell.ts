@@ -328,7 +328,7 @@ export interface components {
       /** @description Whether Frappe added this row from a Workspace record. */
       derived?: number | boolean | null;
       /** @description Native filters for the destination. */
-      filters?: string | unknown[] | Record<string, never> | null;
+      filters?: string | unknown[] | Record<string, unknown> | null;
       /** @description Native visibility setting if present. */
       hidden?: number | boolean | null;
       /** @description Icon displayed for this row. */
@@ -357,7 +357,7 @@ export interface components {
         report_type?: string | null;
       };
       /** @description Native options for the destination route. */
-      route_options?: string | unknown[] | Record<string, never> | null;
+      route_options?: string | unknown[] | Record<string, unknown> | null;
       /** @description Whether the row displays a navigation arrow. */
       show_arrow?: number | boolean | null;
       /** @description Tab to open at the destination. */
