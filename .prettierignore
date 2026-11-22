@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+design/
+.pane/
+.serena/
+package-lock.json
+*.md

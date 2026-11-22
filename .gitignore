@@ -9,4 +9,6 @@ test-results/
 .pane/
 .DS_Store
 *.log
+.serena/
 worktrees/
+.serena/
