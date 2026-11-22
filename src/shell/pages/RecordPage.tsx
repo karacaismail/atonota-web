@@ -5,13 +5,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../header/PageHeader';
 import type { HeaderState } from '../header/PageHeader';
 import { t } from '../messages';
-import { routes } from '../routes';
+import { routes } from '../paths';
 import type { SampleRow } from '../sampleData';
 import { findGroup, findLeaf, sampleRows } from '../sampleData';
 
 type Draft = Pick<SampleRow, 'title' | 'party' | 'amount'>;
 
-export function RecordPage() {
+export default function RecordPage() {
   const { module = '', doctype = '', name = '' } = useParams();
   const navigate = useNavigate();
   const rows = useMemo(() => sampleRows(doctype), [doctype]);

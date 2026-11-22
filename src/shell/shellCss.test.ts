@@ -1,6 +1,9 @@
+// Vitest `css: false` ayarıyla `?raw` boş döner. Dosya Node ile okunur.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-import css from './shell.css?raw';
+const cwd = (globalThis as unknown as { process: { cwd: () => string } }).process.cwd();
+const css: string = readFileSync(`${cwd}/src/shell/shell.css`, 'utf8');
 
 /**
  * Önemli 2 ve 3: stil dosyasında sabit değer yazılmaz.
@@ -16,8 +19,9 @@ function body(): string {
   expect(a).toBeGreaterThanOrEqual(0);
   expect(b).toBeGreaterThan(a);
   const rest = css.slice(0, a) + css.slice(b + END.length);
-  // Yorumlar denetlenmez.
-  return rest.replace(/\/\*[\s\S]*?\*\//g, '');
+  // Yorumlar denetlenmez. Sorgu koşulları denetlenmez: CSS değişkeni
+  // `@media` ve `@container` koşulunda çalışmaz.
+  return rest.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@(media|container)[^{]*\{/g, '{');
 }
 
 describe('shell.css', () => {

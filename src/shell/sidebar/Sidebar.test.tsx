@@ -6,7 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@ant-design/x', () => import('../testing/antdXMock'));
 
 import { FocusDimProvider } from '../focus-dim';
-import { sampleAgents, sampleNav } from '../sampleData';
+import { shellNav } from '../nav';
+import { sampleAgents } from '../sampleData';
 import { Sidebar } from './Sidebar';
 
 function setup(variant: 'solid' | 'rail' = 'solid') {
@@ -18,7 +19,7 @@ function setup(variant: 'solid' | 'rail' = 'solid') {
         <Sidebar
           variant={variant}
           onVariantChange={onVariantChange}
-          nav={sampleNav}
+          nav={shellNav}
           agents={sampleAgents}
         />
       </FocusDimProvider>

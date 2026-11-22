@@ -84,6 +84,8 @@ export const t = {
     assistantText:
       'Sorunuz alındı. Asistan yanıtı bu sürümde yok. Yanıt yüzeyi sonraki işte gelecek.',
     sample: 'Bu sayfadaki veriler örnektir.',
+    tableRegion: 'Kayıt tablosu',
+    kanbanRegion: 'Kanban panosu',
     selectRow: (name: string) => `${name} kaydını seç`,
     emptyText: 'Bu listede henüz kayıt yok.',
     viewSoon: 'Bu görünümün tam hali sonraki işte gelecek. Aşağıda örnek özet var.',

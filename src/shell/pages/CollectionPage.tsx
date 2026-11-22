@@ -1,12 +1,12 @@
 import { Table } from 'antd';
 import type { CheckboxProps, TableColumnsType } from 'antd';
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import type { HeaderState } from '../header/PageHeader';
 import { PageHeader } from '../header/PageHeader';
 import { formatNumber, t } from '../messages';
-import { queryKeys, routes } from '../routes';
+import { queryKeys, routes } from '../paths';
 import type { SampleRow } from '../sampleData';
 import { findGroup, findLeaf } from '../sampleData';
 import type { ViewType } from '../tokens';
@@ -24,20 +24,36 @@ const DEMO: Record<string, DemoState> = {
 
 const currency = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' });
 
-const columns: TableColumnsType<SampleRow> = [
-  { title: 'Kayıt', dataIndex: 'name', key: 'name', width: 120 },
-  { title: 'Başlık', dataIndex: 'title', key: 'title', width: 160 },
-  { title: 'Kişi', dataIndex: 'party', key: 'party', width: 150 },
-  { title: 'Durum', dataIndex: 'status', key: 'status', width: 120 },
+const dateFormat = new Intl.DateTimeFormat('tr-TR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+/** ISO tarihi "2 Kasım 2026" biçiminde yazar. Saat dilimi kaymaz. */
+function formatDate(iso: string): string {
+  const [y = 0, m = 1, d = 1] = iso.split('-').map(Number);
+  return dateFormat.format(new Date(y, m - 1, d));
+}
+
+const makeColumns = (module: string, doctype: string): TableColumnsType<SampleRow> => [
+  {
+    title: 'Kayıt',
+    dataIndex: 'name',
+    key: 'name',
+    render: (name: string) => <Link to={routes.record(module, doctype, name)}>{name}</Link>,
+  },
+  { title: 'Başlık', dataIndex: 'title', key: 'title' },
+  { title: 'Kişi', dataIndex: 'party', key: 'party' },
+  { title: 'Durum', dataIndex: 'status', key: 'status' },
   {
     title: 'Tutar',
     dataIndex: 'amount',
     key: 'amount',
-    width: 140,
     align: 'right',
     render: (v: number) => <span className="shell-num">{currency.format(v)}</span>,
   },
-  { title: 'Tarih', dataIndex: 'date', key: 'date', width: 120 },
+  { title: 'Tarih', dataIndex: 'date', key: 'date', render: formatDate },
 ];
 
 /** antd satır kutusu adı. Kutu kalan özellikleri girdiye geçirir. */
@@ -46,7 +62,7 @@ function checkboxLabel(label: string): Partial<CheckboxProps> {
   return props;
 }
 
-export function CollectionPage() {
+export default function CollectionPage() {
   const { module = '', doctype = '' } = useParams();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
@@ -60,6 +76,7 @@ export function CollectionPage() {
   const data = useSampleCollection(doctype, demo);
   const [selected, setSelected] = useState<React.Key[]>([]);
   const [filters, setFilters] = useState([{ key: 'durum', label: 'Durum: Gönderildi' }]);
+  const columns = useMemo(() => makeColumns(module, doctype), [module, doctype]);
   const seconds = useSecondsSince(data.loadedAt, demo === 'live');
 
   const rows = useMemo(() => {
@@ -136,6 +153,7 @@ export function CollectionPage() {
             selected={selected}
             onSelect={setSelected}
             onOpen={(name) => navigate(routes.record(module, doctype, name))}
+            columns={columns}
           />
         )}
       </div>
@@ -150,12 +168,14 @@ interface ViewBodyProps {
   selected: React.Key[];
   onSelect: (k: React.Key[]) => void;
   onOpen: (name: string) => void;
+  columns: TableColumnsType<SampleRow>;
 }
 
-function ViewBody({ view, rows, loading, selected, onSelect, onOpen }: ViewBodyProps) {
+function ViewBody({ view, rows, loading, selected, onSelect, onOpen, columns }: ViewBodyProps) {
   if (view === 'table') {
     return (
-      <div className="shell-table">
+      // Kaydırma alanı klavyeyle de kaydırılabilsin diye odaklanabilir.
+      <div className="shell-table" role="region" aria-label={t.pages.tableRegion} tabIndex={0}>
         <Table<SampleRow>
           rowKey="name"
           size="middle"
@@ -179,7 +199,7 @@ function ViewBody({ view, rows, loading, selected, onSelect, onOpen }: ViewBodyP
 
   if (view === 'kanban') {
     return (
-      <div className="shell-kanban" role="list">
+      <div className="shell-kanban" role="list" tabIndex={0} aria-label={t.pages.kanbanRegion}>
         {[...byStatus].map(([status, items]) => (
           <section key={status} className="shell-kb-col" role="listitem" aria-label={status}>
             <h2 className="shell-kb-h">

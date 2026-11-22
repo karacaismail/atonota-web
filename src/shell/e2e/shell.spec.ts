@@ -80,16 +80,21 @@ test.describe('klavye ile flyout', () => {
     await expect(page.locator('body')).not.toHaveAttribute('data-focus-dim', 'on');
   });
 
-  test('Tab ile gezinince odak göstergesi halka değildir', async ({ page }) => {
+  test('klavyeyle gezinince odak göstergesi halka değildir', async ({ page }) => {
     test.skip(isCompact(page), 'geniş ekran');
     await page.goto('/');
-    await page.getByRole('link', { name: 'Ana sayfa' }).focus();
-    await page.keyboard.press('Tab');
-    const focused = page.locator(':focus');
-    const outline = await focused.evaluate((el) => getComputedStyle(el).outlineStyle);
-    expect(outline).toBe('none');
-    const line = await focused.evaluate((el) => getComputedStyle(el, '::after').opacity);
-    expect(line).toBe('1');
+    // Tembel sayfa gelene kadar beklenir. Sonra odak denetlenir.
+    await expect(page.getByRole('heading', { level: 1, name: 'Ana sayfa' })).toBeVisible();
+    // WebKit, Safari gibi Tab ile bağlantı ve düğmeleri atlar. Bu yüzden
+    // menünün kendi aşağı ok gezinmesi kullanılır. Bu yol her motorda aynıdır.
+    await page.getByRole('link', { name: 'Asistan' }).focus();
+    await page.keyboard.press('ArrowDown');
+    const next = page.getByRole('button', { name: 'Satış', exact: true });
+    await expect(next).toBeFocused();
+    await expect(next).toHaveCSS('outline-style', 'none');
+    await expect
+      .poll(() => next.evaluate((el) => getComputedStyle(el, '::after').opacity))
+      .toBe('1');
   });
 
   test('fare ile üzerine gelince açılır, ayrılınca kapanır', async ({ page }) => {

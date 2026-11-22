@@ -36,6 +36,15 @@ describe('shellTokens', () => {
     expect(shellTokens.focusDim.dark.color).toBe(config.focusDim.dark.color);
   });
 
+  it('satır kutusu, rozet ve hareket değerlerini kaynaktan alır', () => {
+    expect(shellTokens.lineHeightAdd).toBe(8);
+    expect(shellTokens.fontLg).toBe(config.sizes.lg.button.fontSize);
+    expect(shellTokens.tagHeight).toBe(config.choice.tagHeights[0]);
+    expect(shellTokens.ddBox).toBe(32);
+    expect(shellTokens.motion.pulse).toBe(1400);
+    expect(shellTokens.motion.ring).toBe(1200);
+  });
+
   it('header ölçülerini kaynak dosyadan alır', () => {
     expect(shellTokens.header.titleSize).toBe(config.header.settings.titleSize);
     expect(shellTokens.header.titleLineHeight).toBe(config.header.settings.titleLineHeight);

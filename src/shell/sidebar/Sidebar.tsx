@@ -4,8 +4,9 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { useFocusDim } from '../focus-dim';
+import { isPathActive } from '../navMatch';
 import { t } from '../messages';
-import { routes } from '../routes';
+import { routes } from '../paths';
 import type { Agent, NavEntry, NavGroup, NavLeaf } from '../sampleData';
 import { shellTokens } from '../tokens';
 import { CommandBox } from './CommandBox';
@@ -13,6 +14,7 @@ import type { FlyoutContent, OpenedBy } from './FlyoutItem';
 import { FlyoutItem } from './FlyoutItem';
 import { RailToggle } from './RailToggle';
 import { SidebarFooter } from './SidebarFooter';
+import { useGlide } from './useGlide';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 export type SidebarVariant = 'solid' | 'rail';
@@ -53,6 +55,7 @@ export function Sidebar({
   const baseId = useId();
 
   useFocusDim(open !== null && !compact);
+  const { hostRef: glideRef, state: glideState, hostProps: glideProps } = useGlide();
 
   const clearTimers = () => {
     window.clearTimeout(openTimer.current);
@@ -119,10 +122,7 @@ export function Sidebar({
     return () => document.removeEventListener('pointerdown', onDown);
   }, [open, close]);
 
-  const isActive = (to: string) => {
-    const path = to.split('?')[0] ?? to;
-    return path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
-  };
+  const isActive = (to: string) => isPathActive(to, location.pathname);
 
   // Üst düzey öğeler arasında yukarı ve aşağı ok tuşları gezinir.
   const onNavKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
@@ -282,7 +282,25 @@ export function Sidebar({
       <div className="shell-sb-scroll">
         {!rail && <CommandBox {...(onNavigate ? { onSubmitted: onNavigate } : {})} />}
 
-        <nav aria-label={t.nav.label} onKeyDown={onNavKeyDown}>
+        <nav
+          ref={glideRef}
+          aria-label={t.nav.label}
+          className="shell-glide-host"
+          onKeyDown={onNavKeyDown}
+          {...glideProps}
+        >
+          <span
+            className="shell-glide"
+            aria-hidden="true"
+            data-on={glideState.on ? 'true' : 'false'}
+            data-jump={glideState.jump ? 'true' : 'false'}
+            style={
+              {
+                '--shell-glide-y': `${glideState.top}px`,
+                '--shell-glide-h': `${glideState.height}px`,
+              } as React.CSSProperties
+            }
+          />
           {rail && (
             <ul className="shell-list">
               <FlyoutItem

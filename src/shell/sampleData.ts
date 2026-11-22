@@ -5,7 +5,6 @@ import type { Icon } from '@phosphor-icons/react';
 import {
   Calculator,
   CheckSquare,
-  House,
   Package,
   Receipt,
   Robot,
@@ -17,7 +16,7 @@ import {
   FileText,
 } from '@phosphor-icons/react';
 
-import { routes } from './routes';
+import { routes } from './paths';
 
 export interface NavLeaf {
   kind: 'link';
@@ -60,7 +59,6 @@ const leaf = (m: string, d: string, label: string, icon: Icon, badge?: number): 
 });
 
 export const sampleNav: NavEntry[] = [
-  { kind: 'link', id: 'home', label: 'Ana sayfa', to: routes.home(), icon: House },
   {
     kind: 'group',
     id: 'satis',

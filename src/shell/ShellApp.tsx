@@ -1,16 +1,17 @@
+import { Suspense } from 'react';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 
 import { AppShell } from './layout/AppShell';
-import { CollectionPage } from './pages/CollectionPage';
-import { RecordPage } from './pages/RecordPage';
-import { AgentPage, AssistantPage, HomePage, NotFoundPage } from './pages/SimplePages';
-import { routePaths } from './routes';
+import NotFoundPage from './pages/NotFoundPage';
+import { routeRegistry, toRouteObjects } from './routes';
 import './shell.css';
 
 function ShellLayout() {
   return (
     <AppShell>
-      <Outlet />
+      <Suspense fallback={<div className="shell-page" aria-busy="true" />}>
+        <Outlet />
+      </Suspense>
     </AppShell>
   );
 }
@@ -23,14 +24,7 @@ const shellRouteObjects = [
         <NotFoundPage />
       </AppShell>
     ),
-    children: [
-      { index: true, element: <HomePage /> },
-      { path: routePaths.assistant, element: <AssistantPage /> },
-      { path: routePaths.agent, element: <AgentPage /> },
-      { path: routePaths.collection, element: <CollectionPage /> },
-      { path: routePaths.record, element: <RecordPage /> },
-      { path: '*', element: <NotFoundPage /> },
-    ],
+    children: [...toRouteObjects(routeRegistry), { path: '*', element: <NotFoundPage /> }],
   },
 ];
 

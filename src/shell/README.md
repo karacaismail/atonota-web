@@ -44,6 +44,14 @@ Klavye kuralları şunlardır:
 - Sol ok ya da Escape paneli kapatır. Odak üst öğeye döner.
 - Üst öğede Escape paneli kapatır. Odak üst öğede kalır.
 
+## Kayan hover zemini (G1–G3)
+
+Fare menü öğesinin üzerine gelince açık renkli bir zemin belirir. Zemin öğeden öğeye kayar. Süre 200 ms'dir.
+
+- Fare menüye dışarıdan girerse zemin hareketsiz yerleşir.
+- Fare menüden çıkarsa zemin yerinde solar.
+- Klavye odağı da zemini taşır.
+
 ## Sayfa başlığı
 
 Varsayılan çeşit "Araç çubuklu" çeşittir. Kurallar HD1–HD6 ve VT1–VT3 maddeleridir.
@@ -56,7 +64,20 @@ Telefonda başlık sayfayla birlikte kayar. Telefon ekranı kısadır. Sabit ba�
 
 ## Rotalar
 
-Rota sözleşmesi `routes.ts` dosyasındadır. Örnekler şunlardır:
+Rota kaydı `routes.ts` dosyasındadır. Adres yardımcıları `paths.ts` dosyasındadır.
+
+Her iş kendi sayfası için `routes.ts` dosyasına tek bir satır ekler. Satırın dört alanı vardır:
+
+1. `path`: react-router yolu.
+2. `label`: menü etiketi.
+3. `icon`: Phosphor ikonu.
+4. `load`: tembel yükleyici. Örnek: `() => import('@/modules/satis/TeklifPage')`.
+
+Kuralın tamamı dosyanın başındaki yorumdadır. `routes.test.ts` biçimi denetler.
+
+Sayfalar `React.lazy` ile yüklenir. Kabuk hemen çizilir. Sayfa gelene kadar yalnız içerik alanı bekler.
+
+Adres örnekleri şunlardır:
 
 - `/` ana sayfadır.
 - `/satis/teklif` bir koleksiyon sayfasıdır.
@@ -72,6 +93,8 @@ Rota sözleşmesi `routes.ts` dosyasındadır. Örnekler şunlardır:
 1. **Tokenlar.** `tokens.ts` değerleri kaynak dosyadan okur. `src/design/` dışa aktarımı gelince `tokens.ts` oradan okuyacak.
 2. **Odak perdesi.** `focus-dim/` klasörü D1–D5 kararını uygular. `src/engines/focus-dim/` gelince `useFocusDim` o motoru çağıracak.
 
+3. **Adlı değerler.** `shell.css` dosyasının başında adlı değer bölümü vardır. Kaynakta karşılığı olmayan boşluk, ölçü ve süreler oradadır. `foundation` boşluk ve hareket tokenlarını koyunca bölüm oraya taşınır. Bölüm dışında sabit değer yazılmaz. `shellCss.test.ts` bunu denetler.
+
 Bileşenler yalnız `useFocusDim` kancasını ve `shellTokens` nesnesini kullanır. Bu yüzden geçişte bileşen kodu değişmez.
 
 ## Denemeler
@@ -83,6 +106,8 @@ Tarayıcı testleri kabuk deneme sayfasında koşar. Komut şudur:
 ```bash
 npx playwright test -c src/shell/e2e/playwright.config.mjs
 ```
+
+Testler `src/shell/e2e/` altında kalır. Kök Playwright ayarı bu klasörü de okuyacak. O zamana kadar kabuk ayarı kullanılır.
 
 Matris kök ayarla aynıdır: Chromium ve WebKit, iPhone 13 profili. Firefox koşulmaz.
 
