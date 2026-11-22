@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { findMotionViolations, isMotionExempt } from '../../scripts/motion-gate.mjs';
+import { findMotionViolations, isMotionExempt, readAllowList } from '../../scripts/motion-gate.mjs';
 
 describe('hareket kapısı', () => {
   it('src/design dışındaki sabit süreyi yakalar', () => {
@@ -32,5 +32,16 @@ describe('hareket kapısı', () => {
     const [v] = findMotionViolations('a\nb\n.c { transition: all 1s; }', 'src/shell/a.css');
     expect(v?.line).toBe(3);
     expect(v?.reason).toContain('süre');
+  });
+});
+
+describe('geçici izin listesi', () => {
+  it('her kayıt dosya, sahip ve neden taşır', () => {
+    const allow = readAllowList();
+    for (const [file, item] of allow) {
+      expect(file.startsWith('src/'), file).toBe(true);
+      expect(item.sahip.length, file).toBeGreaterThan(0);
+      expect(item.neden.length, file).toBeGreaterThan(10);
+    }
   });
 });

@@ -1,3 +1,4 @@
+import { globSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 
 import react from '@vitejs/plugin-react';
@@ -5,7 +6,22 @@ import { defineConfig } from 'vitest/config';
 
 import { mockWorkerPlugin } from './vite/mock-worker-plugin.ts';
 
-export default defineConfig({
+/**
+ * e2e derlemesi (`vite build --mode e2e`): işlerin bağımsız deneme sayfaları da pakete girer.
+ * Kural: `src/<iş>/preview/index.html` ya da `src/<iş>/harness/index.html`. Önizleme sunucusu bu
+ * sayfaları aynı yolda sunar; örnek: /src/views/collection/preview/. Üretim derlemesine girmezler.
+ */
+function e2eInputs(): Record<string, string> {
+  const extra = globSync('src/**/{preview,harness}/index.html', {
+    exclude: (p) => p.includes('node_modules'),
+  });
+  return Object.fromEntries([
+    ['main', 'index.html'],
+    ...extra.map((p) => [p.replace(/\/index\.html$/, '').replace(/\//g, '-'), p]),
+  ]);
+}
+
+export default defineConfig(({ mode }) => ({
   // mockWorkerPlugin: sahte sunucunun işçi dosyasını yalnız gerektiğinde sunar (vite/mock-worker-plugin.ts).
   plugins: [react(), mockWorkerPlugin()],
   resolve: {
@@ -14,6 +30,7 @@ export default defineConfig({
       '@design-source': fileURLToPath(new URL('./design/source', import.meta.url)),
     },
   },
+  build: mode === 'e2e' ? { rolldownOptions: { input: e2eInputs() } } : {},
   server: {
     host: '127.0.0.1',
     port: 5173,
@@ -58,4 +75,4 @@ export default defineConfig({
       },
     ],
   },
-});
+}));

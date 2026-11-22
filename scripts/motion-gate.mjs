@@ -6,11 +6,21 @@
  *
  * Kullanım: node scripts/motion-gate.mjs [kök]
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const SCAN_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.css', '.scss', '.less', '.html']);
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'coverage', 'playwright-report', 'test-results', '.git', '.pane', '.serena']);
+const SKIP_DIRS = new Set([
+  'node_modules',
+  'dist',
+  'coverage',
+  'playwright-report',
+  'test-results',
+  '.git',
+  '.pane',
+  '.serena',
+]);
 
 /** Muaf yollar: tasarım kaynağı, token katmanı, testler ve betikler. */
 export function isMotionExempt(file) {
@@ -26,7 +36,10 @@ export function isMotionExempt(file) {
 }
 
 const PATTERNS = [
-  { re: /cubic-bezier\s*\(/, reason: 'eğri sabit yazılmış (cubic-bezier); --motion-easing-* kullanın' },
+  {
+    re: /cubic-bezier\s*\(/,
+    reason: 'eğri sabit yazılmış (cubic-bezier); --motion-easing-* kullanın',
+  },
   { re: /\bsteps\s*\(\s*\d/, reason: 'steps() eğrisi normal profilde yasaktır' },
   {
     re: /(?:^|[^-\w])(?:transition|animation)(?:-duration|-delay)?\s*:\s*[^;{}]*?\b\d+(?:\.\d+)?m?s\b/i,
@@ -66,18 +79,43 @@ function walk(dir, root, acc) {
   return acc;
 }
 
-export function scanProject(root = process.cwd()) {
-  const files = walk(join(root, 'src'), root, []);
-  return files.flatMap((f) => findMotionViolations(readFileSync(join(root, f), 'utf8'), f));
+/** Geçici izin listesi: scripts/motion-gate.allow.json. Her kayıt dosya, sahip ve neden taşır. */
+export function readAllowList(
+  file = join(dirname(fileURLToPath(import.meta.url)), 'motion-gate.allow.json'),
+) {
+  if (!existsSync(file)) return new Map();
+  const data = JSON.parse(readFileSync(file, 'utf8'));
+  const out = new Map();
+  for (const item of data.izinler ?? []) {
+    if (!item.dosya || !item.sahip || !item.neden) {
+      throw new Error(
+        `İzin kaydı eksik: dosya, sahip ve neden zorunludur: ${JSON.stringify(item)}`,
+      );
+    }
+    out.set(item.dosya, item);
+  }
+  return out;
 }
 
-const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].split(sep).join('/').replace(/^.*\//, ''));
+export function scanProject(root = process.cwd(), allow = readAllowList()) {
+  const files = walk(join(root, 'src'), root, []);
+  const violations = files.flatMap((f) =>
+    findMotionViolations(readFileSync(join(root, f), 'utf8'), f),
+  );
+  const allowed = violations.filter((v) => allow.has(v.file));
+  return { violations: violations.filter((v) => !allow.has(v.file)), allowed };
+}
+
+const isMain =
+  process.argv[1] &&
+  import.meta.url.endsWith(process.argv[1].split(sep).join('/').replace(/^.*\//, ''));
 if (isMain) {
   const root = process.argv[2] ?? process.cwd();
   const violations = scanProject(root);
   if (violations.length) {
     console.error(`Hareket kapısı: ${violations.length} ihlal.`);
-    for (const v of violations) console.error(`  ${v.file}:${v.line}  ${v.reason}\n      ${v.text}`);
+    for (const v of violations)
+      console.error(`  ${v.file}:${v.line}  ${v.reason}\n      ${v.text}`);
     process.exit(1);
   }
   console.log('Hareket kapısı: ihlal yok.');

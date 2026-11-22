@@ -1,0 +1,15 @@
+{
+  "_aciklama": "Hareket kapısı için geçici izinler. Her kayıt bir dosya yolu, sahip iş ve neden içerir. Kayıt silinince kapı o dosyayı yeniden denetler.",
+  "izinler": [
+    {
+      "dosya": "src/views/collection/preview/TemporaryFoundation.tsx",
+      "sahip": "views-collection",
+      "neden": "foundation tokenları gelmeden önce yazılmış geçici kopya. src/design birleşince views-collection işi dosyayı kaldıracak."
+    },
+    {
+      "dosya": "src/views/collection/preview/temporary-theme.ts",
+      "sahip": "views-collection",
+      "neden": "foundation teması gelmeden önce yazılmış geçici kopya. src/design birleşince views-collection işi dosyayı kaldıracak."
+    }
+  ]
+}
