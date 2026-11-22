@@ -239,7 +239,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
           onCancel={cancel}
           loading={busy}
           allowSpeech
-          placeholder="Bir şey sorun. Komutlar için / yazın."
+          placeholder="Sorunuzu yazın. Komut için / yazın."
           aria-label="Asistana mesaj yazın"
           prefix={
             <Button
@@ -305,7 +305,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
               onClick={() => setLeftOpen(true)}
             />
           )}
-          <OwlMark size={28} />
+          {wide && <OwlMark size={28} />}
           <h1 className="ai-title">AI Studio</h1>
           <Tag bordered={false} color={source.simulated ? 'warning' : 'processing'}>
             {source.label}

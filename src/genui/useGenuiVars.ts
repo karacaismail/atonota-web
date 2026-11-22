@@ -39,6 +39,7 @@ export function useGenuiVars(): CSSProperties {
         '--ai-font-lg': `${token.fontSizeLG}px`,
         '--ai-font-xl': `${token.fontSizeXL}px`,
         '--ai-line': `${token.fontSize + 8}px`,
+        '--ai-font-family': token.fontFamily,
         '--ai-mono': token.fontFamilyCode,
         '--ai-gap-xs': `${token.paddingXXS}px`,
         '--ai-gap-sm': `${token.paddingXS}px`,

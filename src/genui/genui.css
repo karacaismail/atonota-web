@@ -3,6 +3,7 @@
  * Gradyan yok (flat 2.0). Hareket `prefers-reduced-motion` açıkken durur.
  */
 .genui {
+  font-family: var(--ai-font-family);
   display: flex;
   flex-direction: column;
   gap: var(--ai-gap);

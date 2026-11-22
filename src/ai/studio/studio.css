@@ -10,8 +10,15 @@
   overflow: hidden;
   background: var(--ai-bg-c);
   color: var(--ai-text);
+  font-family: var(--ai-font-family);
   font-size: var(--ai-font);
   line-height: var(--ai-line);
+}
+
+.ai-studio .ant-drawer-body,
+.ai-workspace,
+.ai-convs {
+  font-family: var(--ai-font-family);
 }
 
 .ai-studio.is-wide {
@@ -51,6 +58,7 @@
 }
 
 .ai-title {
+  min-width: 0;
   margin: 0;
   overflow: hidden;
   font-size: var(--ai-font-lg);
@@ -62,6 +70,11 @@
 
 .ai-head-end {
   margin-left: auto;
+}
+
+.ai-head .ant-tag {
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .ai-log {
@@ -321,4 +334,18 @@
   .ai-welcome .ant-prompts-item:hover {
     transform: none;
   }
+}
+
+/*
+ * Çevreleyen odak halkası yasak. Sender odaklanınca renkli çerçeve çizmez.
+ * Odak yüzey tonuyla gösterilir. Metin imleci de odağı gösterir.
+ * Merkezi klavye odak modu `foundation` işinin ortak katmanıdır.
+ */
+.ai-sender .ant-sender:focus-within {
+  border-color: var(--ai-border);
+  background: var(--ai-bg-e);
+}
+
+.ai-sender .ant-sender:focus-within::after {
+  border-width: 1px;
 }
