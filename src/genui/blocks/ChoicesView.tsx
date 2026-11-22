@@ -1,14 +1,14 @@
 import { Prompts } from '@ant-design/x';
 import { Sparkle } from '@phosphor-icons/react';
 
-import type { ChoicesBlock, GenUIAction } from '../types';
+import type { ChoicesBlock, GenUIActionHandler } from '../types';
 
 export function ChoicesView({
   block,
   onAction,
 }: {
   block: ChoicesBlock;
-  onAction: (action: GenUIAction) => void;
+  onAction: GenUIActionHandler;
 }) {
   return (
     <section data-genui="choices" className="genui-choices" aria-label="Öneriler">

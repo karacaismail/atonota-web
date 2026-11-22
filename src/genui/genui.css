@@ -3,7 +3,7 @@
  * Gradyan yok (flat 2.0). Hareket `prefers-reduced-motion` açıkken durur.
  */
 .genui {
-  font-family: var(--ai-font-family);
+  font-family: var(--font-ui);
   display: flex;
   flex-direction: column;
   gap: var(--ai-gap);
@@ -15,12 +15,16 @@
   min-width: 0;
   padding: var(--ai-gap);
   border: 1px solid var(--ai-border);
-  border-radius: var(--ai-radius-card);
+  border-radius: var(--card-radius);
   background: var(--ai-bg-c);
   box-shadow: var(--ai-shadow-card);
   color: var(--ai-text);
-  font-size: var(--ai-font);
-  line-height: var(--ai-line);
+  font-size: var(--font-default);
+  line-height: calc(var(--font-default) + 8px);
+}
+
+.genui-confirm .genui-card-h {
+  margin-bottom: 0;
 }
 
 .genui-card-h {
@@ -33,24 +37,24 @@
 
 .genui-card-h > svg {
   flex-shrink: 0;
-  color: var(--ai-primary);
+  color: var(--color-primary);
   font-size: var(--ai-font-lg);
 }
 
 .genui-muted {
   margin-left: auto;
   color: var(--ai-text-3);
-  font-size: var(--ai-font-sm);
+  font-size: var(--font-min);
 }
 
 .genui-muted-text {
   color: var(--ai-text-2);
-  font-size: var(--ai-font-sm);
+  font-size: var(--font-min);
 }
 
 .genui-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--ai-kpi-min)), 1fr));
   gap: var(--ai-gap-sm);
 }
 
@@ -61,13 +65,13 @@
   min-width: 0;
   padding: var(--ai-gap);
   border: 1px solid var(--ai-border);
-  border-radius: var(--ai-radius-card);
+  border-radius: var(--card-radius);
   background: var(--ai-bg-c);
 }
 
 .genui-kpi-label {
   color: var(--ai-text-3);
-  font-size: var(--ai-font-sm);
+  font-size: var(--font-min);
 }
 
 .genui-kpi-value {
@@ -81,7 +85,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--ai-gap-xs);
-  font-size: var(--ai-font-sm);
+  font-size: var(--font-min);
   font-weight: 600;
 }
 
@@ -99,7 +103,7 @@
   grid-auto-flow: column;
   gap: var(--ai-gap-sm);
   align-items: end;
-  height: 150px;
+  height: var(--ai-chart-h);
 }
 
 .genui-bar {
@@ -115,25 +119,25 @@
 .genui-bar i {
   display: block;
   width: 100%;
-  max-width: 34px;
-  border-radius: var(--ai-radius) var(--ai-radius) 0 0;
+  max-width: var(--ai-chart-bar-max);
+  border-radius: var(--radius) var(--radius) 0 0;
   background: var(--ai-primary-bg-hover);
-  transition: background-color var(--ai-dur-hover) var(--ai-ease-hover);
+  transition: background-color var(--motion-duration-focus-dim) var(--motion-easing-standard);
 }
 
 .genui-bar.is-top i,
 .genui-bar:hover i {
-  background: var(--ai-primary);
+  background: var(--color-primary);
 }
 
 .genui-bar-v,
 .genui-bar-l {
   color: var(--ai-text-3);
-  font-size: var(--ai-font-sm);
+  font-size: var(--font-min);
 }
 
 .genui-bar-v {
-  font-family: var(--ai-mono);
+  font-family: var(--font-code);
 }
 
 .genui-table-scroll {
@@ -141,18 +145,69 @@
   overflow-x: auto;
 }
 
+/* Başlıklar ve kimlik hücreleri sarılmaz. Açıklamalar kelime arasından sarılır. */
 .genui-table-scroll th,
-.genui-table-scroll td {
+.genui-table-scroll td.genui-cell-id {
   white-space: nowrap;
   word-break: normal;
   overflow-wrap: normal;
 }
 
+.genui-table-scroll td.genui-cell-text {
+  min-width: var(--ai-cell-text-min);
+  max-width: var(--ai-cell-text-max);
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.genui-summary {
+  margin: 0 0 var(--ai-gap-sm);
+}
+
+.genui-changes {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.genui-changes th,
+.genui-changes td {
+  padding: var(--ai-gap-xs) var(--ai-gap-sm);
+  border-bottom: 1px solid var(--ai-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.genui-changes thead th {
+  color: var(--ai-text-3);
+  font-size: var(--font-min);
+  font-weight: 600;
+}
+
+.genui-changes tbody th {
+  font-weight: 600;
+}
+
+.genui-changes td {
+  white-space: normal;
+  min-width: var(--ai-cell-text-min);
+}
+
+.genui-changes .genui-after {
+  font-weight: 600;
+}
+
+.genui-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-sm);
+  margin-bottom: var(--ai-gap);
+}
+
 .genui-confirm {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ai-gap);
+  flex-direction: column;
+  gap: var(--ai-gap-sm);
   border-color: var(--ai-warning-border);
   background: var(--ai-warning-bg);
 }
@@ -162,19 +217,11 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: var(--ai-control-sm);
-  height: var(--ai-control-sm);
-  border-radius: var(--ai-radius-card);
+  width: var(--btn-h-sm);
+  height: var(--btn-h-sm);
+  border-radius: var(--card-radius);
   color: var(--ai-warning);
   font-size: var(--ai-font-lg);
-}
-
-.genui-confirm-t {
-  display: flex;
-  flex: 1 1 200px;
-  flex-direction: column;
-  gap: var(--ai-gap-xs);
-  min-width: 0;
 }
 
 .genui-actions {
@@ -185,7 +232,7 @@
 
 .genui-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--ai-field-min)), 1fr));
   column-gap: var(--ai-gap);
 }
 
@@ -229,24 +276,24 @@
   max-width: 100%;
   margin: var(--ai-gap-sm) 0 0;
   overflow-x: auto;
-  font-family: var(--ai-mono);
-  font-size: var(--ai-font-sm);
+  font-family: var(--font-code);
+  font-size: var(--font-min);
   white-space: pre;
 }
 
 /* AI önerileri: kart 2 px yükselir, ikon sallanır. */
 .genui-choices .ant-prompts-item {
   transition:
-    transform var(--ai-dur-hover) var(--ai-ease),
-    box-shadow var(--ai-dur-hover) var(--ai-ease);
+    transform var(--motion-duration-focus-dim) var(--motion-easing-standard),
+    box-shadow var(--motion-duration-focus-dim) var(--motion-easing-standard);
 }
 
 .genui-choices .ant-prompts-item:hover {
-  transform: translateY(-2px);
+  transform: translateY(var(--ai-hover-lift));
 }
 
 .genui-choices .ant-prompts-item:hover .ai-spark {
-  animation: ai-wiggle var(--ai-dur-hover) var(--ai-ease);
+  animation: ai-wiggle var(--motion-duration-focus-dim) var(--motion-easing-standard);
 }
 
 .genui-skel {
@@ -255,10 +302,10 @@
 
 .genui-skel i {
   display: block;
-  height: 12px;
-  border-radius: var(--ai-radius);
+  height: var(--ai-skeleton-line);
+  border-radius: var(--radius);
   background: var(--ai-fill);
-  animation: genui-skel var(--ai-dur-ring) var(--ai-ease) infinite alternate;
+  animation: genui-skel var(--ai-dur-ring) var(--motion-easing-standard) infinite alternate;
 }
 
 .genui-skel i:nth-child(2) {

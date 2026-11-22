@@ -1,26 +1,33 @@
 import { ThoughtChain } from '@ant-design/x';
-import { Brain } from '@phosphor-icons/react';
+import { Wrench } from '@phosphor-icons/react';
 import { Alert, Button } from 'antd';
 
 import { GenUI, GenUISkeleton } from '@/genui';
-import type { GenUIAction } from '@/genui';
+import type { GenUIActionHandler } from '@/genui';
 
 import type { AssistantMessage } from '../agent';
-import { toChainItems } from './chain';
+import { SIMULATED_TOOLS_NOTE, toChainItems } from './chain';
 
 /**
- * Asistan yanıtı: düşünce zinciri, akan metin ve GenUI blokları.
- * Düşünce zinciri yalnız sunucunun gönderdiği adımları gösterir.
- * Metin düz yazıdır. Model çıktısı HTML olarak çizilmez (AX-3).
+ * Asistan yanıtı: araç işlemleri, akan metin ve GenUI blokları.
+ * Araç listesi yalnız sunucunun bildirdiği izinli araç olaylarını gösterir.
+ * Modelin iç düşüncesi gösterilmez. Metin düz yazıdır (AX-3).
  */
 export function AssistantBody({
   message,
   onAction,
   onRetry,
+  retryKind,
+  busy,
+  simulated,
 }: {
   message: AssistantMessage;
-  onAction: (action: GenUIAction) => void;
+  onAction: GenUIActionHandler;
   onRetry: () => void;
+  /** `status`: önceki mesaj onaydır. Yeniden deneme işlemin durumunu sorar. */
+  retryKind: 'status' | 'retry';
+  busy: boolean;
+  simulated: boolean;
 }) {
   const streaming = message.phase === 'streaming';
   const doneSteps = message.steps.filter((s) => s.status === 'success').length;
@@ -29,9 +36,10 @@ export function AssistantBody({
       {message.steps.length > 0 && (
         <details className="ai-think" open={message.phase === 'waiting' || streaming}>
           <summary>
-            <Brain className="ai-brain" aria-hidden />
-            {`Düşünce zinciri: ${doneSteps} / ${message.steps.length} adım`}
+            <Wrench aria-hidden />
+            {`Araç işlemleri: ${doneSteps} / ${message.steps.length}`}
           </summary>
+          {simulated && <p className="ai-note">{SIMULATED_TOOLS_NOTE}</p>}
           <ThoughtChain size="small" items={toChainItems(message.steps)} />
         </details>
       )}
@@ -42,16 +50,21 @@ export function AssistantBody({
         </p>
       )}
       {streaming && <GenUISkeleton />}
-      {message.phase === 'done' && <GenUI blocks={message.ui} onAction={onAction} />}
+      {message.phase === 'done' && <GenUI blocks={message.ui} onAction={onAction} busy={busy} />}
       {message.phase === 'cancelled' && <p className="ai-note">Yanıt durduruldu.</p>}
       {message.phase === 'error' && (
         <Alert
           type="error"
           showIcon
           message={message.error ?? 'Yanıt alınamadı.'}
+          description={
+            retryKind === 'status'
+              ? 'Onayınız sunucuya ulaşmış olabilir. Onay yeniden gönderilmez. Önce işlemin durumunu sorun.'
+              : undefined
+          }
           action={
-            <Button size="small" onClick={onRetry}>
-              Yeniden dene
+            <Button size="small" disabled={busy} onClick={onRetry}>
+              {retryKind === 'status' ? 'İşlemin durumunu sor' : 'Yeniden dene'}
             </Button>
           }
         />

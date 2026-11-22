@@ -10,15 +10,15 @@
   overflow: hidden;
   background: var(--ai-bg-c);
   color: var(--ai-text);
-  font-family: var(--ai-font-family);
-  font-size: var(--ai-font);
-  line-height: var(--ai-line);
+  font-family: var(--font-ui);
+  font-size: var(--font-default);
+  line-height: calc(var(--font-default) + 8px);
 }
 
 .ai-studio .ant-drawer-body,
 .ai-workspace,
 .ai-convs {
-  font-family: var(--ai-font-family);
+  font-family: var(--font-ui);
 }
 
 .ai-studio.is-wide {
@@ -63,7 +63,7 @@
   overflow: hidden;
   font-size: var(--ai-font-lg);
   font-weight: 600;
-  line-height: var(--ai-line);
+  line-height: calc(var(--font-default) + 8px);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -132,11 +132,11 @@
 
 .ai-caret {
   display: inline-block;
-  width: 7px;
-  height: 15px;
-  margin-left: 2px;
-  vertical-align: -2px;
-  background: var(--ai-primary);
+  width: var(--ai-caret-w);
+  height: var(--ai-caret-h);
+  margin-left: var(--ai-gap-xs);
+  vertical-align: text-bottom;
+  background: var(--color-primary);
   animation: ai-caret var(--ai-dur-caret) steps(1) infinite;
 }
 
@@ -149,7 +149,7 @@
 .ai-think {
   padding: var(--ai-gap-xs) var(--ai-gap-sm);
   border: 1px solid var(--ai-border);
-  border-radius: var(--ai-radius);
+  border-radius: var(--radius);
   background: var(--ai-bg);
 }
 
@@ -169,7 +169,7 @@
 .ai-think summary svg,
 .ai-panel-h svg {
   flex-shrink: 0;
-  color: var(--ai-primary);
+  color: var(--color-primary);
 }
 
 .ai-think .ant-thought-chain {
@@ -185,22 +185,22 @@
   display: flex;
   flex-direction: column;
   gap: var(--ai-gap-lg);
-  max-width: 760px;
+  max-width: var(--ai-welcome-max);
   margin: var(--ai-gap-md) auto;
 }
 
 .ai-welcome .ant-prompts-item {
   transition:
-    transform var(--ai-dur-hover) var(--ai-ease),
-    box-shadow var(--ai-dur-hover) var(--ai-ease);
+    transform var(--motion-duration-focus-dim) var(--motion-easing-standard),
+    box-shadow var(--motion-duration-focus-dim) var(--motion-easing-standard);
 }
 
 .ai-welcome .ant-prompts-item:hover {
-  transform: translateY(-2px);
+  transform: translateY(var(--ai-hover-lift));
 }
 
 .ai-welcome .ant-prompts-item:hover .ai-spark {
-  animation: ai-wiggle var(--ai-dur-hover) var(--ai-ease);
+  animation: ai-wiggle var(--motion-duration-focus-dim) var(--motion-easing-standard);
 }
 
 .ai-sender {
@@ -220,7 +220,7 @@
 .ai-hint {
   margin: 0;
   color: var(--ai-text-3);
-  font-size: var(--ai-font-sm);
+  font-size: var(--font-min);
   text-align: center;
 }
 
@@ -245,7 +245,7 @@
   align-items: center;
   gap: var(--ai-gap-sm);
   margin: 0 0 var(--ai-gap-sm);
-  font-size: var(--ai-font);
+  font-size: var(--font-default);
   font-weight: 600;
 }
 
@@ -283,11 +283,11 @@
 .ai-spark {
   transform-box: fill-box;
   transform-origin: center;
-  animation: ai-spark var(--ai-dur-spark) var(--ai-ease) infinite;
+  animation: ai-spark var(--ai-dur-spark) var(--motion-easing-standard) infinite;
 }
 
 .ai-brain {
-  animation: ai-brain var(--ai-dur-brain) var(--ai-ease) infinite;
+  animation: ai-brain var(--ai-dur-brain) var(--motion-easing-standard) infinite;
 }
 
 @keyframes ai-spark {
@@ -348,4 +348,29 @@
 
 .ai-sender .ant-sender:focus-within::after {
   border-width: 1px;
+}
+
+/*
+ * Odak (genel kural: çevreleyen odak halkası yasak).
+ * antd düğmesi ve tarayıcı, odakta çevreleyen çizgi çizer. AI alanında bu çizgi kapalıdır.
+ * Klavye modu foundation işinin motorundan gelir: html[data-focus-mode="keyboard"].
+ * Gösterge alt kenarda tek çizgidir. Renk ve kalınlık foundation değişkenleridir.
+ */
+.ai-scope :focus-visible,
+.ai-scope .ant-btn.ant-btn:focus-visible,
+.ai-scope .ant-actions-list-item:focus-visible {
+  outline: none;
+}
+
+html[data-focus-mode='keyboard'] .ai-scope :focus-visible,
+html[data-focus-mode='keyboard'] .ai-scope .ant-btn.ant-btn:focus-visible {
+  box-shadow: inset 0 calc(var(--focus-indicator-size) * -1) 0 0 var(--focus-indicator-color);
+}
+
+@media (forced-colors: active) {
+  html[data-focus-mode='keyboard'] .ai-scope :focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 0;
+    box-shadow: none;
+  }
 }

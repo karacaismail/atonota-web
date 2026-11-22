@@ -1,14 +1,16 @@
 /**
- * AI Studio, GenUI ve baykuş için tasarım tokenları.
+ * AI Studio, GenUI ve baykuşa özgü tasarım değerleri.
  *
- * Tek kaynak `design/source/control-size-config.json` dosyasıdır.
- * `src/design/` henüz bu alanları dışa aktarmıyor. Bu yüzden değerler burada
- * kaynak dosyadan okunur. `foundation` işi aynı değerleri dışa aktarınca bu
- * modül oradan okuyacak.
+ * Ortak değerler bu dosyada yoktur. Onlar `foundation` işinin CSS
+ * değişkenlerinden gelir. Adlar `src/design/css-variables.ts` dosyasındadır.
+ * Örnek: `--font-ui`, `--radius`, `--card-radius`, `--color-primary`,
+ * `--motion-easing-standard` ve `--focus-indicator-color`.
  *
- * Kaynakta sayı olarak değil cümle içinde yazılan süreler ayrıştırılır.
- * Ayrıştırma başarısız olursa modül yüklenirken hata verir. Böylece kaynak
- * değişince sessizce yanlış süre kullanılmaz.
+ * Bu dosya yalnız AI alanına özgü değerleri tutar. Değerlerin çoğu
+ * `design/source/control-size-config.json` dosyasından okunur. Kaynakta cümle
+ * içinde yazılan değerler ayrıştırılır. Ayrıştırma başarısız olursa modül
+ * yüklenirken hata verir. Böylece kaynak değişince sessizce yanlış değer
+ * kullanılmaz.
  */
 import config from '@design-source/control-size-config.json';
 
@@ -29,12 +31,10 @@ function itemStartingWith(prefix: string): string {
   return item;
 }
 
-const easeMatch = /cubic-bezier\([^)]*\)/.exec(config.aiMotion.decision);
-if (!easeMatch) fail('aiMotion eğrisi');
+const liftMatch = /(\d+)\s*px\s*yükselir/.exec(itemStartingWith('AI önerileri'));
+if (!liftMatch?.[1]) fail('aiMotion öneri kartı yükselmesi');
 
 export const aiMotion = {
-  /** S eğrisi: bütün AI hareketleri bu eğriyi kullanır. */
-  ease: easeMatch[0],
   durations: {
     spark: secondsIn(itemStartingWith('Sparkle'), 'Sparkle'),
     brain: secondsIn(itemStartingWith('Brain'), 'Brain'),
@@ -44,19 +44,8 @@ export const aiMotion = {
     badge: secondsIn(itemStartingWith('AI rozeti'), 'AI rozeti'),
     ring: secondsIn(itemStartingWith('AI kredisi'), 'AI kredisi'),
   },
-} as const;
-
-/**
- * Kaynak dosyanın sayısal alanlarında olan geçiş süreleri.
- * Öneri kartının yükselmesi odak perdesiyle aynı süreyi kullanır.
- * Dropdown süresi kaynak dosyanın "Skew + Scale" kararıdır.
- */
-export const aiTransitions = {
-  hover: config.focusDim.duration,
-  hoverEase: config.focusDim.easing,
-  drawer: config.dropdown.animation.duration,
-  /** Akan yanıt imleci. Değer `control-size-engine.html` içindeki `stCaret` kuralıdır. */
-  caret: 1000,
+  /** Öneri kartı üzerine gelince bu kadar yükselir, px. */
+  hoverLift: Number(liftMatch[1]),
 } as const;
 
 const orbitMatch = /\((\d+(?:\.\d+)?)\s*s\s*\/\s*(\d+(?:\.\d+)?)\s*s\)/.exec(config.mascot.motion);
@@ -102,14 +91,38 @@ export const aiStudioLayout = {
 
 export const genuiRules = config.aiStudio.genui.rules;
 
-/** Kart köşe yarıçapı ve iç boşluğu (`cards` alanı). */
-export const aiCard = { radius: config.cards.radius, padding: config.cards.padding } as const;
+/**
+ * AI alanının ölçüleri. JSON bu ölçüleri tutmaz. Değerler çalışan örnek
+ * `control-size-engine.html` dosyasındaki AI Studio ve GenUI kurallarıdır.
+ * Sütun genişlikleri `ch` birimindedir. Diğerleri px'tir.
+ */
+export const aiSizes = {
+  /** `.st-welcome` en büyük genişliği. */
+  welcomeMaxWidth: 760,
+  /** `.gu-bars` yüksekliği. */
+  chartHeight: 150,
+  /** `.gu-bar i` en büyük genişliği. */
+  chartBarMax: 34,
+  /** `.st-caret` ölçüleri. */
+  caretWidth: 7,
+  caretHeight: 15,
+  /** Akan imlecin yanıp sönme süresi (`stCaret 1s`), ms. */
+  caretBlink: 1000,
+  /** `.gu-skel i` yüksekliği. */
+  skeletonLine: 12,
+  /** Gösterge ve form alanının en küçük genişliği. */
+  kpiMin: 140,
+  fieldMin: 200,
+  /** Tablo açıklama sütununun en küçük ve en büyük genişliği, ch. */
+  textCellMin: 16,
+  textCellMax: 40,
+} as const;
 
-/** Tokenları CSS değişkeni olarak verir. Bileşenler süreyi buradan okur. */
-export function motionCssVars(): Record<`--${string}`, string> {
+/** AI değerlerini CSS değişkeni olarak verir. Bileşenler değeri buradan okur. */
+export function aiCssVars(): Record<`--${string}`, string> {
   const d = aiMotion.durations;
+  const z = aiSizes;
   return {
-    '--ai-ease': aiMotion.ease,
     '--ai-dur-spark': `${d.spark}ms`,
     '--ai-dur-brain': `${d.brain}ms`,
     '--ai-dur-owl': `${d.owl}ms`,
@@ -117,13 +130,22 @@ export function motionCssVars(): Record<`--${string}`, string> {
     '--ai-dur-scan': `${d.scan}ms`,
     '--ai-dur-badge': `${d.badge}ms`,
     '--ai-dur-ring': `${d.ring}ms`,
-    '--ai-dur-hover': `${aiTransitions.hover}ms`,
-    '--ai-ease-hover': aiTransitions.hoverEase,
-    '--ai-dur-caret': `${aiTransitions.caret}ms`,
+    '--ai-dur-caret': `${z.caretBlink}ms`,
     '--ai-dur-orbit-a': `${mascotTokens.orbitDurations[0]}ms`,
     '--ai-dur-orbit-b': `${mascotTokens.orbitDurations[1]}ms`,
     '--ai-dur-blink': `${mascotTokens.blinkPeriod}ms`,
+    '--ai-hover-lift': `-${aiMotion.hoverLift}px`,
     '--ai-left-width': `${aiStudioLayout.left}px`,
     '--ai-right-width': `${aiStudioLayout.right}px`,
+    '--ai-welcome-max': `${z.welcomeMaxWidth}px`,
+    '--ai-chart-h': `${z.chartHeight}px`,
+    '--ai-chart-bar-max': `${z.chartBarMax}px`,
+    '--ai-caret-w': `${z.caretWidth}px`,
+    '--ai-caret-h': `${z.caretHeight}px`,
+    '--ai-skeleton-line': `${z.skeletonLine}px`,
+    '--ai-kpi-min': `${z.kpiMin}px`,
+    '--ai-field-min': `${z.fieldMin}px`,
+    '--ai-cell-text-min': `${z.textCellMin}ch`,
+    '--ai-cell-text-max': `${z.textCellMax}ch`,
   };
 }

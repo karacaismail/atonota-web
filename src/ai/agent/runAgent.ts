@@ -23,9 +23,9 @@ export function emptyAssistant(): AssistantMessage {
 
 function reduce(message: AssistantMessage, event: AgentEvent): AssistantMessage {
   switch (event.type) {
-    case 'step': {
+    case 'tool': {
       const exists = message.steps.some((step) => step.key === event.key);
-      const step = { key: event.key, title: event.title, status: event.status };
+      const step = { key: event.key, tool: event.tool, title: event.title, status: event.status };
       const steps = exists
         ? message.steps.map((s) => (s.key === event.key ? step : s))
         : [...message.steps, step];

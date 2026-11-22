@@ -6,6 +6,7 @@
  */
 import type {
   ChartBar,
+  FieldChange,
   FormField,
   FormOption,
   GenUIBlock,
@@ -64,7 +65,19 @@ function isBar(value: unknown): value is ChartBar {
 }
 
 function isColumn(value: unknown): value is TableColumn {
-  return isObj(value) && str(value['key']) && str(value['title']);
+  const kind = value && isObj(value) ? value['kind'] : undefined;
+  return (
+    isObj(value) &&
+    str(value['key']) &&
+    str(value['title']) &&
+    (kind === undefined || kind === 'id' || kind === 'text')
+  );
+}
+
+function isChange(value: unknown): value is FieldChange {
+  return (
+    isObj(value) && str(value['field']) && str(value['before'], false) && str(value['after'], false)
+  );
 }
 
 function isCell(value: unknown): value is TableCell {
@@ -117,9 +130,11 @@ function validate(raw: Obj): KnownBlock | null {
       return raw as unknown as KnownBlock;
     }
     case 'confirm':
+      // AX-6: değişiklik listesi olmayan onay çizilmez. Düğmesiz JSON görünümüne düşer.
       return str(raw['id']) &&
         str(raw['title']) &&
-        str(raw['detail'], false) &&
+        str(raw['summary']) &&
+        list(raw['changes'], LIMITS.fields, isChange) &&
         str(raw['confirmLabel']) &&
         str(raw['cancelLabel']) &&
         (raw['danger'] === undefined || typeof raw['danger'] === 'boolean')

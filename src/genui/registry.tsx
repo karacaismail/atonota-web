@@ -6,11 +6,13 @@ import { ConfirmView } from './blocks/ConfirmView';
 import { FormView } from './blocks/FormView';
 import { KpisView } from './blocks/KpisView';
 import { TableView } from './blocks/TableView';
-import type { BlockType, GenUIAction, KnownBlock } from './types';
+import type { BlockType, GenUIActionHandler, KnownBlock } from './types';
 
 export interface BlockProps<T extends KnownBlock> {
   block: T;
-  onAction: (action: GenUIAction) => void;
+  onAction: GenUIActionHandler;
+  /** Sohbet yanıt beklerken `true`. Eylem düğmeleri kapanır. */
+  busy?: boolean;
 }
 
 type Registry = {

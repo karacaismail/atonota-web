@@ -3,6 +3,9 @@ import { CheckCircle, Circle, XCircle } from '@phosphor-icons/react';
 
 import type { AgentStep } from '../agent';
 
+/** Sahte sunucunun araç olayları örnektir. Ekran bunu açıkça söyler (AX-7). */
+export const SIMULATED_TOOLS_NOTE = 'Örnek adımlar. Gerçek araç çalışmadı.';
+
 const STEP_ICON: Record<AgentStep['status'], ThoughtChainItem['icon']> = {
   pending: <Circle aria-hidden />,
   success: <CheckCircle weight="fill" aria-hidden />,

@@ -4,11 +4,16 @@ import { Table } from 'antd';
 import type { TableBlock, TableCell } from '../types';
 
 export function TableView({ block }: { block: TableBlock }) {
-  const columns = block.columns.map((column) => ({
-    key: column.key,
-    dataIndex: column.key,
-    title: column.title,
-  }));
+  // Satır anahtarı sütunu her zaman kimliktir. Diğerleri açıklamadır, sarılır.
+  const columns = block.columns.map((column) => {
+    const kind = column.key === block.rowKey ? 'id' : (column.kind ?? 'text');
+    return {
+      key: column.key,
+      dataIndex: column.key,
+      title: column.title,
+      className: kind === 'id' ? 'genui-cell-id' : 'genui-cell-text',
+    };
+  });
   return (
     <section data-genui="table" className="genui-card">
       <header className="genui-card-h">

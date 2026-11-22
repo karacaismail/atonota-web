@@ -4,7 +4,7 @@
   flex-shrink: 0;
   overflow: visible;
   vertical-align: middle;
-  animation: owl-float var(--owl-dur-float) var(--owl-ease) infinite;
+  animation: owl-float var(--owl-dur-float) var(--motion-easing-standard) infinite;
 }
 
 .owl .owl-orbit ellipse {

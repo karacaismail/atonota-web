@@ -44,7 +44,6 @@ export function OwlMark({ size = 28, label, className }: OwlMarkProps) {
   const c = mascotTokens.colors;
   const style = {
     '--owl-dur-float': `${aiMotion.durations.owl}ms`,
-    '--owl-ease': aiMotion.ease,
     '--owl-dur-blink': `${mascotTokens.blinkPeriod}ms`,
   } as CSSProperties;
 

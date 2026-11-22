@@ -1,29 +1,43 @@
 import { CheckCircle, Warning, XCircle } from '@phosphor-icons/react';
-import { Button } from 'antd';
+import { Alert, Button } from 'antd';
 import { useState } from 'react';
 
-import type { ConfirmBlock, GenUIAction } from '../types';
+import type { ConfirmBlock, GenUIActionHandler } from '../types';
+import { ChangeTable } from './ChangeTable';
 
 type Decision = 'approved' | 'rejected';
 
+export const BUSY_NOTE = 'Yanıt bitince onay verebilirsiniz.';
+export const FAILED_NOTE = 'Onay gönderilemedi. Yanıt bitince yeniden deneyin.';
+
 /**
- * Onay bloğu (U4). Kendi başına işlem yapmaz.
- * Kullanıcı düğmeye basınca karar sohbete yeni mesaj olarak gider.
- * Karar verildikten sonra blok kilitlenir. Böylece aynı karar iki kez gitmez.
+ * Sabit onay ekranı (U4, AX-4, AX-6). Kendi başına işlem yapmaz.
+ * İşlem özetini ve değişecek alanları önce ve sonra biçiminde gösterir.
+ * Sohbet meşgulken düğmeler kapalıdır. Blok yalnız karar sohbete kabul
+ * edilince kilitlenir. Böylece aynı karar iki kez gitmez ve kaybolmaz.
  */
 export function ConfirmView({
   block,
   onAction,
+  busy = false,
 }: {
   block: ConfirmBlock;
-  onAction: (action: GenUIAction) => void;
+  onAction: GenUIActionHandler;
+  busy?: boolean;
 }) {
   const [decision, setDecision] = useState<Decision | null>(null);
+  const [failed, setFailed] = useState(false);
 
   const decide = (next: Decision) => {
-    if (decision) return;
-    setDecision(next);
-    onAction({ kind: 'confirm', blockId: block.id, decision: next, title: block.title });
+    if (decision || busy) return;
+    const accepted = onAction({
+      kind: 'confirm',
+      blockId: block.id,
+      decision: next,
+      title: block.title,
+    });
+    if (accepted) setDecision(next);
+    setFailed(!accepted);
   };
 
   if (decision) {
@@ -45,23 +59,27 @@ export function ConfirmView({
 
   return (
     <section data-genui="confirm" className="genui-card genui-confirm">
-      <span className="genui-warn" aria-hidden>
-        <Warning />
-      </span>
-      <div className="genui-confirm-t">
+      <header className="genui-card-h">
+        <span className="genui-warn" aria-hidden>
+          <Warning />
+        </span>
         <strong>{block.title}</strong>
-        {block.detail && <span className="genui-muted-text">{block.detail}</span>}
-      </div>
+      </header>
+      <p className="genui-summary">{block.summary}</p>
+      <ChangeTable changes={block.changes} />
+      {busy && <p className="genui-muted-text">{BUSY_NOTE}</p>}
+      {failed && <Alert type="error" showIcon message={FAILED_NOTE} role="alert" />}
       <div className="genui-actions">
         <Button
           size="small"
           type="primary"
           danger={block.danger ?? false}
+          disabled={busy}
           onClick={() => decide('approved')}
         >
           {block.confirmLabel}
         </Button>
-        <Button size="small" onClick={() => decide('rejected')}>
+        <Button size="small" disabled={busy} onClick={() => decide('rejected')}>
           {block.cancelLabel}
         </Button>
       </div>

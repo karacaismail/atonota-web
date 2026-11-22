@@ -34,6 +34,11 @@ export interface ChartBlock {
 export interface TableColumn {
   key: string;
   title: string;
+  /**
+   * `id`: kimlik ya da kısa değer. Satır sarılmaz, en küçük genişlik korunur.
+   * `text`: açıklama. Kelimeler arasından sarılır. Varsayılan budur.
+   */
+  kind?: 'id' | 'text';
 }
 
 export type TableCell = string | number;
@@ -46,12 +51,25 @@ export interface TableBlock {
   rows: Record<string, TableCell>[];
 }
 
+/** Yazma işleminde değişecek tek alan. Onay ekranı önce ve sonra değerini gösterir. */
+export interface FieldChange {
+  field: string;
+  before: string;
+  after: string;
+}
+
 export interface ConfirmBlock {
   type: 'confirm';
-  /** Sunucu kararı bu kimlikle eşleştirir. */
+  /**
+   * İşlem kimliği. Sunucu onayı bu kimliğe bağlar.
+   * Onay tek kullanımlıktır. Aynı kimlik ikinci kez gönderilmez.
+   */
   id: string;
   title: string;
-  detail?: string;
+  /** İşlemin özeti. Örnek: kime ne gideceği ve geri alınıp alınamayacağı. */
+  summary: string;
+  /** Değişecek alanlar. Boş olamaz. Kullanıcı değişikliği görmeden onay vermez. */
+  changes: FieldChange[];
   confirmLabel: string;
   cancelLabel: string;
   danger?: boolean;
@@ -99,6 +117,12 @@ export type GenUIBlock = KnownBlock | UnknownBlock;
 export type BlockType = KnownBlock['type'];
 
 export type FormValues = Record<string, string | string[]>;
+
+/**
+ * Eylemi alan işlev. Eylem sohbete kabul edildiyse `true` döner.
+ * `false` dönerse blok kilitlenmez ve kullanıcıya durum gösterilir.
+ */
+export type GenUIActionHandler = (action: GenUIAction) => boolean;
 
 /**
  * Bloktan çıkan kullanıcı eylemi.

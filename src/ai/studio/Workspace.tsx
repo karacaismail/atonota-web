@@ -1,12 +1,14 @@
 import { ThoughtChain } from '@ant-design/x';
-import { Brain, Paperclip, ShieldCheck } from '@phosphor-icons/react';
+import { Paperclip, ShieldCheck, Wrench } from '@phosphor-icons/react';
 import { Tag } from 'antd';
 
 import type { AgentSource, AgentStep } from '../agent';
-import { toChainItems } from './chain';
+import { SIMULATED_TOOLS_NOTE, toChainItems } from './chain';
+
+export const FILE_NAME_ONLY_NOTE = 'Yalnız dosya adı gönderilir. Dosya içeriği okunmaz.';
 
 /**
- * Sağdaki çalışma alanı: düşünce zinciri, bağlam ve güvenlik.
+ * Sağdaki çalışma alanı: araç işlemleri, bu sohbetin dosya adları ve güvenlik.
  * Kaynak ve mod her zaman görünür (AX-7).
  */
 export function Workspace({
@@ -22,20 +24,24 @@ export function Workspace({
     <aside className="ai-workspace" aria-label="Çalışma alanı">
       <section>
         <h2 className="ai-panel-h">
-          <Brain className="ai-brain" aria-hidden />
-          Düşünce adımları
+          <Wrench aria-hidden />
+          Araç işlemleri
         </h2>
         {steps.length > 0 ? (
-          <ThoughtChain size="small" items={toChainItems(steps)} />
+          <>
+            {source.simulated && <p className="ai-note">{SIMULATED_TOOLS_NOTE}</p>}
+            <ThoughtChain size="small" items={toChainItems(steps)} />
+          </>
         ) : (
-          <p className="ai-note">Henüz adım yok. Adımları yalnız sunucu gönderir.</p>
+          <p className="ai-note">Henüz araç işlemi yok. Listeyi yalnız sunucu gönderir.</p>
         )}
       </section>
       <section>
         <h2 className="ai-panel-h">
           <Paperclip aria-hidden />
-          Bağlam dosyaları
+          Bu sohbetin dosya adları
         </h2>
+        <p className="ai-note">{FILE_NAME_ONLY_NOTE}</p>
         {files.length > 0 ? (
           <ul className="ai-files">
             {files.map((name) => (

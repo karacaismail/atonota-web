@@ -1,14 +1,6 @@
 import './studio.css';
 
-import {
-  Attachments,
-  Bubble,
-  Prompts,
-  Sender,
-  Suggestion,
-  Welcome,
-  XProvider,
-} from '@ant-design/x';
+import { Attachments, Bubble, Prompts, Sender, Suggestion, Welcome } from '@ant-design/x';
 import type { AttachmentsProps } from '@ant-design/x';
 import {
   ArrowClockwise,
@@ -22,7 +14,6 @@ import {
 } from '@phosphor-icons/react';
 import { App, Button, Drawer, Tag } from 'antd';
 import type { GetProp } from 'antd';
-import trTR from 'antd/locale/tr_TR';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 import type { GenUIAction } from '@/genui';
@@ -38,7 +29,7 @@ import { AssistantBody } from './AssistantBody';
 import { ConversationsPanel, type StudioConversation } from './ConversationsPanel';
 import { SLASH_COMMANDS, WELCOME_PROMPTS } from './content';
 import { actionToMessage, useStudioChat } from './useStudioChat';
-import { Workspace } from './Workspace';
+import { FILE_NAME_ONLY_NOTE, Workspace } from './Workspace';
 
 /**
  * Taşıyıcı verilmezse sahte sunucu kullanılır.
@@ -61,11 +52,14 @@ type BubbleItem = GetProp<typeof Bubble.List, 'items'>[number];
 
 type StoredMessages = ReturnType<typeof useStudioChat>['messages'];
 
+type FileItems = NonNullable<AttachmentsProps['items']>;
+
 function StudioInner({ transport, source }: { transport: AgentTransport; source: AgentSource }) {
   const { message: toast } = App.useApp();
   const vars = useGenuiVars();
   const wide = useMediaQuery(WIDE_QUERY);
-  const { messages, setMessages, send, cancel, regenerate, busy } = useStudioChat(transport);
+  const { messages, setMessages, send, cancel, regenerate, retryKind, busy } =
+    useStudioChat(transport);
 
   const [conversations, setConversations] = useState(FIRST_CONVERSATIONS);
   const [activeKey, setActiveKey] = useState('c1');
@@ -74,7 +68,11 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
 
   const [value, setValue] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
-  const [files, setFiles] = useState<NonNullable<AttachmentsProps['items']>>([]);
+  // Dosyalar sohbete bağlıdır. Başka sohbete geçince taşınmaz.
+  const [filesByConversation, setFilesByConversation] = useState<Record<string, FileItems>>({});
+  const files = filesByConversation[activeKey] ?? [];
+  const setFiles = (list: FileItems) =>
+    setFilesByConversation((all) => ({ ...all, [activeKey]: list }));
   const [feedback, setFeedback] = useState<Record<string, Feedback>>({});
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
@@ -90,10 +88,15 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
   }, [messages]);
 
   const submit = useCallback(
-    (text: string) => {
+    (text: string): boolean => {
       const trimmed = text.trim();
-      if (!trimmed || busy) return;
-      send({ role: 'user', text: trimmed, ...(fileNames.length ? { files: fileNames } : {}) });
+      if (!trimmed || busy) return false;
+      const accepted = send({
+        role: 'user',
+        text: trimmed,
+        ...(fileNames.length ? { files: fileNames } : {}),
+      });
+      if (!accepted) return false;
       setValue('');
       setConversations((all) =>
         all.map((c) =>
@@ -102,15 +105,14 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
             : c,
         ),
       );
+      return true;
     },
     [activeKey, busy, fileNames, send],
   );
 
   const onAction = useCallback(
-    (action: GenUIAction) => {
-      if (action.kind === 'ask') submit(action.text);
-      else send(actionToMessage(action));
-    },
+    (action: GenUIAction): boolean =>
+      action.kind === 'ask' ? submit(action.text) : send(actionToMessage(action)),
     [send, submit],
   );
 
@@ -133,6 +135,9 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
     const rest = conversations.filter((c) => c.key !== key);
     if (rest.length === 0) return;
     store.current = Object.fromEntries(Object.entries(store.current).filter(([k]) => k !== key));
+    setFilesByConversation((all) =>
+      Object.fromEntries(Object.entries(all).filter(([k]) => k !== key)),
+    );
     setConversations(rest);
     if (key === activeKey && rest[0]) {
       cancel();
@@ -210,7 +215,14 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
       content: message,
       messageRender: (m: ChatMessage) =>
         m.role === 'assistant' ? (
-          <AssistantBody message={m} onAction={onAction} onRetry={() => regenerate(key)} />
+          <AssistantBody
+            message={m}
+            onAction={onAction}
+            onRetry={() => regenerate(key)}
+            retryKind={retryKind(id)}
+            busy={busy}
+            simulated={source.simulated}
+          />
         ) : null,
       ...(finished
         ? {
@@ -262,7 +274,8 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
             );
           }}
           header={
-            <Sender.Header title="Bağlam dosyaları" open={attachOpen} onOpenChange={setAttachOpen}>
+            <Sender.Header title="Dosya adları" open={attachOpen} onOpenChange={setAttachOpen}>
+              <p className="ai-note">{FILE_NAME_ONLY_NOTE}</p>
               <Attachments
                 items={files}
                 beforeUpload={() => false}
@@ -270,7 +283,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
                 placeholder={{
                   icon: <UploadSimple aria-hidden />,
                   title: 'Dosyayı buraya bırakın',
-                  description: 'Dosya yalnız bu sohbetin bağlamına eklenir.',
+                  description: 'Dosyanın adı yalnız bu sohbete eklenir.',
                 }}
               />
             </Sender.Header>
@@ -292,7 +305,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
   const right = <Workspace steps={latestSteps} files={fileNames} source={source} />;
 
   return (
-    <div className={`ai-studio ${wide ? 'is-wide' : 'is-narrow'}`} style={vars}>
+    <div className={`ai-studio ai-scope ${wide ? 'is-wide' : 'is-narrow'}`} style={vars}>
       {wide && <div className="ai-col ai-col-left">{left}</div>}
 
       <main className="ai-main" aria-label="AI Studio">
@@ -362,6 +375,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
             placement="left"
             open={leftOpen}
             onClose={() => setLeftOpen(false)}
+            rootClassName="ai-scope"
             width={`min(85vw, ${aiStudioLayout.left + 60}px)`}
             rootStyle={vars}
           >
@@ -372,6 +386,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
             placement="right"
             open={rightOpen}
             onClose={() => setRightOpen(false)}
+            rootClassName="ai-scope"
             width={`min(85vw, ${aiStudioLayout.right + 60}px)`}
             rootStyle={vars}
           >
@@ -384,6 +399,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
 }
 
 /**
+ * Tema, Türkçe dil ve odak modu foundation işinin `AppProviders` katmanından gelir.
  * AI Studio sayfası. Solda sohbetler, ortada mesajlar, sağda çalışma alanı.
  * Dar ekranda tek sütun olur. Sol ve sağ bölüm çekmeceye taşınır.
  */
@@ -391,10 +407,8 @@ export function AiStudio({ transport, source }: AiStudioProps) {
   const resolvedTransport = useMemo(() => transport ?? createMockTransport(), [transport]);
   const resolvedSource = source ?? MOCK_SOURCE;
   return (
-    <XProvider locale={trTR}>
-      <App component={false}>
-        <StudioInner transport={resolvedTransport} source={resolvedSource} />
-      </App>
-    </XProvider>
+    <App component={false}>
+      <StudioInner transport={resolvedTransport} source={resolvedSource} />
+    </App>
   );
 }
