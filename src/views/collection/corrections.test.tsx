@@ -6,6 +6,21 @@ import { exampleDefinition, exampleSource } from './example';
 import { displayCell } from './presentation';
 
 describe('review corrections', () => {
+  it('reuses a validated page when returning within the same collection scope', async () => {
+    const list = vi.fn(exampleSource.list);
+    render(
+      <MemoryRouter>
+        <CollectionView definition={exampleDefinition} source={{ kind: 'api', list }} />
+      </MemoryRouter>,
+    );
+    await screen.findByText('EXAMPLE-001');
+    fireEvent.click(screen.getByRole('button', { name: 'Sonraki sayfa' }));
+    await screen.findByText('EXAMPLE-021');
+    fireEvent.click(screen.getByRole('button', { name: 'Önceki sayfa' }));
+    await screen.findByText('EXAMPLE-001');
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+
   it.each(['kanban', 'pivot', 'report', 'gantt', 'timesheet'])(
     'keeps %s unavailable by default even from a shared URL',
     async (view) => {
