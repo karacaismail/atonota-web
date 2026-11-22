@@ -4,7 +4,7 @@
  */
 import { theme as antdThemeApi } from 'antd';
 
-import { darkenToContrast, hexToRgba, minAlphaForContrast } from './color';
+import { blendOver, contrastRatio, darkenToContrast, hexToRgba, minAlphaForContrast } from './color';
 import { designSource, type SizeKey, type ThemeMode } from './source';
 
 const s = designSource;
@@ -43,6 +43,21 @@ const DARK_TEXT_OPACITY = minAlphaForContrast({
   surfaces: DARK_SURFACES,
 });
 
+/**
+ * Basılı durum zemini. Kaynak %28 der; %100 metinle bile 4.09:1 kalır.
+ * Yerleşim zemininde 4.5:1 veren en büyük opaklığa (≤ kaynak) programatik iner.
+ */
+function maxBackgroundAlphaForContrast(startAlpha: number, surface: string): number {
+  let alpha = Math.round(startAlpha * 100);
+  const ok = (a: number) => {
+    const bg = blendOver(s.primary.color, a / 100, surface);
+    return contrastRatio(blendOver(s.primary.dark.text, 1, bg), bg) >= 4.5;
+  };
+  while (alpha > 0 && !ok(alpha)) alpha -= 1;
+  return alpha / 100;
+}
+const DARK_ACTIVE_BG_ALPHA = maxBackgroundAlphaForContrast(s.primary.dark.activeBackground, s.darkPalette.layout);
+
 export const primary = {
   color: s.primary.color,
   hover: s.primary.hover,
@@ -64,7 +79,8 @@ export const primary = {
     textHover: hexToRgba(s.primary.dark.text, s.primary.dark.hoverOpacity),
     background: hexToRgba(s.primary.color, s.primary.dark.background),
     backgroundHover: hexToRgba(s.primary.color, s.primary.dark.hoverBackground),
-    backgroundActive: hexToRgba(s.primary.color, s.primary.dark.activeBackground),
+    backgroundActiveOpacity: DARK_ACTIVE_BG_ALPHA,
+    backgroundActive: hexToRgba(s.primary.color, DARK_ACTIVE_BG_ALPHA),
   },
 } as const;
 
@@ -194,6 +210,56 @@ export const dropdown = {
   joinedItems: s.dropdown.joinedItems.value,
   attachedSelect: s.dropdown.attachedSelect.value,
   attachedButton: s.dropdown.attachedButton.value,
+} as const;
+
+/** antd varsayılan takma tokenları: boşluk, katman sırası ve ekran eşikleri. Algoritmadan bağımsızdır. */
+const antdDefaults = antdThemeApi.getDesignToken();
+
+/**
+ * Boşluk ölçeği. antd takma tokenlarından türetilir; bileşenler sayı yazmaz.
+ * xxs 4, xs 8, sm 12, md 16, lg 24, xl 32, xxl 48 px.
+ */
+export const space = {
+  xxs: antdDefaults.paddingXXS,
+  xs: antdDefaults.paddingXS,
+  sm: antdDefaults.paddingSM,
+  md: antdDefaults.padding,
+  lg: antdDefaults.paddingLG,
+  xl: antdDefaults.paddingXL,
+  xxl: antdDefaults.paddingXL + antdDefaults.padding,
+} as const;
+
+/** Katman sırası. Perde antd açılır katmanının hemen altında, açan öğe antd katmanında. */
+export const layer = {
+  popupBase: antdDefaults.zIndexPopupBase,
+  dimOverlay: antdDefaults.zIndexPopupBase - 1,
+  dimSource: antdDefaults.zIndexPopupBase,
+} as const;
+
+/** Okuma genişliği ve içerik eşikleri (antd ekran eşikleri). */
+export const layout = {
+  contentMaxWidth: antdDefaults.screenLG,
+  screenSM: antdDefaults.screenSM,
+  screenMD: antdDefaults.screenMD,
+  screenLG: antdDefaults.screenLG,
+  screenXL: antdDefaults.screenXL,
+  sidebarWidth: s.sidebar.widthExpanded,
+  sidebarRailWidth: s.sidebar.widthCollapsed,
+  cardPadding: s.cards.padding,
+} as const;
+
+/**
+ * Tablo sütunu en küçük genişlikleri (içerik türüne göre). Sütunlar sıkışmaz; tablo kendi
+ * kapsayıcısında yatay kayar. Değerler buton ölçeğinden türetilir: md yükseklik 42 px.
+ */
+export const table = {
+  columnMinWidth: {
+    action: sizes.button.md.height * 2,
+    number: sizes.button.md.height * 2 + space.sm,
+    date: sizes.button.md.height * 3,
+    text: sizes.button.md.height * 4,
+    title: sizes.button.md.height * 5,
+  },
 } as const;
 
 export function shadowsFor(mode: ThemeMode) {

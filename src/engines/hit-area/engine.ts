@@ -133,7 +133,14 @@ export function computeOnce(options: HitAreaEngineOptions = {}): HitResult[] {
       return { box, active: box.width > 0 && box.height > 0 };
     },
   );
-  const computeOptions: { expand?: number; minTarget?: number } = {};
+  // Sayfa kenarı: dokunma katmanı yatay kaydırma yaratmasın (yalnız sol ve sağ kenar).
+  const computeOptions: {
+    expand?: number;
+    minTarget?: number;
+    bounds?: { left: number; right: number };
+  } = {};
+  const pageWidth = document.documentElement.clientWidth;
+  if (pageWidth > 0) computeOptions.bounds = { left: 0, right: pageWidth };
   if (options.expand !== undefined) computeOptions.expand = options.expand;
   if (options.minTarget !== undefined) computeOptions.minTarget = options.minTarget;
   const results = computeHitAreas(targets, obstacles, computeOptions);

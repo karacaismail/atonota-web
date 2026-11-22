@@ -51,6 +51,8 @@ export interface HitResult {
 }
 
 export interface ComputeOptions {
+  /** Sayfa kenarı sınırı (R3'ün özel hali): genişleme bu kenarları aşamaz. */
+  bounds?: { left?: number; right?: number; top?: number; bottom?: number };
   expand?: number;
   minTarget?: number;
   /** İki kutunun aynı satır veya sütun sayılması için gereken örtüşme (px). */
@@ -140,6 +142,13 @@ export function computeHitAreas(
     for (const o of obstacles) {
       if (!o.active) continue;
       limitByNeighbour(ext, a.box, o.box, epsilon);
+    }
+    if (options.bounds) {
+      const { left, right, top, bottom } = options.bounds;
+      if (left !== undefined) ext.l = Math.min(ext.l, Math.max(0, a.box.left - left));
+      if (right !== undefined) ext.r = Math.min(ext.r, Math.max(0, right - a.box.right));
+      if (top !== undefined) ext.t = Math.min(ext.t, Math.max(0, a.box.top - top));
+      if (bottom !== undefined) ext.b = Math.min(ext.b, Math.max(0, bottom - a.box.bottom));
     }
     const border = { t: 0, r: 0, b: 0, l: 0, ...a.border };
     const hit = { width: a.box.width + ext.l + ext.r, height: a.box.height + ext.t + ext.b };

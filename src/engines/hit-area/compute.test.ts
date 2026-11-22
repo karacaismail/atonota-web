@@ -161,3 +161,26 @@ describe('dokunma alanı hesabı (R1–R10)', () => {
     expect(r?.extension.r).toBeCloseTo(3.99, 2);
   });
 });
+
+describe('sayfa kenarı sınırı', () => {
+  it('genişleme sayfa kenarını aşamaz', () => {
+    const bounds = { left: 0, right: 320 };
+    const [a, b] = computeHitAreas(
+      [target('a', box(0, 0, 100, 42)), target('b', box(300, 0, 20, 42))],
+      [],
+      { bounds },
+    );
+    expect(a?.extension.l).toBe(0);
+    expect(a?.extension.r).toBeCloseTo(6, 6);
+    expect(b?.extension.r).toBe(0);
+    expect(a?.limitedByNeighbour).toBe(true);
+  });
+
+  it('kenardan uzak kontrol etkilenmez', () => {
+    const [a] = computeHitAreas([target('a', box(50, 0, 100, 42))], [], {
+      bounds: { left: 0, right: 320 },
+    });
+    expect(a?.extension.l).toBeCloseTo(6, 6);
+    expect(a?.extension.r).toBeCloseTo(6, 6);
+  });
+});
