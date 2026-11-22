@@ -1,0 +1,304 @@
+.collection {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+  padding: var(--collection-gap);
+  color: var(--collection-text);
+  background: var(--collection-bg);
+  font-family: var(--font-ui);
+  font-size: var(--collection-font);
+  line-height: var(--collection-line);
+}
+.collection *,
+.collection *::before,
+.collection *::after {
+  box-sizing: border-box;
+}
+.collection section,
+.collection label {
+  min-width: 0;
+}
+.collection p {
+  margin: 0 0 var(--collection-gap);
+}
+.collection-header h2 {
+  margin: 0;
+  font-size: var(--collection-title);
+  line-height: normal;
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+.collection-lane h2 {
+  font-size: var(--collection-font);
+}
+.collection-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--collection-gap);
+  padding-block: var(--collection-gap) var(--collection-padding);
+}
+.collection-sensitive {
+  display: block;
+  color: var(--collection-muted);
+  font-weight: normal;
+}
+.collection-eyebrow {
+  color: var(--collection-muted);
+}
+.collection-example {
+  color: var(--collection-badge-text);
+  padding: calc(var(--collection-gap) / 2) var(--collection-gap);
+  background: var(--collection-badge-bg);
+  border-radius: var(--collection-radius);
+}
+.collection-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--collection-gap);
+  align-items: end;
+  margin-bottom: var(--collection-gap);
+}
+.collection-grow {
+  flex: 1;
+  min-width: var(--collection-column);
+}
+.collection label:not(.collection-checkbox) > span:first-child {
+  display: block;
+  margin-bottom: calc(var(--collection-gap) / 2);
+}
+.collection-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--collection-column)), 1fr));
+  gap: var(--collection-gap);
+  margin-bottom: var(--collection-padding);
+}
+.collection label .collection-select {
+  width: 100%;
+}
+.collection-applied,
+.collection-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--collection-gap);
+  align-items: center;
+  padding-block: var(--collection-gap);
+}
+.collection-bulk {
+  background: var(--collection-selected);
+  padding-inline: var(--collection-gap);
+}
+.collection-applied p {
+  margin: 0;
+}
+.collection-state {
+  padding: var(--collection-padding) var(--collection-gap);
+  background: var(--collection-surface);
+}
+.collection-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: var(--collection-gap);
+}
+.collection-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.collection-table th,
+.collection-table td {
+  padding: var(--collection-gap);
+  text-align: start;
+  vertical-align: top;
+  min-width: var(--collection-column);
+  border-bottom: 1px solid var(--collection-border);
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+.collection-table th {
+  font-weight: 600;
+  background: var(--collection-surface);
+}
+.collection-table .collection-selection,
+.collection-table[data-view='table'] td:first-child {
+  min-width: var(--collection-control);
+}
+.collection-table .collection-number {
+  min-width: var(--collection-number);
+  text-align: end;
+}
+.collection-table [data-selected='true'] {
+  background: var(--collection-selected);
+}
+.collection-table tbody tr {
+  transition: background-color var(--collection-duration) var(--collection-ease);
+}
+.collection-table tbody tr:hover {
+  background: var(--collection-surface);
+}
+.collection-table .collection-checkbox {
+  margin: 0;
+  min-height: var(--collection-control);
+  min-width: var(--collection-control);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.collection-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--collection-gap);
+  align-items: end;
+  padding-top: var(--collection-padding);
+}
+.collection-pagination p {
+  margin: 0;
+  flex-basis: 100%;
+}
+.collection-pagination label {
+  flex: 1;
+  min-width: var(--collection-column);
+}
+.collection-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--collection-gap);
+}
+.collection-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--collection-lane)), 1fr));
+  gap: var(--collection-padding);
+}
+.collection-lane ul,
+.collection-report {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.collection-lane li {
+  padding: var(--collection-gap);
+  margin-bottom: var(--collection-gap);
+  background: var(--collection-surface);
+  border-radius: var(--collection-radius);
+}
+.collection-lane p {
+  margin-block: var(--collection-gap) 0;
+}
+.collection-report li {
+  padding-block: var(--collection-gap);
+}
+.collection-track {
+  height: var(--collection-gap);
+  background: var(--collection-elevated);
+}
+.collection-track > span {
+  display: block;
+  height: 100%;
+  background: var(--collection-primary);
+}
+.collection-timeline td {
+  min-width: var(--collection-timeline);
+}
+.collection-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.collection .collection-input-suffix {
+  display: none;
+}
+.collection-scroll:focus,
+.collection .collection-hit:focus,
+.collection .collection-hit :focus,
+.collection .collection-hit:focus-visible,
+.collection .collection-hit :focus-visible {
+  outline: none;
+}
+html[data-focus-mode='keyboard'] .collection-scroll:focus-visible,
+html[data-focus-mode='keyboard'] .collection .collection-hit:focus-visible,
+html[data-focus-mode='keyboard'] .collection .collection-hit:has(:focus-visible) {
+  box-shadow: inset 0 calc(-1 * var(--collection-mark)) 0 var(--collection-focus);
+}
+html[data-focus-mode='keyboard'] .collection .collection-hit :focus-visible {
+  box-shadow: none;
+}
+.collection-dropdown-enter-active,
+.collection-dropdown-appear-active {
+  animation: collection-dropdown-in var(--motion-duration-dropdown) var(--motion-easing-dropdown)
+    both;
+}
+.collection-dropdown-leave-active {
+  animation: collection-dropdown-out var(--motion-duration-dropdown) var(--motion-easing-dropdown)
+    both;
+}
+@keyframes collection-dropdown-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) skew(-6deg, -2deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.01) skew(1deg, 0.3deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes collection-dropdown-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.92) skew(-6deg, -2deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .collection-table tbody tr {
+    transition: none;
+  }
+}
+@media (forced-colors: active) {
+  html[data-focus-mode='keyboard'] .collection-scroll:focus-visible,
+  html[data-focus-mode='keyboard'] .collection .collection-hit:focus-visible,
+  html[data-focus-mode='keyboard'] .collection .collection-hit :focus-visible {
+    outline: 2px solid CanvasText;
+    box-shadow: none;
+  }
+  html[data-focus-mode='keyboard'] .collection .collection-hit:has(:focus-visible) {
+    box-shadow: none;
+  }
+}
+
+/* Affix and Select roots own the expanded edge; their native inner controls remain
+ * directly interactive. Shared hit-area geometry supplies these four offsets. */
+.collection-input::after,
+.collection-select::after {
+  pointer-events: auto;
+  clip-path: polygon(
+    evenodd,
+    0 0,
+    100% 0,
+    100% 100%,
+    0 100%,
+    0 0,
+    var(--hit-l, 0px) var(--hit-t, 0px),
+    var(--hit-l, 0px) calc(100% - var(--hit-b, 0px)),
+    calc(100% - var(--hit-r, 0px)) calc(100% - var(--hit-b, 0px)),
+    calc(100% - var(--hit-r, 0px)) var(--hit-t, 0px),
+    var(--hit-l, 0px) var(--hit-t, 0px)
+  );
+}
