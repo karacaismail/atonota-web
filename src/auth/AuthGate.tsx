@@ -3,6 +3,7 @@ import { type ReactNode, useEffect } from 'react';
 
 import { userMessage } from '@/api/errors';
 
+import { AuthLayout } from './AuthLayout';
 import { LoginScreen } from './LoginScreen';
 import messages from './messages.json';
 import type { PlatformSession } from './session';
@@ -38,14 +39,30 @@ export function AuthGate({ session, children, brandName }: AuthGateProps) {
       );
     case 'error':
       return (
-        <section>
-          <Typography.Paragraph role="alert">{userMessage(state.error)}</Typography.Paragraph>
-          <Button onClick={() => void session.auth.check()}>{text.retry}</Button>
-        </section>
+        <AuthLayout>
+          <Typography.Paragraph role="alert" style={{ margin: 0 }}>
+            {userMessage(state.error)}
+          </Typography.Paragraph>
+          <Button block onClick={() => void session.auth.check()}>
+            {text.retry}
+          </Button>
+        </AuthLayout>
       );
     case 'redirecting':
-      return <Typography.Paragraph role="status">{text.redirecting}</Typography.Paragraph>;
+      return (
+        <AuthLayout>
+          <Typography.Paragraph role="status" style={{ margin: 0 }}>
+            {text.redirecting}
+          </Typography.Paragraph>
+        </AuthLayout>
+      );
     case 'checking':
-      return <Typography.Paragraph role="status">{text.checking}</Typography.Paragraph>;
+      return (
+        <AuthLayout>
+          <Typography.Paragraph role="status" style={{ margin: 0 }}>
+            {text.checking}
+          </Typography.Paragraph>
+        </AuthLayout>
+      );
   }
 }
