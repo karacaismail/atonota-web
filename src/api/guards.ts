@@ -403,3 +403,15 @@ export const isRevoked: Guard<Revoked> = (value): value is Revoked =>
   typeof value.revoked === 'number' &&
   Number.isInteger(value.revoked) &&
   value.revoked >= 0;
+
+// Frappe API v2 kayıt listesi (src/api/frappe-v2.ts).
+export interface RawDocumentPage {
+  data: Record<string, unknown>[];
+  has_next_page: boolean;
+}
+
+export const isRawDocumentPage: Guard<RawDocumentPage> = (value): value is RawDocumentPage =>
+  isRecord(value) &&
+  Array.isArray(value.data) &&
+  value.data.every(isRecord) &&
+  typeof value.has_next_page === 'boolean';

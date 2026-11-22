@@ -8,6 +8,9 @@ import {
   SAMPLE_USER as SAMPLE_ACCOUNT,
   sampleAccessSummary,
   sampleInstallations,
+  RESTRICTED_SAMPLE_DOCTYPE,
+  SAMPLE_COLLECTION_DOCTYPE,
+  sampleCollection,
   sampleLeaves,
   SAMPLE_CSRF_TOKEN,
   SAMPLE_DOCTYPE_ETAG,
@@ -137,6 +140,45 @@ function pwaGuard(request: Request): Response | undefined {
 
 const INSTALLATION_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+type CollectionRow = (typeof sampleCollection)[number];
+
+const COMPARE: Record<string, (left: unknown, right: unknown) => boolean> = {
+  '=': (left, right) => left === right,
+  '!=': (left, right) => left !== right,
+  '>': (left, right) => Number(left) > Number(right),
+  '<': (left, right) => Number(left) < Number(right),
+  '>=': (left, right) => Number(left) >= Number(right),
+  '<=': (left, right) => Number(left) <= Number(right),
+  in: (left, right) => Array.isArray(right) && right.includes(left),
+  'not in': (left, right) => Array.isArray(right) && !right.includes(left),
+};
+
+function collectionMatches(row: CollectionRow, filters: unknown): boolean {
+  if (filters === undefined || filters === null) return true;
+  const value = (field: unknown) => (row as Record<string, unknown>)[String(field)];
+  const test = (field: unknown, operator: unknown, expected: unknown) =>
+    COMPARE[String(operator)]?.(value(field), expected) ?? false;
+  if (Array.isArray(filters)) {
+    return filters.every((item) => Array.isArray(item) && test(item[0], item[1], item[2]));
+  }
+  if (typeof filters !== 'object') return false;
+  return Object.entries(filters).every(([field, expected]) =>
+    Array.isArray(expected) ? test(field, expected[0], expected[1]) : test(field, '=', expected),
+  );
+}
+
+function collectionOrder(orderBy: string | null) {
+  const [field = 'modified', direction = 'desc'] = (orderBy ?? 'modified desc').split(/\s+/);
+  const sign = direction.toLowerCase() === 'asc' ? 1 : -1;
+  return (a: CollectionRow, b: CollectionRow) =>
+    sign *
+    String((a as Record<string, unknown>)[field]).localeCompare(
+      String((b as Record<string, unknown>)[field]),
+      'tr',
+      { numeric: true },
+    );
+}
 
 const LEAVE_FIELDS = new Set([
   'name',
@@ -451,6 +493,43 @@ export const handlers = [
       modified: nextVersion(),
     });
     return message({ name: leave.name });
+  }),
+
+  // Frappe API v2 kayıt listesi. Biçim Frappe 16.56.0 kaynağından doğrulandı (src/api/README.md).
+  // Yalnız örnek kayıt türleri karşılanır. Öteki türler sonraki işleyiciye geçer.
+  http.get('*/api/v2/document/:doctype', ({ request, params }) => {
+    const doctype = String(params.doctype);
+    if (doctype !== SAMPLE_COLLECTION_DOCTYPE && doctype !== RESTRICTED_SAMPLE_DOCTYPE) {
+      return undefined;
+    }
+    if (!mockState.signedIn) {
+      return HttpResponse.json({ errors: [{ type: 'SessionExpired' }] }, { status: 401 });
+    }
+    if (doctype === RESTRICTED_SAMPLE_DOCTYPE) {
+      return HttpResponse.json({ errors: [{ type: 'PermissionError' }] }, { status: 403 });
+    }
+    const url = new URL(request.url);
+    const fields = parseJsonParam(url, 'fields') ?? ['name'];
+    const filters = parseJsonParam(url, 'filters');
+    if (!Array.isArray(fields) || typeof filters === 'symbol') {
+      return HttpResponse.json({ errors: [{ type: 'ValidationError' }] }, { status: 417 });
+    }
+    const start = Number(url.searchParams.get('start') ?? 0);
+    const limit = Number(url.searchParams.get('limit') ?? 20);
+    const rows = sampleCollection
+      .filter((row) => collectionMatches(row, filters))
+      .sort(collectionOrder(url.searchParams.get('order_by')));
+    const page = rows
+      .slice(start, start + limit)
+      .map((row) =>
+        Object.fromEntries(
+          fields.map((field) => [String(field), (row as Record<string, unknown>)[String(field)]]),
+        ),
+      );
+    return HttpResponse.json({
+      data: page as JsonBodyType,
+      has_next_page: rows.length > start + limit,
+    });
   }),
 
   // Erişim kuralı motoru (platform_core-access sözleşmesi).

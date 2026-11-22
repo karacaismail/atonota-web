@@ -221,3 +221,19 @@ export const sampleInstallations = [
 
 // Press ayrı bir köktür. Panel yalnız Press'in hesap silme sayfasına yönlendirir.
 export const SAMPLE_PRESS_URL = 'https://press.example.test';
+
+// views-collection için örnek kayıtlar (Frappe API v2 liste ucu).
+export const SAMPLE_COLLECTION_DOCTYPE = sampleDocTypeMeta.schema.name;
+/** Bu kayıt türü için sahte sunucu yetki reddi verir. */
+export const RESTRICTED_SAMPLE_DOCTYPE = 'Gizli Örnek Kayıt';
+
+export const sampleCollection = Array.from({ length: 23 }, (_unused, index) => {
+  const number = index + 1;
+  return {
+    name: `ORNEK-${String(number).padStart(4, '0')}`,
+    title: `Örnek veri ${number}`,
+    status: number % 3 === 0 ? 'Kapalı' : 'Açık',
+    amount: number * 25,
+    modified: `2026-11-${String(1 + (number % 22)).padStart(2, '0')} 09:00:00.000000`,
+  };
+});

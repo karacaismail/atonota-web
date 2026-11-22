@@ -9,6 +9,7 @@ import { version as packageVersion } from '../../package.json';
 import type { ApiConfig } from './config';
 import type { CsrfStore } from './csrf';
 import { ApiError, toApiError } from './errors';
+import type { DocumentListQuery, DocumentPage, FrappeV2Paths } from './frappe-v2';
 import type { paths as HrmsPaths } from './generated/hrms_tr';
 import type { paths as AccessPaths } from './generated/platform_core-access';
 import type { paths as AiPaths } from './generated/platform_core-ai';
@@ -17,6 +18,7 @@ import type { paths as MobilePaths } from './generated/platform_core-mobile';
 import type { paths as GatewayPaths } from './generated/platform_core-model-gateway';
 import type { paths as ShellPaths } from './generated/platform_core-shell';
 import {
+  isRawDocumentPage,
   type Installation,
   type Revoked,
   UUID_PATTERN,
@@ -238,6 +240,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   const hrms = make<HrmsPaths>(`${config.siteUrl}/api`);
   const access = make<AccessPaths>(methodRoot);
   const mobile = make<MobilePaths>(methodRoot);
+  const frappeV2 = make<FrappeV2Paths>(config.siteUrl);
   // PWA uçlarının zorunlu başlıkları. Tarayıcı `Origin` başlığını kendisi koyar ve bu değeri yok sayar.
   // Panel ve kiracı sitesi aynı köktedir. Bu yüzden değer site köküdür.
   const pwaHeaders = {
@@ -617,6 +620,47 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
         isRevoked,
         options,
       );
+    },
+
+    /**
+     * Bir kayıt türünün kayıtlarını sayfa sayfa okur (Frappe API v2, `GET /api/v2/document/<doctype>`).
+     * Frappe kayıt ve alan iznini uygular. Toplam sayı dönmez. `hasNextPage` sonraki sayfayı söyler.
+     * Gruplu sayım ve toplam bu uçta yoktur. Onlar `group_summary` sözleşmesiyle gelecek.
+     */
+    async listDocuments(
+      doctype: string,
+      query: DocumentListQuery = {},
+      options: RequestOptions = {},
+    ): Promise<DocumentPage> {
+      if (doctype.trim().length === 0) {
+        throw new ApiError({ kind: 'invalid_request', status: 0, code: 'doctype' });
+      }
+      const limit = query.limit ?? 20;
+      const invalid = pagingError(query.start ?? 0, limit, { maxLimit: 100 });
+      if (invalid) throw invalid;
+      const { data, error, response } = await settle(
+        frappeV2.GET('/api/v2/document/{doctype}', {
+          ...signalOf(options),
+          params: {
+            path: { doctype },
+            query: {
+              ...(query.fields ? { fields: JSON.stringify(query.fields) } : {}),
+              ...(query.filters ? { filters: JSON.stringify(query.filters) } : {}),
+              ...(query.orderBy ? { order_by: query.orderBy } : {}),
+              start: query.start ?? 0,
+              limit,
+            },
+          },
+        }),
+        options.signal,
+      );
+      if (!response.ok) return fail(response, error);
+      // API v2 yanıtı `message` zarfı taşımaz. `data` ve `has_next_page` üst düzeydedir.
+      if (!isRawDocumentPage(data)) {
+        throw new ApiError({ kind: 'invalid_response', status: response.status });
+      }
+      sessionExpiredNotified = false;
+      return { data: data.data, hasNextPage: data.has_next_page };
     },
 
     /** Model geçidinden yanıt ister. Model anahtarı sunucudadır (AX-2). */
