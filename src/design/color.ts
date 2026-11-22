@@ -1,0 +1,71 @@
+/** `#rrggbb` rengini `rgba(r,g,b,a)` biçimine çevirir. Kaynaktaki opaklık kararları için kullanılır. */
+export function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace('#', '');
+  const full =
+    clean.length === 3
+      ? clean
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : clean;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) {
+    throw new Error(`Geçersiz renk: ${hex}`);
+  }
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function channel(v: number): number {
+  const c = v / 255;
+  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+function parseHex(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '');
+  const full =
+    clean.length === 3
+      ? clean
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : clean;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) {
+    throw new Error(`Geçersiz renk: ${hex}`);
+  }
+  return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
+}
+
+function toHex([r, g, b]: [number, number, number]): string {
+  return `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** WCAG 2.x göreli parlaklık. */
+export function relativeLuminance(hex: string): number {
+  const [r, g, b] = parseHex(hex);
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+/** WCAG 2.x kontrast oranı (1 ile 21 arası). */
+export function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const [hi, lo] = la >= lb ? [la, lb] : [lb, la];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * Rengi, verilen zemin üzerinde en az `minRatio` kontrast verene kadar koyulaştırır.
+ * Ton korunur; yalnız parlaklık düşer. Kaynak renk zaten yeterliyse aynen döner.
+ * Kullanım: açık temada metin bağlantıları (WCAG 2.2 AA, 4.5:1).
+ */
+export function darkenToContrast(hex: string, background: string, minRatio = 4.5): string {
+  let rgb = parseHex(hex);
+  let current = toHex(rgb);
+  for (let step = 0; step < 100 && contrastRatio(current, background) < minRatio; step += 1) {
+    rgb = [rgb[0] * 0.97, rgb[1] * 0.97, rgb[2] * 0.97];
+    current = toHex(rgb);
+  }
+  return current;
+}
