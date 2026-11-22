@@ -45,13 +45,19 @@ function LeaveDecision({ leave, changed }: { leave: Leave; changed: () => void }
   const kind = leave.docstatus === 1 ? 'cancel' : 'approve';
   const method =
     kind === 'approve' ? env?.client?.approveLeaveApplication : env?.client?.cancelLeaveApplication;
-  const canAct =
-    Boolean(leave.modified) &&
-    (kind === 'cancel' || (leave.status === 'Open' && leave.docstatus === 0));
+  let command: ReturnType<typeof leaveCommand> | undefined;
+  try {
+    command = leaveCommand(leave, kind);
+  } catch {
+    command = undefined;
+  }
+  const canAct = command !== undefined;
+  const needsVersion = kind === 'cancel' || (leave.status === 'Open' && leave.docstatus === 0);
   async function submit() {
-    if (!method || !consent || !canAct) return;
+    if (!method || !consent || !command) return;
+    const request = command;
     const result = await action.run(async (signal) => {
-      const data = object(await method(leaveCommand(leave, kind), { signal }));
+      const data = object(await method(request, { signal }));
       if (text(data['name']) !== leave.name) throw new Error('invalid_response');
       return data;
     });
@@ -76,7 +82,7 @@ function LeaveDecision({ leave, changed }: { leave: Leave; changed: () => void }
         <dt>{copy.days}</dt>
         <dd>{leave.total_leave_days ?? copy.notProvided}</dd>
       </dl>
-      {!leave.modified && <Alert type="warning" message={copy.versionMissing} />}
+      {!canAct && needsVersion && <Alert type="warning" message={copy.versionMissing} />}
       {canAct && (
         <>
           <Checkbox
@@ -145,6 +151,7 @@ export default function LeavePage() {
                 </ol>
               )}
               <Pager
+                label={copy.hr}
                 start={start}
                 hasNext={records.length === 20}
                 change={(value) => {

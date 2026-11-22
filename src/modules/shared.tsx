@@ -74,17 +74,19 @@ export function ResourceView<T>({
   );
 }
 export function Pager({
+  label,
   start,
   hasNext,
   change,
 }: {
+  label: string;
   start: number;
   hasNext: boolean;
   change: (start: number) => void;
 }) {
   const copy = useCopy();
   return (
-    <nav className="module-actions" aria-label={copy.proposals}>
+    <nav className="module-actions" aria-label={label}>
       <Button disabled={start === 0} onClick={() => change(Math.max(0, start - 20))}>
         {copy.previous}
       </Button>

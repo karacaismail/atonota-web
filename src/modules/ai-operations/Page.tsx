@@ -61,9 +61,14 @@ function ProposalDecision({ proposal, changed }: { proposal: Proposal; changed: 
   async function approve() {
     const method = env?.client?.approveProposal;
     if (!method || !consent || !proposalCanRun(proposal)) return;
-    const result = await action.run(async (signal) =>
-      parseApproval(await method(proposal.proposal_id, proposal.digest, { signal })),
-    );
+    const result = await action.run(async (signal) => {
+      const response = parseApproval(
+        await method(proposal.proposal_id, proposal.digest, { signal }),
+      );
+      if (response.proposal.proposal_id !== proposal.proposal_id)
+        throw new Error('invalid_response');
+      return response;
+    });
     if (!result) return;
     setOutcome(
       result.deny_reason === 'document_changed'
@@ -79,9 +84,11 @@ function ProposalDecision({ proposal, changed }: { proposal: Proposal; changed: 
   async function reject() {
     const method = env?.client?.rejectProposal;
     if (!method || !proposalCanRun(proposal)) return;
-    const result = await action.run(async (signal) =>
-      parseProposal(await method(proposal.proposal_id, { signal })),
-    );
+    const result = await action.run(async (signal) => {
+      const response = parseProposal(await method(proposal.proposal_id, { signal }));
+      if (response.proposal_id !== proposal.proposal_id) throw new Error('invalid_response');
+      return response;
+    });
     if (result) {
       setOutcome(result.status === 'rejected' ? 'rejected' : 'proposalDenied');
       changed();
@@ -127,16 +134,20 @@ function ProposalDecision({ proposal, changed }: { proposal: Proposal; changed: 
                   <td className="module-value">
                     {change.old === undefined
                       ? copy.notProvided
-                      : change.old === ''
-                        ? copy.emptyValue
-                        : displayValue(change.old)}
+                      : change.old === null
+                        ? copy.nullValue
+                        : change.old === ''
+                          ? copy.emptyValue
+                          : displayValue(change.old)}
                   </td>
                   <td className="module-value">
                     {change.new === undefined
                       ? copy.notProvided
-                      : change.new === ''
-                        ? copy.emptyValue
-                        : displayValue(change.new)}
+                      : change.new === null
+                        ? copy.nullValue
+                        : change.new === ''
+                          ? copy.emptyValue
+                          : displayValue(change.new)}
                   </td>
                 </tr>
               ))}
@@ -237,6 +248,7 @@ export default function AiOperationsPage() {
                 </ol>
               )}
               <Pager
+                label={copy.proposals}
                 start={start}
                 hasNext={page.has_next_page && start < 10000}
                 change={(value) => {

@@ -1,16 +1,40 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-export type FailureKind = 'forbidden' | 'expired' | 'invalid' | 'failure' | 'uncertain';
+import type { ApiErrorKind } from '../api';
+export type FailureKind =
+  | 'forbidden'
+  | 'expired'
+  | 'invalid'
+  | 'failure'
+  | 'uncertain'
+  | 'notFound'
+  | 'conflict'
+  | 'rateLimited'
+  | 'requestRejected'
+  | 'csrf';
+const failures: Record<ApiErrorKind, FailureKind> = {
+  session_expired: 'expired',
+  forbidden: 'forbidden',
+  not_found: 'notFound',
+  conflict: 'conflict',
+  rate_limited: 'rateLimited',
+  invalid_request: 'requestRejected',
+  csrf: 'csrf',
+  network: 'failure',
+  timeout: 'failure',
+  unavailable: 'failure',
+  unknown: 'failure',
+  invalid_response: 'invalid',
+};
 export function failureKind(error: unknown, writing = false): FailureKind {
   const kind =
     typeof error === 'object' && error !== null && 'kind' in error ? error.kind : undefined;
-  if (kind === 'permission' || kind === 'forbidden') return 'forbidden';
-  if (kind === 'session_expired' || kind === 'unauthenticated') return 'expired';
-  if (
-    kind === 'invalid_response' ||
-    (error instanceof Error && error.message === 'invalid_response')
-  )
-    return writing ? 'uncertain' : 'invalid';
-  return writing ? 'uncertain' : 'failure';
+  const failure =
+    typeof kind === 'string' && Object.prototype.hasOwnProperty.call(failures, kind)
+      ? failures[kind as ApiErrorKind]
+      : error instanceof Error && error.message === 'invalid_response'
+        ? 'invalid'
+        : 'failure';
+  return writing && (failure === 'failure' || failure === 'invalid') ? 'uncertain' : failure;
 }
 export type Resource<T> =
   | { status: 'loading' }

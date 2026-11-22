@@ -45,12 +45,24 @@ Arka uç sahibi sözleşmeleri tamamlayınca `api-client` sahibi istemciyi bağl
 `createModuleClient(session.api)` ortak istemciyi modüllere bağlar.
 `ModuleProvider` bu istemciyi `client` alanında alır.
 `tenant` alanı site kökünü taşır.
-`user` alanı oturumdaki kullanıcı adını taşır.
+`user` alanı Frappe sistemindeki kullanıcı kimliğini taşır.
+Bu değer, açılış verisindeki `user.name` alanıyla aynı olmalıdır.
+Görünen kişi adı veya Keycloak kimliği burada kullanılmaz.
+Kabuk profil bilgisini zaten okuduysa `profile` alanına verebilir.
+Böylece profil için ikinci açılış isteği gerekmez.
 `mode` alanı örnek veri ile canlı veriyi ayırır.
 Sağlayıcı, `AuthGate` içinde kalmalıdır.
+`AppProviders` ortak temayı, tasarım değerlerini ve klavye odağını sağlar.
+Kabuk, modülleri bu ortak sağlayıcının içinde açmalıdır.
+Modüller ortak odak kurallarını kendi içinde yeniden tanımlamaz.
 
 Profil, kabuk başlangıç verisindeki kullanıcıdan okunur.
 Okunan kullanıcı adı oturumdaki kullanıcı adıyla uyuşmalıdır.
+`accountDeletionStatus` yalnız güvenilir sunucu bilgisini alır.
+Bu alan sorgu parametresinden veya tarayıcı deposundan doldurulmaz.
+Mevcut sözleşme bu bilgiyi sağlamadığı için kabuk alanı boş bırakır.
+Alan dolarsa bekleyen silme durumu gösterilir.
+Bu durum tamamlanmış silme anlamına gelmez.
 `pressOrigin` verilirse ortak Press adres denetimi çalışır.
 `accountSecurityUrl` verilirse adresin kimlik sunucusuna ait olduğu denetlenir.
 

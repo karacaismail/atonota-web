@@ -33,6 +33,74 @@ function wrap(node: React.ReactNode, client: ModuleClient) {
 afterEach(cleanup);
 
 describe('explicit approval', () => {
+  it('does not offer a write for an invalid leave version', async () => {
+    const leave = { name: 'leave-1', status: 'Open', docstatus: 0, modified: 'x'.repeat(41) };
+    const approve = vi.fn();
+    render(
+      wrap(<LeavePage />, {
+        listLeaveApplications: vi.fn().mockResolvedValue([leave]),
+        getLeaveApplication: vi.fn().mockResolvedValue(leave),
+        approveLeaveApplication: approve,
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'İncele' }));
+    expect(
+      await screen.findByText('Kayıt sürümü eksik veya geçersiz. Kaydı yeniden okuyun.'),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'İzni onayla' })).not.toBeInTheDocument();
+    expect(approve).not.toHaveBeenCalled();
+  });
+  it.each(['approve', 'reject'] as const)('rejects a mismatched %s response', async (operation) => {
+    const different = {
+      ...proposal,
+      proposal_id: 'another-proposal',
+      status: operation === 'approve' ? 'consumed' : 'rejected',
+      result: operation === 'approve' ? 'succeeded' : '',
+    };
+    render(
+      wrap(<AiOperationsPage />, {
+        listProposals: vi.fn().mockResolvedValue({ proposals: [proposal], has_next_page: false }),
+        getProposal: vi.fn().mockResolvedValue(proposal),
+        approveProposal: vi.fn().mockResolvedValue({ executed: true, proposal: different }),
+        rejectProposal: vi.fn().mockResolvedValue(different),
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'İncele' }));
+    fireEvent.click(await screen.findByLabelText('Değişikliği okudum ve onaylıyorum.'));
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: operation === 'approve' ? 'Onayla ve uygula' : 'Öneriyi reddet',
+      }),
+    );
+    expect(
+      await screen.findByText('İşlem sonucu bilinmiyor. Yeni istekten önce kaydı yeniden okuyun.'),
+    ).toBeVisible();
+  });
+  it('distinguishes null values from empty text in the review', async () => {
+    render(
+      wrap(<AiOperationsPage />, {
+        listProposals: vi.fn().mockResolvedValue({ proposals: [proposal], has_next_page: false }),
+        getProposal: vi.fn().mockResolvedValue({
+          ...proposal,
+          preview: { ...proposal.preview, changes: [{ fieldname: 'title', old: null, new: '' }] },
+        }),
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'İncele' }));
+    expect(await screen.findByText('Değer yok')).toBeVisible();
+    expect(screen.getByText('Boş metin')).toBeVisible();
+  });
+  it('does not confuse a display name with the Frappe user identifier', async () => {
+    render(
+      wrap(<AccountPage />, {
+        getProfile: vi
+          .fn()
+          .mockResolvedValue({ name: 'Örnek Kişi', fullName: 'Örnek Kişi', roles: [] }),
+      }),
+    );
+    expect(await screen.findByText('Sunucunun yanıtı doğrulanamadı.')).toBeVisible();
+    expect(screen.queryByText('Örnek Kişi')).not.toBeInTheDocument();
+  });
   it('loads only the signed-in profile from the shared client', async () => {
     render(
       wrap(<AccountPage />, {
