@@ -72,13 +72,14 @@
 .module-table {
   border-collapse: collapse;
   min-width: 100%;
-  width: max-content;
+  width: 100%;
 }
 .module-table th,
 .module-table td {
   padding: var(--module-padding);
   text-align: start;
   vertical-align: top;
+  min-width: var(--table-col-min-text);
   border-bottom: thin solid var(--module-line);
   word-break: normal;
   overflow-wrap: normal;
@@ -90,9 +91,4 @@
 .module-form {
   min-width: 0;
   max-width: 100%;
-}
-.module-page .ant-btn {
-  white-space: normal;
-  height: auto;
-  min-height: var(--btn-h-md);
 }

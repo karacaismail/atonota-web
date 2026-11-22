@@ -1,5 +1,8 @@
 import { useModule } from './context';
 const en = {
+  changeDetails: 'Change details',
+  proposalId: 'Proposal ID',
+  emptyValue: 'Empty text',
   account: 'Account',
   administration: 'Administration',
   hr: 'Leave requests',
@@ -122,6 +125,9 @@ const en = {
   notProvided: 'Not provided',
 };
 const tr: Record<keyof typeof en, string> = {
+  changeDetails: 'Değişiklik farkı',
+  proposalId: 'Öneri kimliği',
+  emptyValue: 'Boş metin',
   account: 'Hesap',
   administration: 'Yönetim',
   hr: 'İzin talepleri',

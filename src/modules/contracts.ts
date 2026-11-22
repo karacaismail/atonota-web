@@ -112,6 +112,8 @@ export function parseProposal(value: unknown) {
   if (!/^[0-9a-f]{64}$/.test(digest)) throw new Error('invalid_response');
   return {
     proposal_id: text(source['proposal_id']),
+    target_doctype: source['target_doctype'] == null ? undefined : text(source['target_doctype']),
+    target_name: source['target_name'] == null ? undefined : text(source['target_name']),
     status: choice(source['status'], ['pending', 'rejected', 'expired', 'consumed']),
     result: choice(source['result'], ['', 'unknown', 'succeeded', 'failed']),
     tool: text(source['tool']),

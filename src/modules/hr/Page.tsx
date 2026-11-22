@@ -4,7 +4,7 @@ import { leaveCommand, object, parseLeave, parseLeaveList, text, type Leave } fr
 import { useMutation, useRead } from '../data';
 import { useCopy } from '../messages';
 import { useModule } from '../context';
-import { DateValue, ModuleFrame, Pager, ResourceView, Section } from '../shared';
+import { DateValue, ModuleFrame, Pager, ResourceView } from '../shared';
 function LeaveReview({
   name,
   changed,
@@ -18,7 +18,11 @@ function LeaveReview({
   const copy = useCopy();
   const get = env?.client?.getLeaveApplication;
   const load = useCallback(
-    async (signal: AbortSignal) => parseLeave(await get?.(name, { signal })),
+    async (signal: AbortSignal) => {
+      const leave = parseLeave(await get?.(name, { signal }));
+      if (leave.name !== name) throw new Error('invalid_response');
+      return leave;
+    },
     [get, name],
   );
   const read = useRead(get ? load : null, name);
@@ -119,7 +123,7 @@ export default function LeavePage() {
   const read = useRead(list ? load : null, String(start));
   return (
     <ModuleFrame title={copy.hr}>
-      <Section title={copy.hr}>
+      <div className="module-stack">
         <Button onClick={read.refresh}>{copy.refresh}</Button>
         <ResourceView state={read.state} retry={read.refresh}>
           {(records) => (
@@ -151,7 +155,7 @@ export default function LeavePage() {
             </>
           )}
         </ResourceView>
-      </Section>
+      </div>
       {selected && (
         <LeaveReview
           key={selected}

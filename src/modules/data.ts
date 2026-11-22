@@ -9,7 +9,7 @@ export function failureKind(error: unknown, writing = false): FailureKind {
     kind === 'invalid_response' ||
     (error instanceof Error && error.message === 'invalid_response')
   )
-    return 'invalid';
+    return writing ? 'uncertain' : 'invalid';
   return writing ? 'uncertain' : 'failure';
 }
 export type Resource<T> =

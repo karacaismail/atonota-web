@@ -33,6 +33,34 @@ function wrap(node: React.ReactNode, client: ModuleClient) {
 afterEach(cleanup);
 
 describe('explicit approval', () => {
+  it('rejects a detail response for a different proposal', async () => {
+    render(
+      wrap(<AiOperationsPage />, {
+        listProposals: vi.fn().mockResolvedValue({ proposals: [proposal], has_next_page: false }),
+        getProposal: vi.fn().mockResolvedValue({ ...proposal, proposal_id: 'another-proposal' }),
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'İncele' }));
+    expect(await screen.findByText('Sunucunun yanıtı doğrulanamadı.')).toBeVisible();
+    expect(screen.queryByLabelText('Değişikliği okudum ve onaylıyorum.')).not.toBeInTheDocument();
+  });
+  it('shows a server-confirmed pending deletion without offering another request', () => {
+    render(
+      <ModuleProvider
+        value={{
+          tenant: 'site',
+          user: 'user',
+          mode: 'example',
+          pressOrigin: 'https://press.example.test',
+          accountDeletionStatus: { pending: true },
+        }}
+      >
+        <AccountPage />
+      </ModuleProvider>,
+    );
+    expect(screen.getByText('Silme sürüyor. Sonuç henüz doğrulanmadı.')).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Hesap silmeye git' })).not.toBeInTheDocument();
+  });
   it('loads the current proposal, shows the diff and sends the reviewed digest once', async () => {
     const approve = vi.fn().mockResolvedValue({
       executed: false,

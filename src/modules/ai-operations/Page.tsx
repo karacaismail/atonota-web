@@ -26,7 +26,11 @@ function ProposalReview({
   const copy = useCopy();
   const get = env?.client?.getProposal;
   const load = useCallback(
-    async (signal: AbortSignal) => parseProposal(await get?.(id, { signal })),
+    async (signal: AbortSignal) => {
+      const proposal = parseProposal(await get?.(id, { signal }));
+      if (proposal.proposal_id !== id) throw new Error('invalid_response');
+      return proposal;
+    },
     [get, id],
   );
   const read = useRead(get ? load : null, id);
@@ -87,7 +91,11 @@ function ProposalDecision({ proposal, changed }: { proposal: Proposal; changed: 
     <div className="module-stack">
       <h2>{proposal.preview.summary}</h2>
       <dl>
+        <dt>{copy.doctype}</dt>
+        <dd>{proposal.target_doctype ?? copy.notProvided}</dd>
         <dt>{copy.record}</dt>
+        <dd>{proposal.target_name ?? copy.notProvided}</dd>
+        <dt>{copy.proposalId}</dt>
         <dd>{proposal.proposal_id}</dd>
         <dt>{copy.operation}</dt>
         <dd>{proposal.tool}</dd>
@@ -103,7 +111,7 @@ function ProposalDecision({ proposal, changed }: { proposal: Proposal; changed: 
       {proposal.destructive && <Alert type="warning" message={copy.destructive} />}
       {proposal.billable && <Alert type="warning" message={copy.billable} />}
       {proposal.preview.changes.length > 0 && (
-        <div className="module-scroll" tabIndex={0} role="region" aria-label={copy.proposals}>
+        <div className="module-scroll" tabIndex={0} role="region" aria-label={copy.changeDetails}>
           <table className="module-table">
             <thead>
               <tr>
@@ -116,8 +124,20 @@ function ProposalDecision({ proposal, changed }: { proposal: Proposal; changed: 
               {proposal.preview.changes.map((change, index) => (
                 <tr key={`${change.fieldname}:${index}`}>
                   <th scope="row">{change.label}</th>
-                  <td className="module-value">{displayValue(change.old) || copy.notProvided}</td>
-                  <td className="module-value">{displayValue(change.new) || copy.notProvided}</td>
+                  <td className="module-value">
+                    {change.old === undefined
+                      ? copy.notProvided
+                      : change.old === ''
+                        ? copy.emptyValue
+                        : displayValue(change.old)}
+                  </td>
+                  <td className="module-value">
+                    {change.new === undefined
+                      ? copy.notProvided
+                      : change.new === ''
+                        ? copy.emptyValue
+                        : displayValue(change.new)}
+                  </td>
                 </tr>
               ))}
             </tbody>

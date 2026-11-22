@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { failureKind } from '../data';
 import {
   deletionState,
   leaveCommand,
@@ -26,6 +27,17 @@ export const proposalFixture = {
 };
 
 describe('contract boundaries', () => {
+  it('retains the actual target and treats an unverified write as uncertain', () => {
+    const result = parseProposal({
+      ...proposalFixture,
+      target_doctype: 'Example Record',
+      target_name: 'record-to-delete',
+    });
+    expect(result.target_doctype).toBe('Example Record');
+    expect(result.target_name).toBe('record-to-delete');
+    expect(failureKind(new Error('invalid_response'), true)).toBe('uncertain');
+    expect(failureKind(new Error('invalid_response'), false)).toBe('invalid');
+  });
   it('keeps absent permission-filtered leave fields absent', () => {
     expect(parseLeaveList([{ name: 'leave-1' }])).toEqual([{ name: 'leave-1' }]);
   });
