@@ -21,6 +21,8 @@ Bu üç dosya proje sahibinin kesin kararlarıdır:
 2. `design/source/design-system.json`: aynı kararların özeti ve bileşen envanteri.
 3. `design/source/control-size-engine.html`: kararların çalışan örneği.
 
+Mimari ve kod kuralları `docs/standards/headless-frontend-standartlari.md` dosyasındadır. Bu dosya `frappesetup` deposundaki proje standardının kopyasıdır. Görsel dil kaynak dosyalardan, mimari bu standarttan gelir.
+
 Dosyalardaki "locked", "decision" ve "son karar" alanları değişmez. Bir karar bu dosyayla çelişirse kaynak dosya esas alınır. Bunun tek istisnası aşağıdaki "Ortak kurallarla ilişki" bölümüdür.
 
 Örnek dosyalardaki kişi adları "Örnek Kişi" gibi etiketlerle değiştirildi. Arayüzde gerçek görünümlü kişi adı, telefon ya da e-posta kullanılmaz.
