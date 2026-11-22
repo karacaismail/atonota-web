@@ -1,0 +1,48 @@
+/* Values are supplied by the shared design stylesheet. */
+.atonota-button.ant-btn-sm {
+  font-weight: var(--font-weight-sm);
+}
+
+.atonota-button.ant-btn-lg {
+  font-weight: var(--font-weight-lg);
+}
+
+.atonota-button:active,
+.atonota-button[aria-expanded='true'],
+.ant-space-compact .atonota-button,
+.atonota-button.ant-btn-compact-item {
+  box-shadow: none;
+}
+
+.atonota-dropdown-trigger[aria-expanded='true'] {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.atonota-dropdown-popup {
+  max-inline-size: calc(100vw - 2 * var(--radius));
+  overflow: hidden;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-dropdown);
+}
+
+.atonota-dropdown-popup .ant-dropdown-menu {
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.atonota-dropdown-popup .ant-dropdown-menu-item {
+  border-radius: 0;
+}
+
+.atonota-dropdown-popup
+  .ant-dropdown-menu-item-danger:not(.ant-dropdown-menu-item-disabled):is(:hover, :focus-visible) {
+  color: var(--dropdown-danger-text);
+  background: var(--dropdown-danger-background);
+}
+
+.atonota-card.ant-card {
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-card);
+}

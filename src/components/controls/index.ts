@@ -1,6 +1,7 @@
-export { Button, Card, Checkbox, Input, InputNumber, Radio, Select, Switch, Tag } from 'antd';
+export { Checkbox, Input, InputNumber, Radio, Select, Switch, Tag } from 'antd';
 export { Segmented as Tabs } from 'antd';
 
+export { Button, Card } from './SurfaceControls';
 export { Dropdown } from './Dropdown';
 export type { DropdownItem, DropdownProps, DropdownStyle } from './Dropdown';
 

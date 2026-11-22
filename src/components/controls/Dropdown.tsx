@@ -1,8 +1,10 @@
 import { Check } from '@phosphor-icons/react';
-import { Button, Dropdown as AntDropdown, Input, Space } from 'antd';
+import { Dropdown as AntDropdown, Input, Space, theme } from 'antd';
 import type { MenuProps } from 'antd';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+
+import { Button } from './SurfaceControls';
 
 export type DropdownStyle = 'classic' | 'shortcut' | 'described' | 'selectable' | 'searchable';
 
@@ -36,6 +38,7 @@ export function Dropdown({
   searchLabel = 'Menüde ara',
   onSelect,
 }: DropdownProps) {
+  const { token } = theme.useToken();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const triggerId = useId();
@@ -137,6 +140,14 @@ export function Dropdown({
   return (
     <AntDropdown
       open={open}
+      align={{ offset: [0, 0] }}
+      overlayClassName="atonota-dropdown-popup"
+      overlayStyle={
+        {
+          '--dropdown-danger-text': token.colorTextLightSolid,
+          '--dropdown-danger-background': token.colorError,
+        } as CSSProperties
+      }
 
       trigger={['click']}
       onOpenChange={(next) => (next ? setOpen(true) : close())}
@@ -166,6 +177,7 @@ export function Dropdown({
     >
       <Button
         id={triggerId}
+        className="atonota-dropdown-trigger"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? popupId : undefined}
