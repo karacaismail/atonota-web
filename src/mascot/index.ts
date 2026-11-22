@@ -1,2 +1,2 @@
-// Bu klasörün sahibi `ai-studio` işidir. Dışa aktarımlar buraya eklenir.
-export {};
+export { OwlMark } from './OwlMark';
+export type { OwlMarkProps } from './OwlMark';
