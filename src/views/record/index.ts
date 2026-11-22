@@ -43,6 +43,7 @@ export {
   validateDocTypeMeta,
   validateDocTypeSchema,
   validateLinkSearchResponse,
+  validateRecordAgainstMeta,
   validateRecordDocument,
   validateRecordEnvelope,
 } from './schema';

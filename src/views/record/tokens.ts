@@ -1,3 +1,12 @@
+/**
+ * GEÇİCİ / BORC(foundation): Kayıt ekranı tasarım token bağdaştırıcısı.
+ *
+ * Kaldırma koşulu: `foundation` işinin `src/design` modülü `main` dalına birleştiğinde
+ * bu dosya tamamen silinecek ve `RecordView` doğrudan `src/design` temasını ve CSS
+ * değişkenlerini kullanacaktır (Review 2 Önemli 5).
+ *
+ * Tek kaynak: `design/source/control-size-config.json`.
+ */
 import controlSizeConfig from '@design-source/control-size-config.json';
 import { theme as antdTheme, type ThemeConfig } from 'antd';
 import type { CSSProperties } from 'react';
@@ -7,9 +16,17 @@ export type RecordThemeMode = 'light' | 'dark';
 const LIGHT_SHADOWS = controlSizeConfig.derived.shadowCss;
 const DARK_SHADOWS = controlSizeConfig.derived.shadowCssDark;
 
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace('#', '');
+  const r = Number.parseInt(clean.slice(0, 2), 16);
+  const g = Number.parseInt(clean.slice(2, 4), 16);
+  const b = Number.parseInt(clean.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 /**
  * Derives Ant Design ConfigProvider tokens directly from design/source/control-size-config.json (AD-1).
- * Surrounding focus rings are disabled per AGENTS.md focus rule.
+ * Surrounding focus rings are disabled (`lineWidthFocus: 0`, `controlOutlineWidth: 0`).
  */
 export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
   const isDark = mode === 'dark';
@@ -39,6 +56,7 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
       borderRadius: radius,
       controlOutline: 'transparent',
       controlOutlineWidth: 0,
+      lineWidthFocus: 0,
       ...(isDark
         ? {
             colorBgLayout: darkPalette.layout,
@@ -59,13 +77,15 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
         contentFontSizeSM: sizes.sm.button.fontSize,
         contentFontSizeLG: sizes.lg.button.fontSize,
         fontWeight: controlSizeConfig.fontWeight.md,
-        primaryColor: isDark ? primary.dark.text : 'rgba(0, 0, 0, 0.85)',
+        primaryColor: isDark
+          ? hexToRgba(primary.dark.text, primary.dark.opacity)
+          : hexToRgba(primary.light.text, primary.light.opacity),
         primaryShadow: isDark ? DARK_SHADOWS.button : LIGHT_SHADOWS.button,
         defaultShadow: isDark ? DARK_SHADOWS.button : LIGHT_SHADOWS.button,
         dangerShadow: isDark ? DARK_SHADOWS.button : LIGHT_SHADOWS.button,
         ...(isDark
           ? {
-              colorPrimaryBg: 'rgba(0, 170, 204, 0.14)',
+              colorPrimaryBg: hexToRgba(primary.color, primary.dark.background),
               defaultBg: darkPalette.button,
               defaultHoverBg: darkPalette.buttonHover,
               defaultActiveBg: darkPalette.buttonHover,
@@ -120,8 +140,8 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
       Tabs: {
         titleFontSize: controlSizeConfig.choice.tabs.fontSize,
         horizontalItemGutter: controlSizeConfig.choice.tabs.gap,
-        itemSelectedColor: isDark ? '#5ad7ef' : '#0b1220',
-        itemHoverColor: isDark ? '#5ad7ef' : '#0b1220',
+        itemSelectedColor: isDark ? primary.hover : hexToRgba(primary.light.text, 1),
+        itemHoverColor: isDark ? primary.hover : hexToRgba(primary.light.text, 1),
         inkBarColor: primary.color,
       },
       Card: {
@@ -132,8 +152,7 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
 }
 
 /**
- * Generates CSS custom properties from design/source/control-size-config.json and antd tokens (ST-2).
- * Components and stylesheets reference only these variables.
+ * Generates CSS custom properties strictly from control-size-config.json and resolved antd tokens (ST-2).
  */
 export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
   const isDark = mode === 'dark';
@@ -145,6 +164,7 @@ export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
   const darkPalette = controlSizeConfig.darkPalette;
   const shadows = isDark ? DARK_SHADOWS : LIGHT_SHADOWS;
   const headerCfg = controlSizeConfig.header.settings;
+  const lineHeightDelta = Number.parseInt(typo.lineHeightRule.replace(/[^0-9]/g, ''), 10);
 
   const vars: Record<string, string> = {
     '--rv-color-primary': primary.color,
@@ -158,29 +178,29 @@ export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
     '--rv-color-border-secondary': resolved.colorBorderSecondary,
     '--rv-color-text': resolved.colorText,
     '--rv-color-text-secondary': resolved.colorTextSecondary,
-    '--rv-color-danger': resolved.colorError,
+    '--rv-color-danger': resolved.colorErrorText,
     '--rv-color-danger-bg': resolved.colorErrorBg,
-    '--rv-color-warning': isDark ? '#facc15' : '#92400e',
-    '--rv-color-warning-bg': isDark ? 'rgba(250, 204, 21, 0.14)' : 'rgba(234, 179, 8, 0.18)',
+    '--rv-color-warning': resolved.colorWarningText,
+    '--rv-color-warning-bg': resolved.colorWarningBg,
     '--rv-color-dirty-dot': resolved.colorWarning,
-    '--rv-pill-primary-fg': isDark ? '#5ad7ef' : '#005f73',
-    '--rv-pill-primary-bg': isDark ? 'rgba(0, 170, 204, 0.18)' : 'rgba(0, 170, 204, 0.14)',
-    '--rv-pill-success-fg': isDark ? '#4ade80' : '#15803d',
-    '--rv-pill-success-bg': isDark ? 'rgba(34, 197, 94, 0.18)' : 'rgba(34, 197, 94, 0.14)',
-    '--rv-pill-warning-fg': isDark ? '#facc15' : '#854d0e',
-    '--rv-pill-warning-bg': isDark ? 'rgba(234, 179, 8, 0.18)' : 'rgba(234, 179, 8, 0.18)',
-    '--rv-pill-danger-fg': isDark ? '#f87171' : '#b91c1c',
-    '--rv-pill-danger-bg': isDark ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.13)',
+    '--rv-pill-primary-fg': isDark ? primary.hover : hexToRgba(primary.light.text, 1),
+    '--rv-pill-primary-bg': hexToRgba(primary.color, primary.dark.background),
+    '--rv-pill-success-fg': resolved.colorSuccessText,
+    '--rv-pill-success-bg': resolved.colorSuccessBg,
+    '--rv-pill-warning-fg': isDark ? resolved.colorWarningText : hexToRgba(primary.light.text, 1),
+    '--rv-pill-warning-bg': resolved.colorWarningBg,
+    '--rv-pill-danger-fg': resolved.colorErrorText,
+    '--rv-pill-danger-bg': resolved.colorErrorBg,
     '--rv-font-min': `${typo.min}px`,
-    '--rv-font-min-lh': `${typo.min + 8}px`,
+    '--rv-font-min-lh': `${typo.min + lineHeightDelta}px`,
     '--rv-font-body': `${typo.default}px`,
-    '--rv-font-body-lh': `${typo.default + 8}px`,
+    '--rv-font-body-lh': `${typo.default + lineHeightDelta}px`,
     '--rv-font-control-md': `${sizes.md.input.fontSize}px`,
-    '--rv-font-control-md-lh': `${sizes.md.input.fontSize + 8}px`,
+    '--rv-font-control-md-lh': `${sizes.md.input.fontSize + lineHeightDelta}px`,
     '--rv-font-title': `${headerCfg.titleSize}px`,
     '--rv-font-title-lh': `${headerCfg.titleLineHeight}px`,
-    '--rv-font-title-mobile': `${sizes.lg.button.fontSize + 2}px`,
-    '--rv-font-title-mobile-lh': `${sizes.lg.button.fontSize + 10}px`,
+    '--rv-font-title-mobile': `${sizes.lg.button.fontSize}px`,
+    '--rv-font-title-mobile-lh': `${sizes.lg.button.fontSize + lineHeightDelta}px`,
     '--rv-font-weight-sm': String(controlSizeConfig.fontWeight.sm),
     '--rv-font-weight-md': String(controlSizeConfig.fontWeight.md),
     '--rv-font-weight-lg': String(controlSizeConfig.fontWeight.lg),
@@ -194,10 +214,17 @@ export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
     '--rv-card-radius': `${controlSizeConfig.cards.radius}px`,
     '--rv-space-2xs': `${resolved.paddingXXS}px`,
     '--rv-space-xs': `${resolved.paddingXS}px`,
-    '--rv-space-sm': `${resolved.paddingXS}px`,
-    '--rv-space-md': `${resolved.paddingSM}px`,
-    '--rv-space-lg': `${resolved.padding}px`,
+    '--rv-space-sm': `${resolved.paddingSM}px`,
+    '--rv-space-md': `${resolved.padding}px`,
+    '--rv-space-lg': `${resolved.paddingMD}px`,
     '--rv-space-xl': `${controlSizeConfig.cards.padding}px`,
+    '--rv-table-col-check-min': `${sizes.sm.input.height * 2}px`,
+    '--rv-table-col-num-min': `${sizes.sm.input.height * 4}px`,
+    '--rv-table-col-date-min': `${sizes.sm.input.height * 4.5}px`,
+    '--rv-table-col-text-min': `${sizes.sm.input.height * 5}px`,
+    '--rv-table-col-action-w': `${sizes.sm.button.height * 1.5}px`,
+    '--rv-color-input-w': `${sizes.sm.input.height * 4}px`,
+    '--rv-signature-h': `${sizes.lg.input.height * 2.5}px`,
     '--rv-shadow-card': shadows.card,
     '--rv-shadow-button': shadows.button,
     '--rv-shadow-input': shadows.input,

@@ -1,11 +1,32 @@
-import { Plus, Trash } from '@phosphor-icons/react';
+import { ArrowClockwise, Plus, Trash } from '@phosphor-icons/react';
 import { Button, Select, Table, type TableProps } from 'antd';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { RecordApiError } from '../adapter';
 import { isLayoutBreakFieldType } from '../layout';
 import { formatRecordMessage } from '../messages';
 import type { DocField, DocTypeMeta, LinkOption, RecordDataAdapter, RecordLocale } from '../types';
 import type { FieldControlA11yProps } from './FieldShell';
+
+function columnCellWidthClass(fieldtype: string): string {
+  switch (fieldtype) {
+    case 'Check':
+      return 'rv-table-cell--check';
+    case 'Int':
+    case 'Float':
+    case 'Currency':
+    case 'Percent':
+    case 'Duration':
+    case 'Rating':
+      return 'rv-table-cell--num';
+    case 'Date':
+    case 'Datetime':
+    case 'Time':
+      return 'rv-table-cell--date';
+    default:
+      return 'rv-table-cell--text';
+  }
+}
 
 export interface RenderChildCellParams {
   field: DocField;
@@ -103,36 +124,43 @@ export function ChildTableField(props: ChildTableFieldProps) {
   };
 
   const columns: NonNullable<TableProps<Record<string, unknown>>['columns']> = visibleFields.map(
-    (colField) => ({
-      key: colField.fieldname,
-      title: colField.label ?? colField.fieldname,
-      dataIndex: colField.fieldname,
-      render: (_cellVal: unknown, row: Record<string, unknown>, rowIndex: number) =>
-        renderCell({
-          field: colField,
-          value: row[colField.fieldname],
-          row,
-          rowIndex,
-          readOnly: readOnly || colField.read_only,
-          onCellChange: (nextVal) => handleCellUpdate(rowIndex, colField.fieldname, nextVal),
-        }),
-    }),
+    (colField) => {
+      const cellClass = columnCellWidthClass(colField.fieldtype);
+      return {
+        key: colField.fieldname,
+        title: colField.label ?? colField.fieldname,
+        dataIndex: colField.fieldname,
+        render: (_cellVal: unknown, row: Record<string, unknown>, rowIndex: number) => (
+          <div className={cellClass}>
+            {renderCell({
+              field: colField,
+              value: row[colField.fieldname],
+              row,
+              rowIndex,
+              readOnly: readOnly || colField.read_only,
+              onCellChange: (nextVal) => handleCellUpdate(rowIndex, colField.fieldname, nextVal),
+            })}
+          </div>
+        ),
+      };
+    },
   );
 
   if (!readOnly) {
     columns.push({
       key: '_actions',
       title: formatRecordMessage(locale, 'tableActionsColumn'),
-      width: 56,
       render: (_val: unknown, _row: Record<string, unknown>, rowIndex: number) => (
-        <Button
-          size="small"
-          type="text"
-          danger
-          icon={<Trash weight="regular" />}
-          aria-label={formatRecordMessage(locale, 'tableRemoveRow', { row: rowIndex + 1 })}
-          onClick={() => handleRemoveRow(rowIndex)}
-        />
+        <div className="rv-table-cell--action">
+          <Button
+            size="small"
+            type="text"
+            danger
+            icon={<Trash weight="regular" />}
+            aria-label={formatRecordMessage(locale, 'tableRemoveRow', { row: rowIndex + 1 })}
+            onClick={() => handleRemoveRow(rowIndex)}
+          />
+        </div>
       ),
     });
   }
@@ -186,8 +214,10 @@ export function TableMultiSelectField(props: TableMultiSelectFieldProps) {
 
   const [options, setOptions] = useState<readonly LinkOption[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const seqRef = useRef(0);
+  const lastQueryRef = useRef('');
 
   useEffect(() => {
     return () => {
@@ -218,12 +248,14 @@ export function TableMultiSelectField(props: TableMultiSelectFieldProps) {
       if (!targetDoctype || readOnly) {
         return;
       }
+      lastQueryRef.current = txt;
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
       seqRef.current += 1;
       const reqId = seqRef.current;
       setSearching(true);
+      setSearchError(null);
 
       void adapter
         .searchLink({
@@ -238,20 +270,29 @@ export function TableMultiSelectField(props: TableMultiSelectFieldProps) {
             return;
           }
           setOptions(res);
+          setSearchError(null);
           setSearching(false);
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           if (controller.signal.aborted || reqId !== seqRef.current) {
             return;
           }
           setOptions([]);
+          setSearchError(
+            err instanceof RecordApiError
+              ? err.message
+              : formatRecordMessage(locale, 'networkError'),
+          );
           setSearching(false);
         });
     },
-    [adapter, field.fieldname, readOnly, referenceDoctype, targetDoctype],
+    [adapter, field.fieldname, locale, readOnly, referenceDoctype, targetDoctype],
   );
 
   const selectOptions = useMemo(() => {
+    if (searchError) {
+      return [];
+    }
     const mapped = options.map((o) => ({ value: o.value, label: o.label ?? o.value }));
     for (const sel of selectedValues) {
       if (!mapped.some((m) => m.value === sel)) {
@@ -259,7 +300,25 @@ export function TableMultiSelectField(props: TableMultiSelectFieldProps) {
       }
     }
     return mapped;
-  }, [options, selectedValues]);
+  }, [options, searchError, selectedValues]);
+
+  const notFoundNode = searching ? (
+    formatRecordMessage(locale, 'linkSearching')
+  ) : searchError ? (
+    <div className="rv-link-error-popup" role="alert">
+      <span>{searchError}</span>
+      <Button
+        size="small"
+        icon={<ArrowClockwise weight="regular" />}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => runSearch(lastQueryRef.current)}
+      >
+        {formatRecordMessage(locale, 'retryAction')}
+      </Button>
+    </div>
+  ) : (
+    formatRecordMessage(locale, 'linkNoResults')
+  );
 
   return (
     <Select<string[]>
@@ -274,6 +333,7 @@ export function TableMultiSelectField(props: TableMultiSelectFieldProps) {
       filterOption={false}
       disabled={readOnly || !targetDoctype}
       loading={searching}
+      notFoundContent={notFoundNode}
       placeholder={
         targetDoctype
           ? formatRecordMessage(locale, 'linkSearchPlaceholder', { doctype: targetDoctype })

@@ -20,6 +20,8 @@ export default defineConfig({
   ...root,
   testDir: '.',
   testMatch: '*.spec.ts',
+  timeout: 60_000,
+  workers: process.env['CI'] ? 2 : 4,
   outputDir: '../../../../test-results/views-record',
   use: { ...root.use, baseURL: BASE_URL },
   webServer: {

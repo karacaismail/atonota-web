@@ -2,6 +2,7 @@ import type { RecordLocale } from './types';
 
 export const RECORD_MESSAGES = {
   en: {
+    defaultTabLabel: 'Details',
     loadingRecord: 'Loading record...',
     syncingStatus: 'Synchronizing',
     upToDateStatus: 'Up to date',
@@ -77,6 +78,10 @@ export const RECORD_MESSAGES = {
     attachChooseImage: 'Select image',
     attachClearFile: 'Remove attachment',
     attachUnsafeUrlBlocked: 'External link hidden by security policy.',
+    signatureModeDraw: 'Draw',
+    signatureModeType: 'Sign by typing',
+    signatureTextLabel: 'Signature text',
+    signatureApplyAction: 'Apply signature',
     signatureDrawHint: 'Sign inside the box using touch or pointer.',
     signatureClear: 'Clear signature',
     signatureSignedBadge: 'Signature recorded',
@@ -84,6 +89,8 @@ export const RECORD_MESSAGES = {
     geolocationLatitude: 'Latitude',
     geolocationLongitude: 'Longitude',
     geolocationUseCurrent: 'Use device location',
+    geolocationPermissionDenied:
+      'Could not read device location. Check permissions or enter coordinates manually.',
     barcodePlaceholder: 'Enter barcode value',
     colorPlaceholder: '#00aacc',
     readOnlyEmpty: '—',
@@ -99,6 +106,7 @@ export const RECORD_MESSAGES = {
     validationServerError: 'The server rejected the submitted values.',
   },
   tr: {
+    defaultTabLabel: 'Detaylar',
     loadingRecord: 'Kayıt yükleniyor...',
     syncingStatus: 'Senkronize ediliyor',
     upToDateStatus: 'Güncel',
@@ -173,6 +181,10 @@ export const RECORD_MESSAGES = {
     attachChooseImage: 'Görsel seç',
     attachClearFile: 'Eki kaldır',
     attachUnsafeUrlBlocked: 'Dış bağlantı güvenlik kuralı gereği gizlendi.',
+    signatureModeDraw: 'Çiz',
+    signatureModeType: 'Yazarak imzala',
+    signatureTextLabel: 'İmza metni',
+    signatureApplyAction: 'İmzayı uygula',
     signatureDrawHint: 'Kutu içine dokunarak ya da imleçle imza atın.',
     signatureClear: 'İmzayı temizle',
     signatureSignedBadge: 'İmza alındı',
@@ -180,6 +192,8 @@ export const RECORD_MESSAGES = {
     geolocationLatitude: 'Enlem',
     geolocationLongitude: 'Boylam',
     geolocationUseCurrent: 'Cihaz konumunu al',
+    geolocationPermissionDenied:
+      'Konum bilgisi alınamadı. İzinleri kontrol edin ya da koordinatları elle girin.',
     barcodePlaceholder: 'Barkod değerini girin',
     colorPlaceholder: '#00aacc',
     readOnlyEmpty: '—',

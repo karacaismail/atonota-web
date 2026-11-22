@@ -23,6 +23,7 @@ import {
   LoadingRecordState,
   UnauthorizedRecordState,
 } from './RecordStates';
+import { SchemaValidationError, validateRecordAgainstMeta } from './schema';
 import { buildRecordAntdTheme, buildRecordCssVariables, type RecordThemeMode } from './tokens';
 import type {
   DocField,
@@ -303,10 +304,25 @@ function RecordViewBody(props: RecordViewProps) {
           return;
         }
 
+        let validatedRecord: RecordDocument;
+        try {
+          validatedRecord = validateRecordAgainstMeta(record, meta);
+        } catch (err) {
+          if (err instanceof SchemaValidationError) {
+            setScreenState({
+              status: 'error',
+              code: 'invalid_response',
+              message: formatRecordMessage(locale, 'invalidServerResponse'),
+            });
+            return;
+          }
+          throw err;
+        }
+
         setScreenState({
           status: 'ready',
           meta,
-          record,
+          record: validatedRecord,
         });
       } catch (err) {
         if (controller.signal.aborted || currentSeq !== requestSeqRef.current) {
@@ -398,9 +414,9 @@ function RecordViewBody(props: RecordViewProps) {
     return buildFormLayout(readyMeta.schema.fields, {
       doc: effectiveDoc,
       isPhoneViewport,
-      defaultTabLabel: readyMeta.schema.name,
+      defaultTabLabel: formatRecordMessage(locale, 'defaultTabLabel'),
     });
-  }, [effectiveDoc, isPhoneViewport, readyMeta]);
+  }, [effectiveDoc, isPhoneViewport, locale, readyMeta]);
 
   const handleSave = useCallback(async () => {
     if (screenState.status !== 'ready' || savingLockRef.current) {
@@ -804,13 +820,27 @@ function RecordViewBody(props: RecordViewProps) {
 export function RecordView(props: RecordViewProps) {
   const themeMode: RecordThemeMode = props.themeMode ?? 'light';
   const locale: RecordLocale = props.locale ?? 'tr';
+  const [isKeyboardModality, setIsKeyboardModality] = useState(false);
 
   const antdThemeConfig = useMemo(() => buildRecordAntdTheme(themeMode), [themeMode]);
   const cssVars = useMemo(() => buildRecordCssVariables(themeMode), [themeMode]);
 
   return (
     <ConfigProvider theme={antdThemeConfig}>
-      <div className="rv-root" data-theme={themeMode} style={cssVars}>
+      <div
+        className="rv-root"
+        data-theme={themeMode}
+        data-rv-kbd={isKeyboardModality ? 'true' : 'false'}
+        style={cssVars}
+        onKeyDownCapture={(event) => {
+          if (event.key === 'Tab') {
+            setIsKeyboardModality(true);
+          }
+        }}
+        onPointerDownCapture={() => {
+          setIsKeyboardModality(false);
+        }}
+      >
         <RecordErrorBoundary locale={locale}>
           <RecordViewBody {...props} />
         </RecordErrorBoundary>

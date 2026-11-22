@@ -38,7 +38,7 @@ test.describe('kayıt formu yerleşimi ve 320 px uyumu', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
-    const amountInput = page.locator('.rv-table-scroll input[aria-invalid]').nth(2);
+    const amountInput = page.locator('.rv-table-cell--num input').first();
     await expect(amountInput).toBeVisible();
     const box = await amountInput.boundingBox();
     expect(box).not.toBeNull();
@@ -60,15 +60,37 @@ test.describe('imza alanı ve bağlantı araması', () => {
     // Sol yarıda birinci çizgi
     await page.mouse.move(box.x + box.width * 0.15, box.y + box.height * 0.3);
     await page.mouse.down();
-    await page.mouse.move(box.x + box.width * 0.35, box.y + box.height * 0.5);
+    await page.mouse.move(box.x + box.width * 0.35, box.y + box.height * 0.5, { steps: 6 });
     await page.mouse.up();
 
     // Sağ yarıda ikinci çizgi (1440 px geniş tuvalde kesilmemeli)
     await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.35);
     await page.mouse.down();
-    await page.mouse.move(box.x + box.width * 0.88, box.y + box.height * 0.65);
+    await page.mouse.move(box.x + box.width * 0.88, box.y + box.height * 0.65, { steps: 6 });
     await page.mouse.up();
 
+    const inkRegions = await canvas.evaluate((el) => {
+      const c = el as HTMLCanvasElement;
+      const ctx = c.getContext('2d');
+      if (!ctx || c.width === 0 || c.height === 0) {
+        return { leftInk: 0, rightInk: 0 };
+      }
+      const midX = Math.floor(c.width / 2);
+      const leftData = ctx.getImageData(0, 0, midX, c.height).data;
+      const rightData = ctx.getImageData(midX, 0, c.width - midX, c.height).data;
+      let leftInk = 0;
+      let rightInk = 0;
+      for (let i = 3; i < leftData.length; i += 4) {
+        if ((leftData[i] ?? 0) > 0) leftInk += 1;
+      }
+      for (let i = 3; i < rightData.length; i += 4) {
+        if ((rightData[i] ?? 0) > 0) rightInk += 1;
+      }
+      return { leftInk, rightInk };
+    });
+
+    expect(inkRegions.leftInk).toBeGreaterThan(10);
+    expect(inkRegions.rightInk).toBeGreaterThan(10);
     await expect(page.getByText('İmza alındı')).toBeVisible();
     await expect(page.getByText('1 kaydedilmemiş değişiklik')).toBeVisible();
   });
@@ -77,12 +99,19 @@ test.describe('imza alanı ve bağlantı araması', () => {
     await page.goto('/?linkError=1');
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
-    await page.getByRole('combobox', { name: /Departman/ }).click();
+    const deptSelector = page.locator('[data-fieldname="department"] .ant-select-selector');
+    await deptSelector.scrollIntoViewIfNeeded();
+    await deptSelector.click();
     await expect(page.getByText('Arama sunucusuna ulaşılamadı.')).toBeVisible();
     await expect(page.getByText('Eşleşen kayıt yok')).toBeHidden();
 
     await page.getByRole('button', { name: 'Yeniden dene' }).click();
-    await expect(page.getByText('Mühendislik')).toBeVisible();
+    await expect(
+      page.locator('.ant-select-dropdown').getByText('Mühendislik', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('.ant-select-dropdown').getByText('Operasyon', { exact: true }),
+    ).toBeVisible();
   });
 });
 

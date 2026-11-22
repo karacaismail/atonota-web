@@ -7,16 +7,13 @@ import {
   Trash,
   UploadSimple,
 } from '@phosphor-icons/react';
-import { Button, ColorPicker, Input, InputNumber, Rate, Upload } from 'antd';
-import { type PointerEvent, useRef, useState } from 'react';
+import { Button, ColorPicker, Input, InputNumber, Rate, Segmented, Upload } from 'antd';
+import { type PointerEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import { formatRecordMessage } from '../messages';
 import type { DocField, RecordLocale } from '../types';
 import type { FieldControlA11yProps } from './FieldShell';
 
-/**
- * Validates attachment URLs against safe relative Frappe paths or HTTPS origins (GV-3).
- */
 function isSafeAttachmentUrl(rawUrl: string): boolean {
   const trimmed = rawUrl.trim();
   if (trimmed.length === 0) {
@@ -46,6 +43,7 @@ export function AttachField(props: AttachFieldProps) {
   const { value, isImage, readOnly, locale, a11y, onChange } = props;
   const filePath = typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
   const safeUrl = filePath ? isSafeAttachmentUrl(filePath) : false;
+  const actionTextId = `${a11y.controlId}-action-text`;
 
   return (
     <div className="rv-signature-pad">
@@ -62,12 +60,14 @@ export function AttachField(props: AttachFieldProps) {
           >
             <Button
               id={a11y.controlId}
-              aria-labelledby={a11y.labelId}
+              aria-labelledby={`${a11y.labelId} ${actionTextId}`}
               aria-describedby={a11y.ariaDescribedBy}
               size="middle"
               icon={isImage ? <ImageSquare weight="regular" /> : <UploadSimple weight="regular" />}
             >
-              {formatRecordMessage(locale, isImage ? 'attachChooseImage' : 'attachChooseFile')}
+              <span id={actionTextId}>
+                {formatRecordMessage(locale, isImage ? 'attachChooseImage' : 'attachChooseFile')}
+              </span>
             </Button>
           </Upload>
         ) : null}
@@ -105,6 +105,28 @@ export function AttachField(props: AttachFieldProps) {
   );
 }
 
+interface StrokePoint {
+  x: number;
+  y: number;
+}
+
+function readCanvasThemeTokens(canvas: HTMLCanvasElement | null): {
+  strokeColor: string;
+  strokeWidth: number;
+  fontFamily: string;
+} {
+  if (!canvas || typeof window === 'undefined') {
+    return { strokeColor: 'currentColor', strokeWidth: 2, fontFamily: 'sans-serif' };
+  }
+  const computed = window.getComputedStyle(canvas);
+  const rawLine = Number.parseFloat(computed.getPropertyValue('--rv-focus-line-size'));
+  return {
+    strokeColor: computed.color || 'currentColor',
+    strokeWidth: Number.isFinite(rawLine) && rawLine > 0 ? rawLine : 2,
+    fontFamily: computed.fontFamily || 'sans-serif',
+  };
+}
+
 export interface SignatureFieldProps {
   value: string | null | undefined;
   readOnly: boolean;
@@ -117,11 +139,131 @@ export function SignatureField(props: SignatureFieldProps) {
   const { value, readOnly, locale, a11y, onChange } = props;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [drawing, setDrawing] = useState(false);
-  const pointsRef = useRef<{ x: number; y: number }[]>([]);
+  const [signMode, setSignMode] = useState<'draw' | 'type'>('draw');
+  const [typedName, setTypedName] = useState('');
+
+  // Review 2 Finding 2: Accumulate all strokes instead of resetting on each pointerdown.
+  const strokesRef = useRef<StrokePoint[][]>([]);
+  const sizeRef = useRef<{ width: number; height: number }>({ width: 320, height: 120 });
 
   const hasSignature = typeof value === 'string' && value.startsWith('data:image/');
 
-  const getRelativePoint = (event: PointerEvent<HTMLCanvasElement>): { x: number; y: number } => {
+  const redrawAllStrokes = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+    let ctx: CanvasRenderingContext2D | null;
+    try {
+      ctx = canvas.getContext('2d');
+    } catch {
+      return;
+    }
+    if (!ctx) {
+      return;
+    }
+    const dpr =
+      typeof window !== 'undefined' && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const { width, height } = sizeRef.current;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(dpr, dpr);
+
+    const tokens = readCanvasThemeTokens(canvas);
+    ctx.strokeStyle = tokens.strokeColor;
+    ctx.lineWidth = tokens.strokeWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (const stroke of strokesRef.current) {
+      if (stroke.length === 0) {
+        continue;
+      }
+      const first = stroke[0];
+      if (!first) {
+        continue;
+      }
+      ctx.beginPath();
+      ctx.moveTo(first.x, first.y);
+      if (stroke.length === 1) {
+        ctx.lineTo(first.x + 0.5, first.y + 0.5);
+      } else {
+        for (let i = 1; i < stroke.length; i += 1) {
+          const pt = stroke[i];
+          if (pt) {
+            ctx.lineTo(pt.x, pt.y);
+          }
+        }
+      }
+      ctx.stroke();
+    }
+
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+  }, []);
+
+  // Review 2 Finding 3: Synchronize backing bitmap with actual rendered CSS size + devicePixelRatio.
+  const syncCanvasDimensions = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof window === 'undefined') {
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const cssWidth = rect.width > 0 ? Math.round(rect.width) : 320;
+    const cssHeight = rect.height > 0 ? Math.round(rect.height) : 120;
+    const dpr = window.devicePixelRatio || 1;
+    const targetW = Math.round(cssWidth * dpr);
+    const targetH = Math.round(cssHeight * dpr);
+
+    sizeRef.current = { width: cssWidth, height: cssHeight };
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+      redrawAllStrokes();
+    }
+  }, [redrawAllStrokes]);
+
+  useEffect(() => {
+    syncCanvasDimensions();
+    if (typeof ResizeObserver === 'undefined' || !canvasRef.current) {
+      return undefined;
+    }
+    const observer = new ResizeObserver(() => {
+      syncCanvasDimensions();
+    });
+    observer.observe(canvasRef.current);
+    return () => {
+      observer.disconnect();
+    };
+  }, [syncCanvasDimensions]);
+
+  const serializeStrokes = (): string => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      try {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const pngUrl = canvas.toDataURL('image/png');
+          if (pngUrl.startsWith('data:image/png') && pngUrl.length > 32) {
+            return pngUrl;
+          }
+        }
+      } catch {
+        // Fall through to multi-stroke SVG in headless jsdom environments.
+      }
+    }
+    const { width, height } = sizeRef.current;
+    const tokens = readCanvasThemeTokens(canvas);
+    const pathD = strokesRef.current
+      .filter((stroke) => stroke.length > 0)
+      .map((stroke) => stroke.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' '))
+      .join(' ');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><path d="${pathD}" stroke="${tokens.strokeColor}" stroke-width="${tokens.strokeWidth}" fill="none"/></svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  };
+
+  const getRelativePoint = (event: PointerEvent<HTMLCanvasElement>): StrokePoint => {
     const rect = event.currentTarget.getBoundingClientRect();
     return {
       x: Math.round(event.clientX - rect.left),
@@ -133,14 +275,11 @@ export function SignatureField(props: SignatureFieldProps) {
     if (readOnly) {
       return;
     }
+    syncCanvasDimensions();
     const pt = getRelativePoint(event);
-    pointsRef.current = [pt];
+    strokesRef.current = [...strokesRef.current, [pt]];
     setDrawing(true);
-    const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) {
-      ctx.beginPath();
-      ctx.moveTo(pt.x, pt.y);
-    }
+    redrawAllStrokes();
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -148,14 +287,12 @@ export function SignatureField(props: SignatureFieldProps) {
       return;
     }
     const pt = getRelativePoint(event);
-    pointsRef.current.push(pt);
-    const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) {
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-      ctx.lineTo(pt.x, pt.y);
-      ctx.stroke();
+    const currentStrokes = strokesRef.current;
+    const activeStroke = currentStrokes[currentStrokes.length - 1];
+    if (activeStroke) {
+      activeStroke.push(pt);
     }
+    redrawAllStrokes();
   };
 
   const handlePointerUp = () => {
@@ -163,21 +300,64 @@ export function SignatureField(props: SignatureFieldProps) {
       return;
     }
     setDrawing(false);
-    const pts = pointsRef.current;
-    if (pts.length === 0) {
+    if (strokesRef.current.length === 0) {
       return;
     }
-    const pathD = pts.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ');
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120"><path d="${pathD}" stroke="#0b1220" stroke-width="2" fill="none"/></svg>`;
+    onChange(serializeStrokes());
+  };
+
+  const handleApplyTypedSignature = () => {
+    const cleanText = typedName.trim();
+    if (!cleanText || readOnly) {
+      return;
+    }
+    const canvas = canvasRef.current;
+    const { width, height } = sizeRef.current;
+    const tokens = readCanvasThemeTokens(canvas);
+    if (canvas) {
+      try {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          syncCanvasDimensions();
+          const dpr =
+            typeof window !== 'undefined' && window.devicePixelRatio ? window.devicePixelRatio : 1;
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.scale(dpr, dpr);
+          ctx.fillStyle = tokens.strokeColor;
+          ctx.font = `italic 24px ${tokens.fontFamily}`;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(cleanText, 16, Math.round(height / 2));
+          const png = canvas.toDataURL('image/png');
+          if (png.startsWith('data:image/png') && png.length > 32) {
+            onChange(png);
+            return;
+          }
+        }
+      } catch {
+        // Fall through to safe SVG text serialization in jsdom.
+      }
+    }
+    const escapedText = cleanText
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><text x="16" y="${Math.round(height / 2)}" fill="${tokens.strokeColor}" font-size="24" font-style="italic">${escapedText}</text></svg>`;
     onChange(`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`);
   };
 
   const handleClear = () => {
-    pointsRef.current = [];
+    strokesRef.current = [];
+    setTypedName('');
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (canvas && ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (canvas) {
+      try {
+        const ctx = canvas.getContext('2d');
+        ctx?.setTransform(1, 0, 0, 1, 0, 0);
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      } catch {
+        // Ignore in non-canvas environments.
+      }
     }
     onChange(null);
   };
@@ -185,6 +365,20 @@ export function SignatureField(props: SignatureFieldProps) {
   return (
     <div className="rv-signature-pad">
       {!readOnly ? (
+        <div className="rv-editor-toolbar">
+          <Segmented<'draw' | 'type'>
+            size="small"
+            value={signMode}
+            onChange={(next) => setSignMode(next)}
+            options={[
+              { value: 'draw', label: formatRecordMessage(locale, 'signatureModeDraw') },
+              { value: 'type', label: formatRecordMessage(locale, 'signatureModeType') },
+            ]}
+          />
+        </div>
+      ) : null}
+
+      {!readOnly && signMode === 'draw' ? (
         <canvas
           id={a11y.controlId}
           ref={canvasRef}
@@ -199,6 +393,23 @@ export function SignatureField(props: SignatureFieldProps) {
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
         />
+      ) : !readOnly && signMode === 'type' ? (
+        <div className="rv-attach-row">
+          <Input
+            id={a11y.controlId}
+            aria-label={formatRecordMessage(locale, 'signatureTextLabel')}
+            size="middle"
+            value={typedName}
+            onChange={(e) => setTypedName(e.target.value)}
+          />
+          <Button
+            size="middle"
+            onClick={handleApplyTypedSignature}
+            disabled={typedName.trim().length === 0}
+          >
+            {formatRecordMessage(locale, 'signatureApplyAction')}
+          </Button>
+        </div>
       ) : hasSignature ? (
         <img src={value} alt="" className="rv-attach-preview" />
       ) : null}
@@ -212,9 +423,11 @@ export function SignatureField(props: SignatureFieldProps) {
         </span>
         {!readOnly ? (
           <>
-            <span className="rv-field-help">
-              {formatRecordMessage(locale, 'signatureDrawHint')}
-            </span>
+            {signMode === 'draw' ? (
+              <span className="rv-field-help">
+                {formatRecordMessage(locale, 'signatureDrawHint')}
+              </span>
+            ) : null}
             {hasSignature ? (
               <Button size="small" icon={<Eraser weight="regular" />} onClick={handleClear}>
                 {formatRecordMessage(locale, 'signatureClear')}
@@ -296,6 +509,7 @@ export interface GeolocationFieldProps {
 export function GeolocationField(props: GeolocationFieldProps) {
   const { value, readOnly, locale, a11y, onChange } = props;
   const { lat, lng } = parseGeoJsonPoint(value);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const latId = `${a11y.controlId}-lat`;
   const lngId = `${a11y.controlId}-lng`;
 
@@ -306,7 +520,7 @@ export function GeolocationField(props: GeolocationFieldProps) {
           <label htmlFor={latId} className="rv-field-help">
             {formatRecordMessage(locale, 'geolocationLatitude')}
           </label>
-          <InputNumber
+          <InputNumber<number>
             id={latId}
             size="middle"
             style={{ width: '100%' }}
@@ -315,16 +529,17 @@ export function GeolocationField(props: GeolocationFieldProps) {
             step={0.0001}
             disabled={readOnly}
             value={lat}
-            onChange={(nextLat) =>
-              onChange(formatGeoJsonPoint(typeof nextLat === 'number' ? nextLat : null, lng))
-            }
+            onChange={(nextLat) => {
+              setGeoError(null);
+              onChange(formatGeoJsonPoint(typeof nextLat === 'number' ? nextLat : null, lng));
+            }}
           />
         </div>
         <div className="rv-field">
           <label htmlFor={lngId} className="rv-field-help">
             {formatRecordMessage(locale, 'geolocationLongitude')}
           </label>
-          <InputNumber
+          <InputNumber<number>
             id={lngId}
             size="middle"
             style={{ width: '100%' }}
@@ -333,9 +548,10 @@ export function GeolocationField(props: GeolocationFieldProps) {
             step={0.0001}
             disabled={readOnly}
             value={lng}
-            onChange={(nextLng) =>
-              onChange(formatGeoJsonPoint(lat, typeof nextLng === 'number' ? nextLng : null))
-            }
+            onChange={(nextLng) => {
+              setGeoError(null);
+              onChange(formatGeoJsonPoint(lat, typeof nextLng === 'number' ? nextLng : null));
+            }}
           />
         </div>
       </div>
@@ -345,14 +561,25 @@ export function GeolocationField(props: GeolocationFieldProps) {
             size="small"
             icon={<Crosshair weight="regular" />}
             onClick={() => {
-              navigator.geolocation.getCurrentPosition((pos) => {
-                onChange(formatGeoJsonPoint(pos.coords.latitude, pos.coords.longitude));
-              });
+              setGeoError(null);
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  onChange(formatGeoJsonPoint(pos.coords.latitude, pos.coords.longitude));
+                },
+                () => {
+                  setGeoError(formatRecordMessage(locale, 'geolocationPermissionDenied'));
+                },
+              );
             }}
           >
             {formatRecordMessage(locale, 'geolocationUseCurrent')}
           </Button>
         </div>
+      ) : null}
+      {geoError ? (
+        <p className="rv-field-error" role="alert">
+          {geoError}
+        </p>
       ) : null}
     </div>
   );
@@ -422,13 +649,15 @@ export interface ColorFieldProps {
 
 export function ColorField(props: ColorFieldProps) {
   const { value, readOnly, locale, a11y, onChange } = props;
-  const safeHex = /^#[0-9a-fA-F]{6}$/.test(value) ? value : '#00aacc';
+  const hasValidHex = /^#[0-9a-fA-F]{6}$/.test(value.trim());
 
   return (
     <div className="rv-color-row">
       <ColorPicker
         disabled={readOnly}
-        value={safeHex}
+        allowClear
+        value={hasValidHex ? value.trim() : null}
+        onClear={() => onChange('')}
         onChange={(_color, cssHex) => onChange(cssHex)}
       />
       <Input
@@ -438,7 +667,7 @@ export function ColorField(props: ColorFieldProps) {
         aria-invalid={a11y.ariaInvalid}
         size="middle"
         readOnly={readOnly}
-        style={{ width: 140, fontFamily: 'var(--rv-font-mono)' }}
+        className="rv-color-input"
         placeholder={formatRecordMessage(locale, 'colorPlaceholder')}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -463,19 +692,21 @@ export function RatingField(props: RatingFieldProps) {
   const numericVal = typeof value === 'number' && Number.isFinite(value) ? value : 0;
   const displayedStars = numericVal <= 1 ? numericVal * starCount : Math.min(starCount, numericVal);
 
+  // Review 2 Minor 3: Bind label and accessible name directly onto the Rate element (not a wrapper div).
   return (
-    <div id={a11y.controlId} aria-labelledby={a11y.labelId}>
-      <Rate
-        allowHalf
-        count={starCount}
-        disabled={readOnly}
-        value={displayedStars}
-        onChange={(stars) => {
-          const normalized = Math.round((stars / starCount) * 1000) / 1000;
-          onChange(normalized);
-        }}
-      />
-    </div>
+    <Rate
+      id={a11y.controlId}
+      aria-labelledby={a11y.labelId}
+      aria-describedby={a11y.ariaDescribedBy}
+      allowHalf
+      count={starCount}
+      disabled={readOnly}
+      value={displayedStars}
+      onChange={(stars) => {
+        const normalized = Math.round((stars / starCount) * 1000) / 1000;
+        onChange(normalized);
+      }}
+    />
   );
 }
 

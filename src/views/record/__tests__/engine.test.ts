@@ -8,6 +8,7 @@ import {
   SchemaValidationError,
   validateDocTypeMeta,
   validateLinkSearchResponse,
+  validateRecordAgainstMeta,
   validateRecordEnvelope,
 } from '../schema';
 import type { DocField, DocTypeMeta } from '../types';
@@ -209,6 +210,39 @@ describe('schema validation (SZ-4, TS-5, RE-11)', () => {
     expect(doc['amended_from']).toBeNull();
     expect(doc['description']).toBe('');
     expect('leave_balance' in doc).toBe(false);
+  });
+
+  it('validates record field types against DocTypeMeta, strips undeclared keys, and preserves null vs empty string (Review 1 Finding 5)', () => {
+    const meta = validateDocTypeMeta(SAMPLE_META_ENVELOPE);
+    const sanitized = validateRecordAgainstMeta(
+      {
+        name: 'HR-LAP-TEST-01',
+        modified: '2026-11-22 09:00:00.000001',
+        docstatus: 0,
+        amended_from: null,
+        employee: '',
+        employee_name: null,
+        total_leave_days: 3.5,
+        undeclared_internal_tag: 'should-be-dropped',
+      },
+      meta,
+    );
+
+    expect(sanitized['employee']).toBe('');
+    expect(sanitized['employee_name']).toBeNull();
+    expect(sanitized['amended_from']).toBeNull();
+    expect(sanitized['total_leave_days']).toBe(3.5);
+    expect('undeclared_internal_tag' in sanitized).toBe(false);
+
+    expect(() =>
+      validateRecordAgainstMeta(
+        {
+          name: 'HR-LAP-BAD',
+          total_leave_days: { bad: true },
+        },
+        meta,
+      ),
+    ).toThrow(SchemaValidationError);
   });
 
   it('validates search_link response items', () => {

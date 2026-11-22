@@ -1,6 +1,8 @@
-import { Select } from 'antd';
+import { ArrowClockwise } from '@phosphor-icons/react';
+import { Button, Select } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { RecordApiError } from '../adapter';
 import { formatRecordMessage } from '../messages';
 import type { DocField, LinkOption, RecordDataAdapter, RecordLocale } from '../types';
 import type { FieldControlA11yProps } from './FieldShell';
@@ -36,8 +38,10 @@ export function LinkField(props: LinkFieldProps) {
 
   const [options, setOptions] = useState<readonly LinkOption[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const seqRef = useRef(0);
+  const lastQueryRef = useRef('');
 
   useEffect(() => {
     return () => {
@@ -52,12 +56,14 @@ export function LinkField(props: LinkFieldProps) {
         return;
       }
 
+      lastQueryRef.current = searchText;
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
       seqRef.current += 1;
       const requestId = seqRef.current;
       setSearching(true);
+      setSearchError(null);
 
       void adapter
         .searchLink({
@@ -72,22 +78,31 @@ export function LinkField(props: LinkFieldProps) {
             return;
           }
           setOptions(results);
+          setSearchError(null);
           setSearching(false);
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           if (controller.signal.aborted || requestId !== seqRef.current) {
             return;
           }
           setOptions([]);
+          setSearchError(
+            err instanceof RecordApiError
+              ? err.message
+              : formatRecordMessage(locale, 'networkError'),
+          );
           setSearching(false);
         });
     },
-    [adapter, field.fieldname, readOnly, referenceDoctype, targetDoctype],
+    [adapter, field.fieldname, locale, readOnly, referenceDoctype, targetDoctype],
   );
 
   const normalizedValue = typeof value === 'string' && value.length > 0 ? value : undefined;
 
   const selectOptions = useMemo(() => {
+    if (searchError) {
+      return [];
+    }
     const mapped = options.map((opt) => ({
       value: opt.value,
       label: opt.label ?? opt.value,
@@ -101,7 +116,7 @@ export function LinkField(props: LinkFieldProps) {
       });
     }
     return mapped;
-  }, [normalizedValue, options]);
+  }, [normalizedValue, options, searchError]);
 
   const isDisabled = readOnly || targetDoctype.trim().length === 0;
   const placeholder =
@@ -109,6 +124,24 @@ export function LinkField(props: LinkFieldProps) {
     (targetDoctype.trim().length > 0
       ? formatRecordMessage(locale, 'linkSearchPlaceholder', { doctype: targetDoctype })
       : formatRecordMessage(locale, 'linkSelectTargetFirst'));
+
+  const notFoundNode = searching ? (
+    formatRecordMessage(locale, 'linkSearching')
+  ) : searchError ? (
+    <div className="rv-link-error-popup" role="alert">
+      <span>{searchError}</span>
+      <Button
+        size="small"
+        icon={<ArrowClockwise weight="regular" />}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => executeServerSearch(lastQueryRef.current)}
+      >
+        {formatRecordMessage(locale, 'retryAction')}
+      </Button>
+    </div>
+  ) : (
+    formatRecordMessage(locale, 'linkNoResults')
+  );
 
   return (
     <Select<string | undefined>
@@ -126,11 +159,7 @@ export function LinkField(props: LinkFieldProps) {
       placeholder={placeholder}
       value={normalizedValue}
       options={selectOptions}
-      notFoundContent={
-        searching
-          ? formatRecordMessage(locale, 'linkSearching')
-          : formatRecordMessage(locale, 'linkNoResults')
-      }
+      notFoundContent={notFoundNode}
       onOpenChange={(open) => {
         if (open) {
           executeServerSearch('');

@@ -106,7 +106,7 @@ const HARNESS_META: DocTypeMeta = {
         sensitivity: 'standard',
       },
       {
-        fieldname: 'tag_Color',
+        fieldname: 'tag_color',
         fieldtype: 'Color',
         label: 'Etiket Rengi',
         read_only: false,
@@ -220,7 +220,7 @@ const HARNESS_RECORD: RecordDocument = {
   posting_date: '2026-11-23',
   is_paid: 0,
   service_rating: 0.8,
-  tag_Color: '',
+  tag_color: '',
   notes_editor: 'Harici toplantı ulaşım gideri.',
   items: [
     {

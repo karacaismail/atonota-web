@@ -348,8 +348,10 @@ describe('versioned field catalog (RE-11, AX-4, Goal 1)', () => {
       const colorInput = screen.getByLabelText('Marka Rengi');
       expect(colorInput).toHaveValue('');
 
-      // Review 2 Minor 3: Rating radiogroup has accessible name from label
-      expect(screen.getByRole('radiogroup', { name: 'Hizmet Puanı' })).toBeInTheDocument();
+      // Review 2 Minor 3: Rating label is bound directly to the Rate list control (not a wrapper div)
+      const rateControl = screen.getByRole('list', { name: 'Hizmet Puanı' });
+      expect(rateControl).toHaveClass('ant-rate');
+      expect(screen.getByLabelText('Hizmet Puanı')).toBe(rateControl);
 
       // Review 2 Minor 2: Geolocation permission denial shows error text
       await user.click(screen.getByRole('button', { name: 'Cihaz konumunu al' }));
