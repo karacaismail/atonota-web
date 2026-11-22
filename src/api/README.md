@@ -45,3 +45,9 @@ Ayar yalnız kök olabilir. Örnek: `https://press.example.test`. Şu değerler 
 - adres olmayan değer.
 
 Yerel geliştirmede `http://localhost` adresi kabul edilir. Bunun için `import.meta.env` nesnesindeki `DEV` değeri doğru olmalıdır. Üretim derlemesinde düz HTTP adresi her zaman hata verir.
+
+### Açık soru: sayfaya doğrudan giriş
+
+Sözleşmede `/account-deletion` adresi yalnız giriş dönüşünün adresi olarak geçer. Kullanıcı bu sayfaya panelden doğrudan gelebilir. Bu durumda Press'in ne yapacağı sözleşmede yazmıyor. Örneğin Press yeniden doğrulamayı başlatmayabilir.
+
+Arka uç sahibi bu davranışı doğrulamalı ve sözleşmeye yazmalı. Yanıt gelene kadar panel bu düğmeyi canlıda açmamalı.
