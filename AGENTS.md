@@ -118,3 +118,13 @@ Proje sahibinin genel kuralları bu depoda da geçerlidir. İki kural için bu p
 - İşçi push etmez. Orkestratör incelemeden ve kapılardan geçen işi `main` dalına birleştirir.
 - Orkestratör her birleşmeden sonra `main` dalını hemen GitHub'a gönderir.
 - Uzun süren iş de parça parça birleşir. Bitmemiş özellik varsayılan olarak kapalı bir ayarın arkasında durur.
+
+## Türetilmiş kararlar
+
+Bu kararlar kaynak dosyada yoktu. Orkestratör 23 Kasım 2026 Pazartesi günü onayladı. Değerler kodda sabit yazılmaz. Her değer kaynak karardan programatik türetilir ve testle sabitlenir.
+
+1. **Koyu temada birincil buton metni.** Kaynak karar dinlenme metnini #00aacc %85 yapar. Bu değer WCAG 2.2 AA kontrastını (4.5:1) vermez. WCAG 2.2 AA önce gelir. Dinlenme opaklığı, yerleşim (#17171A) ve panel (#1F1F23) zeminlerinde 4.5:1 veren en küçük değere çıkar. Bugün bu değer %95'tir. Renk #00aacc, zemin %14, hover zemin %22 ve hover metin %100 aynı kalır. Hesap `src/design/tokens.ts` içindedir. Test `src/design/antd-theme.test.ts` içindedir.
+2. **Açık temada bağlantı rengi.** #00aacc beyaz üzerinde 2.76:1 verir. Bağlantı metni için renk, birincil renkten koyulaştırılarak türetilir. Hedef 4.5:1, zemin antd `colorBgLayout` değeridir. Butonlar ve zeminler #00aacc kalır. Koyu temada bağlantı rengi #00aacc kalır.
+3. **Metin bağlantıları altı çizilidir.** Renk tek ayırt edici olmaz (WCAG 1.4.1). Buton, menü ve sekme görünümlü bağlantılar bunun dışındadır.
+4. **Odak göstergesi.** Klavye modunda odaklanan kontrolün alt kenarında 2 px birincil renk çizgi görünür. Çevreleyen halka yoktur. Kalınlık proje kararıdır.
+5. **Temel hareket süreleri.** antd'nin hızlı, orta ve yavaş süreleri 100, 200 ve 300 ms'dir. Bu değerler yalnız `src/design/motion.ts` içindedir. Kaynaktaki süreler (dropdown 500 ms, odak perdesi 320 ms) aynen kullanılır.
