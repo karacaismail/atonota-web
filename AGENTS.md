@@ -6,9 +6,12 @@ Bu dosya bütün ajanlar ve insanlar için geçerlidir. Kurallar kalıcıdır.
 
 ## Amaç
 
+- Bu depo tam bir SaaS panelidir. Panel Frappe arka ucunun bütün arayüz ihtiyacını karşılar. Frappe'nin kendi masaüstü arayüzü kullanıcıya açılmaz.
 - Arayüz önce yapay zekâ için tasarlanır. İngilizcesi "AI first" olarak geçer.
 - Arayüz önce telefon ekranı için kurulur. Kabul 320 CSS px genişlikte başlar.
-- Bütün görsel kararlar `design/source/` klasöründeki dosyalardan gelir.
+- Teslim cihazın yeteneğine uyarlanır. İngilizcesi "adaptive delivery" olarak geçer. Telefon gereksiz masaüstü kodunu indirmez.
+- Bütün görsel kararlar `design/source/` klasöründeki dosyalardan gelir. Bu dosyalar projenin standardı, örneği ve tasarım dilidir.
+- Kaynak dosyalar masaüstü örnekleriyle yazıldı. Telefonda aynı tasarım dili korunur. Yerleşim telefon için yeniden kurulur.
 
 ## Karar kaynakları
 
@@ -47,11 +50,17 @@ Her iş yalnız kendi klasörünü değiştirir. Ortak dosya gerekiyorsa raporda
 
 | Klasör | Sahip iş |
 | --- | --- |
-| `package.json`, `vite.config.ts`, `src/design/`, `src/engines/`, `src/app/`, `tests/setup/` | `foundation` |
+| `package.json`, `vite.config.ts`, `.github/`, `src/design/`, `src/engines/`, `src/app/`, `tests/setup/` | `foundation` |
 | `src/components/controls/` | `controls` |
 | `src/shell/` | `shell` |
 | `src/ai/`, `src/genui/`, `src/mascot/` | `ai-studio` |
 | `src/api/`, `src/auth/`, `contracts/`, `src/mocks/` | `api-client` |
+| `src/views/collection/` | `views-collection` |
+| `src/views/record/` | `views-record` |
+| `src/modules/` | `modules` |
+| `src/adaptive/`, `tests/perf/` | `adaptive` |
+
+`package.json` ya da ayar dosyası değişikliği gerekiyorsa iş bunu raporda ister. `foundation` işi ekler.
 
 ## Tasarım tokenları
 
