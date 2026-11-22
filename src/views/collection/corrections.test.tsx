@@ -147,4 +147,40 @@ describe('review corrections', () => {
       ),
     ).toBe('<b>Örnek</b>');
   });
+  it('preserves keyboard active option when stationary pointer events fire during scroll, while still allowing real mouse motion', async () => {
+    render(
+      <MemoryRouter>
+        <CollectionView
+          definition={exampleDefinition}
+          source={exampleSource}
+          enableExperimentalCollectionViews
+        />
+      </MemoryRouter>,
+    );
+    await screen.findByText('EXAMPLE-001');
+    const combobox = screen.getByRole('combobox', { name: 'Görünüm' });
+    fireEvent.mouseMove(combobox, { clientX: 104, clientY: 231 });
+    fireEvent.mouseDown(combobox, { clientX: 104, clientY: 231 });
+    fireEvent.focus(combobox);
+    fireEvent.keyDown(combobox, { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40, which: 40 });
+    await screen.findByRole('listbox');
+    expect(combobox).toHaveAttribute('aria-activedescendant', expect.stringMatching(/_0$/));
+
+    fireEvent.keyDown(combobox, { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40, which: 40 });
+    expect(combobox).toHaveAttribute('aria-activedescendant', expect.stringMatching(/_1$/));
+
+    const firstOption = screen.getByRole('option', { name: 'Tablo' });
+    fireEvent.mouseMove(firstOption, { clientX: 104, clientY: 231 });
+    expect(combobox).toHaveAttribute('aria-activedescendant', expect.stringMatching(/_1$/));
+
+    fireEvent.mouseMove(firstOption, { clientX: 140, clientY: 295 });
+    expect(combobox).toHaveAttribute('aria-activedescendant', expect.stringMatching(/_0$/));
+
+    fireEvent.keyDown(combobox, { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40, which: 40 });
+    fireEvent.mouseMove(firstOption, { clientX: 140, clientY: 295 });
+    expect(combobox).toHaveAttribute('aria-activedescendant', expect.stringMatching(/_1$/));
+
+    fireEvent.keyDown(combobox, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13 });
+    await screen.findByText('Bu sayfadaki kayıtlar durumlarına göre gruplanır.');
+  });
 });
