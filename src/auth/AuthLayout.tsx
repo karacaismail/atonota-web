@@ -1,4 +1,4 @@
-import { Flex, theme } from 'antd';
+import { Flex } from 'antd';
 import type { ReactNode } from 'react';
 
 export interface AuthLayoutProps {
@@ -9,24 +9,23 @@ export interface AuthLayoutProps {
 
 /**
  * Giriş, bekleme ve hata ekranlarının ortak yerleşimi.
- * Telefon önce kurulur: 320 px genişlikte kenar boşluğu vardır. Geniş ekranda içerik `screenSM` genişliğini aşmaz.
- * Bütün ölçüler Ant Design tokenlarından gelir.
+ * Telefon önce kurulur: 320 px genişlikte kenar boşluğu vardır.
+ * Bütün ölçüler projenin CSS değişkenlerinden gelir (`src/design/css-variables.ts`).
  */
 export function AuthLayout({ children, labelledBy }: AuthLayoutProps) {
-  const { token } = theme.useToken();
   return (
     <Flex
       component="section"
       vertical
-      gap={token.marginMD}
+      gap="var(--space-md)"
       {...(labelledBy ? { 'aria-labelledby': labelledBy } : {})}
       style={{
         boxSizing: 'border-box',
         width: '100%',
-        maxWidth: token.screenSM,
+        maxWidth: 'var(--content-max-width)',
         marginInline: 'auto',
-        paddingInline: token.padding,
-        paddingBlock: token.paddingXL,
+        paddingInline: 'var(--space-md)',
+        paddingBlock: 'var(--space-xl)',
       }}
     >
       {children}

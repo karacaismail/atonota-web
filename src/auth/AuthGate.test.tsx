@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { theme } from 'antd';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { SAMPLE_CSRF_TOKEN, SAMPLE_USER } from '@/mocks/fixtures';
@@ -98,16 +97,17 @@ describe('AuthGate', () => {
   });
 
   it('bekleme ve hata ekranları da telefon önce yerleşimi kullanır', async () => {
-    const token = theme.getDesignToken();
     mockServer.use(
       http.get('*/api/method/frappe.auth.get_logged_user', () =>
         HttpResponse.json({ exc_type: 'ServerError' }, { status: 500 }),
       ),
     );
     setup();
-    const layout = { paddingInline: `${token.padding}px`, maxWidth: `${token.screenSM}px` };
-    expect(screen.getByRole('status').closest('section')).toHaveStyle(layout);
-    expect((await screen.findByRole('alert')).closest('section')).toHaveStyle(layout);
+    const usesProjectSpacing = (element: HTMLElement | null) =>
+      element?.style.paddingInline === 'var(--space-md)' &&
+      element.style.maxWidth === 'var(--content-max-width)';
+    expect(usesProjectSpacing(screen.getByRole('status').closest('section'))).toBe(true);
+    expect(usesProjectSpacing((await screen.findByRole('alert')).closest('section'))).toBe(true);
   });
 
   it('oturumdaki kullanıcıyı alt bileşene verir', async () => {

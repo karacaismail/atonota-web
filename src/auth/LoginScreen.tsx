@@ -13,7 +13,7 @@ export interface LoginScreenProps {
 /**
  * Giriş rotasının ekranı. Düğme arka ucun `start_login` akışını başlatır.
  * Yerleşim telefon önce kurulur: 320 px genişlikte kenar boşluğu vardır ve düğme tam genişliktedir.
- * Geniş ekranda içerik `screenSM` genişliğini aşmaz. Bütün ölçüler Ant Design tokenlarından gelir.
+ * Ölçüler AuthLayout içinde projenin CSS değişkenlerinden gelir.
  */
 export function LoginScreen({ onSignIn, brandName = messages.tr.brand }: LoginScreenProps) {
   const text = messages.tr;
