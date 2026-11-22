@@ -1,0 +1,147 @@
+import { Button, Flex, Input, Select, Space, Table, Typography } from 'antd';
+import { useState } from 'react';
+
+import { FOCUS_DIM_SOURCE_CLASS, useFocusDim } from '@/engines/focus-dim';
+import { HitSuffix } from '@/engines/hit-area';
+
+import { ThemeModeSwitch } from './ThemeModeSwitch';
+
+const sizeOptions = [
+  { value: 'sm', label: 'Küçük' },
+  { value: 'md', label: 'Orta' },
+  { value: 'lg', label: 'Büyük' },
+];
+
+/** Geniş tablo örneği: sütunlar sıkışmaz, tablo kendi kapsayıcısında kayar. */
+const tableColumns = [
+  { title: 'Kayıt adı', dataIndex: 'name', key: 'name', minWidth: 'var(--table-col-min-title)' },
+  {
+    title: 'Belge türü',
+    dataIndex: 'docType',
+    key: 'docType',
+    minWidth: 'var(--table-col-min-text)',
+  },
+  { title: 'Tarih', dataIndex: 'date', key: 'date', minWidth: 'var(--table-col-min-date)' },
+  { title: 'Tutar', dataIndex: 'amount', key: 'amount', minWidth: 'var(--table-col-min-number)' },
+  { title: 'Durum', dataIndex: 'status', key: 'status', minWidth: 'var(--table-col-min-text)' },
+].map(({ minWidth, ...col }) => ({
+  ...col,
+  onHeaderCell: () => ({ style: { minWidth } }),
+  onCell: () => ({ style: { minWidth } }),
+}));
+
+const tableRows = [
+  {
+    key: '1',
+    name: 'Örnek Kayıt 1',
+    docType: 'Teklif',
+    date: '23 Kasım 2026',
+    amount: '1.250,00',
+    status: 'Açık',
+  },
+  {
+    key: '2',
+    name: 'Örnek Kayıt 2',
+    docType: 'Sipariş',
+    date: '22 Kasım 2026',
+    amount: '980,50',
+    status: 'Onaylı',
+  },
+];
+
+/** Odak perdesini deneme düğmesi. Açan öğe perdenin üstünde kalır. */
+function FocusDimDemo() {
+  const [open, setOpen] = useState(false);
+  useFocusDim(open, 'demo');
+  return (
+    <Button
+      data-testid="dim-toggle"
+      className={FOCUS_DIM_SOURCE_CLASS}
+      aria-pressed={open}
+      onClick={() => setOpen((v) => !v)}
+    >
+      {open ? 'Perdeyi kapat' : 'Perdeyi aç'}
+    </Button>
+  );
+}
+
+/**
+ * Temel önizleme ve deneme sayfası. Yalnız e2e derlemesinde `/_demo/foundation` yolunda açılır.
+ * Tasarım kararlarını ve motorları gösterir; tarayıcı kapıları bu sayfada koşar.
+ */
+export default function FoundationPage() {
+  return (
+    <main
+      style={{
+        padding: 'var(--space-lg) var(--space-md)',
+        maxWidth: 'var(--content-max-width)',
+        marginInline: 'auto',
+      }}
+    >
+      <Flex vertical gap="large">
+        <Flex justify="space-between" align="center" wrap gap="small">
+          <Typography.Title level={1} style={{ margin: 0 }}>
+            Atonota
+          </Typography.Title>
+          <ThemeModeSwitch />
+        </Flex>
+        <Typography.Paragraph>
+          Arayüz temeli hazır. Bu sayfa tasarım kararlarını gösterir.
+        </Typography.Paragraph>
+
+        <section aria-labelledby="buttons-title">
+          <Typography.Title level={2} id="buttons-title">
+            Butonlar
+          </Typography.Title>
+          <Flex gap="middle" wrap align="center">
+            <Button size="small" data-testid="btn-sm">
+              Küçük
+            </Button>
+            <Button type="primary" data-testid="btn-md">
+              Orta
+            </Button>
+            <Button size="large" data-testid="btn-lg">
+              Büyük
+            </Button>
+            <Button disabled data-testid="btn-disabled">
+              Pasif
+            </Button>
+            <FocusDimDemo />
+          </Flex>
+          <Space.Compact style={{ marginTop: 'var(--space-md)' }} data-testid="compact">
+            <Button data-testid="compact-left">Sol</Button>
+            <Button data-testid="compact-right">Sağ</Button>
+          </Space.Compact>
+        </section>
+
+        <section aria-labelledby="inputs-title">
+          <Typography.Title level={2} id="inputs-title">
+            Giriş alanları
+          </Typography.Title>
+          <Flex vertical gap="middle">
+            <Input aria-label="Ad" placeholder="Ad" suffix={<HitSuffix />} data-testid="input-md" />
+            <Select
+              aria-label="Boyut"
+              placeholder="Boyut seçin"
+              options={sizeOptions}
+              style={{ width: '100%' }}
+              data-testid="select-md"
+            />
+            <Typography.Paragraph style={{ margin: 0 }}>
+              Yardım için <a href="#yardim">yardım sayfasına</a> bakın.
+            </Typography.Paragraph>
+          </Flex>
+        </section>
+
+        <section aria-labelledby="table-title" data-testid="wide-table">
+          <Typography.Title level={2} id="table-title">
+            Geniş tablo
+          </Typography.Title>
+          <div data-scroll-x tabIndex={0} role="region" aria-labelledby="table-title">
+            <Table columns={tableColumns} dataSource={tableRows} pagination={false} size="middle" />
+          </div>
+        </section>
+      </Flex>
+    </main>
+  );
+}

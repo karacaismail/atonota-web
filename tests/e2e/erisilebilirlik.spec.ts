@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+const DEMO = '/_demo/foundation';
+
 const PRIMARY_RGB = 'rgb(0, 170, 204)';
 
 /** Klavye durakları: odaklanan öğe ve göstergeyi taşıması gereken görünür kontrol. */
@@ -47,7 +49,7 @@ async function openKeyboardMode(page: Page) {
 
 test.describe('odak göstergesi: üç durak', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto(DEMO);
     await expect(page.getByRole('heading', { level: 1, name: 'Atonota' })).toBeVisible();
   });
 
@@ -109,7 +111,7 @@ test.describe('odak göstergesi: üç durak', () => {
 
 test.describe('koyu birincil düğme kontrastı', () => {
   test('normal, üzerine gelme ve basılı durumlar en az 4.5:1', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(DEMO);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.getByRole('radiogroup', { name: 'Tema' }).getByText('Koyu', { exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -159,4 +161,85 @@ test.describe('koyu birincil düğme kontrastı', () => {
       .analyze();
     expect(results.violations).toEqual([]);
   });
+});
+
+test.describe('yer tutucu ve açık seçim metni', () => {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`${theme === 'dark' ? 'koyu' : 'açık'} tema: yer tutucu ve açık Select metni en az 4.5:1`, async ({
+      page,
+    }) => {
+      await page.goto(DEMO);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      if (theme === 'dark') {
+        await page
+          .getByRole('radiogroup', { name: 'Tema' })
+          .getByText('Koyu', { exact: true })
+          .click();
+        await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+      }
+      const contrast = (fg: string, bg: string) =>
+        page.evaluate(
+          ([f, b]) => {
+            const parse = (c: string) => {
+              const m = c.match(/[\d.]+/g) ?? [];
+              return { r: +m[0]!, g: +m[1]!, b: +m[2]!, a: m[3] === undefined ? 1 : +m[3] };
+            };
+            const lum = (c: { r: number; g: number; b: number }) => {
+              const ch = (v: number) => {
+                const x = v / 255;
+                return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+              };
+              return 0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b);
+            };
+            const B = parse(b);
+            const F = parse(f);
+            const blended = {
+              r: F.a * F.r + (1 - F.a) * B.r,
+              g: F.a * F.g + (1 - F.a) * B.g,
+              b: F.a * F.b + (1 - F.a) * B.b,
+            };
+            const [l1, l2] = [lum(blended), lum(B)].sort((x, y) => y - x);
+            return Math.round(((l1! + 0.05) / (l2! + 0.05)) * 100) / 100;
+          },
+          [fg, bg] as const,
+        );
+      // Giriş alanı yer tutucusu
+      const input = page.getByTestId('input-md');
+      const wrapper = page.locator('.ant-input-affix-wrapper').first();
+      const placeholderColor = await input.evaluate(
+        (el) => getComputedStyle(el, '::placeholder').color,
+      );
+      const inputBg = await wrapper.evaluate((el) => getComputedStyle(el).backgroundColor);
+      expect(await contrast(placeholderColor, inputBg), 'yer tutucu').toBeGreaterThanOrEqual(4.5);
+      // Select yer tutucusu
+      const select = page.getByTestId('select-md');
+      await select.evaluate((el) => el.scrollIntoView({ block: 'start' }));
+      const selectorBg = await select
+        .locator('.ant-select-selector')
+        .evaluate((el) => getComputedStyle(el).backgroundColor);
+      const phColor = await select
+        .locator('.ant-select-selection-placeholder')
+        .evaluate((el) => getComputedStyle(el).color);
+      expect(await contrast(phColor, selectorBg), 'select yer tutucu').toBeGreaterThanOrEqual(4.5);
+      // Fareyle açılmış Select'te seçili metin
+      await select.click();
+      await expect(page.locator('.ant-select-dropdown')).toBeVisible();
+      await page.locator('.ant-select-item-option', { hasText: 'Orta' }).click();
+      await expect(page.locator('.ant-select-dropdown')).toBeHidden();
+      await select.click();
+      await expect(page.locator('.ant-select-dropdown')).toBeVisible();
+      const itemColor = await select
+        .locator('.ant-select-selection-item')
+        .evaluate((el) => getComputedStyle(el).color);
+      expect(
+        await contrast(itemColor, selectorBg),
+        'açık Select seçili metin',
+      ).toBeGreaterThanOrEqual(4.5);
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2aa'])
+        .include('.ant-select')
+        .analyze();
+      expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([]);
+    });
+  }
 });

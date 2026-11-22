@@ -49,5 +49,6 @@ export default tseslint.config(
   {
     files: ['**/*.js', '**/*.mjs'],
     languageOptions: { globals: { ...globals.node } },
+    rules: { 'no-redeclare': ['error', { builtinGlobals: false }] },
   },
 );

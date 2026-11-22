@@ -27,15 +27,35 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['tests/setup/vitest.setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
-    exclude: ['node_modules', 'dist', 'tests/e2e/**'],
     css: false,
     restoreMocks: true,
-    deps: {
-      optimizer: {
-        // antd ve Ant Design X ESM dizin içe aktarımı kullanır; jsdom altında önceden paketlenir.
-        client: { enabled: true, include: ['antd', '@ant-design/x'] },
+    // Tek birim test kapısı: bütün src/**/*.test.{ts,tsx} dosyaları koşar.
+    // İki proje vardır. Neden: @ant-design/x paketi CJS derlemesinde bile antd/es dosyalarını ister;
+    // Node 24 bunu "antd/es/version" dizin içe aktarımında reddeder. Çözüm paketi önceden
+    // paketlemektir (optimizer). Kabuk testleri ise @ant-design/x paketini vi.mock ile taklit eder;
+    // taklit ile önceden paketleme birlikte çalışmaz. Kabuk taklidi kalkınca "shell" projesi silinir.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'shell',
+          include: ['src/shell/**/*.test.{ts,tsx}'],
+          exclude: ['node_modules', 'dist', '**/e2e/**'],
+        },
       },
-    },
+      {
+        extends: true,
+        test: {
+          name: 'app',
+          include: ['src/**/*.test.{ts,tsx}'],
+          exclude: ['node_modules', 'dist', '**/e2e/**', 'src/shell/**'],
+          deps: {
+            optimizer: {
+              client: { enabled: true, include: ['antd', '@ant-design/x'] },
+            },
+          },
+        },
+      },
+    ],
   },
 });

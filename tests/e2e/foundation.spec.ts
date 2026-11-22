@@ -1,9 +1,14 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+const DEMO = '/_demo/foundation';
+
 test.describe('temel kapılar', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    // Geçişler bitmeden ölçüm yapılmasın. Tercih sayfa açılmadan verilir; sayfa içinde değiştirmek
+    // temayı yeniden kurar ve öğeleri yeniden bağlar.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(DEMO);
     await expect(page.getByRole('heading', { level: 1, name: 'Atonota' })).toBeVisible();
   });
 
@@ -91,11 +96,40 @@ test.describe('temel kapılar', () => {
     await expect(page.getByTestId('input-md')).not.toHaveClass(/\bhit\b/);
   });
 
+  test('R11: Select genişletilmiş alandan tıklanınca açılır ve değer seçilir', async ({ page }) => {
+    const root = page.getByTestId('select-md');
+    await root.evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    const box = (await root.boundingBox())!;
+    // Kök öğenin üst kenarına yakın, ::after katmanının üstüne tıkla
+    await page.mouse.click(box.x + box.width / 2, box.y + 1);
+    // antd'nin role="listbox" öğesi ekran okuyucu içindir ve sıfır boyuttadır; görünen liste .ant-select-dropdown olur.
+    await expect(page.locator('.ant-select-dropdown')).toBeVisible();
+    await expect(root.locator('.ant-select-selection-search-input')).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await page.locator('.ant-select-item-option', { hasText: 'Orta' }).click();
+    await expect(page.locator('.ant-select-dropdown')).toBeHidden();
+    await expect(root.locator('.ant-select-selection-item')).toHaveText('Orta');
+    expect(await page.locator('select').count()).toBe(0);
+  });
+
   test('dropdown ve select listesi tarayıcı yerel select değildir', async ({ page }) => {
     expect(await page.locator('select').count()).toBe(0);
   });
 
+  async function pickSelectValue(page: Page) {
+    await page.getByTestId('select-md').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await page.getByTestId('select-md').click();
+    await expect(page.locator('.ant-select-dropdown')).toBeVisible();
+    await page.locator('.ant-select-item-option', { hasText: 'Orta' }).click();
+    await expect(page.getByTestId('select-md').locator('.ant-select-selection-item')).toHaveText(
+      'Orta',
+    );
+  }
+
   test('axe: erişilebilirlik ihlali yok', async ({ page }) => {
+    await pickSelectValue(page);
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
       .analyze();
@@ -103,8 +137,6 @@ test.describe('temel kapılar', () => {
   });
 
   async function switchToDark(page: Page) {
-    // Renk geçişleri bitmeden axe ölçmesin: azaltılmış hareket tercihi geçişleri kapatır.
-    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.getByRole('radiogroup', { name: 'Tema' }).getByText('Koyu', { exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     // antd renk geçişi bitene kadar bekle: koyu buton zemini #34343B.
@@ -113,6 +145,7 @@ test.describe('temel kapılar', () => {
 
   test('axe: koyu temada erişilebilirlik ihlali yok', async ({ page }) => {
     await switchToDark(page);
+    await pickSelectValue(page);
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
       .analyze();
@@ -130,7 +163,7 @@ test.describe('temel kapılar', () => {
 });
 
 test('odak modu: Tab açar, pointerdown kapatır', async ({ page }) => {
-  await page.goto('/');
+  await page.goto(DEMO);
   const html = page.locator('html');
   await expect(html).not.toHaveAttribute('data-focus-mode', 'keyboard');
   await page.getByTestId('btn-sm').click();
@@ -139,4 +172,22 @@ test('odak modu: Tab açar, pointerdown kapatır', async ({ page }) => {
   await expect(html).toHaveAttribute('data-focus-mode', 'keyboard');
   await page.mouse.click(5, 5);
   await expect(html).not.toHaveAttribute('data-focus-mode', 'keyboard');
+});
+
+test.describe('kök sayfa', () => {
+  test('kabuk sağlayıcılar içinde açılır ve sahte sunucu bildirimi görünür', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.shell')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Örnek veri' })).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', /light|dark/);
+    const family = await page.locator('body').evaluate((el) => getComputedStyle(el).fontFamily);
+    expect(family).toContain('Outfit');
+  });
+
+  test('deneme sayfası üretim derlemesine girmez: yol yalnız e2e modunda açılır', async ({
+    page,
+  }) => {
+    await page.goto(DEMO);
+    await expect(page.getByRole('heading', { level: 1, name: 'Atonota' })).toBeVisible();
+  });
 });

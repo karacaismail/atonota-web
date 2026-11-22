@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
 
+const DEMO = '/_demo/foundation';
+
 test.describe('odak perdesi hareketi', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto(DEMO);
     await expect(page.getByRole('heading', { level: 1, name: 'Atonota' })).toBeVisible();
   });
 
@@ -43,8 +45,8 @@ test.describe('odak perdesi hareketi', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const overlay = page.getByTestId('focus-dim-overlay');
     const duration = await overlay.evaluate((el) => getComputedStyle(el).transitionDuration);
-    // Chromium 0.00001s, WebKit `transition: none` için boş değer döner.
-    expect(['0s', '0.00001s', '1e-05s', '']).toContain(duration);
+    // WebKit `transition: none` için boş değer döner.
+    expect(['0s', '']).toContain(duration);
     await page.getByTestId('dim-toggle').click();
     await expect(overlay).toHaveCSS('background-color', 'rgba(100, 116, 139, 0.33)');
   });

@@ -1,4 +1,5 @@
-export { App, FoundationPage } from './App';
+export { App } from './App';
+export { DEMO_MODE, DEMO_PATH_PREFIX, isDemoEnabled } from './demo-mode';
 export { AppProviders, type AppProvidersProps } from './AppProviders';
 export {
   THEME_ATTR,

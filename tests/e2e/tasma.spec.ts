@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+const DEMO = '/_demo/foundation';
+
 /**
  * Yatay taşma (px). Üç ölçüm birlikte:
  * 1. belge genişliği, 2. öğe kutularının ekran dışına çıkması,
@@ -38,7 +40,7 @@ export async function overflow(page: Page): Promise<{ worst: number; offenders: 
 
 test.describe('yatay taşma', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto(DEMO);
     await expect(page.getByRole('heading', { level: 1, name: 'Atonota' })).toBeVisible();
   });
 
