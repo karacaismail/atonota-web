@@ -223,4 +223,54 @@ test.describe('AI Studio', () => {
     expect(await owl.evaluate((el) => getComputedStyle(el).animationName)).toBe('owl-float');
     expect(await owl.locator('animateMotion').count()).toBe(3);
   });
+
+  test('form alanı odakta kenarını boyamaz, yalnız tek kenar göstergesi kullanır', async ({
+    page,
+  }) => {
+    await open(page);
+    await ask(page, 'Stok uyarısı için otomasyon kur');
+    const form = page.locator('[data-genui="form"]');
+    await expect(form).toBeVisible({ timeout: 15_000 });
+    const input = form.getByLabel('Kural adı');
+    const select = form.locator('.ant-select-selector').first();
+
+    const edges = (el: Element) => {
+      const s = getComputedStyle(el);
+      return {
+        colors: [s.borderTopColor, s.borderRightColor, s.borderBottomColor, s.borderLeftColor],
+        shadow: s.boxShadow,
+        outline: s.outlineStyle === 'none' || s.outlineWidth === '0px',
+      };
+    };
+    const ring = /0px 0px 0px [1-9]/;
+
+    const restInput = await input.evaluate(edges);
+    const restSelect = await select.evaluate(edges);
+
+    // Fareyle odak: kenar rengi değişmez, halka gölgesi ve gösterge yoktur.
+    await input.click();
+    // Üzerine gelme rengi odak sayılmaz. Ölçümden önce fare alandan çekilir.
+    await page.mouse.move(0, 0);
+    const mouseInput = await input.evaluate(edges);
+    expect(mouseInput.colors).toEqual(restInput.colors);
+    expect(mouseInput.shadow).not.toMatch(ring);
+    expect(mouseInput.outline).toBe(true);
+
+    // Dokunma alanı katmanı select kutusundadır. Tıklama kutuya yapılır.
+    await form.locator('.ant-select').first().click();
+    await page.mouse.move(0, 0);
+    const mouseSelect = await select.evaluate(edges);
+    expect(mouseSelect.colors).toEqual(restSelect.colors);
+    expect(mouseSelect.shadow).not.toMatch(ring);
+    await page.keyboard.press('Escape');
+
+    // Klavye odağı: kenar rengi yine değişmez, yalnız alt çizgi görünür.
+    await page.keyboard.press('Tab');
+    await input.focus();
+    const keyInput = await input.evaluate(edges);
+    expect(keyInput.colors).toEqual(restInput.colors);
+    expect(keyInput.shadow).not.toMatch(ring);
+    expect(keyInput.shadow).toContain('inset');
+    expect(keyInput.outline).toBe(true);
+  });
 });

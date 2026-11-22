@@ -41,6 +41,19 @@ async function approveDelayNotice(user: ReturnType<typeof userEvent.setup>) {
   await user.click(within(block).getByRole('button', { name: 'Gönder' }));
 }
 
+/** Sohbet çekmecesinden bir sohbete geçer. */
+async function openConversation(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
+  await user.click(screen.getByRole('button', { name: 'Sohbetleri aç' }));
+  const nav = await screen.findByRole('navigation', { name: 'Sohbetler' });
+  await user.click(within(nav).getByText(name));
+  await waitFor(() => expect(screen.queryByRole('navigation', { name: 'Sohbetler' })).toBeNull());
+}
+
+async function newConversation(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Sohbetleri aç' }));
+  await user.click(await screen.findByRole('button', { name: /Yeni sohbet/ }));
+}
+
 async function send(text: string) {
   const user = userEvent.setup();
   const box = screen.getByRole('textbox', { name: 'Asistana mesaj yazın' });
@@ -201,7 +214,10 @@ describe('AI Studio', () => {
     expect(screen.queryByRole('button', { name: 'Yeniden dene' })).toBeNull();
     await user.click(ask);
     await waitFor(() => expect(requests).toHaveLength(3));
-    expect(requests[2]).toMatchObject({ intent: 'status', actionId: 'notify-delay' });
+    expect(requests[2]).toMatchObject({
+      intent: 'status',
+      actionId: expect.stringMatching(/^notify-delay-/),
+    });
     expect(requests[2]?.message.action).toBeUndefined();
   });
 
@@ -247,5 +263,81 @@ describe('AI Studio', () => {
     await screen.findByRole('navigation', { name: 'Sohbetler' });
     await user.keyboard('{Escape}');
     await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it('sohbet değişip geri dönülünce gönderilmiş onay kilitli kalır', async () => {
+    render(<AiStudio transport={createMockTransport({ delayMs: 1 })} source={MOCK_SOURCE} />);
+    const user = await send('Geciken siparişleri bul');
+    await approveDelayNotice(user);
+    const log = screen.getByRole('log');
+    await waitFor(() => expect(log).toHaveTextContent('gerçek bir işlem yapılmadı'));
+    await newConversation(user);
+    await waitFor(() => expect(log.querySelector('[data-genui="confirm"]')).toBeNull());
+    await openConversation(user, /^Geciken siparişleri bul$/);
+    await waitFor(() => expect(log.querySelector('[data-genui="confirm"]')).not.toBeNull());
+    const block = log.querySelector('[data-genui="confirm"]') as HTMLElement;
+    expect(within(block).queryByRole('button', { name: 'Gönder' })).toBeNull();
+    expect(within(block).getByRole('status')).toHaveTextContent('Onayınız gönderildi');
+  });
+
+  it('yeni sohbette aynı soru yeni onay kimliğiyle onaylanabilir', async () => {
+    const { requests, transport } = recording();
+    render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    let user = await send('Geciken siparişleri bul');
+    await approveDelayNotice(user);
+    const log = screen.getByRole('log');
+    await waitFor(() => expect(log).toHaveTextContent('gerçek bir işlem yapılmadı'));
+    await newConversation(user);
+    user = await send('Geciken siparişleri bul');
+    await approveDelayNotice(user);
+    await waitFor(() => expect(log).toHaveTextContent('gerçek bir işlem yapılmadı'));
+    expect(screen.queryByRole('alert')).toBeNull();
+    const ids = requests.flatMap((r) =>
+      r.message.action && r.message.action.kind !== 'ask' ? [r.message.action.blockId] : [],
+    );
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
+  });
+
+  it('geçmişteki onay verisini sunucuya göndermez', async () => {
+    const { requests, transport } = recording();
+    render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    const user = await send('Geciken siparişleri bul');
+    await approveDelayNotice(user);
+    const log = screen.getByRole('log');
+    await waitFor(() => expect(log).toHaveTextContent('gerçek bir işlem yapılmadı'));
+    await user.type(screen.getByRole('textbox', { name: 'Asistana mesaj yazın' }), 'merhaba');
+    await user.click(screen.getByRole('button', { name: 'Mesajı gönder' }));
+    await waitFor(() => expect(requests).toHaveLength(3));
+    const history = requests[2]?.history ?? [];
+    expect(history.some((m) => m.role === 'user' && m.text.startsWith('Onaylıyorum'))).toBe(true);
+    expect(history.some((m) => m.role === 'user' && m.action)).toBe(false);
+  });
+
+  it('durum sorgusu da koparsa yeniden deneme yine durum sorar', async () => {
+    const base = createMockTransport({ delayMs: 1 });
+    const broken: AgentTransport = (request, signal) => {
+      if (!request.message.action && request.intent !== 'status') return base(request, signal);
+      return Promise.resolve(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(encodeAgentEvent({ type: 'text', delta: 'Yarım' })),
+            );
+            controller.close();
+          },
+        }),
+      );
+    };
+    const { requests, transport } = recording(broken);
+    render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    const user = await send('Geciken siparişleri bul');
+    await approveDelayNotice(user);
+    await user.click(await screen.findByRole('button', { name: 'İşlemin durumunu sor' }));
+    await waitFor(() => expect(requests).toHaveLength(3));
+    await user.click(await screen.findByRole('button', { name: 'İşlemin durumunu sor' }));
+    await waitFor(() => expect(requests).toHaveLength(4));
+    expect(requests[3]).toMatchObject({ intent: 'status', actionId: requests[2]?.actionId });
+    expect(requests[3]?.message.action).toBeUndefined();
   });
 });

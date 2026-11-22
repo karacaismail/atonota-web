@@ -243,4 +243,21 @@ describe('runAgent', () => {
     });
     expect(unknown.text).toContain('Onayınız sunucuya ulaşmadı');
   });
+
+  it('sahte sunucu her yanıtta yeni onay kimliği üretir', async () => {
+    const transport = createMockTransport({ delayMs: 1 });
+    const ids: string[] = [];
+    for (let i = 0; i < 2; i += 1) {
+      const result = await runAgent({
+        transport,
+        request: request('Geciken siparişleri bul'),
+        signal: new AbortController().signal,
+        onUpdate: () => undefined,
+      });
+      const confirm = result.ui.find((b) => b.type === 'confirm');
+      if (confirm?.type === 'confirm') ids.push(confirm.id);
+    }
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).not.toBe(ids[1]);
+  });
 });

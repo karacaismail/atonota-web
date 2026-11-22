@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { GenUI } from './GenUI';
 import { GENUI_REGISTRY } from './registry';
 import { parseBlocks } from './schema';
-import type { GenUIBlock } from './types';
+import type { GenUIActionResult, GenUIBlock } from './types';
 
 const confirmBlock: GenUIBlock = {
   type: 'confirm',
@@ -50,7 +50,7 @@ const samples: GenUIBlock[] = [
   { type: 'choices', items: ['Geçen ayla karşılaştır'] },
 ];
 
-const accept = () => vi.fn(() => true);
+const accept = () => vi.fn((): GenUIActionResult => 'accepted');
 
 describe('GenUI kaydı', () => {
   it('altı blok türünü kayıtta tutar', () => {
@@ -160,12 +160,36 @@ describe('Onay bloğu (U4, AX-6)', () => {
 
   it('onay kabul edilmezse blok kilitlenmez ve durumu gösterir', async () => {
     const user = userEvent.setup();
-    const onAction = vi.fn(() => false);
+    const onAction = vi.fn((): GenUIActionResult => 'busy');
     render(<GenUI blocks={[confirmBlock]} onAction={onAction} />);
     await user.click(screen.getByRole('button', { name: 'Gönder' }));
     expect(screen.getByRole('button', { name: 'Gönder' })).toBeEnabled();
     expect(screen.getByRole('alert')).toHaveTextContent('Onay gönderilemedi.');
     expect(screen.queryByText(/Onayınız gönderildi/)).toBeNull();
+  });
+});
+
+describe('Geçmişten gelen karar', () => {
+  it('geçmişte onaylanmış onay bloğunu kilitli çizer', () => {
+    render(<GenUI blocks={[confirmBlock]} onAction={accept()} decisions={{ c1: 'approved' }} />);
+    expect(screen.queryByRole('button', { name: 'Gönder' })).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent('Onayınız gönderildi');
+  });
+
+  it('geçmişte vazgeçilmiş form bloğunu kilitli çizer', () => {
+    render(<GenUI blocks={[formBlock]} onAction={accept()} decisions={{ f1: 'rejected' }} />);
+    expect(screen.queryByRole('button', { name: 'Kaydet' })).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent('Hiçbir kayıt yapılmadı');
+  });
+
+  it('kullanılmış onayda ayrı uyarı gösterir ve bloğu kilitler', async () => {
+    const user = userEvent.setup();
+    const onAction = vi.fn((): GenUIActionResult => 'used');
+    render(<GenUI blocks={[confirmBlock]} onAction={onAction} />);
+    await user.click(screen.getByRole('button', { name: 'Gönder' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Bu onay daha önce gönderildi.');
+    expect(screen.queryByText(/yeniden deneyin/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Gönder' })).toBeNull();
   });
 });
 
