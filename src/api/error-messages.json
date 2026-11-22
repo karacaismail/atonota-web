@@ -1,0 +1,30 @@
+{
+  "en": {
+    "session_expired": "Your session has ended. Please sign in again.",
+    "forbidden": "You do not have permission for this action.",
+    "not_found": "We could not find this record.",
+    "conflict": "Someone else changed this record. Open the latest version and try again.",
+    "rate_limited": "You sent too many requests. Wait a little and try again.",
+    "unavailable": "The service is not working right now. Try again in a few minutes.",
+    "invalid_request": "Some information is wrong or missing. Check it and try again.",
+    "csrf": "The page is out of date. Refresh the page and try again.",
+    "network": "We could not reach the server. Check your connection and try again.",
+    "timeout": "The server did not answer in time. Try again.",
+    "invalid_response": "The server sent an answer we cannot read. Try again later.",
+    "unknown": "Something went wrong. Try again later."
+  },
+  "tr": {
+    "session_expired": "Oturumunuz kapandı. Lütfen yeniden giriş yapın.",
+    "forbidden": "Bu işlem için izniniz yok.",
+    "not_found": "Bu kaydı bulamadık.",
+    "conflict": "Bu kaydı başka biri değiştirdi. Kaydın son hâlini açın ve yeniden deneyin.",
+    "rate_limited": "Çok sık istek gönderdiniz. Biraz bekleyin ve yeniden deneyin.",
+    "unavailable": "Hizmet şu an çalışmıyor. Birkaç dakika sonra yeniden deneyin.",
+    "invalid_request": "Bazı bilgiler yanlış ya da eksik. Bilgileri denetleyin ve yeniden deneyin.",
+    "csrf": "Sayfa eskidi. Sayfayı yenileyin ve yeniden deneyin.",
+    "network": "Sunucuya ulaşamadık. Bağlantınızı denetleyin ve yeniden deneyin.",
+    "timeout": "Sunucu zamanında yanıt vermedi. Yeniden deneyin.",
+    "invalid_response": "Sunucunun yanıtını okuyamadık. Daha sonra yeniden deneyin.",
+    "unknown": "Bir sorun çıktı. Daha sonra yeniden deneyin."
+  }
+}
