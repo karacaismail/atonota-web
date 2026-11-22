@@ -9,9 +9,12 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:e2e": "vite --mode e2e",
     "build": "vite build",
+    "build:e2e": "vite build --mode e2e",
     "preview": "vite preview --port 4173 --strictPort",
-    "lint": "eslint . && prettier --check .",
+    "lint": "eslint . && prettier --check . && npm run check:motion",
+    "check:motion": "node scripts/motion-gate.mjs",
     "format": "prettier --write .",
     "typecheck": "npm run api:types:check && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "api:types": "node contracts/generate-types.mjs",
