@@ -1,0 +1,305 @@
+/*
+ * GenUI stilleri. Bütün değerler `useGenuiVars` CSS değişkenlerinden gelir.
+ * Gradyan yok (flat 2.0). Hareket `prefers-reduced-motion` açıkken durur.
+ */
+.genui {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap);
+  min-width: 0;
+}
+
+.genui-card {
+  position: relative;
+  min-width: 0;
+  padding: var(--ai-gap);
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-card);
+  background: var(--ai-bg-c);
+  box-shadow: var(--ai-shadow-card);
+  color: var(--ai-text);
+  font-size: var(--ai-font);
+  line-height: var(--ai-line);
+}
+
+.genui-card-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ai-gap-sm);
+  margin-bottom: var(--ai-gap);
+}
+
+.genui-card-h > svg {
+  flex-shrink: 0;
+  color: var(--ai-primary);
+  font-size: var(--ai-font-lg);
+}
+
+.genui-muted {
+  margin-left: auto;
+  color: var(--ai-text-3);
+  font-size: var(--ai-font-sm);
+}
+
+.genui-muted-text {
+  color: var(--ai-text-2);
+  font-size: var(--ai-font-sm);
+}
+
+.genui-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: var(--ai-gap-sm);
+}
+
+.genui-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-xs);
+  min-width: 0;
+  padding: var(--ai-gap);
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-card);
+  background: var(--ai-bg-c);
+}
+
+.genui-kpi-label {
+  color: var(--ai-text-3);
+  font-size: var(--ai-font-sm);
+}
+
+.genui-kpi-value {
+  font-size: var(--ai-font-xl);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+.genui-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ai-gap-xs);
+  font-size: var(--ai-font-sm);
+  font-weight: 600;
+}
+
+.genui-delta.is-good {
+  color: var(--ai-success);
+}
+
+.genui-delta.is-bad {
+  color: var(--ai-error);
+}
+
+.genui-bars {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: var(--ai-gap-sm);
+  align-items: end;
+  height: 150px;
+}
+
+.genui-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ai-gap-xs);
+  height: 100%;
+  min-width: 0;
+}
+
+.genui-bar i {
+  display: block;
+  width: 100%;
+  max-width: 34px;
+  border-radius: var(--ai-radius) var(--ai-radius) 0 0;
+  background: var(--ai-primary-bg-hover);
+  transition: background-color var(--ai-dur-hover) var(--ai-ease-hover);
+}
+
+.genui-bar.is-top i,
+.genui-bar:hover i {
+  background: var(--ai-primary);
+}
+
+.genui-bar-v,
+.genui-bar-l {
+  color: var(--ai-text-3);
+  font-size: var(--ai-font-sm);
+}
+
+.genui-bar-v {
+  font-family: var(--ai-mono);
+}
+
+.genui-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.genui-table-scroll th,
+.genui-table-scroll td {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.genui-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ai-gap);
+  border-color: var(--ai-warning-border);
+  background: var(--ai-warning-bg);
+}
+
+.genui-warn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--ai-control-sm);
+  height: var(--ai-control-sm);
+  border-radius: var(--ai-radius-card);
+  color: var(--ai-warning);
+  font-size: var(--ai-font-lg);
+}
+
+.genui-confirm-t {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  gap: var(--ai-gap-xs);
+  min-width: 0;
+}
+
+.genui-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ai-gap-sm);
+}
+
+.genui-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  column-gap: var(--ai-gap);
+}
+
+.genui-tag {
+  margin-left: auto;
+}
+
+.genui-done {
+  display: flex;
+  align-items: center;
+  gap: var(--ai-gap-sm);
+}
+
+.genui-done > svg,
+.genui-done-line > svg {
+  flex-shrink: 0;
+  font-size: var(--ai-font-lg);
+}
+
+.genui-done.is-approved {
+  background: var(--ai-success-bg);
+}
+
+.genui-done.is-approved > svg,
+.genui-done-line > svg {
+  color: var(--ai-success);
+}
+
+.genui-done.is-rejected > svg {
+  color: var(--ai-text-3);
+}
+
+.genui-done-line {
+  display: flex;
+  align-items: center;
+  gap: var(--ai-gap-sm);
+  margin: 0;
+}
+
+.genui-json pre {
+  max-width: 100%;
+  margin: var(--ai-gap-sm) 0 0;
+  overflow-x: auto;
+  font-family: var(--ai-mono);
+  font-size: var(--ai-font-sm);
+  white-space: pre;
+}
+
+/* AI önerileri: kart 2 px yükselir, ikon sallanır. */
+.genui-choices .ant-prompts-item {
+  transition:
+    transform var(--ai-dur-hover) var(--ai-ease),
+    box-shadow var(--ai-dur-hover) var(--ai-ease);
+}
+
+.genui-choices .ant-prompts-item:hover {
+  transform: translateY(-2px);
+}
+
+.genui-choices .ant-prompts-item:hover .ai-spark {
+  animation: ai-wiggle var(--ai-dur-hover) var(--ai-ease);
+}
+
+.genui-skel {
+  gap: var(--ai-gap-sm);
+}
+
+.genui-skel i {
+  display: block;
+  height: 12px;
+  border-radius: var(--ai-radius);
+  background: var(--ai-fill);
+  animation: genui-skel var(--ai-dur-ring) var(--ai-ease) infinite alternate;
+}
+
+.genui-skel i:nth-child(2) {
+  width: 80%;
+}
+
+.genui-skel i:nth-child(3) {
+  width: 55%;
+}
+
+@keyframes genui-skel {
+  from {
+    opacity: 0.5;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ai-wiggle {
+  25% {
+    transform: rotate(-12deg);
+  }
+
+  75% {
+    transform: rotate(10deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .genui-skel i,
+  .genui-choices .ant-prompts-item:hover .ai-spark {
+    animation: none;
+  }
+
+  .genui-choices .ant-prompts-item,
+  .genui-bar i {
+    transition: none;
+  }
+
+  .genui-choices .ant-prompts-item:hover {
+    transform: none;
+  }
+}
