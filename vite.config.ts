@@ -3,8 +3,11 @@ import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+import { mockWorkerPlugin } from './src/mocks/vite-plugin';
+
 export default defineConfig({
-  plugins: [react()],
+  // mockWorkerPlugin: sahte sunucunun işçi dosyasını yalnız gerektiğinde sunar (src/mocks/vite-plugin.ts).
+  plugins: [react(), mockWorkerPlugin()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

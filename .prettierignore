@@ -10,5 +10,3 @@ package-lock.json
 *.md
 # Arka uçtan birebir kopyalanan sözleşmeler. Biçimi değiştirilmez. Eşleşmeyi contracts/sync.mjs --check denetler.
 contracts/openapi/
-# MSW paketinin üretilmiş işçi dosyası. Paketle birlikte aynen güncellenir.
-public/mockServiceWorker.js
