@@ -31,5 +31,11 @@ export default defineConfig({
     exclude: ['node_modules', 'dist', 'tests/e2e/**'],
     css: false,
     restoreMocks: true,
+    deps: {
+      optimizer: {
+        // antd ve Ant Design X ESM dizin içe aktarımı kullanır; jsdom altında önceden paketlenir.
+        client: { enabled: true, include: ['antd', '@ant-design/x'] },
+      },
+    },
   },
 });
