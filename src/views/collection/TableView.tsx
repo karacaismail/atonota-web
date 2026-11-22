@@ -16,11 +16,12 @@ export function TableView({
       aria-label="Kayıt tablosu yatay kaydırma"
     >
       <table className="collection-table" data-view="table">
-        <caption className="collection-sr-only">{definition.doctype} kayıtları</caption>
+        <caption className="collection-sr-only">{definition.label} kayıtları</caption>
         <thead>
           <tr>
             <th className="collection-selection">
               <Checkbox
+                className="collection-checkbox collection-hit"
                 aria-label="Bu sayfadaki tüm kayıtları seç"
                 checked={rows.length > 0 && selected.length === rows.length}
                 indeterminate={selected.length > 0 && selected.length < rows.length}
@@ -48,6 +49,7 @@ export function TableView({
             <tr key={row.name} data-selected={selected.includes(row.name)}>
               <td>
                 <Checkbox
+                  className="collection-checkbox collection-hit"
                   aria-label={row.name + ' seç'}
                   checked={selected.includes(row.name)}
                   onChange={(event) => {

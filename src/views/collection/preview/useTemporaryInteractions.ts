@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { RefObject } from 'react';
-import source from '../../../design/source/control-size-config.json';
+import source from '../../../../design/source/control-size-config.json';
 
 let keyboardMode = false;
 const listeners = new Set<(value: boolean) => void>();
 function setKeyboard(value: boolean) {
   keyboardMode = value;
+  document.documentElement.dataset['focusMode'] = value ? 'keyboard' : 'pointer';
   listeners.forEach((listener) => {
     listener(value);
   });
@@ -16,7 +17,11 @@ function keydown(event: KeyboardEvent) {
 function pointerdown() {
   setKeyboard(false);
 }
-export function useCollectionInteractions(root: RefObject<HTMLDivElement>) {
+/**
+ * Preview only. Remove when foundation startHitAreaEngine/startFocusMode are merged.
+ * Uses foundation's --hit-t/r/b/l and html[data-focus-mode] contract.
+ */
+export function useTemporaryInteractions(root: RefObject<HTMLDivElement>) {
   const [keyboard, setKeyboardState] = useState(keyboardMode);
   useEffect(() => {
     listeners.add(setKeyboardState);
@@ -39,29 +44,7 @@ export function useCollectionInteractions(root: RefObject<HTMLDivElement>) {
     const container = root.current;
     if (!container) return;
     let frame = 0;
-    function focusExpandedInput(event: MouseEvent) {
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        target.classList.contains('ant-select') &&
-        !target.classList.contains('ant-select-disabled')
-      ) {
-        event.preventDefault();
-        target.querySelector('.ant-select-selector')?.dispatchEvent(
-          new MouseEvent('mousedown', {
-            bubbles: true,
-            cancelable: true,
-            view: window,
-            button: 0,
-          }),
-        );
-      }
-      if (target instanceof HTMLElement && target.classList.contains('ant-input-affix-wrapper')) {
-        target.querySelector('input')?.focus();
-      }
-    }
-    container.addEventListener('mousedown', focusExpandedInput);
-    const selector = '.ant-btn, .ant-input-affix-wrapper, .ant-select, .ant-checkbox-wrapper';
+    const selector = '.collection-hit';
     function measure() {
       if (!container) return;
       const elements = [...container.querySelectorAll<HTMLElement>(selector)].filter(
@@ -73,11 +56,7 @@ export function useCollectionInteractions(root: RefObject<HTMLDivElement>) {
       }));
       for (const { element, rect } of targets) {
         const disabled =
-          element.matches(
-            '[disabled], [aria-disabled="true"], .ant-select-disabled, .ant-input-affix-wrapper-disabled, .ant-checkbox-wrapper-disabled',
-          ) ||
-          !rect.width ||
-          !rect.height;
+          element.matches('[disabled], [aria-disabled="true"]') || !rect.width || !rect.height;
         const offsets = disabled
           ? [0, 0, 0, 0]
           : [rect.height, rect.width, rect.height, rect.width].map(
@@ -120,7 +99,7 @@ export function useCollectionInteractions(root: RefObject<HTMLDivElement>) {
         ];
         offsets.forEach((value, index) => {
           element.style.setProperty(
-            '--collection-hit-' + index,
+            '--hit-' + ['t', 'r', 'b', 'l'][index],
             value + (disabled ? 0 : parseFloat(borders[index] ?? '0') || 0) + 'px',
           );
         });
@@ -139,7 +118,6 @@ export function useCollectionInteractions(root: RefObject<HTMLDivElement>) {
     schedule();
     return () => {
       cancelAnimationFrame(frame);
-      container.removeEventListener('mousedown', focusExpandedInput);
       resize?.disconnect();
       mutation.disconnect();
       window.removeEventListener('resize', schedule);

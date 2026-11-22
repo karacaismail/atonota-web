@@ -1,33 +1,27 @@
-import { CaretDown, Check } from '@phosphor-icons/react';
-import { Button, ConfigProvider, Input, Select, theme } from 'antd';
-import trTR from 'antd/locale/tr_TR';
+import { theme } from 'antd';
+import {
+  CollectionButton as Button,
+  CollectionInput as Input,
+  CollectionSelect as Select,
+} from './CollectionControls';
 import {
   Component,
   lazy,
   Suspense,
-  useEffect,
+  useCallback,
+  useSyncExternalStore,
   useId,
   useMemo,
-  useRef,
   useState,
-  useSyncExternalStore,
 } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CollectionState } from './CollectionState';
 import { TableView } from './TableView';
-import { collectionTheme, collectionVariables, collectionViewOptions } from './collection-theme';
-import { parsePage } from './model';
+import { collectionVariables, collectionViewOptions } from './collection-tokens';
+import { createCollectionCache } from './query-cache';
 import { readQuery, toListRequest, writeQuery } from './query';
-import { CollectionError } from './types';
-import type {
-  CollectionDefinition,
-  CollectionPage,
-  CollectionQuery,
-  CollectionSource,
-  ViewType,
-} from './types';
-import { useCollectionInteractions } from './useCollectionInteractions';
+import type { CollectionDefinition, CollectionQuery, CollectionSource, ViewType } from './types';
 import './collection.css';
 
 const heavyViews = {
@@ -68,14 +62,7 @@ export interface CollectionViewProps {
   mode?: 'dark' | 'light';
   enableExperimentalCollectionViews?: boolean;
 }
-interface Result {
-  key: string;
-  source: CollectionSource;
-  definition: CollectionDefinition;
-  status: 'ready' | 'error' | 'unauthorized';
-  page?: CollectionPage;
-}
-function CollectionContent({
+export function CollectionView({
   definition,
   source,
   mode = 'dark',
@@ -96,9 +83,14 @@ function CollectionContent({
   });
   const search = draft.base === query.search ? draft.search : query.search;
   const request = useMemo(() => toListRequest(definition, query), [definition, query]);
-  const [retry, setRetry] = useState(0);
-  const key = JSON.stringify(request) + retry;
-  const [result, setResult] = useState<Result>();
+  const key = JSON.stringify(request);
+  const cache = useMemo(() => createCollectionCache({ source, definition }), [source, definition]);
+  const subscribe = useCallback(
+    (listener: () => void) => cache.subscribe(key, request, listener),
+    [cache, key, request],
+  );
+  const snapshot = useCallback(() => cache.snapshot(key), [cache, key]);
+  const current = useSyncExternalStore(subscribe, snapshot, () => undefined);
   const [selection, setSelection] = useState<{
     key: string;
     names: string[];
@@ -111,15 +103,9 @@ function CollectionContent({
     definition,
   });
   const [inspect, setInspect] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  const keyboard = useCollectionInteractions(root);
   const { token } = theme.useToken();
   const titleId = useId();
   const contentId = useId();
-  const current =
-    result?.key === key && result.source === source && result.definition === definition
-      ? result
-      : undefined;
   const page = current?.status === 'ready' ? current.page : undefined;
   const scope = key + query.view;
   const selected =
@@ -134,32 +120,6 @@ function CollectionContent({
     setParams(writeQuery(params, { ...query, page: 1, ...patch }));
     setInspect(false);
   }
-  useEffect(() => {
-    const controller = new AbortController();
-    let active = true;
-    void Promise.resolve()
-      .then(() => source.list(request, controller.signal))
-      .then((response) => {
-        if (active)
-          setResult({ key, source, definition, status: 'ready', page: parsePage(response) });
-      })
-      .catch((error: unknown) => {
-        if (active && !controller.signal.aborted)
-          setResult({
-            key,
-            source,
-            definition,
-            status:
-              error instanceof CollectionError && error.kind === 'unauthorized'
-                ? 'unauthorized'
-                : 'error',
-          });
-      });
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [key, source, request, definition, retry]);
   const HeavyView = query.view === 'table' ? undefined : heavyViews[query.view];
   const activeFilter = definition.columns.find((field) => field.fieldname === query.filter);
   const activeFilterValue =
@@ -168,12 +128,7 @@ function CollectionContent({
     (field) => field.filterable && field.choices.length > 0,
   );
   return (
-    <div
-      ref={root}
-      className="collection"
-      data-collection-keyboard={keyboard}
-      style={collectionVariables(token, mode)}
-    >
+    <div className="collection" style={collectionVariables(token, mode)}>
       <section aria-labelledby={titleId}>
         <header className="collection-header">
           <div>
@@ -200,7 +155,6 @@ function CollectionContent({
               aria-label="Kayıt ara"
               value={search}
               maxLength={200}
-              suffix={<span className="collection-hit-suffix" />}
               onChange={(event) => {
                 setDraft({ base: query.search, search: event.target.value });
               }}
@@ -212,9 +166,6 @@ function CollectionContent({
           <label>
             <span>Görünüm</span>
             <Select
-              suffixIcon={<CaretDown weight="regular" aria-hidden />}
-              menuItemSelectedIcon={<Check weight="regular" aria-hidden />}
-              dropdownAlign={{ offset: [0, 0] }}
               aria-label="Görünüm"
               value={query.view}
               options={
@@ -225,16 +176,11 @@ function CollectionContent({
               onChange={(view: ViewType) => {
                 update({ view, page: query.page });
               }}
-              virtual={false}
-              getPopupContainer={(trigger) => trigger.parentElement ?? trigger}
             />
           </label>
           <label>
             <span>Sıralama alanı</span>
             <Select
-              suffixIcon={<CaretDown weight="regular" aria-hidden />}
-              menuItemSelectedIcon={<Check weight="regular" aria-hidden />}
-              dropdownAlign={{ offset: [0, 0] }}
               aria-label="Sıralama alanı"
               value={query.sort}
               options={definition.columns.map((field) => ({
@@ -244,16 +190,11 @@ function CollectionContent({
               onChange={(sort: string) => {
                 update({ sort });
               }}
-              virtual={false}
-              getPopupContainer={(trigger) => trigger.parentElement ?? trigger}
             />
           </label>
           <label>
             <span>Sıralama yönü</span>
             <Select
-              suffixIcon={<CaretDown weight="regular" aria-hidden />}
-              menuItemSelectedIcon={<Check weight="regular" aria-hidden />}
-              dropdownAlign={{ offset: [0, 0] }}
               aria-label="Sıralama yönü"
               value={query.direction}
               options={[
@@ -263,25 +204,18 @@ function CollectionContent({
               onChange={(direction: 'asc' | 'desc') => {
                 update({ direction });
               }}
-              virtual={false}
-              getPopupContainer={(trigger) => trigger.parentElement ?? trigger}
             />
           </label>
           {filterFields.map((field) => (
             <label key={field.fieldname}>
               <span>{field.label}</span>
               <Select
-                suffixIcon={<CaretDown weight="regular" aria-hidden />}
-                menuItemSelectedIcon={<Check weight="regular" aria-hidden />}
-                dropdownAlign={{ offset: [0, 0] }}
                 aria-label={field.label}
                 value={query.filter === field.fieldname ? query.value : ''}
                 options={[{ value: '', label: 'Tümü' }, ...field.choices]}
                 onChange={(value: string) => {
                   update({ filter: value ? field.fieldname : '', value });
                 }}
-                virtual={false}
-                getPopupContainer={(trigger) => trigger.parentElement ?? trigger}
               />
             </label>
           ))}
@@ -340,7 +274,7 @@ function CollectionContent({
             <CollectionState
               state={current.status}
               onRetry={() => {
-                setRetry((value) => value + 1);
+                cache.retry(key);
               }}
             />
           ) : !page?.data.length ? (
@@ -390,43 +324,16 @@ function CollectionContent({
           <label>
             <span>Sayfadaki kayıt sayısı</span>
             <Select
-              suffixIcon={<CaretDown weight="regular" aria-hidden />}
-              menuItemSelectedIcon={<Check weight="regular" aria-hidden />}
-              dropdownAlign={{ offset: [0, 0] }}
               aria-label="Sayfadaki kayıt sayısı"
               value={query.size}
               options={[10, 20, 50].map((value) => ({ value, label: String(value) }))}
               onChange={(size: number) => {
                 update({ size });
               }}
-              virtual={false}
-              getPopupContainer={(trigger) => trigger.parentElement ?? trigger}
             />
           </label>
         </nav>
       </section>
     </div>
-  );
-}
-function subscribeMotion(callback: () => void) {
-  const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-  media.addEventListener('change', callback);
-  return () => {
-    media.removeEventListener('change', callback);
-  };
-}
-function getReducedMotion() {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-export function CollectionView({ mode = 'dark', ...props }: CollectionViewProps) {
-  const reducedMotion = useSyncExternalStore(subscribeMotion, getReducedMotion, () => false);
-  return (
-    <ConfigProvider
-      locale={trTR}
-      theme={collectionTheme(mode, reducedMotion)}
-      wave={{ disabled: true }}
-    >
-      <CollectionContent {...props} mode={mode} />
-    </ConfigProvider>
   );
 }

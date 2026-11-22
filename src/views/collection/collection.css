@@ -6,7 +6,7 @@
   padding: var(--collection-gap);
   color: var(--collection-text);
   background: var(--collection-bg);
-  font-family: 'Outfit Variable', Outfit, sans-serif;
+  font-family: var(--font-ui);
   font-size: var(--collection-font);
   line-height: var(--collection-line);
 }
@@ -29,7 +29,7 @@
   font-weight: 600;
   overflow-wrap: break-word;
 }
-.collection h3 {
+.collection-lane h2 {
   font-size: var(--collection-font);
 }
 .collection-header {
@@ -65,7 +65,7 @@
   flex: 1;
   min-width: var(--collection-column);
 }
-.collection label > span:first-child:not(.ant-checkbox) {
+.collection label:not(.collection-checkbox) > span:first-child {
   display: block;
   margin-bottom: calc(var(--collection-gap) / 2);
 }
@@ -75,7 +75,7 @@
   gap: var(--collection-gap);
   margin-bottom: var(--collection-padding);
 }
-.collection label .ant-select {
+.collection label .collection-select {
   width: 100%;
 }
 .collection-applied,
@@ -140,7 +140,7 @@
 .collection-table tbody tr:hover {
   background: var(--collection-surface);
 }
-.collection-table .ant-checkbox-wrapper {
+.collection-table .collection-checkbox {
   margin: 0;
   min-height: var(--collection-control);
   min-width: var(--collection-control);
@@ -214,91 +214,31 @@
   white-space: nowrap;
   border: 0;
 }
-.collection .ant-btn,
-.collection .ant-input-affix-wrapper,
-.collection .ant-select,
-.collection .ant-checkbox-wrapper {
-  position: relative;
-}
-.collection .ant-btn::after,
-.collection .ant-input-affix-wrapper::after,
-.collection .ant-select::after,
-.collection .ant-checkbox-wrapper::after {
-  content: '';
-  position: absolute;
-  top: calc(-1 * var(--collection-hit-0, 0px));
-  right: calc(-1 * var(--collection-hit-1, 0px));
-  bottom: calc(-1 * var(--collection-hit-2, 0px));
-  left: calc(-1 * var(--collection-hit-3, 0px));
-}
-.collection .ant-input-affix-wrapper::after,
-.collection .ant-select::after {
-  pointer-events: auto;
-  clip-path: polygon(
-    evenodd,
-    0 0,
-    100% 0,
-    100% 100%,
-    0 100%,
-    0 0,
-    var(--collection-hit-3, 0px) var(--collection-hit-0, 0px),
-    var(--collection-hit-3, 0px) calc(100% - var(--collection-hit-2, 0px)),
-    calc(100% - var(--collection-hit-1, 0px)) calc(100% - var(--collection-hit-2, 0px)),
-    calc(100% - var(--collection-hit-1, 0px)) var(--collection-hit-0, 0px),
-    var(--collection-hit-3, 0px) var(--collection-hit-0, 0px)
-  );
-}
-.collection .ant-input-suffix:has(.collection-hit-suffix) {
+
+.collection .collection-input-suffix {
   display: none;
 }
-.collection .ant-btn,
-.collection .ant-select-selector,
-.collection .ant-input-affix-wrapper,
-.collection .ant-checkbox-inner,
-.collection .ant-select-item {
-  transition-property: background-color, color, border-color, box-shadow;
-  transition-duration: var(--collection-duration);
-  transition-timing-function: var(--collection-ease);
+.collection .collection-hit:focus,
+.collection .collection-hit :focus,
+.collection .collection-hit:focus-visible,
+.collection .collection-hit :focus-visible {
+  outline: none;
 }
-.collection :focus,
-.collection :focus-visible {
-  outline: none !important;
+html[data-focus-mode='keyboard'] .collection .collection-hit:focus-visible,
+html[data-focus-mode='keyboard'] .collection .collection-hit:has(:focus-visible) {
+  box-shadow: inset 0 calc(-1 * var(--collection-mark)) 0 var(--collection-focus);
 }
-.collection .ant-select-focused .ant-select-selector,
-.collection .ant-input-affix-wrapper-focused,
-.collection .ant-checkbox-input:focus-visible + .ant-checkbox-inner {
-  box-shadow: none !important;
-  border-color: var(--collection-border) !important;
+html[data-focus-mode='keyboard'] .collection .collection-hit :focus-visible {
+  box-shadow: none;
 }
-.collection[data-collection-keyboard='true'] :focus-visible,
-.collection[data-collection-keyboard='true'] .ant-select:has(input:focus-visible),
-.collection[data-collection-keyboard='true'] .ant-input-affix-wrapper:has(input:focus-visible),
-.collection[data-collection-keyboard='true'] .ant-checkbox-wrapper:has(input:focus-visible) {
-  box-shadow: inset 0 calc(-1 * var(--collection-mark)) 0 var(--collection-focus) !important;
+.collection-dropdown-enter-active,
+.collection-dropdown-appear-active {
+  animation: collection-dropdown-in var(--motion-duration-dropdown) var(--motion-easing-dropdown)
+    both;
 }
-.collection[data-collection-keyboard='true'] .ant-select input:focus-visible,
-.collection[data-collection-keyboard='true'] .ant-input-affix-wrapper input:focus-visible,
-.collection[data-collection-keyboard='true'] .ant-checkbox-input:focus-visible {
-  box-shadow: none !important;
-}
-.collection .ant-select-dropdown {
-  box-shadow: var(--collection-shadow);
-  padding: 0;
-}
-.collection .ant-select-item {
-  border-radius: 0;
-  min-height: var(--collection-control);
-}
-.collection .ant-select-dropdown[class*='slide-up-enter'],
-.collection .ant-select-dropdown[class*='slide-up-appear'] {
-  animation-name: collection-dropdown-in !important;
-  animation-duration: var(--collection-dropdown-duration) !important;
-  animation-timing-function: var(--collection-dropdown-ease) !important;
-}
-.collection .ant-select-dropdown[class*='slide-up-leave'] {
-  animation-name: collection-dropdown-out !important;
-  animation-duration: var(--collection-dropdown-duration) !important;
-  animation-timing-function: var(--collection-dropdown-ease) !important;
+.collection-dropdown-leave-active {
+  animation: collection-dropdown-out var(--motion-duration-dropdown) var(--motion-easing-dropdown)
+    both;
 }
 @keyframes collection-dropdown-in {
   from {
@@ -325,22 +265,37 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .collection .ant-select-dropdown[class*='slide-up-enter'],
-  .collection .ant-select-dropdown[class*='slide-up-appear'],
-  .collection .ant-select-dropdown[class*='slide-up-leave'] {
-    animation: none !important;
-  }
-  .collection *,
-  .collection *::before,
-  .collection *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
+  .collection-table tbody tr {
+    transition: none;
   }
 }
 @media (forced-colors: active) {
-  .collection[data-collection-keyboard='true'] :focus-visible {
-    outline: 2px solid CanvasText !important;
-    box-shadow: none !important;
+  html[data-focus-mode='keyboard'] .collection .collection-hit:focus-visible,
+  html[data-focus-mode='keyboard'] .collection .collection-hit :focus-visible {
+    outline: 2px solid CanvasText;
+    box-shadow: none;
   }
+  html[data-focus-mode='keyboard'] .collection .collection-hit:has(:focus-visible) {
+    box-shadow: none;
+  }
+}
+
+/* Affix and Select roots own the expanded edge; their native inner controls remain
+ * directly interactive. Shared hit-area geometry supplies these four offsets. */
+.collection-input::after,
+.collection-select::after {
+  pointer-events: auto;
+  clip-path: polygon(
+    evenodd,
+    0 0,
+    100% 0,
+    100% 100%,
+    0 100%,
+    0 0,
+    var(--hit-l, 0px) var(--hit-t, 0px),
+    var(--hit-l, 0px) calc(100% - var(--hit-b, 0px)),
+    calc(100% - var(--hit-r, 0px)) calc(100% - var(--hit-b, 0px)),
+    calc(100% - var(--hit-r, 0px)) var(--hit-t, 0px),
+    var(--hit-l, 0px) var(--hit-t, 0px)
+  );
 }

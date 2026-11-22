@@ -3,10 +3,10 @@ import AxeBuilder from '@axe-core/playwright';
 test('expanded input and select targets work without covering their centers', async ({
   page,
 }, testInfo) => {
-  await page.goto(preview);
+  await page.goto(preview + '?experimentalViews=1');
   await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
   const input = page.getByRole('textbox', { name: 'Kayıt ara' });
-  const wrapper = page.locator('.ant-input-affix-wrapper');
+  const wrapper = page.locator('.collection-input');
   const inputBox = await wrapper.boundingBox();
   if (!inputBox) throw new Error('Missing input target');
   if (testInfo.project.use.hasTouch)
@@ -16,7 +16,7 @@ test('expanded input and select targets work without covering their centers', as
   await input.fill('Örnek');
   await expect(input).toHaveValue('Örnek');
   const select = page
-    .locator('.ant-select')
+    .locator('.collection-select')
     .filter({ has: page.getByRole('combobox', { name: 'Görünüm', exact: true }) });
   await select.scrollIntoViewIfNeeded();
   const selectBox = await select.boundingBox();
@@ -25,8 +25,9 @@ test('expanded input and select targets work without covering their centers', as
     await page.touchscreen.tap(selectBox.x + selectBox.width / 2, selectBox.y - 1);
   else await page.mouse.click(selectBox.x + selectBox.width / 2, selectBox.y - 1);
   await expect(page.getByRole('listbox')).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Görünüm', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+  await expect(page.locator('.collection-popup:visible')).toHaveCount(0);
   await page.getByRole('combobox', { name: 'Görünüm', exact: true }).focus();
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('listbox')).toBeVisible();
@@ -34,7 +35,7 @@ test('expanded input and select targets work without covering their centers', as
     'aria-activedescendant',
     /_0$/,
   );
-  await page.locator('.ant-select-dropdown:visible').evaluate(async (element) => {
+  await page.locator('.collection-popup:visible').evaluate(async (element) => {
     await Promise.all(
       element.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
     );
@@ -53,7 +54,7 @@ const preview = '/src/views/collection/preview/';
 test('table preserves readability, keyboard focus, selection and URL history', async ({
   page,
 }, testInfo) => {
-  await page.goto(preview);
+  await page.goto(preview + '?experimentalViews=1');
   await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const scroller = page.getByRole('region', { name: 'Kayıt tablosu yatay kaydırma' });
@@ -72,7 +73,7 @@ test('table preserves readability, keyboard focus, selection and URL history', a
   expect(Math.min(...fontSizes)).toBeGreaterThanOrEqual(14);
   await page.keyboard.press('Tab');
   await expect(page.getByRole('textbox', { name: 'Kayıt ara' })).toBeFocused();
-  const wrapper = page.locator('.ant-input-affix-wrapper');
+  const wrapper = page.locator('.collection-input');
   expect(await wrapper.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none');
   expect(
     await page
@@ -100,7 +101,7 @@ test('loads only requested views and supports keyboard dropdown navigation', asy
   page.on('request', (request) => {
     if (request.resourceType() === 'script') scripts.push(request.url());
   });
-  await page.goto(preview);
+  await page.goto(preview + '?experimentalViews=1');
   await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
   expect(scripts.some((url) => /(?:Kanban|Pivot|Report|Gantt|Timesheet)View-/.test(url))).toBe(
     false,
@@ -113,18 +114,19 @@ test('loads only requested views and supports keyboard dropdown navigation', asy
     ['timesheet', 'Timesheet'],
   ] as const) {
     const combo = page.getByRole('combobox', { name: 'Görünüm', exact: true });
-    await page.locator('.ant-select').filter({ has: combo }).click();
+    await page.locator('.collection-select').filter({ has: combo }).click();
     await page.getByRole('option', { name: label, exact: true }).click();
     await expect(page.locator('[data-view="' + value + '"]')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
-    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+    await expect(page.locator('.collection-popup:visible')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath(value + '.png'), fullPage: true });
   }
   await page.getByRole('combobox', { name: 'Görünüm', exact: true }).focus();
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('listbox')).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Görünüm', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('listbox')).not.toBeVisible();
   await page.getByRole('textbox', { name: 'Kayıt ara' }).fill('Örnek iş 25');
@@ -168,7 +170,7 @@ test('shows all data states, light theme and reduced motion', async ({ page }, t
     ['error', 'Kayıtlar yüklenemedi.'],
     ['unauthorized', 'Bu kayıtları görme yetkiniz yok.'],
   ] as const) {
-    await page.goto(preview + '?view=report&state=' + state);
+    await page.goto(preview + '?experimentalViews=1&view=report&state=' + state);
     await expect(page.getByText(message, { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
@@ -178,16 +180,34 @@ test('shows all data states, light theme and reduced motion', async ({ page }, t
   await page.goto(preview + '?theme=light');
   await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
   await page
-    .locator('.ant-select')
+    .locator('.collection-select')
     .filter({ has: page.getByRole('combobox', { name: 'Görünüm', exact: true }) })
     .click();
   expect(
     await page
-      .locator('.ant-select-dropdown')
+      .locator('.collection-popup')
       .evaluate((element) => getComputedStyle(element).animationName),
   ).toBe('none');
+  const popup = page.locator('.collection-popup:visible');
+  const shadow = await popup.evaluate((element) => getComputedStyle(element).boxShadow);
+  expect(shadow).not.toBe('none');
+  expect(shadow).toBe(
+    await popup.evaluate((element) => {
+      const probe = document.createElement('div');
+      probe.style.boxShadow = 'var(--shadow-dropdown)';
+      element.appendChild(probe);
+      const value = getComputedStyle(probe).boxShadow;
+      probe.remove();
+      return value;
+    }),
+  );
   await page.keyboard.press('Escape');
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+  await expect(page.locator('.collection-popup:visible')).toHaveCount(0);
+  const direction = page.getByRole('combobox', { name: 'Sıralama yönü' });
+  await page.locator('.collection-select').filter({ has: direction }).click();
+  await page.getByRole('option', { name: 'Azalan', exact: true }).click();
+  await expect(direction).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.collection-popup:visible')).toHaveCount(0);
   const lightAxe = await new AxeBuilder({ page }).include('.collection').analyze();
   expect(lightAxe.violations).toEqual([]);
   await page.getByRole('textbox', { name: 'Kayıt ara' }).fill('Taslak');
@@ -199,4 +219,27 @@ test('shows all data states, light theme and reduced motion', async ({ page }, t
   });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('light-landscape.png'), fullPage: true });
+});
+
+test('default gate prevents summary rendering and downloads from a shared URL', async ({
+  page,
+}) => {
+  const scripts: string[] = [];
+  page.on('request', (request) => {
+    if (request.resourceType() === 'script') scripts.push(request.url());
+  });
+  await page.goto(preview + '?view=pivot');
+  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-view="table"]')).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('İstenen görünüm şu anda kapalı.');
+  await page
+    .locator('.collection-select')
+    .filter({
+      has: page.getByRole('combobox', { name: 'Görünüm', exact: true }),
+    })
+    .click();
+  await expect(page.getByRole('option')).toHaveCount(1);
+  expect(scripts.some((url) => /(?:Kanban|Pivot|Report|Gantt|Timesheet)View-/.test(url))).toBe(
+    false,
+  );
 });

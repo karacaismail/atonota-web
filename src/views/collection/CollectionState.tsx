@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { CollectionButton as Button } from './CollectionControls';
 export function CollectionState({
   state,
   onRetry,

@@ -5,6 +5,7 @@ import { CollectionView } from '../CollectionView';
 import { exampleDefinition, exampleSource } from '../example';
 import { CollectionError } from '../types';
 import type { CollectionSource } from '../types';
+import { TemporaryFoundation } from './TemporaryFoundation';
 import './preview.css';
 const params = new URLSearchParams(window.location.search);
 const state = params.get('state');
@@ -32,11 +33,14 @@ const source: CollectionSource = state
 const container = document.getElementById('root');
 if (!container) throw new Error('Missing preview root');
 createRoot(container).render(
-  <BrowserRouter>
-    <CollectionView
-      definition={exampleDefinition}
-      source={source}
-      mode={params.get('theme') === 'light' ? 'light' : 'dark'}
-    />
-  </BrowserRouter>,
+  <TemporaryFoundation mode={params.get('theme') === 'light' ? 'light' : 'dark'}>
+    <BrowserRouter>
+      <CollectionView
+        enableExperimentalCollectionViews={params.get('experimentalViews') === '1'}
+        definition={exampleDefinition}
+        source={source}
+        mode={params.get('theme') === 'light' ? 'light' : 'dark'}
+      />
+    </BrowserRouter>
+  </TemporaryFoundation>,
 );

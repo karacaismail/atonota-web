@@ -1,0 +1,12 @@
+/* Preview only. Delete after foundation supplies shared hit geometry and CSS. */
+[data-collection-preview] .collection-hit {
+  position: relative;
+}
+[data-collection-preview] .collection-hit::after {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--hit-t, 0px));
+  right: calc(-1 * var(--hit-r, 0px));
+  bottom: calc(-1 * var(--hit-b, 0px));
+  left: calc(-1 * var(--hit-l, 0px));
+}
