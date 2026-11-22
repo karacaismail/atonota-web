@@ -13,5 +13,12 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "eslint.config.js", "tests/e2e"]
+  "include": [
+    "vite.config.ts",
+    "vite",
+    "playwright.config.ts",
+    "eslint.config.js",
+    "tests/e2e",
+    "src/**/*.node.test.ts"
+  ]
 }

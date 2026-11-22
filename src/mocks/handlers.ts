@@ -5,6 +5,9 @@ import { http, HttpResponse, type JsonBodyType } from 'msw';
 import { TOOL_RESULT_PREFIX } from '@/api/ai-protocol';
 
 import {
+  SAMPLE_USER as SAMPLE_ACCOUNT,
+  sampleAccessSummary,
+  sampleLeaves,
   SAMPLE_CSRF_TOKEN,
   SAMPLE_DOCTYPE_ETAG,
   SAMPLE_USER,
@@ -22,12 +25,64 @@ import {
 export const mockState = {
   signedIn: true,
   proposals: new Map<string, ReturnType<typeof sampleProposal>>(),
+  leaves: new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }])),
 };
 
 export function resetMockState(): void {
   mockState.signedIn = true;
   mockState.proposals.clear();
+  mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
 }
+
+let versionCounter = 0;
+function nextVersion(): string {
+  versionCounter += 1;
+  return `2026-11-23 10:00:00.${String(versionCounter).padStart(6, '0')}`;
+}
+
+function parseJsonParam(url: URL, key: string): unknown {
+  const raw = url.searchParams.get(key);
+  if (raw === null) return undefined;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return Symbol.for('invalid');
+  }
+}
+
+type Leave = (typeof sampleLeaves)[number];
+
+function leaveMatches(leave: Leave, filters: unknown): boolean {
+  if (filters === undefined) return true;
+  if (Array.isArray(filters)) {
+    return filters.every(
+      (item) =>
+        Array.isArray(item) &&
+        item[0] === 'name' &&
+        item[1] === 'in' &&
+        Array.isArray(item[2]) &&
+        (item[2] as unknown[]).includes(leave.name),
+    );
+  }
+  if (typeof filters !== 'object' || filters === null) return false;
+  return Object.entries(filters).every(
+    ([key, value]) => (leave as Record<string, unknown>)[key] === value,
+  );
+}
+
+const LEAVE_FIELDS = new Set([
+  'name',
+  'employee',
+  'employee_name',
+  'leave_type',
+  'from_date',
+  'to_date',
+  'status',
+  'docstatus',
+  'modified',
+  'total_leave_days',
+  'leave_balance',
+]);
 
 const REDIRECT_PATTERN = /^\/(?!\/)[A-Za-z0-9\-._~/?#@!$&()*+,;=%:[\]]*$/;
 
@@ -252,6 +307,123 @@ export const handlers = [
     const rejected = { ...proposal, status: 'rejected' as const };
     mockState.proposals.set(rejected.proposal_id, rejected);
     return message(rejected);
+  }),
+
+  // HRMS izin başvuruları (hrms_tr sözleşmesi).
+  http.get('*/api/resource/:doctype', ({ request, params }) => {
+    const denied = guard(request, { write: false });
+    if (denied) return denied;
+    if (params.doctype !== 'Leave Application') return frappeError(403, 'PermissionError');
+    const url = new URL(request.url);
+    const fields = parseJsonParam(url, 'fields') ?? ['name'];
+    const filters = parseJsonParam(url, 'filters');
+    if (!Array.isArray(fields) || !fields.every((field) => LEAVE_FIELDS.has(String(field)))) {
+      return frappeError(417, 'ValidationError');
+    }
+    if (typeof filters === 'symbol') return frappeError(417, 'ValidationError');
+    const start = Number(url.searchParams.get('limit_start') ?? 0);
+    const length = Number(url.searchParams.get('limit_page_length') ?? 20);
+    let rows = [...mockState.leaves.values()].filter((leave) => leaveMatches(leave, filters));
+    rows =
+      url.searchParams.get('order_by') === 'name asc'
+        ? rows.sort((a, b) => a.name.localeCompare(b.name))
+        : rows.sort(
+            (a, b) =>
+              (b.modified ?? '').localeCompare(a.modified ?? '') || a.name.localeCompare(b.name),
+          );
+    const page = rows
+      .slice(start, start + length)
+      .map((leave) =>
+        Object.fromEntries(
+          fields.map((field) => [field, (leave as Record<string, unknown>)[String(field)]]),
+        ),
+      );
+    return HttpResponse.json({ data: page as JsonBodyType });
+  }),
+
+  http.get('*/api/resource/:doctype/:name', ({ request, params }) => {
+    const denied = guard(request, { write: false });
+    if (denied) return denied;
+    const leave =
+      params.doctype === 'Leave Application'
+        ? mockState.leaves.get(String(params.name))
+        : undefined;
+    return leave
+      ? HttpResponse.json({ data: leave as JsonBodyType })
+      : frappeError(404, 'DoesNotExistError');
+  }),
+
+  http.post('*/api/method/hrms_tr.api.approve_leave', async ({ request }) => {
+    const denied = guard(request, { write: true });
+    if (denied) return denied;
+    const body = (await request.json()) as { name?: string; version?: string };
+    const leave = mockState.leaves.get(body.name ?? '');
+    if (!leave) return frappeError(404, 'DoesNotExistError');
+    if (body.version !== leave.modified) return frappeError(417, 'TimestampMismatchError');
+    if (leave.docstatus !== 0 || leave.status !== 'Open')
+      return frappeError(417, 'ValidationError');
+    mockState.leaves.set(leave.name, {
+      ...leave,
+      status: 'Approved',
+      docstatus: 1,
+      modified: nextVersion(),
+    });
+    return message({ name: leave.name });
+  }),
+
+  http.post('*/api/method/hrms_tr.api.cancel_leave', async ({ request }) => {
+    const denied = guard(request, { write: true });
+    if (denied) return denied;
+    const body = (await request.json()) as { name?: string; version?: string };
+    const leave = mockState.leaves.get(body.name ?? '');
+    if (!leave) return frappeError(404, 'DoesNotExistError');
+    if (body.version !== leave.modified) return frappeError(417, 'TimestampMismatchError');
+    if (leave.docstatus !== 1) return frappeError(417, 'ValidationError');
+    mockState.leaves.set(leave.name, {
+      ...leave,
+      status: 'Cancelled',
+      docstatus: 2,
+      modified: nextVersion(),
+    });
+    return message({ name: leave.name });
+  }),
+
+  // Erişim kuralı motoru (platform_core-access sözleşmesi).
+  http.get('*/api/method/platform_core.api.access.explain_permission', ({ request }) => {
+    const denied = guard(request, { write: false });
+    if (denied) return denied;
+    const url = new URL(request.url);
+    const doctype = url.searchParams.get('doctype');
+    const name = url.searchParams.get('name') ?? '';
+    const ptype = url.searchParams.get('ptype') ?? 'read';
+    const user = url.searchParams.get('user') ?? SAMPLE_ACCOUNT;
+    if (!['read', 'write', 'create', 'delete', 'submit', 'cancel'].includes(ptype)) {
+      return frappeError(417, 'ValidationError');
+    }
+    if (doctype !== sampleAccessSummary.doctype || user !== SAMPLE_ACCOUNT) {
+      return frappeError(403, 'PermissionError');
+    }
+    const allowed = name === 'ORNEK-0001';
+    return message({
+      doctype,
+      name,
+      ptype,
+      user,
+      allowed,
+      reason: allowed ? 'allowed' : 'not_permitted_or_missing',
+      governed: true,
+      layers: { role: true, access_rule: allowed, share: false },
+      rules: [],
+    });
+  }),
+
+  http.get('*/api/method/platform_core.api.access.get_access_summary', ({ request }) => {
+    const denied = guard(request, { write: false });
+    if (denied) return denied;
+    const doctype = new URL(request.url).searchParams.get('doctype');
+    return doctype === sampleAccessSummary.doctype
+      ? message(sampleAccessSummary)
+      : frappeError(403, 'PermissionError');
   }),
 
   http.post('*/api/method/platform_core.api.model.complete', async ({ request }) => {

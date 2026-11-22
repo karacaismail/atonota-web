@@ -1,4 +1,3 @@
-/// <reference types="node" />
 // Sahte sunucunun işçi dosyasını (mockServiceWorker.js) sunar.
 //
 // Geliştirme sunucusunda dosya her zaman sunulur. `VITE_API_MOCKS=off` ise tarayıcı onu kullanmaz.
