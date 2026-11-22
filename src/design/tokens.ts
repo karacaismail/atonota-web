@@ -4,7 +4,7 @@
  */
 import { theme as antdThemeApi } from 'antd';
 
-import { darkenToContrast, hexToRgba } from './color';
+import { darkenToContrast, hexToRgba, minAlphaForContrast } from './color';
 import { designSource, type SizeKey, type ThemeMode } from './source';
 
 const s = designSource;
@@ -28,6 +28,21 @@ export const typography = {
   lineHeightRatioFor: (fontSize: number): number => (fontSize + 8) / fontSize,
 } as const;
 
+/**
+ * Koyu temada birincil butonun oturduğu sayfa zeminleri: yerleşim ve panel.
+ * Yükseltilmiş zeminde (#2A2A30) %14 teal zemin üzerinde %100 metin bile 4.21:1 kalır;
+ * bu zemin hesaba katılmaz ve orada birincil buton kullanılmaz.
+ */
+const DARK_SURFACES = [s.darkPalette.layout, s.darkPalette.panel] as const;
+
+const DARK_TEXT_OPACITY = minAlphaForContrast({
+  text: s.primary.dark.text,
+  startAlpha: s.primary.dark.opacity,
+  background: s.primary.color,
+  backgroundAlpha: s.primary.dark.background,
+  surfaces: DARK_SURFACES,
+});
+
 export const primary = {
   color: s.primary.color,
   hover: s.primary.hover,
@@ -37,9 +52,15 @@ export const primary = {
     text: hexToRgba(s.primary.light.text, s.primary.light.opacity),
     textHover: hexToRgba(s.primary.light.text, s.primary.light.hoverOpacity),
   },
-  /** Koyu tema: metin birincil %85, zemin birincil %14, hover %22, basılı %28. */
+  /**
+   * Koyu tema: zemin birincil %14, hover %22, basılı %28. Hover metni %100.
+   * Dinlenme metni kaynakta %85'tir. Bu değer AA kontrastını (4.5:1) vermez.
+   * Orkestratör kararı: WCAG 2.2 AA önce gelir. Dinlenme opaklığı, kontrastı
+   * sağlayan en küçük değere programatik olarak çıkarılır (textOpacity).
+   */
   dark: {
-    text: hexToRgba(s.primary.dark.text, s.primary.dark.opacity),
+    textOpacity: DARK_TEXT_OPACITY,
+    text: hexToRgba(s.primary.dark.text, DARK_TEXT_OPACITY),
     textHover: hexToRgba(s.primary.dark.text, s.primary.dark.hoverOpacity),
     background: hexToRgba(s.primary.color, s.primary.dark.background),
     backgroundHover: hexToRgba(s.primary.color, s.primary.dark.hoverBackground),

@@ -182,19 +182,15 @@ test.describe('temel kapılar', () => {
     await expect(page.getByTestId('btn-sm')).toHaveCSS('background-color', 'rgb(52, 52, 59)');
   }
 
-  test('axe: koyu temada erişilebilirlik ihlali yok (birincil buton hariç)', async ({ page }) => {
+  test('axe: koyu temada erişilebilirlik ihlali yok', async ({ page }) => {
     await switchToDark(page);
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
-      .exclude('.ant-btn-primary')
       .analyze();
     expect(results.violations).toEqual([]);
   });
 
-  test('bilinen sapma: koyu birincil buton metni AA kontrastının altında', async ({ page }) => {
-    // Kaynak karar: metin #00aacc %85, zemin #00aacc %14. Ölçülen kontrast 4.24:1, AA 4.5:1 ister.
-    // Karar proje sahibinindir. Bu test sapma giderilince kendiliğinden "beklenmedik geçti" verir.
-    test.fail();
+  test('koyu birincil buton metni AA kontrastını verir', async ({ page }) => {
     await switchToDark(page);
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2aa'])

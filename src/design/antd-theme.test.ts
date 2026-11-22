@@ -2,8 +2,9 @@ import { theme as antdThemeApi } from 'antd';
 import { describe, expect, it } from 'vitest';
 
 import { buildAntdTheme } from './antd-theme';
-import { contrastRatio } from './color';
+import { blendOver, contrastRatio } from './color';
 import { designSource } from './source';
+import { primary } from './tokens';
 
 const derived = designSource.derived.antdTheme;
 
@@ -39,6 +40,20 @@ describe('buildAntdTheme', () => {
     expect(contrastRatio(String(token?.colorLink), layout)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(String(token?.colorLink), '#ffffff')).toBeGreaterThanOrEqual(4.5);
     expect(buildAntdTheme('dark').token?.colorLink).toBe(designSource.primary.color);
+  });
+
+  it('koyu birincil buton metni AA kontrastını verir; zemin %14 ve hover %100 kaynakla aynı kalır', () => {
+    const { textOpacity } = primary.dark;
+    expect(textOpacity).toBeGreaterThanOrEqual(designSource.primary.dark.opacity);
+    expect(textOpacity).toBe(0.95);
+    for (const surface of [designSource.darkPalette.layout, designSource.darkPalette.panel]) {
+      const bg = blendOver(designSource.primary.color, designSource.primary.dark.background, surface);
+      expect(contrastRatio(blendOver(designSource.primary.dark.text, textOpacity, bg), bg)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(primary.dark.background).toBe('rgba(0,170,204,0.14)');
+    expect(primary.dark.backgroundHover).toBe('rgba(0,170,204,0.22)');
+    expect(primary.dark.textHover).toBe('rgba(0,170,204,1)');
+    expect(buildAntdTheme('dark').components?.Button?.primaryColor).toBe(primary.dark.text);
   });
 
   it('açık tema koyu paleti taşımaz', () => {

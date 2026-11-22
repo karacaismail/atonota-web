@@ -69,3 +69,38 @@ export function darkenToContrast(hex: string, background: string, minRatio = 4.5
   }
   return current;
 }
+
+/** `fg` rengini `alpha` opaklıkla `background` üzerine bindirir; düz renk döner. */
+export function blendOver(fg: string, alpha: number, background: string): string {
+  const f = parseHex(fg);
+  const b = parseHex(background);
+  return toHex([
+    alpha * f[0] + (1 - alpha) * b[0],
+    alpha * f[1] + (1 - alpha) * b[1],
+    alpha * f[2] + (1 - alpha) * b[2],
+  ]);
+}
+
+/**
+ * Yarı saydam metnin, yarı saydam zemin üzerinde en az `minRatio` kontrast verdiği
+ * en küçük opaklığı bulur. Başlangıç `startAlpha` değeridir; 0.01 adımla artar, en çok 1.
+ * `surfaces`: zeminin altındaki olası sayfa renkleri; hepsinde sınır sağlanmalıdır.
+ */
+export function minAlphaForContrast(options: {
+  text: string;
+  startAlpha: number;
+  background: string;
+  backgroundAlpha: number;
+  surfaces: readonly string[];
+  minRatio?: number;
+}): number {
+  const minRatio = options.minRatio ?? 4.5;
+  const ok = (alpha: number) =>
+    options.surfaces.every((surface) => {
+      const bg = blendOver(options.background, options.backgroundAlpha, surface);
+      return contrastRatio(blendOver(options.text, alpha, bg), bg) >= minRatio;
+    });
+  let alpha = Math.round(options.startAlpha * 100);
+  while (alpha < 100 && !ok(alpha / 100)) alpha += 1;
+  return alpha / 100;
+}

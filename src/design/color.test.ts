@@ -33,3 +33,30 @@ describe('kontrast yardımcıları', () => {
     expect(darkenToContrast('#000000', '#ffffff')).toBe('#000000');
   });
 });
+
+import { blendOver, minAlphaForContrast } from './color';
+
+describe('opaklık türetme', () => {
+  it('bindirme düz renk üretir', () => {
+    expect(blendOver('#ffffff', 0.5, '#000000')).toBe('#808080');
+    expect(blendOver('#00aacc', 1, '#000000')).toBe('#00aacc');
+  });
+  it('kontrastı sağlayan en küçük opaklığı bulur', () => {
+    const alpha = minAlphaForContrast({
+      text: '#00aacc', startAlpha: 0.85, background: '#00aacc', backgroundAlpha: 0.14,
+      surfaces: ['#17171A', '#1F1F23'],
+    });
+    expect(alpha).toBeGreaterThan(0.85);
+    expect(alpha).toBeLessThanOrEqual(1);
+    const check = (a: number) =>
+      ['#17171A', '#1F1F23'].every((sfc) => {
+        const bg = blendOver('#00aacc', 0.14, sfc);
+        return contrastRatio(blendOver('#00aacc', a, bg), bg) >= 4.5;
+      });
+    expect(check(alpha)).toBe(true);
+    expect(check(alpha - 0.01)).toBe(false);
+  });
+  it('yeterli opaklık değişmez', () => {
+    expect(minAlphaForContrast({ text: '#ffffff', startAlpha: 0.9, background: '#000000', backgroundAlpha: 1, surfaces: ['#000000'] })).toBe(0.9);
+  });
+});
