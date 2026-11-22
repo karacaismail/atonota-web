@@ -4,7 +4,9 @@ export interface CollectionRow {
   name: string;
   [field: string]: Scalar;
 }
+export type Sensitivity = 'standard' | 'restricted';
 export interface CollectionField {
+  sensitivity: Sensitivity;
   fieldname: string;
   fieldtype: string;
   label: string;
@@ -13,6 +15,7 @@ export interface CollectionField {
   filterable: boolean;
 }
 export interface CollectionDefinition {
+  sensitivity: Sensitivity;
   doctype: string;
   columns: CollectionField[];
   titleField: string;

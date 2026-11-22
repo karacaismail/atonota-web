@@ -1,7 +1,17 @@
 import { CaretDown, Check } from '@phosphor-icons/react';
 import { Button, ConfigProvider, Input, Select, theme } from 'antd';
 import trTR from 'antd/locale/tr_TR';
-import { Component, lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  Component,
+  lazy,
+  Suspense,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CollectionState } from './CollectionState';
@@ -138,6 +148,9 @@ function CollectionContent({ definition, source, mode = 'dark' }: CollectionView
     };
   }, [key, source, request, definition, retry]);
   const HeavyView = query.view === 'table' ? undefined : heavyViews[query.view];
+  const activeFilter = definition.columns.find((field) => field.fieldname === query.filter);
+  const activeFilterValue =
+    activeFilter?.choices.find((choice) => choice.value === query.value)?.label ?? query.value;
   const filterFields = definition.columns.filter(
     (field) => field.filterable && field.choices.length > 0,
   );
@@ -153,6 +166,7 @@ function CollectionContent({ definition, source, mode = 'dark' }: CollectionView
           <div>
             <p className="collection-eyebrow">Kayıtlar</p>
             <h1 id={titleId}>{definition.doctype}</h1>
+            {definition.sensitivity === 'restricted' && <p>Hassas kayıtlar</p>}
           </div>
           {source.kind === 'example' && <span className="collection-example">Örnek veri</span>}
         </header>
@@ -254,12 +268,11 @@ function CollectionContent({ definition, source, mode = 'dark' }: CollectionView
         </div>
         {(query.search || query.filter) && (
           <div className="collection-applied">
+            <p>{query.search ? '"' + query.search + '" metni aranıyor.' : 'Arama metni yok.'}</p>
             <p>
-              Arama: {query.search || 'Tümü'}. Süzgeç:{' '}
-              {definition.columns
-                .find((field) => field.fieldname === query.filter)
-                ?.choices.find((choice) => choice.value === query.value)?.label ?? 'Tümü'}
-              .
+              {activeFilter
+                ? activeFilter.label + ' alanında "' + activeFilterValue + '" değeri aranıyor.'
+                : 'Etkin süzgeç yok.'}
             </p>
             <Button
               onClick={() => {
@@ -375,9 +388,24 @@ function CollectionContent({ definition, source, mode = 'dark' }: CollectionView
     </div>
   );
 }
+function subscribeMotion(callback: () => void) {
+  const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+  media.addEventListener('change', callback);
+  return () => {
+    media.removeEventListener('change', callback);
+  };
+}
+function getReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 export function CollectionView({ mode = 'dark', ...props }: CollectionViewProps) {
+  const reducedMotion = useSyncExternalStore(subscribeMotion, getReducedMotion, () => false);
   return (
-    <ConfigProvider locale={trTR} theme={collectionTheme(mode)} wave={{ disabled: true }}>
+    <ConfigProvider
+      locale={trTR}
+      theme={collectionTheme(mode, reducedMotion)}
+      wave={{ disabled: true }}
+    >
       <CollectionContent {...props} mode={mode} />
     </ConfigProvider>
   );

@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react';
 import source from '../../../design/source/control-size-config.json';
 
 /** Temporary scoped adapter until foundation exports the shared theme and engines. */
-export function collectionTheme(mode: 'dark' | 'light'): ThemeConfig {
+export function collectionTheme(mode: 'dark' | 'light', reducedMotion = false): ThemeConfig {
   const base = source.derived.antdTheme;
   return {
     algorithm: mode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
@@ -23,6 +23,7 @@ export function collectionTheme(mode: 'dark' | 'light'): ThemeConfig {
             ].includes(name),
         ),
       ),
+      motion: !reducedMotion,
       fontFamily: 'Outfit Variable, Outfit, sans-serif',
       motionEaseInOut: 'cubic-bezier(.65, 0, .35, 1)',
       motionEaseOut: 'cubic-bezier(.65, 0, .35, 1)',

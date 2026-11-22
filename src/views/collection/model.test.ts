@@ -4,6 +4,28 @@ import { createDefinition, parsePage } from './model';
 import { readQuery, writeQuery, toListRequest } from './query';
 import { exampleMeta, exampleSource } from './example';
 describe('collection contract and URL', () => {
+  it('preserves validated record and field sensitivity without hiding authorized fields', () => {
+    const meta = structuredClone(exampleMeta);
+    meta.schema.sensitivity = 'restricted';
+    meta.schema.fields = meta.schema.fields.map((field) => ({
+      ...field,
+      sensitivity: 'restricted',
+    }));
+    const definition = createDefinition(meta);
+    expect(definition.sensitivity).toBe('restricted');
+    expect(definition.columns.find((field) => field.fieldname === 'name')?.sensitivity).toBe(
+      'restricted',
+    );
+    expect(definition.columns.find((field) => field.fieldname === 'subject')?.sensitivity).toBe(
+      'restricted',
+    );
+    expect(() =>
+      createDefinition({ ...meta, schema: { ...meta.schema, sensitivity: 'unknown' } }),
+    ).toThrow();
+    expect(() =>
+      createDefinition({ ...meta, schema: { ...meta.schema, sensitivity: undefined } }),
+    ).toThrow();
+  });
   it('orders tied server results by their stable record identity', () => {
     const definition = createDefinition(exampleMeta);
     const query = readQuery(new URLSearchParams('sort=hours&direction=desc'), definition);

@@ -5,6 +5,7 @@ import type {
   CollectionPage,
   CollectionRow,
   ViewRoles,
+  Sensitivity,
 } from './types';
 
 function object(value: unknown): Record<string, unknown> {
@@ -15,6 +16,11 @@ function object(value: unknown): Record<string, unknown> {
 function text(value: unknown): string {
   if (typeof value !== 'string' || !value.trim())
     throw new CollectionError('error', 'Geçersiz alan tanımı.');
+  return value;
+}
+function sensitivity(value: unknown): Sensitivity {
+  if (value !== 'standard' && value !== 'restricted')
+    throw new CollectionError('error', 'Gizlilik işareti geçersiz.');
   return value;
 }
 const identifier = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
@@ -34,9 +40,11 @@ export function createDefinition(input: unknown, roles: ViewRoles = {}): Collect
     throw new CollectionError('error', 'Kayıt tanımı desteklenmiyor.');
   const schema = object(meta['schema']);
   const doctype = text(schema['name']);
+  const recordSensitivity = sensitivity(schema['sensitivity']);
   if (!Array.isArray(schema['fields'])) throw new CollectionError('error', 'Alanlar bulunamadı.');
   const columns: CollectionField[] = [
     {
+      sensitivity: recordSensitivity,
       fieldname: 'name',
       fieldtype: 'Data',
       label: 'Kayıt',
@@ -69,6 +77,7 @@ export function createDefinition(input: unknown, roles: ViewRoles = {}): Collect
         })
       : [];
     columns.push({
+      sensitivity: sensitivity(field['sensitivity']),
       fieldname: name,
       fieldtype,
       label: typeof field['label'] === 'string' && field['label'] ? field['label'] : name,
@@ -80,7 +89,12 @@ export function createDefinition(input: unknown, roles: ViewRoles = {}): Collect
   const titleField = columns.some((f) => f.fieldname === schema['title_field'])
     ? String(schema['title_field'])
     : 'name';
-  const definition: CollectionDefinition = { doctype, columns, titleField };
+  const definition: CollectionDefinition = {
+    doctype,
+    columns,
+    titleField,
+    sensitivity: recordSensitivity,
+  };
   for (const key of ['groupField', 'startField', 'endField', 'durationField'] as const) {
     const name = roles[key];
     const field = columns.find((candidate) => candidate.fieldname === name);

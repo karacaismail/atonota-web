@@ -40,6 +40,11 @@
   gap: var(--collection-gap);
   padding-block: var(--collection-gap) var(--collection-padding);
 }
+.collection-sensitive {
+  display: block;
+  color: var(--collection-muted);
+  font-weight: normal;
+}
 .collection-eyebrow {
   color: var(--collection-muted);
 }

@@ -30,6 +30,22 @@ function mount(source: CollectionSource = exampleSource, search = '') {
   );
 }
 describe('collection UI', () => {
+  it('explains shared URL filters whose fields have no choices', async () => {
+    const definition = {
+      ...exampleDefinition,
+      columns: exampleDefinition.columns.map((field) => ({
+        ...field,
+        filterable: field.fieldname === 'subject' || field.filterable,
+      })),
+    };
+    render(
+      <MemoryRouter initialEntries={['/?filter=subject&value=Example']}>
+        <CollectionView definition={definition} source={exampleSource} />
+      </MemoryRouter>,
+    );
+    await screen.findByText('İş alanında "Example" değeri aranıyor.');
+    expect(screen.queryByText('Etkin süzgeç yok.')).not.toBeInTheDocument();
+  });
   it('clears selection when the data source identity changes', async () => {
     const mounted = mount();
     await screen.findByText('EXAMPLE-001');

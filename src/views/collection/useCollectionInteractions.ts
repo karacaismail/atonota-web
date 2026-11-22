@@ -41,6 +41,21 @@ export function useCollectionInteractions(root: RefObject<HTMLDivElement>) {
     let frame = 0;
     function focusExpandedInput(event: MouseEvent) {
       const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.classList.contains('ant-select') &&
+        !target.classList.contains('ant-select-disabled')
+      ) {
+        event.preventDefault();
+        target.querySelector('.ant-select-selector')?.dispatchEvent(
+          new MouseEvent('mousedown', {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            button: 0,
+          }),
+        );
+      }
       if (target instanceof HTMLElement && target.classList.contains('ant-input-affix-wrapper')) {
         target.querySelector('input')?.focus();
       }

@@ -5,6 +5,7 @@ export default defineConfig({
   testDir: '.',
   testMatch: 'collection.spec.ts',
   workers: 2,
+  reporter: [['list'], ['json', { outputFile: '../../../../.pane/qa/collection-report.json' }]],
   outputDir: '../../../../.pane/qa/browser-results',
   use: { ...base.use, baseURL: 'http://127.0.0.1:4319', trace: 'retain-on-failure' },
   webServer: {

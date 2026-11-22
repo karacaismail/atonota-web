@@ -26,10 +26,25 @@ test('expanded input and select targets work without covering their centers', as
   else await page.mouse.click(selectBox.x + selectBox.width / 2, selectBox.y - 1);
   await expect(page.getByRole('listbox')).toBeVisible();
   await page.keyboard.press('Escape');
-  await select.focus();
+  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
   await page.getByRole('combobox', { name: 'Görünüm', exact: true }).focus();
   await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Görünüm', exact: true })).toHaveAttribute(
+    'aria-activedescendant',
+    /_0$/,
+  );
+  await page.locator('.ant-select-dropdown:visible').evaluate(async (element) => {
+    await Promise.all(
+      element.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+    );
+  });
   await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Görünüm', exact: true })).toHaveAttribute(
+    'aria-activedescendant',
+    /_1$/,
+  );
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-view="kanban"]')).toBeVisible();
 });

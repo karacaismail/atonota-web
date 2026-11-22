@@ -36,6 +36,9 @@ export function TableView({
                 className={isNumeric(field) ? 'collection-number' : 'collection-text'}
               >
                 {field.label}
+                {field.sensitivity === 'restricted' && (
+                  <span className="collection-sensitive">Hassas alan</span>
+                )}
               </th>
             ))}
           </tr>
