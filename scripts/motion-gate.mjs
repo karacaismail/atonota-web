@@ -111,7 +111,13 @@ const isMain =
   import.meta.url.endsWith(process.argv[1].split(sep).join('/').replace(/^.*\//, ''));
 if (isMain) {
   const root = process.argv[2] ?? process.cwd();
-  const violations = scanProject(root);
+  const { violations, allowed } = scanProject(root);
+  if (allowed.length) {
+    const files = [...new Set(allowed.map((v) => v.file))];
+    console.log(
+      `Hareket kapısı: ${files.length} dosya geçici izinli (scripts/motion-gate.allow.json): ${files.join(', ')}`,
+    );
+  }
   if (violations.length) {
     console.error(`Hareket kapısı: ${violations.length} ihlal.`);
     for (const v of violations)
