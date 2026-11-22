@@ -84,7 +84,28 @@ Adres örnekleri şunlardır:
 - `/satis/teklif?gorunum=kanban` aynı sayfanın Kanban görünümüdür.
 - `/satis/teklif/TEK-0003` tek kayıt sayfasıdır.
 
-Örnek sayfalarda veri durumu adresle seçilebilir. Örneğin `?durum=hata` hata durumunu gösterir. Değerler şunlardır: `canli`, `yukleniyor`, `bos` ve `hata`.
+## Görünümler ve veri bağlantısı
+
+Koleksiyonu yalnız `views-collection` işinin `CollectionView` bileşeni çizer. Kabuk kendi tablosunu çizmez.
+
+Liste rotası `/:module/:doctype` adresidir. Bu rota `pages/CollectionRoute.tsx` dosyasını tembel yükler. Dosya önce liste tanımını getirir. Sonra `CollectionView` bileşenini çizer.
+
+Kabuk API istemcisi kurmaz. Veri bağlantısını uygulama girişi verir. Örnek:
+
+```tsx
+<ShellApp
+  viewData={{
+    collection: {
+      loadDefinition: ({ module, doctype }, signal) => /* API ile tanımı getir */,
+      source: apiCollectionSource,
+    },
+  }}
+/>
+```
+
+Bağlantı verilmezse liste sayfası "Veri kaynağı bağlı değil" yazar.
+
+Kayıt rotası için de aynı kural geçerlidir. `views-record` işinin `RecordView` bileşeni `main` dalına girince kayıt rotası ona bağlanacak. O zamana kadar `pages/RecordPage.tsx` geçici örnek formu gösterir.
 
 ## Geçici bağlantılar
 
@@ -93,7 +114,7 @@ Adres örnekleri şunlardır:
 1. **Tokenlar.** `tokens.ts` değerleri kaynak dosyadan okur. `src/design/` dışa aktarımı gelince `tokens.ts` oradan okuyacak.
 2. **Odak perdesi.** `focus-dim/` klasörü D1–D5 kararını uygular. `src/engines/focus-dim/` gelince `useFocusDim` o motoru çağıracak.
 
-3. **Adlı değerler.** `shell.css` dosyasının başında adlı değer bölümü vardır. Kaynakta karşılığı olmayan boşluk, ölçü ve süreler oradadır. `foundation` boşluk ve hareket tokenlarını koyunca bölüm oraya taşınır. Bölüm dışında sabit değer yazılmaz. `shellCss.test.ts` bunu denetler.
+3. **Adlı değerler.** `shell.css` dosyasının başında adlı değer bölümü vardır. Kaynakta karşılığı olmayan boşluk, ölçü ve süreler oradadır. `foundation` boşluk ve hareket tokenlarını koyunca bölüm oraya taşınır. Bölüm dışında sabit değer yazılmaz. `shellCss.node.test.ts` bunu denetler.
 
 Bileşenler yalnız `useFocusDim` kancasını ve `shellTokens` nesnesini kullanır. Bu yüzden geçişte bileşen kodu değişmez.
 
@@ -106,6 +127,8 @@ Tarayıcı testleri kabuk deneme sayfasında koşar. Komut şudur:
 ```bash
 npx playwright test -c src/shell/e2e/playwright.config.mjs
 ```
+
+Kabuk testleri derlenmiş deneme sayfasında koşar. Geliştirme sunucusu tembel sayfada sayfayı yeniden yüklüyordu. Bu da testleri kararsız yapıyordu.
 
 Testler `src/shell/e2e/` altında kalır. Kök Playwright ayarı bu klasörü de okuyacak. O zamana kadar kabuk ayarı kullanılır.
 

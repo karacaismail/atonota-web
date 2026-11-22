@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-for (const url of ['/', '/satis/teklif', '/satis/teklif?durum=hata', '/satis/teklif/TEK-0003']) {
+for (const url of ['/', '/satis/teklif', '/satis/teklif/TEK-0003']) {
   test(`axe: ${url}`, async ({ page }, testInfo) => {
     await page.goto(url);
     await expect(page.locator('.shell')).toBeVisible();

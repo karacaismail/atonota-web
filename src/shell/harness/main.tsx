@@ -14,6 +14,8 @@ import trTR from 'antd/locale/tr_TR';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { exampleDefinition, exampleSource } from '@/views/collection/example';
+
 import { ShellApp } from '../ShellApp';
 import { hexToRgba } from '../tokens';
 
@@ -44,6 +46,15 @@ const buttonTokens = light
       colorPrimaryActive: hexToRgba(pr.color, pr.dark.activeBackground),
     };
 
+// Deneme sayfası views-collection örnek kaynağını kullanır. Her adres aynı
+// örnek tanımı gösterir. Gerçek bağlantıyı uygulama girişi API ile kurar.
+const harnessViewData = {
+  collection: {
+    loadDefinition: () => Promise.resolve(exampleDefinition),
+    source: exampleSource,
+  },
+};
+
 const container = document.getElementById('root');
 if (!container) throw new Error('Kök öğe bulunamadı: #root');
 
@@ -60,7 +71,7 @@ createRoot(container).render(
       }}
     >
       <AntApp>
-        <ShellApp />
+        <ShellApp viewData={harnessViewData} />
       </AntApp>
     </ConfigProvider>
   </StrictMode>,

@@ -44,7 +44,7 @@ export const routeRegistry: RouteEntry[] = [
     path: '/:module/:doctype',
     label: 'Kayıtlar',
     icon: Rows,
-    load: () => import('./pages/CollectionPage'),
+    load: () => import('./pages/CollectionRoute'),
   },
   {
     path: '/:module/:doctype/:name',

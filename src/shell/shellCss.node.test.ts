@@ -1,9 +1,9 @@
 // Vitest `css: false` ayarıyla `?raw` boş döner. Dosya Node ile okunur.
+// Ad `.node.test.ts` ile biter. Böylece Node türleri yalnız bu testte geçerlidir.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const cwd = (globalThis as unknown as { process: { cwd: () => string } }).process.cwd();
-const css: string = readFileSync(`${cwd}/src/shell/shell.css`, 'utf8');
+const css = readFileSync(`${process.cwd()}/src/shell/shell.css`, 'utf8');
 
 /**
  * Önemli 2 ve 3: stil dosyasında sabit değer yazılmaz.

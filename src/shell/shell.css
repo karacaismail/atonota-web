@@ -3,7 +3,7 @@
  * Bütün değerler `--shell-*` değişkenlerinden gelir. Kaynaklı değişkenler
  * `tokens.ts` ve antd tema tokenlarından üretilir. Kaynakta karşılığı olmayan
  * değerler aşağıdaki adlı değer bölümündedir. Bölüm dışında sabit renk,
- * ölçü ya da süre yazılmaz. `shellCss.test.ts` bunu denetler.
+ * ölçü ya da süre yazılmaz. `shellCss.node.test.ts` bunu denetler.
  */
 
 /* @adli-degerler:basla */

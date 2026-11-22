@@ -5,3 +5,5 @@ export { PageHeader } from './header/PageHeader';
 export type { HeaderState, PageHeaderProps } from './header/PageHeader';
 export { useFocusDim, FocusDimProvider } from './focus-dim';
 export { routes, routePaths, queryKeys } from './paths';
+export { ViewDataProvider, useViewData } from './view-data';
+export type { CollectionAddress, ShellCollectionData, ShellViewData } from './view-data';

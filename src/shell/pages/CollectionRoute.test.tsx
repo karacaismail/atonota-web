@@ -34,7 +34,10 @@ describe('CollectionRoute', () => {
 
   it('kabuk kendi örnek tablosunu çizmez', async () => {
     mount({
-      collection: { loadDefinition: () => Promise.resolve(exampleDefinition), source: exampleSource },
+      collection: {
+        loadDefinition: () => Promise.resolve(exampleDefinition),
+        source: exampleSource,
+      },
     });
     await screen.findByText('EXAMPLE-001');
     expect(screen.queryByText('TEK-0001')).not.toBeInTheDocument();
