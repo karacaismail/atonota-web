@@ -4,12 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { createApiClient } from '@/api/client';
 import type { ApiConfig } from '@/api/config';
 import { createCsrfStore } from '@/api/csrf';
-import {
-  SAMPLE_CSRF_TOKEN,
-  SAMPLE_KEYCLOAK_URL,
-  SAMPLE_USER,
-  sampleLoginUrl,
-} from '@/mocks/fixtures';
+import { SAMPLE_CSRF_TOKEN, SAMPLE_KEYCLOAK_URL, SAMPLE_USER } from '@/mocks/fixtures';
 import { mockState, resetMockState } from '@/mocks/handlers';
 import { mockServer } from '@/mocks/node';
 
@@ -80,60 +75,44 @@ describe('createAuth', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('girişte sunucunun verdiği Keycloak adresine gider ve dönüş yolunu verir', async () => {
-    let body: unknown;
-    mockServer.events.on('request:start', async ({ request }) => {
-      if (request.url.includes('get_login_url')) body = await request.clone().json();
-    });
+  it('ilk oturum sorgusu 401 dönerse signed_out olur ve yönlendirmez', async () => {
+    mockState.signedIn = false;
     const { auth, navigate } = setup();
-
-    await auth.signIn();
-
-    expect(body).toEqual({ redirect_to: '/panel/kayitlar?durum=acik' });
-    expect(navigate).toHaveBeenCalledWith(sampleLoginUrl.login_url);
-    expect(auth.getState()).toEqual({ status: 'redirecting' });
-    mockServer.events.removeAllListeners();
+    await auth.check();
+    expect(auth.getState()).toEqual({ status: 'signed_out' });
+    expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('güvensiz dönüş yolunu göndermez', async () => {
-    let body: unknown;
-    mockServer.events.on('request:start', async ({ request }) => {
-      if (request.url.includes('get_login_url')) body = await request.clone().json();
-    });
-    const { auth } = setup('//kotu.example.test');
-
-    await auth.signIn();
-
-    expect(body).toEqual({});
-    mockServer.events.removeAllListeners();
-  });
-
-  it.each([
-    [
-      'başka kök',
-      'https://kotu.example.test/realms/platform/protocol/openid-connect/auth?code_challenge_method=S256',
-    ],
-    [
-      'başka realm',
-      `${SAMPLE_KEYCLOAK_URL}/realms/baska/protocol/openid-connect/auth?code_challenge_method=S256`,
-    ],
-    ['PKCE yok', `${SAMPLE_KEYCLOAK_URL}/realms/platform/protocol/openid-connect/auth`],
-    [
-      'düz HTTP',
-      `http://kimlik.example.test/realms/platform/protocol/openid-connect/auth?code_challenge_method=S256`,
-    ],
-  ])('giriş adresi güvensizse (%s) gitmez', async (_label, loginUrl) => {
+  it('ilk oturum sorgusu 503 dönerse hata gösterir ve yönlendirmez', async () => {
     mockServer.use(
-      http.post('*/api/method/platform_core.api.auth.get_login_url', () =>
-        HttpResponse.json({ message: { ...sampleLoginUrl, login_url: loginUrl } }),
+      http.get('*/api/method/frappe.auth.get_logged_user', () =>
+        HttpResponse.json({ exc_type: 'SessionExpired', session_expired: 1 }, { status: 503 }),
       ),
     );
     const { auth, navigate } = setup();
-
-    await auth.signIn();
-
+    await auth.check();
+    expect(auth.getState()).toMatchObject({ status: 'error', error: { kind: 'unavailable' } });
     expect(navigate).not.toHaveBeenCalled();
-    expect(auth.getState()).toMatchObject({ status: 'error', error: { kind: 'invalid_response' } });
+  });
+
+  it('girişte aynı kökteki start_login yoluna dönüş yoluyla gider', () => {
+    const { auth, navigate } = setup();
+
+    auth.signIn();
+
+    expect(navigate).toHaveBeenCalledWith(
+      'https://kiraci.example.test/api/method/platform_core.api.auth.start_login' +
+        '?redirect_to=%2Fpanel%2Fkayitlar%3Fdurum%3Dacik',
+    );
+    expect(auth.getState()).toEqual({ status: 'redirecting' });
+  });
+
+  it('güvensiz dönüş yolunu göndermez', () => {
+    const { auth, navigate } = setup('//kotu.example.test');
+    auth.signIn();
+    expect(navigate).toHaveBeenCalledWith(
+      'https://kiraci.example.test/api/method/platform_core.api.auth.start_login',
+    );
   });
 
   it('çıkışta CSRF belirtecini siler ve Keycloak çıkışına gider', async () => {
@@ -149,16 +128,23 @@ describe('createAuth', () => {
     expect(auth.getState()).toEqual({ status: 'redirecting' });
   });
 
-  it('oturum bitince belirteci siler ve bir kez yeniden girişe yönlendirir', async () => {
+  it('oturum kullanım sırasında bitince belirteci siler ve bir kez girişe yönlendirir', async () => {
     const { auth, api, csrf, navigate } = setup();
     await auth.check();
     mockState.signedIn = false;
 
     await Promise.allSettled([api.getBootstrap(), api.getBootstrap()]);
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
 
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate.mock.calls[0]?.[0]).toContain('platform_core.api.auth.start_login');
     expect(csrf.get()).toBeUndefined();
-    expect(navigate).toHaveBeenCalledWith(sampleLoginUrl.login_url);
+  });
+
+  it('oturum hiç açılmadıysa bitim bildirimi yönlendirmez, giriş ekranı gösterilir', () => {
+    const { auth, navigate } = setup();
+    auth.handleSessionExpired();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(auth.getState()).toEqual({ status: 'signed_out' });
   });
 
   it('durum değişince aboneleri haberdar eder', async () => {

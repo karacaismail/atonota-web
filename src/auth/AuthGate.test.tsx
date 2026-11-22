@@ -1,0 +1,111 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { SAMPLE_CSRF_TOKEN, SAMPLE_USER } from '@/mocks/fixtures';
+import { mockState, resetMockState } from '@/mocks/handlers';
+import { mockServer } from '@/mocks/node';
+
+import { AuthGate } from './AuthGate';
+import { createPlatformSession } from './session';
+
+const SITE = 'https://kiraci.example.test';
+
+function setup() {
+  const navigate = vi.fn<(url: string) => void>();
+  const session = createPlatformSession({
+    env: { VITE_SITE_URL: SITE },
+    origin: SITE,
+    document,
+    navigate,
+    currentPath: () => '/panel',
+    csrfToken: SAMPLE_CSRF_TOKEN,
+  });
+  render(
+    <AuthGate session={session}>
+      <p>Panel içeriği</p>
+    </AuthGate>,
+  );
+  return { session, navigate };
+}
+
+beforeAll(() => mockServer.listen({ onUnhandledFrame: 'error' }));
+afterEach(() => {
+  mockServer.resetHandlers();
+  resetMockState();
+});
+afterAll(() => mockServer.close());
+
+describe('AuthGate', () => {
+  it('önce oturumu denetler, sonra paneli gösterir', async () => {
+    setup();
+    expect(screen.getByRole('status')).toHaveTextContent('Oturum denetleniyor.');
+    expect(await screen.findByText('Panel içeriği')).toBeInTheDocument();
+  });
+
+  it('oturum yoksa giriş ekranını gösterir ve kendiliğinden yönlendirmez', async () => {
+    mockState.signedIn = false;
+    const { navigate } = setup();
+
+    expect(await screen.findByRole('heading', { name: 'Oturum açın' })).toBeInTheDocument();
+    expect(screen.queryByText('Panel içeriği')).not.toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('giriş düğmesi arka ucun start_login yoluna gider', async () => {
+    mockState.signedIn = false;
+    const { navigate } = setup();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Atonota ile oturum aç' }));
+
+    expect(navigate).toHaveBeenCalledWith(
+      `${SITE}/api/method/platform_core.api.auth.start_login?redirect_to=%2Fpanel`,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Giriş sayfasına gidiliyor.');
+  });
+
+  it('giriş düğmesine klavyeyle basılabilir', async () => {
+    mockState.signedIn = false;
+    const { navigate } = setup();
+    const user = userEvent.setup();
+    await screen.findByRole('button', { name: 'Atonota ile oturum aç' });
+
+    await user.tab();
+    await user.keyboard('{Enter}');
+
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('sunucu hatasında yalın metin ve yeniden deneme düğmesi gösterir', async () => {
+    mockServer.use(
+      http.get('*/api/method/frappe.auth.get_logged_user', () =>
+        HttpResponse.json({ exc_type: 'SessionExpired', session_expired: 1 }, { status: 503 }),
+      ),
+    );
+    const { navigate } = setup();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Hizmet şu an çalışmıyor. Birkaç dakika sonra yeniden deneyin.',
+    );
+    expect(navigate).not.toHaveBeenCalled();
+
+    mockServer.resetHandlers();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Yeniden dene' }));
+    expect(await screen.findByText('Panel içeriği')).toBeInTheDocument();
+  });
+
+  it('oturumdaki kullanıcıyı alt bileşene verir', async () => {
+    const navigate = vi.fn();
+    const session = createPlatformSession({
+      env: { VITE_SITE_URL: SITE },
+      origin: SITE,
+      document,
+      navigate,
+      currentPath: () => '/panel',
+    });
+    render(<AuthGate session={session}>{(user) => <p>Kullanıcı: {user}</p>}</AuthGate>);
+    expect(await screen.findByText(`Kullanıcı: ${SAMPLE_USER}`)).toBeInTheDocument();
+  });
+});

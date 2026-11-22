@@ -1,9 +1,9 @@
 // Web paneli girişi.
 //
 // Tarayıcı erişim belirteci tutmaz. Giriş arka ucun akışından geçer:
-//   get_login_url -> Keycloak -> keycloak_callback -> Frappe oturum çerezi.
+//   start_login -> Keycloak -> keycloak_callback -> Frappe oturum çerezi.
 // `state`, PKCE doğrulayıcısı ve `nonce` sunucuda üretilir ve saklanır.
-// Bellekte yalnız CSRF belirteci durur. Çıkışta ve oturum bitiminde silinir.
+// Panel aynı kökte sunulur. Bellekte yalnız CSRF belirteci durur. Çıkışta ve oturum bitiminde silinir.
 import type { ApiClient } from '@/api/client';
 import type { ApiConfig } from '@/api/config';
 import type { CsrfStore } from '@/api/csrf';
@@ -17,8 +17,8 @@ export type AuthState =
   | { status: 'error'; error: ApiError };
 
 export interface AuthDeps {
-  api: Pick<ApiClient, 'getLoggedUser' | 'getLoginUrl' | 'logout'>;
-  config: Pick<ApiConfig, 'keycloakUrl' | 'keycloakRealm'>;
+  api: Pick<ApiClient, 'getLoggedUser' | 'logout'>;
+  config: Pick<ApiConfig, 'siteUrl' | 'keycloakUrl' | 'keycloakRealm'>;
   csrf: CsrfStore;
   /** Tarayıcıyı verilen adrese götürür. Örnek: `(url) => window.location.assign(url)`. */
   navigate: (url: string) => void;
@@ -26,7 +26,7 @@ export interface AuthDeps {
   currentPath: () => string;
 }
 
-// Sözleşmedeki `LoginUrlRequest.redirect_to` deseni.
+// Sözleşmedeki `redirect_to` deseni.
 const REDIRECT_PATTERN = /^\/(?!\/)[A-Za-z0-9\-._~/?#@!$&()*+,;=%:[\]]*$/;
 
 /** Dönüş yolu aynı kökte göreli bir yol mu? Sözleşmedeki kurala uyar. */
@@ -34,30 +34,32 @@ export function isSafeRedirect(path: string): boolean {
   return path.length <= 2048 && REDIRECT_PATTERN.test(path);
 }
 
-function keycloakOrigin(config: AuthDeps['config']): string {
-  return new URL(config.keycloakUrl).origin;
+/**
+ * Arka ucun giriş başlatma adresini kurar.
+ * Dönüş yolu güvenli değilse adrese eklenmez. O zaman sunucu `platform_panel_url` adresine döner.
+ */
+export function startLoginUrl(siteUrl: string, redirectTo: string): string {
+  const url = new URL(`${siteUrl}/api/method/platform_core.api.auth.start_login`);
+  if (isSafeRedirect(redirectTo)) url.searchParams.set('redirect_to', redirectTo);
+  return url.toString();
 }
 
-/** Keycloak adresi yalnız ayardaki kökte ve realm altında olabilir (GV-3). */
-function isTrustedKeycloakUrl(value: string, config: AuthDeps['config'], path: string): boolean {
+/** Keycloak çıkış adresi yalnız ayardaki kökte ve realm altında olabilir (GV-3). */
+function isTrustedLogoutUrl(value: string, config: AuthDeps['config']): boolean {
   let url: URL;
   try {
     url = new URL(value);
   } catch {
     return false;
   }
-  const secure = url.protocol === 'https:' || new URL(config.keycloakUrl).protocol === 'http:';
+  const base = new URL(config.keycloakUrl);
+  const secure = url.protocol === 'https:' || base.protocol === 'http:';
   return (
     secure &&
-    url.origin === keycloakOrigin(config) &&
+    url.origin === base.origin &&
     url.pathname ===
-      `/realms/${encodeURIComponent(config.keycloakRealm)}/protocol/openid-connect/${path}`
+      `/realms/${encodeURIComponent(config.keycloakRealm)}/protocol/openid-connect/logout`
   );
-}
-
-function isTrustedLoginUrl(value: string, config: AuthDeps['config']): boolean {
-  if (!isTrustedKeycloakUrl(value, config, 'auth')) return false;
-  return new URL(value).searchParams.get('code_challenge_method') === 'S256';
 }
 
 function sameState(a: AuthState, b: AuthState): boolean {
@@ -81,17 +83,10 @@ export function createAuth({ api, config, csrf, navigate, currentPath }: AuthDep
     for (const listener of listeners) listener();
   }
 
-  async function signIn(redirectTo: string = currentPath()): Promise<void> {
-    try {
-      const target = await api.getLoginUrl(isSafeRedirect(redirectTo) ? redirectTo : undefined);
-      if (!isTrustedLoginUrl(target.login_url, config)) {
-        throw new ApiError({ kind: 'invalid_response', status: 200, code: 'untrusted_login_url' });
-      }
-      setState({ status: 'redirecting' });
-      navigate(target.login_url);
-    } catch (error) {
-      setState({ status: 'error', error: asApiError(error) });
-    }
+  /** Kullanıcıyı arka ucun giriş akışına götürür. Yalnız kullanıcı eylemiyle ya da oturum bitince çağrılır. */
+  function signIn(redirectTo: string = currentPath()): void {
+    setState({ status: 'redirecting' });
+    navigate(startLoginUrl(config.siteUrl, redirectTo));
   }
 
   return {
@@ -102,8 +97,12 @@ export function createAuth({ api, config, csrf, navigate, currentPath }: AuthDep
       return () => listeners.delete(listener);
     },
 
-    /** Oturumu sunucuya sorar. Oturum yoksa yönlendirmez. Ekran giriş düğmesi gösterir. */
+    /**
+     * Oturumu sunucuya sorar. Oturum yoksa yönlendirmez. Ekran giriş düğmesini gösterir.
+     * Sunucu hatasında `error` durumuna geçer. Oturum bitmiş sayılmaz.
+     */
     async check(): Promise<void> {
+      if (state.status !== 'signed_in') setState({ status: 'checking' });
       try {
         const user = await api.getLoggedUser();
         setState(user === 'Guest' ? { status: 'signed_out' } : { status: 'signed_in', user });
@@ -124,7 +123,7 @@ export function createAuth({ api, config, csrf, navigate, currentPath }: AuthDep
       try {
         const target = await api.logout();
         csrf.clear();
-        if (!isTrustedKeycloakUrl(target.logout_url, config, 'logout')) {
+        if (!isTrustedLogoutUrl(target.logout_url, config)) {
           throw new ApiError({
             kind: 'invalid_response',
             status: 200,
@@ -138,12 +137,15 @@ export function createAuth({ api, config, csrf, navigate, currentPath }: AuthDep
       }
     },
 
-    /** API istemcisi oturum bitimini bildirince çağrılır. Kullanıcıyı bir kez yeniden girişe götürür. */
+    /**
+     * API istemcisi oturum bitimini bildirince çağrılır.
+     * Kullanıcı oturumdaysa onu bir kez yeniden girişe götürür.
+     * Oturum hiç açılmadıysa yalnız giriş ekranı gösterilir. Kendiliğinden yönlendirme yapılmaz.
+     */
     handleSessionExpired(): void {
-      if (state.status === 'redirecting') return;
       csrf.clear();
-      setState({ status: 'redirecting' });
-      void signIn();
+      if (state.status === 'signed_in') signIn();
+      else if (state.status !== 'redirecting') setState({ status: 'signed_out' });
     },
   };
 }

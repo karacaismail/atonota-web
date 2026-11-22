@@ -1,0 +1,20 @@
+{
+  "en": {
+    "checking": "Checking your session.",
+    "redirecting": "Going to the sign-in page.",
+    "login_title": "Sign in",
+    "login_body": "Sign in to open the panel.",
+    "login_button": "Sign in with {brand}",
+    "retry": "Try again",
+    "brand": "Atonota"
+  },
+  "tr": {
+    "checking": "Oturum denetleniyor.",
+    "redirecting": "Giriş sayfasına gidiliyor.",
+    "login_title": "Oturum açın",
+    "login_body": "Paneli açmak için oturum açın.",
+    "login_button": "{brand} ile oturum aç",
+    "retry": "Yeniden dene",
+    "brand": "Atonota"
+  }
+}
