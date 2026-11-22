@@ -98,4 +98,12 @@ Proje sahibinin genel kuralları bu depoda da geçerlidir. İki kural için bu p
 - Pane panelinde commit şu önekle atılır: `env -u GIT_COMMITTER_NAME -u GIT_COMMITTER_EMAIL git commit`.
 - `--no-verify` kullanılmaz. Yazar koruması atlatılmaz.
 - Secret, gerçek `.env` ve kişisel veri depoya girmez.
-- Depo herkese açık olacak. Lisans proje sahibinin onayıyla seçilecek. Onaydan önce lisans dosyası eklenmez.
+- Depo herkese açıktır. Lisans sonraki iştir. Proje sahibi söylemeden lisans dosyası eklenmez ve lisans sorulmaz.
+
+## Trunk tabanlı akış
+
+- Ana dal `main` dalıdır. Bütün işler buraya sık ve küçük parçalarla birleşir.
+- Her iş kısa ömürlü bir dalda çalışır. Dal adı iş adıdır. Örnek: `foundation`.
+- İşçi push etmez. Orkestratör incelemeden ve kapılardan geçen işi `main` dalına birleştirir.
+- Orkestratör her birleşmeden sonra `main` dalını hemen GitHub'a gönderir.
+- Uzun süren iş de parça parça birleşir. Bitmemiş özellik varsayılan olarak kapalı bir ayarın arkasında durur.
