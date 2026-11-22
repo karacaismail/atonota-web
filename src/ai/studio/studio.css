@@ -1,0 +1,324 @@
+/*
+ * AI Studio yerleşimi. Bütün değerler `useGenuiVars` CSS değişkenlerinden gelir.
+ * Önce telefon: tek sütun. Geniş ekranda üç sütun: 260 px, esnek, 280 px.
+ */
+.ai-studio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ai-bg-c);
+  color: var(--ai-text);
+  font-size: var(--ai-font);
+  line-height: var(--ai-line);
+}
+
+.ai-studio.is-wide {
+  grid-template-columns: var(--ai-left-width) minmax(0, 1fr) var(--ai-right-width);
+}
+
+.ai-col {
+  min-height: 0;
+  overflow: auto;
+  background: var(--ai-bg);
+}
+
+.ai-col-left {
+  padding: var(--ai-gap);
+  border-right: 1px solid var(--ai-border);
+}
+
+.ai-col-right {
+  padding: var(--ai-gap);
+  border-left: 1px solid var(--ai-border);
+}
+
+.ai-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ai-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ai-gap-sm);
+  min-width: 0;
+  padding: var(--ai-gap-sm) var(--ai-gap);
+  border-bottom: 1px solid var(--ai-border);
+}
+
+.ai-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--ai-font-lg);
+  font-weight: 600;
+  line-height: var(--ai-line);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-head-end {
+  margin-left: auto;
+}
+
+.ai-log {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--ai-gap-md) var(--ai-gap);
+}
+
+.ai-log .ant-bubble-list {
+  gap: var(--ai-gap-lg);
+  max-height: none;
+  overflow: visible;
+}
+
+.ai-log .ant-bubble-content-wrapper {
+  min-width: 0;
+}
+
+.ai-log .ant-bubble-start .ant-bubble-content {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+}
+
+.ai-log .ant-bubble-start {
+  min-width: 0;
+}
+
+.ai-user {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-xs);
+  overflow-wrap: break-word;
+}
+
+.ai-user-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ai-gap-xs);
+}
+
+.ai-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap);
+  min-width: 0;
+}
+
+.ai-text {
+  margin: 0;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.ai-caret {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--ai-primary);
+  animation: ai-caret var(--ai-dur-caret) steps(1) infinite;
+}
+
+@keyframes ai-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.ai-think {
+  padding: var(--ai-gap-xs) var(--ai-gap-sm);
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius);
+  background: var(--ai-bg);
+}
+
+.ai-think summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ai-gap-xs);
+  color: var(--ai-text-2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ai-think summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-think summary svg,
+.ai-panel-h svg {
+  flex-shrink: 0;
+  color: var(--ai-primary);
+}
+
+.ai-think .ant-thought-chain {
+  margin-top: var(--ai-gap-sm);
+}
+
+.ai-note {
+  margin: 0;
+  color: var(--ai-text-2);
+}
+
+.ai-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-lg);
+  max-width: 760px;
+  margin: var(--ai-gap-md) auto;
+}
+
+.ai-welcome .ant-prompts-item {
+  transition:
+    transform var(--ai-dur-hover) var(--ai-ease),
+    box-shadow var(--ai-dur-hover) var(--ai-ease);
+}
+
+.ai-welcome .ant-prompts-item:hover {
+  transform: translateY(-2px);
+}
+
+.ai-welcome .ant-prompts-item:hover .ai-spark {
+  animation: ai-wiggle var(--ai-dur-hover) var(--ai-ease);
+}
+
+.ai-sender {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-xs);
+  padding: var(--ai-gap-sm) var(--ai-gap) var(--ai-gap);
+  border-top: 1px solid var(--ai-border);
+}
+
+.ai-sender-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ai-gap-xs);
+}
+
+.ai-hint {
+  margin: 0;
+  color: var(--ai-text-3);
+  font-size: var(--ai-font-sm);
+  text-align: center;
+}
+
+.ai-convs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-sm);
+}
+
+.ai-convs .ant-conversations {
+  padding: 0;
+}
+
+.ai-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-lg);
+}
+
+.ai-panel-h {
+  display: flex;
+  align-items: center;
+  gap: var(--ai-gap-sm);
+  margin: 0 0 var(--ai-gap-sm);
+  font-size: var(--ai-font);
+  font-weight: 600;
+}
+
+.ai-files {
+  margin: 0;
+  padding-left: var(--ai-gap-md);
+  overflow-wrap: anywhere;
+}
+
+.ai-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ai-gap-xs) var(--ai-gap-sm);
+  margin: 0;
+}
+
+.ai-facts dt {
+  color: var(--ai-text-3);
+}
+
+.ai-facts dd {
+  margin: 0;
+}
+
+.ai-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* AM1 parıltı, AM2 nabız. Gradyan yok. */
+.ai-spark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ai-spark var(--ai-dur-spark) var(--ai-ease) infinite;
+}
+
+.ai-brain {
+  animation: ai-brain var(--ai-dur-brain) var(--ai-ease) infinite;
+}
+
+@keyframes ai-spark {
+  0%,
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+
+  45% {
+    transform: scale(1.18) rotate(14deg);
+    opacity: 0.85;
+  }
+
+  60% {
+    transform: scale(0.94) rotate(-4deg);
+    opacity: 1;
+  }
+}
+
+@keyframes ai-brain {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-spark,
+  .ai-brain,
+  .ai-caret,
+  .ai-welcome .ant-prompts-item:hover .ai-spark {
+    animation: none;
+  }
+
+  .ai-welcome .ant-prompts-item {
+    transition: none;
+  }
+
+  .ai-welcome .ant-prompts-item:hover {
+    transform: none;
+  }
+}

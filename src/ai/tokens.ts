@@ -55,6 +55,8 @@ export const aiTransitions = {
   hover: config.focusDim.duration,
   hoverEase: config.focusDim.easing,
   drawer: config.dropdown.animation.duration,
+  /** Akan yanıt imleci. Değer `control-size-engine.html` içindeki `stCaret` kuralıdır. */
+  caret: 1000,
 } as const;
 
 const orbitMatch = /\((\d+(?:\.\d+)?)\s*s\s*\/\s*(\d+(?:\.\d+)?)\s*s\)/.exec(config.mascot.motion);
@@ -117,6 +119,7 @@ export function motionCssVars(): Record<`--${string}`, string> {
     '--ai-dur-ring': `${d.ring}ms`,
     '--ai-dur-hover': `${aiTransitions.hover}ms`,
     '--ai-ease-hover': aiTransitions.hoverEase,
+    '--ai-dur-caret': `${aiTransitions.caret}ms`,
     '--ai-dur-orbit-a': `${mascotTokens.orbitDurations[0]}ms`,
     '--ai-dur-orbit-b': `${mascotTokens.orbitDurations[1]}ms`,
     '--ai-dur-blink': `${mascotTokens.blinkPeriod}ms`,

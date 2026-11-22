@@ -5,7 +5,10 @@
  * "Sahte sunucu" diye etiketler (AX-7). Hiçbir gerçek işlem yapmaz.
  */
 import { encodeAgentEvent } from './events';
-import type { AgentEvent, AgentRequest, AgentTransport } from './types';
+import type { AgentEvent, AgentRequest, AgentSource, AgentTransport } from './types';
+
+/** Sahte sunucunun ekrandaki adı (AX-7). */
+export const MOCK_SOURCE: AgentSource = { label: 'Sahte sunucu', simulated: true };
 
 interface Plan {
   steps: string[];

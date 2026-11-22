@@ -1,7 +1,7 @@
 export { encodeAgentEvent, parseAgentEvent } from './events';
 export { createHttpTransport } from './httpTransport';
 export type { HttpTransportOptions } from './httpTransport';
-export { createMockTransport, planEvents } from './mockTransport';
+export { createMockTransport, MOCK_SOURCE, planEvents } from './mockTransport';
 export type { MockTransportOptions } from './mockTransport';
 export { DEFAULT_IDLE_TIMEOUT_MS, emptyAssistant, runAgent } from './runAgent';
 export type { RunAgentOptions } from './runAgent';
