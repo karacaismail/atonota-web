@@ -45,4 +45,11 @@ describe('routeRegistry', () => {
     for (const m of menu) expect(m.path).not.toContain(':');
     expect(menu.map((m) => m.label)).toContain('Ana sayfa');
   });
+
+  it('liste rotası kabuğun kendi sayfasını değil CollectionRoute bağlantısını yükler', async () => {
+    const list = routeRegistry.find((r) => r.path === '/:module/:doctype');
+    expect(list).toBeDefined();
+    const mod = await list?.load();
+    expect(mod?.default.name).toBe('CollectionRoute');
+  }, 30_000);
 });
