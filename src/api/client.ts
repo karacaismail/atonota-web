@@ -4,6 +4,8 @@
 // Yazan istek `X-Frappe-CSRF-Token` başlığını taşır (SZ-7). `Authorization` başlığı hiç gönderilmez.
 import createClient, { type Client, type Middleware } from 'openapi-fetch';
 
+import { version as packageVersion } from '../../package.json';
+
 import type { ApiConfig } from './config';
 import type { CsrfStore } from './csrf';
 import { ApiError, toApiError } from './errors';
@@ -11,9 +13,15 @@ import type { paths as HrmsPaths } from './generated/hrms_tr';
 import type { paths as AccessPaths } from './generated/platform_core-access';
 import type { paths as AiPaths } from './generated/platform_core-ai';
 import type { paths as IdentityPaths } from './generated/platform_core-identity';
+import type { paths as MobilePaths } from './generated/platform_core-mobile';
 import type { paths as GatewayPaths } from './generated/platform_core-model-gateway';
 import type { paths as ShellPaths } from './generated/platform_core-shell';
 import {
+  type Installation,
+  type Revoked,
+  UUID_PATTERN,
+  isInstallationPage,
+  isRevoked,
   type AccessSummary,
   type LeaveApplication,
   type LeaveName,
@@ -75,6 +83,9 @@ export interface JsonRpcRequest {
     | 'notifications/initialized';
   params?: Record<string, unknown>;
 }
+
+/** Uygulama sürümü. PWA uçları `X-Mobile-App-Version` başlığında `1.2.3` biçimini ister. */
+const APP_VERSION = packageVersion;
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const EMPTY_BODY_STATUSES = new Set([202, 204, 304]);
@@ -206,6 +217,14 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   const gateway = make<GatewayPaths>(config.siteUrl, config.modelTimeoutMs);
   const hrms = make<HrmsPaths>(`${config.siteUrl}/api`);
   const access = make<AccessPaths>(methodRoot);
+  const mobile = make<MobilePaths>(methodRoot);
+  // PWA uçlarının zorunlu başlıkları. Tarayıcı `Origin` başlığını kendisi koyar ve bu değeri yok sayar.
+  // Panel ve kiracı sitesi aynı köktedir. Bu yüzden değer site köküdür.
+  const pwaHeaders = {
+    Origin: new URL(config.siteUrl).origin,
+    'X-Mobile-App-Version': APP_VERSION,
+    'X-Mobile-Contract-Version': '1' as const,
+  };
 
   /**
    * Belirsiz 403 için oturumu ayrı ve önbelleksiz istekle doğrular (SZ-8).
@@ -531,6 +550,44 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           params: { query: { doctype } },
         }),
         isAccessSummary,
+        options,
+      );
+    },
+
+    /**
+     * Hesabın telefon ve PWA kurulumlarını sayfa sayfa okur. Bir sayfada en çok 20 kurulum olur.
+     * `after`, önceki sayfanın `nextAfter` değeridir. Son sayfada `nextAfter` boştur.
+     */
+    async listInstallations(
+      after?: string,
+      options: RequestOptions = {},
+    ): Promise<{ installations: Installation[]; nextAfter: string | null }> {
+      const page = await unwrap(
+        mobile.POST('/platform_core.api.mobile_pwa.v1_list_installations', {
+          ...signalOf(options),
+          params: { header: pwaHeaders },
+          body: after === undefined ? {} : { after },
+        }),
+        isInstallationPage,
+        options,
+      );
+      return { installations: page.installations, nextAfter: page.next_after };
+    },
+
+    /** Hesaba ait bir kurulumu iptal eder. Tarayıcının Frappe oturumu açık kalır. */
+    revokeInstallation(installationId: string, options: RequestOptions = {}): Promise<Revoked> {
+      if (!UUID_PATTERN.test(installationId)) {
+        return Promise.reject(
+          new ApiError({ kind: 'invalid_request', status: 0, code: 'invalid_uuid' }),
+        );
+      }
+      return unwrap(
+        mobile.POST('/platform_core.api.mobile_pwa.v1_revoke_installation', {
+          ...signalOf(options),
+          params: { header: pwaHeaders },
+          body: { installation_id: installationId },
+        }),
+        isRevoked,
         options,
       );
     },

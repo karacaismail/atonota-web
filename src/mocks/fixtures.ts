@@ -200,5 +200,24 @@ export const sampleAccessSummary: AccessSummary = {
   },
 };
 
+// Telefon ve PWA kurulumları. Kimlikler örnektir.
+export const sampleInstallations = [
+  {
+    installation_id: '20000000-0000-4000-8000-000000000001',
+    scope: 'mobile' as const,
+    revoked: false,
+  },
+  {
+    installation_id: '30000000-0000-4000-8000-000000000001',
+    scope: 'pwa' as const,
+    revoked: false,
+  },
+  {
+    installation_id: '40000000-0000-4000-8000-000000000001',
+    scope: 'mobile' as const,
+    revoked: true,
+  },
+];
+
 // Press ayrı bir köktür. Panel yalnız Press'in hesap silme sayfasına yönlendirir.
 export const SAMPLE_PRESS_URL = 'https://press.example.test';

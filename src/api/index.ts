@@ -45,3 +45,4 @@ export type {
 } from './guards';
 export { pressAccountDeletionUrl, readPressConfig } from './press';
 export type { PressConfig, PressEnv } from './press';
+export type { Installation, InstallationPage, Revoked } from './guards';

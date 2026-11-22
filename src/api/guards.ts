@@ -3,6 +3,7 @@
 import type { components as HrmsComponents } from './generated/hrms_tr';
 import type { components as AccessComponents } from './generated/platform_core-access';
 import type { components as AiComponents } from './generated/platform_core-ai';
+import type { components as MobileComponents } from './generated/platform_core-mobile';
 import type { components as IdentityComponents } from './generated/platform_core-identity';
 import type { components as GatewayComponents } from './generated/platform_core-model-gateway';
 import type { components as ShellComponents } from './generated/platform_core-shell';
@@ -363,3 +364,42 @@ export const isAccessSummary: Guard<AccessSummary> = (value): value is AccessSum
     )
   );
 };
+
+// Cihaz kurulumları (platform_core-mobile sözleşmesi, PWA oturumu).
+export type Revoked = MobileComponents['schemas']['Revoked'];
+
+export interface Installation {
+  installation_id: string;
+  scope: 'mobile' | 'pwa';
+  revoked: boolean;
+}
+
+export interface InstallationPage {
+  installations: Installation[];
+  next_after: string | null;
+}
+
+export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+function isUuid(value: unknown): value is string {
+  return isString(value) && UUID_PATTERN.test(value);
+}
+
+export const isInstallationPage: Guard<InstallationPage> = (value): value is InstallationPage =>
+  isRecord(value) &&
+  Array.isArray(value.installations) &&
+  value.installations.length <= 20 &&
+  value.installations.every(
+    (item) =>
+      isRecord(item) &&
+      isUuid(item.installation_id) &&
+      (item.scope === 'mobile' || item.scope === 'pwa') &&
+      typeof item.revoked === 'boolean',
+  ) &&
+  (value.next_after === null || isUuid(value.next_after));
+
+export const isRevoked: Guard<Revoked> = (value): value is Revoked =>
+  isRecord(value) &&
+  typeof value.revoked === 'number' &&
+  Number.isInteger(value.revoked) &&
+  value.revoked >= 0;

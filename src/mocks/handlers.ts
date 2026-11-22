@@ -7,6 +7,7 @@ import { TOOL_RESULT_PREFIX } from '@/api/ai-protocol';
 import {
   SAMPLE_USER as SAMPLE_ACCOUNT,
   sampleAccessSummary,
+  sampleInstallations,
   sampleLeaves,
   SAMPLE_CSRF_TOKEN,
   SAMPLE_DOCTYPE_ETAG,
@@ -26,12 +27,14 @@ export const mockState = {
   signedIn: true,
   proposals: new Map<string, ReturnType<typeof sampleProposal>>(),
   leaves: new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }])),
+  installations: sampleInstallations.map((item) => ({ ...item })),
 };
 
 export function resetMockState(): void {
   mockState.signedIn = true;
   mockState.proposals.clear();
   mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
+  mockState.installations = sampleInstallations.map((item) => ({ ...item }));
 }
 
 let versionCounter = 0;
@@ -68,6 +71,32 @@ function leaveMatches(leave: Leave, filters: unknown): boolean {
   return Object.entries(filters).every(
     ([key, value]) => (leave as Record<string, unknown>)[key] === value,
   );
+}
+
+const SERVER_TIME = 1795340000;
+const MOCK_INSTALLATION_PAGE = 2;
+
+/** PWA uçları oturum ve CSRF ister. Hata gövdesi `code` alanını taşır. */
+function pwaGuard(request: Request): Response | undefined {
+  if (request.headers.has('Authorization')) {
+    return HttpResponse.json(
+      { server_time: SERVER_TIME, code: 'mixed_authentication' },
+      { status: 403 },
+    );
+  }
+  if (!mockState.signedIn) {
+    return HttpResponse.json(
+      { server_time: SERVER_TIME, code: 'pwa_session_required' },
+      { status: 401 },
+    );
+  }
+  if (request.headers.get('X-Frappe-CSRF-Token') !== SAMPLE_CSRF_TOKEN) {
+    return HttpResponse.json(
+      { server_time: SERVER_TIME, code: 'pwa_request_forbidden' },
+      { status: 403 },
+    );
+  }
+  return undefined;
 }
 
 const LEAVE_FIELDS = new Set([
@@ -425,6 +454,49 @@ export const handlers = [
       ? message(sampleAccessSummary)
       : frappeError(403, 'PermissionError');
   }),
+
+  // Telefon ve PWA kurulumları (platform_core-mobile sözleşmesi, PWA oturumu).
+  // Sözleşmede sayfa en çok 20 kayıttır. Örnek sunucu sayfalamayı göstermek için 2 kayıt verir.
+  http.post(
+    '*/api/method/platform_core.api.mobile_pwa.v1_list_installations',
+    async ({ request }) => {
+      const failure = pwaGuard(request);
+      if (failure) return failure;
+      const body = (await request.json()) as { after?: string };
+      const sorted = [...mockState.installations].sort((a, b) =>
+        a.installation_id.localeCompare(b.installation_id),
+      );
+      const rest = body.after
+        ? sorted.filter((item) => item.installation_id > (body.after ?? ''))
+        : sorted;
+      const page = rest.slice(0, MOCK_INSTALLATION_PAGE);
+      const nextAfter = rest.length > page.length ? (page.at(-1)?.installation_id ?? null) : null;
+      return HttpResponse.json({
+        server_time: SERVER_TIME,
+        message: { installations: page, next_after: nextAfter },
+      });
+    },
+  ),
+
+  http.post(
+    '*/api/method/platform_core.api.mobile_pwa.v1_revoke_installation',
+    async ({ request }) => {
+      const failure = pwaGuard(request);
+      if (failure) return failure;
+      const body = (await request.json()) as { installation_id?: string };
+      const item = mockState.installations.find(
+        (entry) => entry.installation_id === body.installation_id,
+      );
+      if (!item)
+        return HttpResponse.json(
+          { server_time: SERVER_TIME, code: 'installation_unavailable' },
+          { status: 404 },
+        );
+      const revoked = item.revoked ? 0 : 1;
+      item.revoked = true;
+      return HttpResponse.json({ server_time: SERVER_TIME, message: { revoked } });
+    },
+  ),
 
   http.post('*/api/method/platform_core.api.model.complete', async ({ request }) => {
     const denied = guard(request, { write: true });

@@ -5,9 +5,10 @@ import {
   SAMPLE_CSRF_TOKEN,
   SAMPLE_KEYCLOAK_URL,
   SAMPLE_PRESS_URL,
+  sampleInstallations,
   sampleLeaves,
 } from '@/mocks/fixtures';
-import { resetMockState } from '@/mocks/handlers';
+import { mockState, resetMockState } from '@/mocks/handlers';
 import { mockServer } from '@/mocks/node';
 
 import { createApiClient } from './client';
@@ -193,6 +194,68 @@ describe('erişim açıklaması', () => {
     await expect(api().getAccessSummary('Örnek Kayıt')).rejects.toMatchObject({
       kind: 'invalid_response',
     });
+  });
+});
+
+describe('cihaz kurulumları (oturumlar)', () => {
+  it('kurulumları sayfa sayfa okur', async () => {
+    const first = await api().listInstallations();
+    expect(first.installations).toHaveLength(2);
+    expect(first.nextAfter).toBe(sampleInstallations[1]?.installation_id);
+    const sent = requests.at(-1);
+    expect(sent?.url.pathname).toBe(
+      '/api/method/platform_core.api.mobile_pwa.v1_list_installations',
+    );
+    expect(sent?.csrf).toBe(SAMPLE_CSRF_TOKEN);
+
+    const second = await api().listInstallations(first.nextAfter ?? undefined);
+    expect(second.installations.map((item) => item.installation_id)).toEqual([
+      sampleInstallations[2]?.installation_id,
+    ]);
+    expect(second.nextAfter).toBeNull();
+  });
+
+  it('kurulumu iptal eder', async () => {
+    const id = sampleInstallations[0]?.installation_id ?? '';
+    await expect(api().revokeInstallation(id)).resolves.toEqual({ revoked: 1 });
+    const page = await api().listInstallations();
+    expect(page.installations.find((item) => item.installation_id === id)?.revoked).toBe(true);
+  });
+
+  it('kimliği UUID olmayan kurulum için istek göndermez', async () => {
+    await expect(api().revokeInstallation('ORNEK')).rejects.toMatchObject({
+      kind: 'invalid_request',
+    });
+    expect(requests).toHaveLength(0);
+  });
+
+  it('bilinmeyen kurulum not_found verir', async () => {
+    await expect(
+      api().revokeInstallation('99999999-0000-4000-8000-000000000001'),
+    ).rejects.toMatchObject({ kind: 'not_found' });
+  });
+
+  it('PWA oturumu yoksa session_expired verir', async () => {
+    mockState.signedIn = false;
+    await expect(api().listInstallations()).rejects.toMatchObject({
+      kind: 'session_expired',
+      code: 'pwa_session_required',
+    });
+  });
+
+  it('bozuk kurulum kaydını reddeder', async () => {
+    mockServer.use(
+      http.post('*/api/method/platform_core.api.mobile_pwa.v1_list_installations', () =>
+        HttpResponse.json({
+          server_time: 1,
+          message: {
+            installations: [{ installation_id: 'x', scope: 'masaustu', revoked: false }],
+            next_after: null,
+          },
+        }),
+      ),
+    );
+    await expect(api().listInstallations()).rejects.toMatchObject({ kind: 'invalid_response' });
   });
 });
 
