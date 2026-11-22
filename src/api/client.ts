@@ -173,6 +173,26 @@ export interface ExplainPermissionQuery {
   user?: string;
 }
 
+/**
+ * Sayfalama değerlerini sözleşme sınırlarıyla denetler.
+ * Geçersiz değerde istek gönderilmez ve `invalid_request` hatası döner.
+ */
+function pagingError(
+  start: number,
+  limit: number,
+  bounds: { maxStart?: number; maxLimit: number },
+): ApiError | undefined {
+  const startOk =
+    Number.isInteger(start) &&
+    start >= 0 &&
+    (bounds.maxStart === undefined || start <= bounds.maxStart);
+  if (!startOk) return new ApiError({ kind: 'invalid_request', status: 0, code: 'start' });
+  if (!Number.isInteger(limit) || limit < 1 || limit > bounds.maxLimit) {
+    return new ApiError({ kind: 'invalid_request', status: 0, code: 'page_length' });
+  }
+  return undefined;
+}
+
 export type McpResult = { status: 'accepted' } | { status: 'ok'; response: JsonRpcResponse };
 
 export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDeps) {
@@ -403,6 +423,12 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       query: { status?: Proposal['status']; limit?: number; start?: number } = {},
       options: RequestOptions = {},
     ) {
+      // Sözleşme: limit 1 ile 100, start 0 ile 10000 arasındadır.
+      const invalid = pagingError(query.start ?? 0, query.limit ?? 20, {
+        maxStart: 10_000,
+        maxLimit: 100,
+      });
+      if (invalid) return Promise.reject(invalid);
       return unwrap(
         ai.GET('/platform_core.api.ai.list_proposals', { ...signalOf(options), params: { query } }),
         isProposalList,
@@ -469,11 +495,9 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       options: RequestOptions = {},
     ): Promise<LeaveApplication[]> {
       const pageLength = query.pageLength ?? 20;
-      if (!Number.isInteger(pageLength) || pageLength < 1 || pageLength > 100) {
-        return Promise.reject(
-          new ApiError({ kind: 'invalid_request', status: 0, code: 'page_length' }),
-        );
-      }
+      // Sözleşme: limit_start en az 0, limit_page_length 1 ile 100 arasındadır.
+      const invalid = pagingError(query.start ?? 0, pageLength, { maxLimit: 100 });
+      if (invalid) return Promise.reject(invalid);
       return unwrap(
         hrms.GET('/resource/Leave%20Application', {
           ...signalOf(options),

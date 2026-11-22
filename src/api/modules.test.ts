@@ -45,6 +45,8 @@ beforeAll(() => {
   });
 });
 afterEach(() => {
+  // Panel Press ucunu hiçbir testte çağırmaz. Press'e yalnız tam sayfa yönlendirme yapılır.
+  expect(requests.filter((item) => item.url.origin === SAMPLE_PRESS_URL)).toEqual([]);
   mockServer.resetHandlers();
   resetMockState();
   requests.length = 0;
@@ -77,6 +79,24 @@ describe('HRMS izin başvuruları', () => {
     expect(items).toEqual([
       { name: sampleLeaves[0]?.name, status: 'Open', modified: sampleLeaves[0]?.modified },
     ]);
+  });
+
+  it.each([
+    ['negatif başlangıç', { start: -20 }],
+    ['kesirli başlangıç', { start: 1.5 }],
+    ['kesirli sayfa boyu', { pageLength: 2.5 }],
+    ['çok büyük sayfa boyu', { pageLength: 101 }],
+  ])('%s için istek göndermez', async (_label, query) => {
+    await expect(api().listLeaveApplications(query)).rejects.toMatchObject({
+      kind: 'invalid_request',
+    });
+    expect(requests).toHaveLength(0);
+  });
+
+  it('sahte sunucu yalnız izin başvurusu kayıtlarını karşılar', async () => {
+    const response = await fetch(`${SITE}/api/resource/Customer`).catch(() => undefined);
+    // Başka kayıt türü için sahte uç yoktur. İstek işlenmez ve 403 almaz.
+    expect(response?.status).not.toBe(403);
   });
 
   it('ad üyeliği süzgecini dizi biçiminde gönderir', async () => {
@@ -283,13 +303,22 @@ describe('Press hesap silme sayfası', () => {
   });
 
   it('yerel geliştirmede HTTP localhost kabul edilir', () => {
-    expect(readPressConfig({ VITE_PRESS_URL: 'http://localhost:8001' })).toEqual({
+    expect(readPressConfig({ VITE_PRESS_URL: 'http://localhost:8001', DEV: true })).toEqual({
       pressUrl: 'http://localhost:8001',
     });
   });
 
-  it('panel Press ucunu çağırmaz', () => {
+  it('üretimde HTTP localhost kabul edilmez', () => {
+    expect(() => readPressConfig({ VITE_PRESS_URL: 'http://localhost:8001', DEV: false })).toThrow(
+      /VITE_PRESS_URL/,
+    );
+    expect(() => readPressConfig({ VITE_PRESS_URL: 'http://localhost:8001' })).toThrow(
+      /VITE_PRESS_URL/,
+    );
+  });
+
+  it('panel istemcisinde Press adresine giden metot yoktur', () => {
     const client = api() as Record<string, unknown>;
-    expect(Object.keys(client).some((key) => /deletion/i.test(key))).toBe(false);
+    expect(Object.keys(client).some((key) => /press|deletion/i.test(key))).toBe(false);
   });
 });

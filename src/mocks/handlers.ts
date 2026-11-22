@@ -339,10 +339,10 @@ export const handlers = [
   }),
 
   // HRMS izin başvuruları (hrms_tr sözleşmesi).
-  http.get('*/api/resource/:doctype', ({ request, params }) => {
+  // Yol yalnız izin başvurularını karşılar. Öteki kayıt türleri için sahte uç ayrıca eklenir.
+  http.get('*/api/resource/Leave%20Application', ({ request }) => {
     const denied = guard(request, { write: false });
     if (denied) return denied;
-    if (params.doctype !== 'Leave Application') return frappeError(403, 'PermissionError');
     const url = new URL(request.url);
     const fields = parseJsonParam(url, 'fields') ?? ['name'];
     const filters = parseJsonParam(url, 'filters');
@@ -370,13 +370,10 @@ export const handlers = [
     return HttpResponse.json({ data: page as JsonBodyType });
   }),
 
-  http.get('*/api/resource/:doctype/:name', ({ request, params }) => {
+  http.get('*/api/resource/Leave%20Application/:name', ({ request, params }) => {
     const denied = guard(request, { write: false });
     if (denied) return denied;
-    const leave =
-      params.doctype === 'Leave Application'
-        ? mockState.leaves.get(String(params.name))
-        : undefined;
+    const leave = mockState.leaves.get(String(params.name));
     return leave
       ? HttpResponse.json({ data: leave as JsonBodyType })
       : frappeError(404, 'DoesNotExistError');

@@ -44,4 +44,4 @@ Ayar yalnız kök olabilir. Örnek: `https://press.example.test`. Şu değerler 
 - yol, sorgu ya da kullanıcı bilgisi taşıyan adres,
 - adres olmayan değer.
 
-Yerel geliştirmede `http://localhost` adresi kabul edilir.
+Yerel geliştirmede `http://localhost` adresi kabul edilir. Bunun için `import.meta.env` nesnesindeki `DEV` değeri doğru olmalıdır. Üretim derlemesinde düz HTTP adresi her zaman hata verir.
