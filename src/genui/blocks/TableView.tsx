@@ -12,6 +12,10 @@ export function TableView({ block }: { block: TableBlock }) {
       dataIndex: column.key,
       title: column.title,
       className: kind === 'id' ? 'genui-cell-id' : 'genui-cell-text',
+      // Tablo hücresi en büyük genişliği dinlemez. Sınır içteki kutudadır.
+      ...(kind === 'text'
+        ? { render: (value: TableCell) => <span className="genui-wrap">{value}</span> }
+        : {}),
     };
   });
   return (

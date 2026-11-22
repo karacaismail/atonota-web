@@ -100,6 +100,19 @@ test.describe('AI Studio', () => {
     await expect(table.getByRole('columnheader', { name: 'Önce' })).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'Sonra' })).toBeVisible();
     await expect(table.getByText('Gönderilmedi')).toBeVisible();
+    // Sonraki değer kaydırmadan görünmeli. Onay verirken gizli kalmamalı.
+    await confirm.scrollIntoViewIfNeeded();
+    const box = await table.getByRole('columnheader', { name: 'Sonra' }).boundingBox();
+    const width = page.viewportSize()?.width ?? 0;
+    expect(box && box.x + box.width).toBeLessThanOrEqual(width);
+    // Hücreler kelime ortasından bölünmez ve taşmaz.
+    const cells = await table.locator('th, td').evaluateAll((els) =>
+      els.map((el) => ({
+        wrap: getComputedStyle(el).overflowWrap,
+        fits: el.scrollWidth <= el.clientWidth + 1,
+      })),
+    );
+    for (const cell of cells) expect(cell).toEqual({ wrap: 'normal', fits: true });
   });
 
   test('onaylanınca yeni mesaj gelir, yeniden üret onayı tekrar göndermez', async ({ page }) => {
@@ -152,14 +165,26 @@ test.describe('AI Studio', () => {
   test('klavye odağı çevreleyen halka çizmez, alt çizgiyle görünür', async ({ page }, info) => {
     test.skip((page.viewportSize()?.width ?? 0) >= WIDE, `${info.project.name}: çekmece yok`);
     await open(page);
+    // WebKit Tab ile düğmeleri atlayabilir. Bu yüzden ilk odaklanan öğe tarayıcıya göre değişir.
     await page.keyboard.press('Tab');
     const first = await focusLook(page);
-    expect(first).toMatchObject({ label: 'Sohbetleri aç', outline: true, indicator: true });
+    expect(first).toMatchObject({ outline: true, indicator: true });
 
     await page.keyboard.press('Tab');
     await page.keyboard.press('Shift+Tab');
-    expect(await focusLook(page)).toMatchObject({ label: 'Sohbetleri aç', outline: true });
+    expect(await focusLook(page)).toMatchObject({
+      label: first?.label,
+      outline: true,
+      indicator: true,
+    });
 
+    // Klavye modu açıkken çekmece düğmesi de çevrelemeyen göstergeyi kullanır.
+    await page.getByRole('button', { name: 'Sohbetleri aç' }).focus();
+    expect(await focusLook(page)).toMatchObject({
+      label: 'Sohbetleri aç',
+      outline: true,
+      indicator: true,
+    });
     await page.keyboard.press('Enter');
     await expect(page.getByRole('navigation', { name: 'Sohbetler' })).toBeVisible();
     await page.keyboard.press('Escape');

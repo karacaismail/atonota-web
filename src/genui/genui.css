@@ -154,11 +154,15 @@
 }
 
 .genui-table-scroll td.genui-cell-text {
-  min-width: var(--ai-cell-text-min);
-  max-width: var(--ai-cell-text-max);
   white-space: normal;
   word-break: normal;
   overflow-wrap: normal;
+}
+
+.genui-wrap {
+  display: block;
+  min-width: var(--ai-cell-text-min);
+  max-width: var(--ai-cell-text-max);
 }
 
 .genui-summary {
@@ -168,29 +172,34 @@
 .genui-changes {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
+/* Onay tablosu kaydırma istemez. Kelimeler ortasından bölünmez. */
 .genui-changes th,
 .genui-changes td {
   padding: var(--ai-gap-xs) var(--ai-gap-sm);
-  border-bottom: 1px solid var(--ai-border);
   text-align: left;
   vertical-align: top;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .genui-changes thead th {
   color: var(--ai-text-3);
   font-size: var(--font-min);
   font-weight: 600;
+  border-bottom: 1px solid var(--ai-border);
 }
 
-.genui-changes tbody th {
+.genui-changes .genui-change-field {
+  padding-top: var(--ai-gap-sm);
   font-weight: 600;
 }
 
-.genui-changes td {
-  white-space: normal;
-  min-width: var(--ai-cell-text-min);
+.genui-changes tbody tr:last-child td {
+  border-bottom: 1px solid var(--ai-border);
 }
 
 .genui-changes .genui-after {

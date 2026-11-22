@@ -14,7 +14,7 @@ import {
 } from '@phosphor-icons/react';
 import { App, Button, Drawer, Tag } from 'antd';
 import type { GetProp } from 'antd';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { GenUIAction } from '@/genui';
 import { useGenuiVars } from '@/genui/useGenuiVars';
@@ -65,6 +65,10 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
   const [activeKey, setActiveKey] = useState('c1');
   const store = useRef<Record<string, StoredMessages>>({});
   const nextId = useRef(2);
+  // Çekmece kapanınca odak, çekmeceyi açan düğmeye döner.
+  const leftTrigger = useRef<HTMLButtonElement>(null);
+  const rightTrigger = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef({ left: false, right: false });
 
   const [value, setValue] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
@@ -76,6 +80,13 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
   const [feedback, setFeedback] = useState<Record<string, Feedback>>({});
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
+
+  // Çekmece kapanır kapanmaz odağı açan düğmeye ver. Yoksa odak sayfa gövdesine düşer.
+  useEffect(() => {
+    if (wasOpen.current.left && !leftOpen) leftTrigger.current?.focus();
+    if (wasOpen.current.right && !rightOpen) rightTrigger.current?.focus();
+    wasOpen.current = { left: leftOpen, right: rightOpen };
+  }, [leftOpen, rightOpen]);
 
   const fileNames = files.map((f) => f.name);
 
@@ -314,6 +325,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
             <Button
               type="text"
               icon={<ChatCircle aria-hidden />}
+              ref={leftTrigger}
               aria-label="Sohbetleri aç"
               onClick={() => setLeftOpen(true)}
             />
@@ -328,6 +340,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
               type="text"
               className="ai-head-end"
               icon={<SidebarSimple aria-hidden />}
+              ref={rightTrigger}
               aria-label="Çalışma alanını aç"
               onClick={() => setRightOpen(true)}
             />
