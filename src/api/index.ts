@@ -33,3 +33,4 @@ export type {
   ConfirmBlock,
   UiBlock,
 } from './ai-agent';
+export type { McpResult } from './client';

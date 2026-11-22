@@ -174,7 +174,9 @@ export function createAgentRequest(deps: AgentDeps) {
   function loadTools(signal: AbortSignal): Promise<GatewayTool[]> {
     toolsCache ??= deps.api
       .callMcp({ jsonrpc: '2.0', id: ++rpcId, method: 'tools/list' }, conversationOptions(signal))
-      .then((response) => toGatewayTools(response.result))
+      .then((outcome) =>
+        toGatewayTools(outcome.status === 'ok' ? outcome.response.result : undefined),
+      )
       .catch((error: unknown) => {
         toolsCache = undefined;
         throw error;
@@ -214,7 +216,7 @@ export function createAgentRequest(deps: AgentDeps) {
 
       const outputs: { id: string; name: string; result: unknown }[] = [];
       for (const call of result.tool_calls) {
-        const response = await deps.api.callMcp(
+        const outcome = await deps.api.callMcp(
           {
             jsonrpc: '2.0',
             id: ++rpcId,
@@ -223,6 +225,14 @@ export function createAgentRequest(deps: AgentDeps) {
           },
           conversationOptions(signal),
         );
+        // `tools/call` her zaman gövdeli yanıt bekler. Boş kabul yanıtı aracın sonucu değildir.
+        const response =
+          outcome.status === 'ok'
+            ? outcome.response
+            : {
+                jsonrpc: '2.0' as const,
+                error: { code: -32603, message: 'accepted_without_result' },
+              };
         const toolResult = isRecord(response.result) ? response.result : undefined;
         const structured = isRecord(toolResult?.structuredContent)
           ? toolResult.structuredContent

@@ -47,6 +47,14 @@ describe('toApiError', () => {
     expect(error.code).toBe('DoesNotExistError');
   });
 
+  it('API v2 listesinde ilk dolu type alanını bulur', () => {
+    const error = toApiError(417, {
+      errors: [{ message: 'tür yok' }, { type: 'TimestampMismatchError', message: 'eski' }],
+    });
+    expect(error.code).toBe('TimestampMismatchError');
+    expect(error.kind).toBe('conflict');
+  });
+
   it.each([
     [404, 'not_found'],
     [409, 'conflict'],

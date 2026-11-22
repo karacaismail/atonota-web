@@ -77,8 +77,9 @@ function readCode(body: unknown): string | undefined {
   if (!isRecord(body)) return undefined;
   if (typeof body.exc_type === 'string' && body.exc_type.length > 0) return body.exc_type;
   if (Array.isArray(body.errors)) {
-    const first: unknown = body.errors[0];
-    if (isRecord(first) && typeof first.type === 'string') return first.type;
+    for (const item of body.errors as unknown[]) {
+      if (isRecord(item) && typeof item.type === 'string' && item.type.length > 0) return item.type;
+    }
   }
   if (isRecord(body.message) && typeof body.message.error === 'string') return body.message.error;
   if (typeof body.error === 'string') return body.error;

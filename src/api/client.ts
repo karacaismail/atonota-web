@@ -86,6 +86,30 @@ function timedFetch(timeoutMs: number) {
   };
 }
 
+/**
+ * Gövde okunurken çıkan hatayı ortak türe çevirir.
+ * Kullanıcının iptali olduğu gibi iletilir. Böylece ekran iptali hata saymaz.
+ */
+function toReadError(error: unknown, userSignal: AbortSignal | undefined): unknown {
+  if (error instanceof ApiError) return error;
+  if (userSignal?.aborted) return error;
+  const name = error instanceof Error || error instanceof DOMException ? error.name : '';
+  if (name === 'TimeoutError' || name === 'AbortError')
+    return new ApiError({ kind: 'timeout', status: 0 });
+  if (error instanceof SyntaxError) return new ApiError({ kind: 'invalid_response', status: 0 });
+  return new ApiError({ kind: 'network', status: 0 });
+}
+
+async function settle<T>(pending: Promise<T>, userSignal: AbortSignal | undefined): Promise<T> {
+  try {
+    return await pending;
+  } catch (error) {
+    throw toReadError(error, userSignal);
+  }
+}
+
+export type McpResult = { status: 'accepted' } | { status: 'ok'; response: JsonRpcResponse };
+
 export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDeps) {
   let sessionExpiredNotified = false;
 
@@ -127,8 +151,12 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   const shell = make<ShellPaths>(config.siteUrl);
   const gateway = make<GatewayPaths>(config.siteUrl, config.modelTimeoutMs);
 
-  /** Belirsiz 403 için oturumu ayrı ve önbelleksiz istekle doğrular (SZ-8). */
-  async function sessionIsAlive(): Promise<boolean> {
+  /**
+   * Belirsiz 403 için oturumu ayrı ve önbelleksiz istekle doğrular (SZ-8).
+   * Oturum yalnız kesin kanıtla bitmiş sayılır: 401, misafir 403 ya da `Guest` kullanıcı.
+   * Sunucu hatası, bozuk yanıt ya da ağ hatası `unknown` olur. O zaman ilk yetki hatası korunur.
+   */
+  async function checkSession(): Promise<'alive' | 'ended' | 'unknown'> {
     try {
       const response = await timedFetch(config.timeoutMs)(
         new Request(`${methodRoot}/frappe.auth.get_logged_user`, {
@@ -138,12 +166,13 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           headers: { Accept: 'application/json' },
         }),
       );
-      if (!response.ok || !isJsonResponse(response)) return false;
+      if (response.status === 401 || response.status === 403) return 'ended';
+      if (!response.ok || !isJsonResponse(response)) return 'unknown';
       const user = readMessage(await response.json());
-      return isUserName(user) && user !== 'Guest';
+      if (!isUserName(user)) return 'unknown';
+      return user === 'Guest' ? 'ended' : 'alive';
     } catch {
-      // Doğrulama yapılamadıysa oturum bitmiş sayılmaz. Asıl hata gösterilir.
-      return true;
+      return 'unknown';
     }
   }
 
@@ -158,9 +187,10 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   async function fail(response: Response, body: unknown): Promise<never> {
     let error = toApiError(response.status, body, response.headers);
     if (error.kind === 'forbidden' && error.needsSessionCheck) {
-      error = (await sessionIsAlive())
-        ? new ApiError({ kind: 'forbidden', status: error.status, code: error.code })
-        : new ApiError({ kind: 'session_expired', status: error.status, code: error.code });
+      error =
+        (await checkSession()) === 'ended'
+          ? new ApiError({ kind: 'session_expired', status: error.status, code: error.code })
+          : new ApiError({ kind: 'forbidden', status: error.status, code: error.code });
     }
     if (error.kind === 'session_expired') throw sessionExpired(error);
     throw error;
@@ -173,8 +203,12 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   }
 
   /** Yanıtı denetler ve `message` alanını döner. */
-  async function unwrap<T>(pending: Promise<FetchResult>, guard: Guard<T>): Promise<T> {
-    const { data, error, response } = await pending;
+  async function unwrap<T>(
+    pending: Promise<FetchResult>,
+    guard: Guard<T>,
+    options: RequestOptions = {},
+  ): Promise<T> {
+    const { data, error, response } = await settle(pending, options.signal);
     if (!response.ok) return fail(response, error);
     const value = readMessage(data);
     if (!guard(value)) throw new ApiError({ kind: 'invalid_response', status: response.status });
@@ -195,6 +229,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           cache: 'no-store',
         }),
         isUserName,
+        options,
       );
     },
 
@@ -206,6 +241,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           body: redirectTo === undefined ? {} : { redirect_to: redirectTo },
         }),
         isLoginUrl,
+        options,
       );
     },
 
@@ -214,6 +250,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       return unwrap(
         identity.POST('/platform_core.api.auth.logout', signalOf(options)),
         isLogoutUrl,
+        options,
       );
     },
 
@@ -222,6 +259,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       return unwrap(
         shell.GET('/api/method/platform_core.api.shell.get_bootstrap', signalOf(options)),
         isBootstrap,
+        options,
       );
     },
 
@@ -234,33 +272,42 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       etag?: string,
       options: RequestOptions = {},
     ): Promise<DocTypeResult> {
-      const result = await shell.GET('/api/method/platform_core.api.meta.get_doctype', {
-        ...signalOf(options),
-        params: {
-          query: { doctype, surface: 'web' },
-          ...(etag ? { header: { 'If-None-Match': etag } } : {}),
-        },
-      });
+      const result = await settle(
+        shell.GET('/api/method/platform_core.api.meta.get_doctype', {
+          ...signalOf(options),
+          params: {
+            query: { doctype, surface: 'web' },
+            ...(etag ? { header: { 'If-None-Match': etag } } : {}),
+          },
+        }),
+        options.signal,
+      );
       const nextEtag = result.response.headers.get('ETag') ?? undefined;
       if (result.response.status === 304) return { status: 'not_modified', etag: nextEtag ?? etag };
-      const meta = await unwrap(Promise.resolve(result), isDocTypeMeta);
+      const meta = await unwrap(Promise.resolve(result), isDocTypeMeta, options);
       return { status: 'fresh', meta, etag: nextEtag };
     },
 
-    /** MCP ucuna tek JSON-RPC isteği gönderir. Oturum çereziyle çağrılır. */
-    async callMcp(rpc: JsonRpcRequest, options: RequestOptions & { conversationId?: string } = {}) {
+    /**
+     * MCP ucuna tek JSON-RPC isteği gönderir. Oturum çereziyle çağrılır.
+     * Bildirim (`id` yok) kabul edilince sunucu boş 202 döner. Sonuç `accepted` olur.
+     */
+    async callMcp(
+      rpc: JsonRpcRequest,
+      options: RequestOptions & { conversationId?: string } = {},
+    ): Promise<McpResult> {
       const headers: Record<string, string> = { 'MCP-Protocol-Version': '2025-11-25' };
       if (options.conversationId) headers['Mcp-Conversation-Id'] = options.conversationId;
-      const result = await ai.POST('/platform_core.api.ai.mcp', {
-        ...signalOf(options),
-        body: rpc,
-        headers,
-      });
+      const result = await settle(
+        ai.POST('/platform_core.api.ai.mcp', { ...signalOf(options), body: rpc, headers }),
+        options.signal,
+      );
       if (!result.response.ok) return fail(result.response, result.error);
+      if (result.response.status === 202) return { status: 'accepted' };
       if (!isJsonRpcResponse(result.data)) {
         throw new ApiError({ kind: 'invalid_response', status: result.response.status });
       }
-      return result.data satisfies JsonRpcResponse;
+      return { status: 'ok', response: result.data };
     },
 
     listProposals(
@@ -270,6 +317,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       return unwrap(
         ai.GET('/platform_core.api.ai.list_proposals', { ...signalOf(options), params: { query } }),
         isProposalList,
+        options,
       );
     },
 
@@ -280,6 +328,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           params: { query: { proposal_id: proposalId } },
         }),
         isProposal,
+        options,
       );
     },
 
@@ -295,6 +344,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           body: { proposal_id: proposalId, digest },
         }),
         isApprovalOutcome,
+        options,
       );
     },
 
@@ -305,6 +355,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           body: { proposal_id: proposalId },
         }),
         isProposal,
+        options,
       );
     },
 
@@ -319,6 +370,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           body: { proposal_id: proposalId, outcome },
         }),
         isProposal,
+        options,
       );
     },
 
@@ -330,6 +382,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           body: request,
         }),
         isCompletionResult,
+        options,
       );
     },
   };
