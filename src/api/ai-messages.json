@@ -1,0 +1,14 @@
+{
+  "en": {
+    "step_tool_done": "Tool {tool} ran.",
+    "step_tool_failed": "Tool {tool} could not run.",
+    "step_approval_required": "Tool {tool} prepared a change. Nothing changes until you approve it.",
+    "tool_round_limit": "The assistant used too many steps and stopped. Ask a shorter question."
+  },
+  "tr": {
+    "step_tool_done": "{tool} aracı çalıştı.",
+    "step_tool_failed": "{tool} aracı çalışamadı.",
+    "step_approval_required": "{tool} aracı bir değişiklik hazırladı. Siz onaylamadan hiçbir şey değişmez.",
+    "tool_round_limit": "Asistan çok fazla adım kullandı ve durdu. Daha kısa bir soru sorun."
+  }
+}

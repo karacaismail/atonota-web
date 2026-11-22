@@ -23,3 +23,13 @@ export type {
   LogoutUrl,
   Proposal,
 } from './guards';
+export { createAgentRequest } from './ai-agent';
+export type {
+  AgentCallbacks,
+  AgentDeps,
+  AgentInput,
+  AssistantReply,
+  ChatMessage,
+  ConfirmBlock,
+  UiBlock,
+} from './ai-agent';
