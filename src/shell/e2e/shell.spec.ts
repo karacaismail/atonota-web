@@ -215,3 +215,62 @@ test.describe('header', () => {
     expect(min).toBeGreaterThanOrEqual(12);
   });
 });
+
+test.describe('tablodan kayda gitme (inceleme 1, önemli 1)', () => {
+  test('klavyeyle Enter kaydı açar', async ({ page }) => {
+    await page.goto('/satis/teklif');
+    const link = page.getByRole('link', { name: 'TEK-0002' });
+    await link.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/satis\/teklif\/TEK-0002$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Örnek kayıt 2' })).toBeVisible();
+  });
+
+  test('dokunma kaydı açar', async ({ page, hasTouch }) => {
+    test.skip(!hasTouch, 'yalnız dokunmalı profil');
+    await page.goto('/satis/teklif');
+    await page.getByRole('link', { name: 'TEK-0003' }).tap();
+    await expect(page).toHaveURL(/\/satis\/teklif\/TEK-0003$/);
+  });
+});
+
+test.describe('kayan hover zemini (G1–G3)', () => {
+  const glide = (page: Page) => page.locator('.shell-sb .shell-glide').first();
+
+  async function centerY(page: Page, name: string) {
+    const b = await page.getByRole('button', { name, exact: true }).boundingBox();
+    return b ? b.y + b.height / 2 : 0;
+  }
+
+  async function glideCenterY(page: Page) {
+    const b = await glide(page).boundingBox();
+    return b ? b.y + b.height / 2 : -1;
+  }
+
+  test('G1: zemin üzerine gelinen öğeye kayar', async ({ page }) => {
+    test.skip(isCompact(page), 'telefonda hover yok');
+    await page.goto('/satis/teklif');
+    await page.getByRole('button', { name: 'Stok', exact: true }).hover();
+    await expect(glide(page)).toHaveAttribute('data-on', 'true');
+    await page.getByRole('button', { name: 'Muhasebe', exact: true }).hover();
+    await expect.poll(() => glideCenterY(page)).toBeCloseTo(await centerY(page, 'Muhasebe'), 0);
+  });
+
+  test('G3: listeden çıkınca zemin solar', async ({ page }) => {
+    test.skip(isCompact(page), 'telefonda hover yok');
+    await page.goto('/satis/teklif');
+    await page.getByRole('button', { name: 'Stok', exact: true }).hover();
+    await expect(glide(page)).toHaveAttribute('data-on', 'true');
+    await page.mouse.move(900, 700);
+    await expect(glide(page)).toHaveAttribute('data-on', 'false');
+  });
+
+  test('G3: klavye odağı zemini taşır', async ({ page }) => {
+    test.skip(isCompact(page), 'geniş ekran');
+    await page.goto('/satis/teklif');
+    await page.getByRole('button', { name: 'Stok', exact: true }).focus();
+    await page.keyboard.press('Escape');
+    await expect(glide(page)).toHaveAttribute('data-on', 'true');
+    await expect.poll(() => glideCenterY(page)).toBeCloseTo(await centerY(page, 'Stok'), 0);
+  });
+});
