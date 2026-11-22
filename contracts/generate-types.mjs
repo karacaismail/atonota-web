@@ -25,6 +25,8 @@ export const BROWSER_CONTRACTS = [
   'platform_core-ai',
   'platform_core-model-gateway',
   'platform_core-access',
+  'hrms_tr',
+  'press_tr',
 ];
 
 const HEADER =

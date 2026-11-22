@@ -34,3 +34,20 @@ export type {
   UiBlock,
 } from './ai-agent';
 export type { McpResult } from './client';
+export type { ExplainPermissionQuery, LeaveListQuery } from './client';
+export type {
+  AccessScope,
+  AccessSummary,
+  LeaveApplication,
+  LeaveName,
+  PermissionExplanation,
+  PermissionType,
+} from './guards';
+export { createPressClient, readPressConfig } from './press-client';
+export type {
+  DeletionResult,
+  PressClient,
+  PressClientDeps,
+  PressConfig,
+  PressEnv,
+} from './press-client';

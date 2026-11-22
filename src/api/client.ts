@@ -7,11 +7,23 @@ import createClient, { type Client, type Middleware } from 'openapi-fetch';
 import type { ApiConfig } from './config';
 import type { CsrfStore } from './csrf';
 import { ApiError, toApiError } from './errors';
+import type { paths as HrmsPaths } from './generated/hrms_tr';
+import type { paths as AccessPaths } from './generated/platform_core-access';
 import type { paths as AiPaths } from './generated/platform_core-ai';
 import type { paths as IdentityPaths } from './generated/platform_core-identity';
 import type { paths as GatewayPaths } from './generated/platform_core-model-gateway';
 import type { paths as ShellPaths } from './generated/platform_core-shell';
 import {
+  type AccessSummary,
+  type LeaveApplication,
+  type LeaveName,
+  type PermissionExplanation,
+  type PermissionType,
+  isAccessSummary,
+  isLeaveApplication,
+  isLeaveList,
+  isLeaveName,
+  isPermissionExplanation,
   type ApprovalOutcome,
   type Bootstrap,
   type CompletionRequest,
@@ -31,6 +43,7 @@ import {
   isLogoutUrl,
   isProposal,
   isProposalList,
+  isRecord,
   isUserName,
   readMessage,
 } from './guards';
@@ -66,13 +79,13 @@ export interface JsonRpcRequest {
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const EMPTY_BODY_STATUSES = new Set([202, 204, 304]);
 
-function isJsonResponse(response: Response): boolean {
+export function isJsonResponse(response: Response): boolean {
   const type = response.headers.get('Content-Type') ?? '';
   return /^application\/(.+\+)?json\b/i.test(type);
 }
 
 /** Zaman aşımı ve ağ hatasını ortak türe çeviren fetch. Kullanıcı iptali olduğu gibi iletilir. */
-function timedFetch(timeoutMs: number) {
+export function timedFetch(timeoutMs: number) {
   return async (request: Request): Promise<Response> => {
     const timer = AbortSignal.timeout(timeoutMs);
     const signal = AbortSignal.any([request.signal, timer]);
@@ -100,12 +113,56 @@ function toReadError(error: unknown, userSignal: AbortSignal | undefined): unkno
   return new ApiError({ kind: 'network', status: 0 });
 }
 
-async function settle<T>(pending: Promise<T>, userSignal: AbortSignal | undefined): Promise<T> {
+export async function settle<T>(
+  pending: Promise<T>,
+  userSignal: AbortSignal | undefined,
+): Promise<T> {
   try {
     return await pending;
   } catch (error) {
     throw toReadError(error, userSignal);
   }
+}
+
+export interface LeaveListQuery {
+  /** Okunacak alanlar. Verilmezse Frappe yalnız `name` döner. */
+  fields?: (
+    | 'name'
+    | 'employee'
+    | 'employee_name'
+    | 'leave_type'
+    | 'from_date'
+    | 'to_date'
+    | 'status'
+    | 'docstatus'
+    | 'modified'
+    | 'total_leave_days'
+    | 'leave_balance'
+  )[];
+  /** Eşitlik süzgeci ya da ad üyeliği süzgeci. Örnek: `[['name', 'in', ['A', 'B']]]`. */
+  filters?:
+    | {
+        name?: string;
+        employee?: string;
+        leave_type?: string;
+        status?: 'Open' | 'Approved' | 'Rejected' | 'Cancelled';
+        docstatus?: 0 | 1 | 2;
+      }
+    | ['name', 'in', string[]][];
+  orderBy?: 'modified desc, name asc' | 'name asc';
+  /** Atlanacak kayıt sayısı. */
+  start?: number;
+  /** Sayfa boyu. 1 ile 100 arasındadır. Varsayılan 20. */
+  pageLength?: number;
+}
+
+export interface ExplainPermissionQuery {
+  doctype: string;
+  name: string;
+  /** Verilmezse `read` sayılır. */
+  ptype?: PermissionType;
+  /** Yalnız "System Manager" başka kullanıcıyı sorabilir. */
+  user?: string;
 }
 
 export type McpResult = { status: 'accepted' } | { status: 'ok'; response: JsonRpcResponse };
@@ -150,6 +207,8 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   const ai = make<AiPaths>(methodRoot);
   const shell = make<ShellPaths>(config.siteUrl);
   const gateway = make<GatewayPaths>(config.siteUrl, config.modelTimeoutMs);
+  const hrms = make<HrmsPaths>(`${config.siteUrl}/api`);
+  const access = make<AccessPaths>(methodRoot);
 
   /**
    * Belirsiz 403 için oturumu ayrı ve önbelleksiz istekle doğrular (SZ-8).
@@ -210,13 +269,18 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   async function unwrap<T>(
     pending: Promise<FetchResult>,
     guard: Guard<T>,
-    options: RequestOptions & { notifySessionExpired?: boolean } = {},
+    options: RequestOptions & {
+      notifySessionExpired?: boolean;
+      envelope?: 'message' | 'data';
+    } = {},
   ): Promise<T> {
     const { data, error, response } = await settle(pending, options.signal);
     if (!response.ok) {
       return fail(response, error, { notify: options.notifySessionExpired ?? true });
     }
-    const value = readMessage(data);
+    // Frappe RPC yanıtı `message`, kayıt ucu (`/api/resource`) yanıtı `data` alanını taşır.
+    const value =
+      options.envelope === 'data' ? (isRecord(data) ? data.data : undefined) : readMessage(data);
     if (!guard(value)) throw new ApiError({ kind: 'invalid_response', status: response.status });
     sessionExpiredNotified = false;
     return value;
@@ -379,6 +443,97 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           body: { proposal_id: proposalId, outcome },
         }),
         isProposal,
+        options,
+      );
+    },
+
+    /** İzin başvurularını sayfa sayfa okur. Frappe kayıt ve alan iznini uygular. */
+    listLeaveApplications(
+      query: LeaveListQuery = {},
+      options: RequestOptions = {},
+    ): Promise<LeaveApplication[]> {
+      const pageLength = query.pageLength ?? 20;
+      if (!Number.isInteger(pageLength) || pageLength < 1 || pageLength > 100) {
+        return Promise.reject(
+          new ApiError({ kind: 'invalid_request', status: 0, code: 'page_length' }),
+        );
+      }
+      return unwrap(
+        hrms.GET('/resource/Leave%20Application', {
+          ...signalOf(options),
+          params: {
+            query: {
+              ...(query.fields ? { fields: JSON.stringify(query.fields) } : {}),
+              ...(query.filters ? { filters: JSON.stringify(query.filters) } : {}),
+              ...(query.orderBy ? { order_by: query.orderBy } : {}),
+              limit_start: query.start ?? 0,
+              limit_page_length: pageLength,
+            },
+          },
+        }),
+        isLeaveList,
+        { ...options, envelope: 'data' },
+      );
+    },
+
+    getLeaveApplication(name: string, options: RequestOptions = {}): Promise<LeaveApplication> {
+      return unwrap(
+        hrms.GET('/resource/Leave%20Application/{name}', {
+          ...signalOf(options),
+          params: { path: { name } },
+        }),
+        isLeaveApplication,
+        { ...options, envelope: 'data' },
+      );
+    },
+
+    /** Başvuruyu onaylar. `version`, okunan kaydın `modified` değeridir. Eski sürüm `conflict` verir. */
+    approveLeave(name: string, version: string, options: RequestOptions = {}): Promise<LeaveName> {
+      return unwrap(
+        hrms.POST('/method/hrms_tr.api.approve_leave', {
+          ...signalOf(options),
+          body: { name, version },
+        }),
+        isLeaveName,
+        options,
+      );
+    },
+
+    /** Onaylanmış başvuruyu iptal eder. `version`, okunan kaydın `modified` değeridir. */
+    cancelLeave(name: string, version: string, options: RequestOptions = {}): Promise<LeaveName> {
+      return unwrap(
+        hrms.POST('/method/hrms_tr.api.cancel_leave', {
+          ...signalOf(options),
+          body: { name, version },
+        }),
+        isLeaveName,
+        options,
+      );
+    },
+
+    /** Bir kayıt üzerindeki iznin kararını ve nedenini okur. Kayıt değişmez. */
+    explainPermission(
+      query: ExplainPermissionQuery,
+      options: RequestOptions = {},
+    ): Promise<PermissionExplanation> {
+      return unwrap(
+        access.GET('/platform_core.api.access.explain_permission', {
+          ...signalOf(options),
+          params: { query },
+        }),
+        isPermissionExplanation,
+        options,
+      );
+    },
+
+    /** Oturum sahibine uyan erişim kurallarının özetini okur. */
+    getAccessSummary(doctype: string, options: RequestOptions = {}): Promise<AccessSummary> {
+      return unwrap(
+        access.GET('/platform_core.api.access.get_access_summary', {
+          ...signalOf(options),
+          params: { query: { doctype } },
+        }),
+        isAccessSummary,
         options,
       );
     },

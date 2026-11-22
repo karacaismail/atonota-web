@@ -1,5 +1,7 @@
 // Yanıtları ekrandan önce denetleyen işlevler (SZ-4, TS-5).
 // Dış veri `unknown` sayılır. Yalnız kullanılan alanlar denetlenir.
+import type { components as HrmsComponents } from './generated/hrms_tr';
+import type { components as AccessComponents } from './generated/platform_core-access';
 import type { components as AiComponents } from './generated/platform_core-ai';
 import type { components as IdentityComponents } from './generated/platform_core-identity';
 import type { components as GatewayComponents } from './generated/platform_core-model-gateway';
@@ -258,3 +260,112 @@ export const isJsonRpcResponse: Guard<JsonRpcResponse> = (value): value is JsonR
     (isRecord(value.error) &&
       typeof value.error.code === 'number' &&
       isString(value.error.message)));
+
+// HRMS izin başvuruları (hrms_tr sözleşmesi).
+export type LeaveApplication = HrmsComponents['schemas']['LeaveApplication'];
+export type LeaveName = HrmsComponents['schemas']['LeaveName'];
+
+const LEAVE_STATUSES = new Set(['Open', 'Approved', 'Rejected', 'Cancelled']);
+const LEAVE_TEXT_FIELDS = [
+  'employee',
+  'employee_name',
+  'company',
+  'leave_approver',
+  'leave_type',
+  'from_date',
+  'to_date',
+  'description',
+  'amended_from',
+];
+
+export const isLeaveApplication: Guard<LeaveApplication> = (value): value is LeaveApplication =>
+  isRecord(value) &&
+  isString(value.name) &&
+  LEAVE_TEXT_FIELDS.every((key) => isOptional(value[key], isNullableString)) &&
+  isOptional(
+    value.status,
+    (status) => status === null || (isString(status) && LEAVE_STATUSES.has(status)),
+  ) &&
+  isOptional(
+    value.docstatus,
+    (docstatus) => docstatus === 0 || docstatus === 1 || docstatus === 2,
+  ) &&
+  isOptional(value.modified, isString) &&
+  isOptional(value.total_leave_days, isNullableNumber) &&
+  isOptional(value.leave_balance, isNullableNumber);
+
+export const isLeaveList: Guard<LeaveApplication[]> = (value): value is LeaveApplication[] =>
+  Array.isArray(value) && value.every(isLeaveApplication);
+
+export const isLeaveName: Guard<LeaveName> = (value): value is LeaveName =>
+  isRecord(value) && isString(value.name) && value.name.length > 0;
+
+// Erişim kuralı motoru (platform_core-access sözleşmesi).
+export type AccessScope = AccessComponents['schemas']['Scope'];
+export type PermissionExplanation = AccessComponents['schemas']['Explanation'];
+export type AccessSummary = AccessComponents['schemas']['AccessSummary'];
+export type PermissionType = PermissionExplanation['ptype'];
+
+const SCOPES = new Set(['own', 'team', 'department', 'company', 'all']);
+const PERMISSION_TYPES = ['read', 'write', 'create', 'delete', 'submit', 'cancel'];
+const EXPLANATION_REASONS = new Set([
+  'allowed',
+  'allowed_by_share',
+  'no_role_permission',
+  'no_matching_rule',
+  'user_permission',
+  'not_permitted_or_missing',
+]);
+
+function isScope(value: unknown): boolean {
+  return isString(value) && SCOPES.has(value);
+}
+
+export const isPermissionExplanation: Guard<PermissionExplanation> = (
+  value,
+): value is PermissionExplanation =>
+  isRecord(value) &&
+  isString(value.doctype) &&
+  isString(value.name) &&
+  isString(value.ptype) &&
+  PERMISSION_TYPES.includes(value.ptype) &&
+  isString(value.user) &&
+  typeof value.allowed === 'boolean' &&
+  isString(value.reason) &&
+  EXPLANATION_REASONS.has(value.reason) &&
+  typeof value.governed === 'boolean' &&
+  isRecord(value.layers) &&
+  typeof value.layers.role === 'boolean' &&
+  typeof value.layers.access_rule === 'boolean' &&
+  typeof value.layers.share === 'boolean' &&
+  Array.isArray(value.rules) &&
+  value.rules.every(
+    (rule) =>
+      isRecord(rule) &&
+      isString(rule.name) &&
+      isString(rule.title) &&
+      isString(rule.role) &&
+      isScope(rule.scope) &&
+      typeof rule.applies === 'boolean' &&
+      typeof rule.matches === 'boolean',
+  );
+
+export const isAccessSummary: Guard<AccessSummary> = (value): value is AccessSummary => {
+  if (!isRecord(value) || !isString(value.doctype) || typeof value.governed !== 'boolean') {
+    return false;
+  }
+  const operations = value.operations;
+  return (
+    isRecord(operations) &&
+    Object.keys(operations).every((key) => PERMISSION_TYPES.includes(key)) &&
+    PERMISSION_TYPES.every(
+      (key) => Array.isArray(operations[key]) && (operations[key] as unknown[]).every(isScope),
+    )
+  );
+};
+
+// Press hesap silme (press_tr sözleşmesi).
+export type DeletionMessage = { url: string } | { submitted: true } | { pending: true };
+
+export const isDeletionMessage: Guard<DeletionMessage> = (value): value is DeletionMessage =>
+  isRecord(value) && (isString(value.url) || value.submitted === true || value.pending === true);

@@ -1,5 +1,7 @@
 // Sahte sunucunun örnek verisi. Bütün değerler örnektir (SZ-12).
 // Türler sözleşmeden üretilir. Sözleşme değişirse tür denetimi bu dosyada hata verir.
+import type { components as HrmsComponents } from '@/api/generated/hrms_tr';
+import type { components as AccessComponents } from '@/api/generated/platform_core-access';
 import type { components as AiComponents } from '@/api/generated/platform_core-ai';
 import type { components as IdentityComponents } from '@/api/generated/platform_core-identity';
 import type { components as GatewayComponents } from '@/api/generated/platform_core-model-gateway';
@@ -153,3 +155,54 @@ export function sampleCompletion(overrides: Partial<GatewayResult> = {}): Gatewa
     ...overrides,
   };
 }
+
+// HRMS izin başvuruları. Bütün değerler örnektir.
+type LeaveApplication = HrmsComponents['schemas']['LeaveApplication'];
+type AccessSummary = AccessComponents['schemas']['AccessSummary'];
+
+export const sampleLeaves: LeaveApplication[] = [
+  {
+    name: 'ORNEK-IZIN-0001',
+    employee: 'ORNEK-CALISAN-01',
+    employee_name: 'Örnek Kişi',
+    leave_type: 'Örnek Yıllık İzin',
+    from_date: '2026-11-24',
+    to_date: '2026-11-25',
+    status: 'Open',
+    docstatus: 0,
+    modified: '2026-11-22 09:00:00.000001',
+    total_leave_days: 2,
+  },
+  {
+    name: 'ORNEK-IZIN-0002',
+    employee: 'ORNEK-CALISAN-02',
+    employee_name: 'Örnek Kişi 2',
+    leave_type: 'Örnek Yıllık İzin',
+    from_date: '2026-12-01',
+    to_date: '2026-12-01',
+    status: 'Approved',
+    docstatus: 1,
+    modified: '2026-11-22 09:05:00.000001',
+    total_leave_days: 1,
+  },
+];
+
+export const sampleAccessSummary: AccessSummary = {
+  doctype: 'Örnek Kayıt',
+  governed: true,
+  operations: {
+    read: ['own', 'team'],
+    write: ['own'],
+    create: ['own'],
+    delete: [],
+    submit: [],
+    cancel: [],
+  },
+};
+
+// Press ayrı bir köktür. Kendi oturumu ve CSRF belirteci vardır.
+export const SAMPLE_PRESS_URL = 'https://press.example.test';
+export const SAMPLE_PRESS_CSRF_TOKEN = 'ornek-press-csrf-belirteci';
+export const samplePressReauthUrl =
+  `${SAMPLE_KEYCLOAK_URL}/realms/platform/protocol/openid-connect/auth` +
+  '?client_id=press&prompt=login&max_age=0&code_challenge_method=S256';
