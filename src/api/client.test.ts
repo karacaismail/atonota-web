@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { http, HttpResponse } from 'msw';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
