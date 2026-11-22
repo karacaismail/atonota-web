@@ -22,7 +22,7 @@
 .collection p {
   margin: 0 0 var(--collection-gap);
 }
-.collection h1 {
+.collection-header h2 {
   margin: 0;
   font-size: var(--collection-title);
   line-height: normal;

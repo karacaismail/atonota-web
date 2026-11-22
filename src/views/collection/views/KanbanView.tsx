@@ -9,9 +9,9 @@ export default function KanbanView({ definition, rows }: ViewProps) {
       <div className="collection-board">
         {groupRows(rows, field).map((group) => (
           <section className="collection-lane" key={group.key}>
-            <h3>
+            <h2>
               {group.label} ({group.rows.length})
-            </h3>
+            </h2>
             <ul>
               {group.rows.map((row) => (
                 <li key={row.name}>

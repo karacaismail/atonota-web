@@ -79,7 +79,10 @@ export function collectionVariables(
     '--collection-ease': 'cubic-bezier(.65, 0, .35, 1)',
     '--collection-dropdown-duration': source.dropdown.animation.duration + 'ms',
     '--collection-dropdown-ease': source.dropdown.animation.easing,
-    '--collection-shadow': source.derived.shadowCssDark.dropdown,
+    '--collection-shadow': (mode === 'dark'
+      ? source.derived.shadowCssDark
+      : source.derived.shadowCss
+    ).dropdown,
   } as CSSProperties;
 }
 export const collectionViewOptions = source.header.viewTypes

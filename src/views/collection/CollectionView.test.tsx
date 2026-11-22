@@ -24,7 +24,11 @@ function LocationProbe() {
 function mount(source: CollectionSource = exampleSource, search = '') {
   return render(
     <MemoryRouter initialEntries={['/' + search]}>
-      <CollectionView definition={exampleDefinition} source={source} />
+      <CollectionView
+        definition={exampleDefinition}
+        source={source}
+        enableExperimentalCollectionViews
+      />
       <LocationProbe />
     </MemoryRouter>,
   );

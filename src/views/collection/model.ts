@@ -91,6 +91,7 @@ export function createDefinition(input: unknown, roles: ViewRoles = {}): Collect
     : 'name';
   const definition: CollectionDefinition = {
     doctype,
+    label: roles.label?.trim() || 'Kayıtlar',
     columns,
     titleField,
     sensitivity: recordSensitivity,

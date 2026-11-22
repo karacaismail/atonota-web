@@ -66,6 +66,7 @@ export interface CollectionViewProps {
   definition: CollectionDefinition;
   source: CollectionSource;
   mode?: 'dark' | 'light';
+  enableExperimentalCollectionViews?: boolean;
 }
 interface Result {
   key: string;
@@ -74,9 +75,21 @@ interface Result {
   status: 'ready' | 'error' | 'unauthorized';
   page?: CollectionPage;
 }
-function CollectionContent({ definition, source, mode = 'dark' }: CollectionViewProps) {
+function CollectionContent({
+  definition,
+  source,
+  mode = 'dark',
+  enableExperimentalCollectionViews = false,
+}: CollectionViewProps) {
   const [params, setParams] = useSearchParams();
-  const query = useMemo(() => readQuery(params, definition), [params, definition]);
+  const requestedQuery = useMemo(() => readQuery(params, definition), [params, definition]);
+  const query = useMemo(
+    () =>
+      enableExperimentalCollectionViews
+        ? requestedQuery
+        : { ...requestedQuery, view: 'table' as const },
+    [requestedQuery, enableExperimentalCollectionViews],
+  );
   const [draft, setDraft] = useState<{ search: string; base: string }>({
     search: query.search,
     base: query.search,
@@ -165,11 +178,14 @@ function CollectionContent({ definition, source, mode = 'dark' }: CollectionView
         <header className="collection-header">
           <div>
             <p className="collection-eyebrow">Kayıtlar</p>
-            <h1 id={titleId}>{definition.doctype}</h1>
+            <h2 id={titleId}>{definition.label}</h2>
             {definition.sensitivity === 'restricted' && <p>Hassas kayıtlar</p>}
           </div>
           {source.kind === 'example' && <span className="collection-example">Örnek veri</span>}
         </header>
+        {!enableExperimentalCollectionViews && requestedQuery.view !== 'table' && (
+          <p role="status">İstenen görünüm şu anda kapalı. Tablo gösteriliyor.</p>
+        )}
         <form
           role="search"
           className="collection-search"
@@ -201,7 +217,11 @@ function CollectionContent({ definition, source, mode = 'dark' }: CollectionView
               dropdownAlign={{ offset: [0, 0] }}
               aria-label="Görünüm"
               value={query.view}
-              options={collectionViewOptions}
+              options={
+                enableExperimentalCollectionViews
+                  ? collectionViewOptions
+                  : collectionViewOptions.filter((option) => option.value === 'table')
+              }
               onChange={(view: ViewType) => {
                 update({ view, page: query.page });
               }}
@@ -351,7 +371,7 @@ function CollectionContent({ definition, source, mode = 'dark' }: CollectionView
           </p>
           <div className="collection-page-actions">
             <Button
-              disabled={query.page <= 1 || !current || current.status !== 'ready'}
+              disabled={query.page <= 1}
               onClick={() => {
                 update({ page: query.page - 1 });
               }}

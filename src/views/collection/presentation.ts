@@ -26,7 +26,7 @@ export function dateValue(value: unknown): number | undefined {
 export function displayCell(row: CollectionRow, field: CollectionField): string {
   const value = row[field.fieldname];
   if (value === null || value === undefined) return 'Bilgi yok';
-  if (!field.component || !renderers.has(field.component)) return JSON.stringify(value);
+  if (!field.component || !renderers.has(field.component)) return String(value);
   if (field.fieldtype === 'Date') {
     const time = dateValue(value);
     if (time === undefined) return 'Geçersiz tarih';

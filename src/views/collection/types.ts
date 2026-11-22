@@ -15,6 +15,7 @@ export interface CollectionField {
   filterable: boolean;
 }
 export interface CollectionDefinition {
+  label: string;
   sensitivity: Sensitivity;
   doctype: string;
   columns: CollectionField[];
@@ -25,6 +26,7 @@ export interface CollectionDefinition {
   durationField?: string;
 }
 export interface ViewRoles {
+  label?: string;
   groupField?: string;
   startField?: string;
   endField?: string;
