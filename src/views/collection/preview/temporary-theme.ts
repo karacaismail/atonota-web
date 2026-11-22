@@ -26,6 +26,10 @@ export function collectionTheme(mode: 'dark' | 'light', reducedMotion = false): 
         ),
       ),
       motion: !reducedMotion,
+      // Same public tokens as foundation's buildAntdTheme. The shared underline
+      // remains visible; no private checkbox selector is required.
+      lineWidthFocus: 0,
+      controlOutlineWidth: 0,
       fontFamily: 'Outfit Variable, Outfit, sans-serif',
       motionEaseInOut: 'cubic-bezier(.65, 0, .35, 1)',
       motionEaseOut: 'cubic-bezier(.65, 0, .35, 1)',
@@ -51,6 +55,7 @@ export function collectionTheme(mode: 'dark' | 'light', reducedMotion = false): 
         fontSize: source.sizes.md.input.fontSize,
         optionFontSize: source.sizes.md.input.fontSize,
         optionHeight: source.sizes.md.input.height,
+        ...(source.dropdown.joinedItems.value ? { borderRadiusSM: 0 } : {}),
         activeOutlineColor: 'transparent',
         activeBorderColor: border,
       },

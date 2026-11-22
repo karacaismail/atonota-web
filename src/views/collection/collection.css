@@ -218,12 +218,14 @@
 .collection .collection-input-suffix {
   display: none;
 }
+.collection-scroll:focus,
 .collection .collection-hit:focus,
 .collection .collection-hit :focus,
 .collection .collection-hit:focus-visible,
 .collection .collection-hit :focus-visible {
   outline: none;
 }
+html[data-focus-mode='keyboard'] .collection-scroll:focus-visible,
 html[data-focus-mode='keyboard'] .collection .collection-hit:focus-visible,
 html[data-focus-mode='keyboard'] .collection .collection-hit:has(:focus-visible) {
   box-shadow: inset 0 calc(-1 * var(--collection-mark)) 0 var(--collection-focus);
@@ -270,6 +272,7 @@ html[data-focus-mode='keyboard'] .collection .collection-hit :focus-visible {
   }
 }
 @media (forced-colors: active) {
+  html[data-focus-mode='keyboard'] .collection-scroll:focus-visible,
   html[data-focus-mode='keyboard'] .collection .collection-hit:focus-visible,
   html[data-focus-mode='keyboard'] .collection .collection-hit :focus-visible {
     outline: 2px solid CanvasText;

@@ -1,7 +1,6 @@
 import { CaretDown, Check } from '@phosphor-icons/react';
 import { Button, Input, Select } from 'antd';
-import type { ButtonProps, InputProps, InputRef, SelectProps } from 'antd';
-import type { BaseSelectRef } from 'rc-select';
+import type { ButtonProps, InputProps, InputRef, RefSelectProps, SelectProps } from 'antd';
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 function subscribeMotion(callback: () => void) {
@@ -36,7 +35,7 @@ export function CollectionInput(props: InputProps) {
   );
 }
 export function CollectionSelect<Value extends string | number>(props: SelectProps<Value>) {
-  const select = useRef<BaseSelectRef>(null);
+  const select = useRef<RefSelectProps>(null);
   const [open, setOpen] = useState(false);
   useLayoutEffect(() => {
     // Touch can move the popup beneath the pointer between down and click.

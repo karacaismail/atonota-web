@@ -108,7 +108,7 @@ Bu teslimde kayıt değiştiren toplu işlem yoktur.
 
 ## Adres durumu
 
-Adres şu alanları taşır:
+Adres şu alanları taşır.
 `view`, `page`, `size`, `search`, `sort`, `direction`, `filter`, `value`.
 
 Sayfa boyutu 10, 20 veya 50 kayıttır.

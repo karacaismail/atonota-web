@@ -27,7 +27,7 @@ test('shared keyboard mode shows one underline without an internal checkbox ring
   expect(indicators[0]?.shadow).not.toBe('none');
   const scroller = page.getByRole('region', { name: 'Kayıt tablosu yatay kaydırma' });
   await scroller.focus();
-  const scrollFocus = await scroller.evaluate(element => ({
+  const scrollFocus = await scroller.evaluate((element) => ({
     outline: getComputedStyle(element).outlineStyle,
     shadow: getComputedStyle(element).boxShadow,
   }));

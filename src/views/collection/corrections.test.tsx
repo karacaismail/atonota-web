@@ -1,11 +1,81 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Link, MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { CollectionView } from './CollectionView';
 import { exampleDefinition, exampleSource } from './example';
 import { displayCell } from './presentation';
+import { CollectionError } from './types';
 
 describe('review corrections', () => {
+  it('refetches a cached page after permission revocation instead of showing old data', async () => {
+    let finish: ((value: unknown) => void) | undefined;
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [{ name: 'Old protected row' }], has_next_page: true })
+      .mockRejectedValueOnce(new CollectionError('unauthorized', 'Revoked'))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+    render(
+      <MemoryRouter>
+        <CollectionView definition={exampleDefinition} source={{ kind: 'api', list }} />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Old protected row');
+    fireEvent.click(screen.getByRole('button', { name: 'Sonraki sayfa' }));
+    await screen.findByText('Bu kayıtları görme yetkiniz yok.');
+    fireEvent.click(screen.getByRole('button', { name: 'Önceki sayfa' }));
+    expect(screen.queryByText('Old protected row')).not.toBeInTheDocument();
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(3));
+    await act(async () => {
+      finish?.({ data: [{ name: 'New authorized row' }], has_next_page: false });
+    });
+    await screen.findByText('New authorized row');
+  });
+  it('cannot restore a revoked cache through an aborted late response', async () => {
+    let late: ((value: unknown) => void) | undefined;
+    let fresh: ((value: unknown) => void) | undefined;
+    const list = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            late = resolve;
+          }),
+      )
+      .mockRejectedValueOnce(new CollectionError('unauthorized', 'Revoked'))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            fresh = resolve;
+          }),
+      );
+    render(
+      <MemoryRouter>
+        <Link to="?page=2">İkinci sayfaya git</Link>
+        <CollectionView definition={exampleDefinition} source={{ kind: 'api', list }} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('link', { name: 'İkinci sayfaya git' }));
+    await screen.findByText('Bu kayıtları görme yetkiniz yok.');
+    fireEvent.click(screen.getByRole('button', { name: 'Önceki sayfa' }));
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(3));
+    await act(async () => {
+      late?.({ data: [{ name: 'Late protected row' }], has_next_page: false });
+    });
+    expect(screen.queryByText('Late protected row')).not.toBeInTheDocument();
+    expect(screen.getByText('Kayıtlar yükleniyor.')).toBeInTheDocument();
+    await act(async () => {
+      fresh?.({ data: [{ name: 'Fresh row' }], has_next_page: false });
+    });
+    await screen.findByText('Fresh row');
+    expect(screen.queryByText('Late protected row')).not.toBeInTheDocument();
+  });
+
   it('reuses a validated page when returning within the same collection scope', async () => {
     const list = vi.fn(exampleSource.list);
     render(

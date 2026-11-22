@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import designSource from '../../../../design/source/control-size-config.json' with { type: 'json' };
 test('expanded input and select targets work without covering their centers', async ({
   page,
 }, testInfo) => {
@@ -39,6 +40,10 @@ test('expanded input and select targets work without covering their centers', as
     await Promise.all(
       element.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
     );
+  });
+  await page.locator('.collection-popup:visible').screenshot({
+    path: testInfo.outputPath('dropdown-open.png'),
+    animations: 'disabled',
   });
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('listbox')).toBeVisible();
@@ -192,14 +197,14 @@ test('shows all data states, light theme and reduced motion', async ({ page }, t
   const shadow = await popup.evaluate((element) => getComputedStyle(element).boxShadow);
   expect(shadow).not.toBe('none');
   expect(shadow).toBe(
-    await popup.evaluate((element) => {
+    await popup.evaluate((element, expectedShadow) => {
       const probe = document.createElement('div');
-      probe.style.boxShadow = 'var(--shadow-dropdown)';
+      probe.style.boxShadow = expectedShadow;
       element.appendChild(probe);
       const value = getComputedStyle(probe).boxShadow;
       probe.remove();
       return value;
-    }),
+    }, designSource.derived.shadowCss.dropdown),
   );
   await page.keyboard.press('Escape');
   await expect(page.locator('.collection-popup:visible')).toHaveCount(0);
