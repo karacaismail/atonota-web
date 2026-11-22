@@ -23,7 +23,34 @@ import {
 } from './fixtures';
 
 /** Sahte sunucunun durumu. Testler bu değerleri değiştirebilir. `resetMockState` ile sıfırlayın. */
-export const mockState = {
+/**
+ * Sahte model geçidinin verebileceği hatalar ve HTTP durumları.
+ * Kodlar model geçidi sözleşmesindeki `Error` listesindendir.
+ * Durumlar sözleşmedeki yanıt adlarından gelir: BadRequest 400, PermissionError 403,
+ * Conflict 409, QuotaError 429, Unavailable 503.
+ */
+export const GATEWAY_FAILURES = {
+  invalid_route: 400,
+  data_policy_denied: 403,
+  transaction_active: 409,
+  quota_exceeded: 429,
+  gateway_busy: 429,
+  provider_unavailable: 503,
+  provider_timeout: 503,
+  gateway_unavailable: 503,
+} as const;
+
+export type GatewayFailure = keyof typeof GATEWAY_FAILURES;
+
+export const mockState: {
+  signedIn: boolean;
+  proposals: Map<string, ReturnType<typeof sampleProposal>>;
+  leaves: Map<string, (typeof sampleLeaves)[number]>;
+  installations: { installation_id: string; scope: 'mobile' | 'pwa'; revoked: boolean }[];
+  /** Doluysa model geçidi bu hatayı verir. Testler hata ekranını böyle sınar. */
+  gatewayFailure: GatewayFailure | undefined;
+} = {
+  gatewayFailure: undefined,
   signedIn: true,
   proposals: new Map<string, ReturnType<typeof sampleProposal>>(),
   leaves: new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }])),
@@ -32,6 +59,7 @@ export const mockState = {
 
 export function resetMockState(): void {
   mockState.signedIn = true;
+  mockState.gatewayFailure = undefined;
   mockState.proposals.clear();
   mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
   mockState.installations = sampleInstallations.map((item) => ({ ...item }));
@@ -514,6 +542,12 @@ export const handlers = [
   http.post('*/api/method/platform_core.api.model.complete', async ({ request }) => {
     const denied = guard(request, { write: true });
     if (denied) return denied;
+    if (mockState.gatewayFailure) {
+      return HttpResponse.json(
+        { message: { error: mockState.gatewayFailure } },
+        { status: GATEWAY_FAILURES[mockState.gatewayFailure] },
+      );
+    }
     return message(sampleModel((await request.json()) as CompletionBody));
   }),
 ];
