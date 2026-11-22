@@ -64,6 +64,14 @@ Her iş yalnız kendi klasörünü değiştirir. Ortak dosya gerekiyorsa raporda
 
 `package.json` ya da ayar dosyası değişikliği gerekiyorsa iş bunu raporda ister. `foundation` işi ekler.
 
+### Ortak dosyalara tek satır ekleme kuralları
+
+- **Sayfa yolları.** Yönlendirici ve rota sözleşmesi `src/shell/routes.ts` dosyasındadır. Her iş bu dosyaya yalnız kendi tembel yüklenen satırını ekler. Örnek: `/panel/ai` yolu `src/ai` sayfasını `import()` ile yükler. Başka işin satırına dokunulmaz. Ayrı yönlendirici kurulmaz.
+- **Deneme sayfaları.** Her iş deneme sayfasını `/_demo/<iş>` yolunda açar. Koşul `import.meta.env.MODE === 'e2e'` olur. Bu koşul derleme zamanında sabittir. `vite build` çıktısına deneme sayfası girmez. `npm run build:e2e` ve `npm run dev:e2e` bu modu açar. Yardımcı: `@/app` içindeki `DEMO_MODE` ve `DEMO_PATH_PREFIX`.
+- **Tarayıcı testleri.** Her iş testini `src/<klasör>/e2e/*.spec.ts` altına koyar. Kök Playwright ayarı `tests/e2e` ve `src/**/e2e/**/*.spec.ts` dosyalarının hepsini koşar. Ayrı Playwright ayar dosyası gerekmez. Testler `npm run test:e2e` ile e2e derlemesine ve sahte sunucuya karşı koşar.
+- **Birim testleri.** `src/**/*.test.{ts,tsx}` dosyalarının hepsi `npm test` ile koşar.
+- **CSS değişkenleri.** Liste ve kullanım kuralı `src/design/README.md` dosyasındadır. Yatay kayan tablo `data-scroll-x` kapsayıcısına alınır.
+
 ## Tasarım tokenları
 
 - Tek kaynak `design/source/control-size-config.json` dosyasıdır.
@@ -128,3 +136,10 @@ Bu kararlar kaynak dosyada yoktu. Orkestratör 23 Kasım 2026 Pazartesi günü o
 3. **Metin bağlantıları altı çizilidir.** Renk tek ayırt edici olmaz (WCAG 1.4.1). Buton, menü ve sekme görünümlü bağlantılar bunun dışındadır.
 4. **Odak göstergesi.** Klavye modunda odaklanan kontrolün alt kenarında 2 px birincil renk çizgi görünür. Çevreleyen halka yoktur. Kalınlık proje kararıdır.
 5. **Temel hareket süreleri.** antd'nin hızlı, orta ve yavaş süreleri 100, 200 ve 300 ms'dir. Bu değerler yalnız `src/design/motion.ts` içindedir. Kaynaktaki süreler (dropdown 500 ms, odak perdesi 320 ms) aynen kullanılır.
+6. **Koyu temada basılı düğme zemini.** Kaynak %28 der. %100 metinle bile 4.09:1 kalır. Basılı zemin, yerleşim zemininde 4.5:1 veren en büyük opaklığa iner. Bugün bu değer %23'tür. Hesap `src/design/tokens.ts` içindedir.
+7. **Boşluk, katman ve yerleşim ölçüleri.** Boşluk ölçeği antd takma tokenlarından gelir: 4, 8, 12, 16, 24, 32 ve 48 px. Perde katmanı antd açılır katmanının bir altındadır. Okuma genişliği antd `screenLG` değeridir. Bileşen bu sayıları yazmaz. Bileşen `--space-*`, `--z-*` ve `--content-max-width` kullanır.
+8. **Tablo sütunu en küçük genişlikleri.** Eylem 84, sayı 96, tarih 126, metin 168 ve başlık 210 px. Değerler orta buton yüksekliğinden (42 px) türetilir. Sütun sıkışmaz. Tablo `data-scroll-x` kapsayıcısında kayar.
+9. **Metin bağlantısı rengi ve altı çizgi** 2. ve 3. maddededir. **Odak göstergesi** 4. maddededir. Yüksek kontrast modunda (`forced-colors: active`) gösterge yalnız `outline: 2px solid CanvasText` olur.
+10. **Yer tutucu metni.** antd varsayılanı siyah %25 ve beyaz %25'tir. Bu değer 4.5:1 vermez. Yer tutucu opaklığı, giriş zemininde 4.5:1 veren en küçük değere çıkar. Hesap `src/design/tokens.ts` içindedir.
+11. **Açık Select'te seçili metin.** Aramasız Select açıkken antd seçili metni yer tutucu rengine soldurur. Bu projede seçili metin solmaz. Kural `src/design/css-variables.ts` içindedir.
+12. **Dar form sütunu.** Giriş ve kısa ayar formları en çok 420 px genişler. Değer orta buton yüksekliğinin 10 katıdır. Değişken `--form-max-width` olur.
