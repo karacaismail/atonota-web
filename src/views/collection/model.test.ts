@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest';
+import metaV2 from './fixtures/meta-v2.json';
 import { createDefinition, parsePage } from './model';
 import { readQuery, writeQuery, toListRequest } from './query';
 import { exampleMeta, exampleSource } from './example';
 describe('collection contract and URL', () => {
+  it('orders tied server results by their stable record identity', () => {
+    const definition = createDefinition(exampleMeta);
+    const query = readQuery(new URLSearchParams('sort=hours&direction=desc'), definition);
+    expect(toListRequest(definition, query).order_by).toBe('hours desc, name asc');
+  });
+  it('accepts the actual backend catalog v2 fixture and keeps its readable title', () => {
+    const definition = createDefinition(metaV2);
+    expect(definition.titleField).toBe('title');
+    expect(definition.columns.map((field) => field.fieldname)).toContain('title');
+    expect(() => createDefinition({ ...metaV2, catalog_version: 99 })).toThrow();
+  });
   it('keeps only readable list fields and rejects truncated metadata', () => {
     const meta = structuredClone(exampleMeta);
     meta.schema.fields.push({

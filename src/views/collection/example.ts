@@ -92,7 +92,7 @@ export const exampleSource: CollectionSource = {
         return String(row[field]).toLocaleLowerCase('tr').includes(search);
       }),
     );
-    const [field = 'name', direction] = request.order_by.split(' ');
+    const [field = 'name', direction] = request.order_by.split(',')[0]?.trim().split(' ') ?? [];
     data = [...data].sort((a, b) => {
       const left = a[field];
       const right = b[field];
@@ -100,7 +100,7 @@ export const exampleSource: CollectionSource = {
         typeof left === 'number' && typeof right === 'number'
           ? left - right
           : String(left).localeCompare(String(right), 'tr', { numeric: true });
-      return direction === 'desc' ? -order : order;
+      return (direction === 'desc' ? -order : order) || a.name.localeCompare(b.name);
     });
     const total = data.length;
     return {

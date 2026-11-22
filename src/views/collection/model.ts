@@ -26,7 +26,11 @@ export function isNumeric(field: CollectionField) {
 /** Local projection of platform_core-shell Meta. No scripts or executable rules are accepted. */
 export function createDefinition(input: unknown, roles: ViewRoles = {}): CollectionDefinition {
   const meta = object(input);
-  if (meta['truncated'] || meta['catalog_version'] !== 1)
+  if (
+    meta['truncated'] ||
+    ![1, 2].includes(Number(meta['catalog_version'])) ||
+    typeof meta['catalog_version'] !== 'number'
+  )
     throw new CollectionError('error', 'Kayıt tanımı desteklenmiyor.');
   const schema = object(meta['schema']);
   const doctype = text(schema['name']);
@@ -47,7 +51,12 @@ export function createDefinition(input: unknown, roles: ViewRoles = {}): Collect
     const name = text(field['fieldname']);
     const fieldtype = text(field['fieldtype']);
     if (!identifier.test(name)) throw new CollectionError('error', 'Geçersiz alan adı.');
-    if (field['hidden'] === true || fieldtype === 'Password' || !field['in_list_view']) continue;
+    if (
+      field['hidden'] === true ||
+      fieldtype === 'Password' ||
+      (!field['in_list_view'] && name !== schema['title_field'])
+    )
+      continue;
     if (seen.has(name)) {
       if (name === 'name') continue;
       throw new CollectionError('error', 'Alan adı yineleniyor.');

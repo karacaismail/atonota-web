@@ -1,0 +1,26 @@
+{
+  "schema": {
+    "name": "Sample Record",
+    "module": "Sample",
+    "sensitivity": "standard",
+    "fields": [
+      {
+        "fieldname": "title",
+        "fieldtype": "Data",
+        "read_only": true,
+        "label": "Sample title",
+        "reqd": true,
+        "component": "input",
+        "sensitivity": "standard"
+      }
+    ],
+    "title_field": "title",
+    "search_fields": "title",
+    "sort_field": null
+  },
+  "child_tables": {},
+  "catalog_version": 2,
+  "meta_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "perm_version": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "mobile_cache_allowed": false
+}

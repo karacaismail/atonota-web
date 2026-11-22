@@ -60,7 +60,7 @@ export function toListRequest(
     doctype: definition.doctype,
     fields: definition.columns.map((field) => field.fieldname),
     filters,
-    order_by: safe.sort + ' ' + safe.direction,
+    order_by: safe.sort + ' ' + safe.direction + (safe.sort === 'name' ? '' : ', name asc'),
     limit_start: (safe.page - 1) * safe.size,
     limit_page_length: safe.size,
   };

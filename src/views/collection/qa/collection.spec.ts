@@ -1,0 +1,187 @@
+import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+test('expanded input and select targets work without covering their centers', async ({
+  page,
+}, testInfo) => {
+  await page.goto(preview);
+  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  const input = page.getByRole('textbox', { name: 'Kayıt ara' });
+  const wrapper = page.locator('.ant-input-affix-wrapper');
+  const inputBox = await wrapper.boundingBox();
+  if (!inputBox) throw new Error('Missing input target');
+  if (testInfo.project.use.hasTouch)
+    await page.touchscreen.tap(inputBox.x + inputBox.width / 2, inputBox.y - 1);
+  else await page.mouse.click(inputBox.x + inputBox.width / 2, inputBox.y - 1);
+  await expect(input).toBeFocused();
+  await input.fill('Örnek');
+  await expect(input).toHaveValue('Örnek');
+  const select = page
+    .locator('.ant-select')
+    .filter({ has: page.getByRole('combobox', { name: 'Görünüm', exact: true }) });
+  await select.scrollIntoViewIfNeeded();
+  const selectBox = await select.boundingBox();
+  if (!selectBox) throw new Error('Missing select target');
+  if (testInfo.project.use.hasTouch)
+    await page.touchscreen.tap(selectBox.x + selectBox.width / 2, selectBox.y - 1);
+  else await page.mouse.click(selectBox.x + selectBox.width / 2, selectBox.y - 1);
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await select.focus();
+  await page.getByRole('combobox', { name: 'Görünüm', exact: true }).focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-view="kanban"]')).toBeVisible();
+});
+
+const preview = '/src/views/collection/preview/';
+test('table preserves readability, keyboard focus, selection and URL history', async ({
+  page,
+}, testInfo) => {
+  await page.goto(preview);
+  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const scroller = page.getByRole('region', { name: 'Kayıt tablosu yatay kaydırma' });
+  expect(await scroller.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+    testInfo.project.name.includes('desktop') ? false : true,
+  );
+  const fontSizes = await page
+    .locator('.collection')
+    .evaluate((root) =>
+      [...root.querySelectorAll<HTMLElement>('*')]
+        .filter(
+          (element) => element.textContent?.trim() && element.getBoundingClientRect().width > 0,
+        )
+        .map((element) => parseFloat(getComputedStyle(element).fontSize)),
+    );
+  expect(Math.min(...fontSizes)).toBeGreaterThanOrEqual(14);
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('textbox', { name: 'Kayıt ara' })).toBeFocused();
+  const wrapper = page.locator('.ant-input-affix-wrapper');
+  expect(await wrapper.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none');
+  expect(
+    await page
+      .getByRole('textbox', { name: 'Kayıt ara' })
+      .evaluate((element) => getComputedStyle(element).outlineStyle),
+  ).toBe('none');
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await page.getByRole('checkbox', { name: 'EXAMPLE-001 seç', exact: true }).check();
+  await expect(page.getByRole('toolbar', { name: 'Seçilen kayıtlar' })).toContainText(
+    '1 kayıt seçildi',
+  );
+  await page.getByRole('button', { name: 'Sonraki sayfa' }).click();
+  await expect(page.getByText('EXAMPLE-021', { exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('table.png'), fullPage: true });
+  const axe = await new AxeBuilder({ page }).include('.collection').analyze();
+  expect(axe.violations).toEqual([]);
+});
+test('loads only requested views and supports keyboard dropdown navigation', async ({
+  page,
+}, testInfo) => {
+  const scripts: string[] = [];
+  page.on('request', (request) => {
+    if (request.resourceType() === 'script') scripts.push(request.url());
+  });
+  await page.goto(preview);
+  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  expect(scripts.some((url) => /(?:Kanban|Pivot|Report|Gantt|Timesheet)View-/.test(url))).toBe(
+    false,
+  );
+  for (const [value, label] of [
+    ['kanban', 'Kanban'],
+    ['pivot', 'Pivot'],
+    ['report', 'Rapor'],
+    ['gantt', 'Gantt'],
+    ['timesheet', 'Timesheet'],
+  ] as const) {
+    const combo = page.getByRole('combobox', { name: 'Görünüm', exact: true });
+    await page.locator('.ant-select').filter({ has: combo }).click();
+    await page.getByRole('option', { name: label, exact: true }).click();
+    await expect(page.locator('[data-view="' + value + '"]')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath(value + '.png'), fullPage: true });
+  }
+  await page.getByRole('combobox', { name: 'Görünüm', exact: true }).focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('listbox')).not.toBeVisible();
+  await page.getByRole('textbox', { name: 'Kayıt ara' }).fill('Örnek iş 25');
+  await page.getByRole('button', { name: 'Ara', exact: true }).click();
+  await expect(page.locator('[data-view="timesheet"]')).toContainText('Örnek iş 25');
+  const resources = await page.evaluate(() =>
+    performance.getEntriesByType('resource').map((entry) => {
+      const resource = entry as PerformanceResourceTiming;
+      return {
+        name: resource.name,
+        type: resource.initiatorType,
+        transfer: resource.transferSize,
+        encoded: resource.encodedBodySize,
+        decoded: resource.decodedBodySize,
+      };
+    }),
+  );
+  await testInfo.attach('resource-bytes', {
+    body: JSON.stringify(resources, null, 2),
+    contentType: 'application/json',
+  });
+  await testInfo.attach('environment', {
+    body: JSON.stringify({
+      browser: page.context().browser()?.version(),
+      project: testInfo.project.name,
+      viewport: page.viewportSize(),
+      userAgent: await page.evaluate(() => navigator.userAgent),
+      touch: await page.evaluate(() => navigator.maxTouchPoints),
+    }),
+    contentType: 'application/json',
+  });
+  await testInfo.attach('script-requests', {
+    body: JSON.stringify(scripts, null, 2),
+    contentType: 'application/json',
+  });
+});
+test('shows all data states, light theme and reduced motion', async ({ page }, testInfo) => {
+  for (const [state, message] of [
+    ['loading', 'Kayıtlar yükleniyor.'],
+    ['empty', 'Kayıt bulunamadı.'],
+    ['error', 'Kayıtlar yüklenemedi.'],
+    ['unauthorized', 'Bu kayıtları görme yetkiniz yok.'],
+  ] as const) {
+    await page.goto(preview + '?view=report&state=' + state);
+    await expect(page.getByText(message, { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  }
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(preview + '?theme=light');
+  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  await page
+    .locator('.ant-select')
+    .filter({ has: page.getByRole('combobox', { name: 'Görünüm', exact: true }) })
+    .click();
+  expect(
+    await page
+      .locator('.ant-select-dropdown')
+      .evaluate((element) => getComputedStyle(element).animationName),
+  ).toBe('none');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+  const lightAxe = await new AxeBuilder({ page }).include('.collection').analyze();
+  expect(lightAxe.violations).toEqual([]);
+  await page.getByRole('textbox', { name: 'Kayıt ara' }).fill('Taslak');
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(page.getByRole('textbox', { name: 'Kayıt ara' })).toHaveValue('Taslak');
+  await expect(page.getByRole('textbox', { name: 'Kayıt ara' })).toBeFocused();
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%';
+  });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('light-landscape.png'), fullPage: true });
+});
