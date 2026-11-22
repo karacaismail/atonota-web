@@ -1,20 +1,19 @@
 import { http, HttpResponse } from 'msw';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   SAMPLE_CSRF_TOKEN,
   SAMPLE_KEYCLOAK_URL,
-  SAMPLE_PRESS_CSRF_TOKEN,
   SAMPLE_PRESS_URL,
   sampleLeaves,
 } from '@/mocks/fixtures';
-import { mockState, resetMockState } from '@/mocks/handlers';
+import { resetMockState } from '@/mocks/handlers';
 import { mockServer } from '@/mocks/node';
 
 import { createApiClient } from './client';
 import type { ApiConfig } from './config';
 import { createCsrfStore } from './csrf';
-import { createPressClient, readPressConfig } from './press-client';
+import { pressAccountDeletionUrl, readPressConfig } from './press';
 
 const SITE = 'https://kiraci.example.test';
 
@@ -197,94 +196,37 @@ describe('erişim açıklaması', () => {
   });
 });
 
-describe('Press hesap silme', () => {
-  function press(onSessionExpired = vi.fn()) {
-    const pressConfig = readPressConfig({ VITE_PRESS_URL: SAMPLE_PRESS_URL }, SITE);
-    if (!pressConfig) throw new Error('Press ayarı okunamadı.');
-    const client = createPressClient({
-      config: pressConfig,
-      keycloak: { keycloakUrl: SAMPLE_KEYCLOAK_URL, keycloakRealm: 'platform' },
-      csrf: createCsrfStore(SAMPLE_PRESS_CSRF_TOKEN),
-      onSessionExpired,
-    });
-    return { client, pressConfig, onSessionExpired };
-  }
-
-  it('Press CSRF belirteci yoksa istek göndermez', async () => {
-    const pressConfig = readPressConfig({ VITE_PRESS_URL: SAMPLE_PRESS_URL }, SITE);
-    if (!pressConfig) throw new Error('Press ayarı okunamadı.');
-    const client = createPressClient({
-      config: pressConfig,
-      keycloak: { keycloakUrl: SAMPLE_KEYCLOAK_URL, keycloakRealm: 'platform' },
-      csrf: createCsrfStore(),
-    });
-    await expect(client.requestDeletion(false)).rejects.toMatchObject({ kind: 'csrf' });
-    expect(requests).toHaveLength(0);
+describe('Press hesap silme sayfası', () => {
+  it('Press ayarı yoksa adres yoktur', () => {
+    expect(readPressConfig({})).toBeUndefined();
   });
 
-  it('Press ayarı yoksa istemci kurulmaz', () => {
-    expect(readPressConfig({}, SITE)).toBeUndefined();
+  it('adres Press kökü ve /account-deletion yoludur', () => {
+    const pressConfig = readPressConfig({ VITE_PRESS_URL: `${SAMPLE_PRESS_URL}/` });
+    expect(pressConfig).toEqual({ pressUrl: SAMPLE_PRESS_URL });
+    if (!pressConfig) return;
+    expect(pressAccountDeletionUrl(pressConfig)).toBe(`${SAMPLE_PRESS_URL}/account-deletion`);
   });
 
-  it('başka kökteki Press için çerezi include ile gönderir', () => {
-    expect(press().pressConfig).toMatchObject({
-      pressUrl: SAMPLE_PRESS_URL,
-      credentials: 'include',
+  it.each([
+    ['düz HTTP', 'http://press.example.test'],
+    ['yol taşıyan kök', 'https://press.example.test/baska'],
+    ['sorgu taşıyan kök', 'https://press.example.test/?x=1'],
+    ['kullanıcı bilgisi taşıyan kök', 'https://kisi@press.example.test'],
+    ['adres olmayan değer', 'press'],
+    ['başka protokol', 'javascript:alert(1)'],
+  ])('%s kabul edilmez', (_label, value) => {
+    expect(() => readPressConfig({ VITE_PRESS_URL: value })).toThrow(/VITE_PRESS_URL/);
+  });
+
+  it('yerel geliştirmede HTTP localhost kabul edilir', () => {
+    expect(readPressConfig({ VITE_PRESS_URL: 'http://localhost:8001' })).toEqual({
+      pressUrl: 'http://localhost:8001',
     });
   });
 
-  it('confirm false yeniden doğrulama adresini döner', async () => {
-    const result = await press().client.requestDeletion(false);
-    expect(result.status).toBe('reauthenticate');
-    if (result.status !== 'reauthenticate') return;
-    expect(new URL(result.url).origin).toBe(SAMPLE_KEYCLOAK_URL);
-    const sent = requests.at(-1);
-    expect(sent?.url.origin).toBe(SAMPLE_PRESS_URL);
-    expect(sent?.url.pathname).toBe('/api/method/press_tr.api.account.request_deletion');
-    expect(sent?.csrf).toBe(SAMPLE_PRESS_CSRF_TOKEN);
-  });
-
-  it('yeniden doğrulama yoksa confirm true yetki reddi verir', async () => {
-    await expect(press().client.requestDeletion(true)).rejects.toMatchObject({ kind: 'forbidden' });
-  });
-
-  it('yeniden doğrulamadan sonra confirm true isteği kaydeder', async () => {
-    mockState.pressReauthenticated = true;
-    await expect(press().client.requestDeletion(true)).resolves.toEqual({ status: 'submitted' });
-  });
-
-  it('sonucu belirsiz isteği pending olarak döner', async () => {
-    mockServer.use(
-      http.post('*/api/method/press_tr.api.account.request_deletion', () =>
-        HttpResponse.json({ message: { pending: true } }),
-      ),
-    );
-    await expect(press().client.requestDeletion(true)).resolves.toEqual({ status: 'pending' });
-  });
-
-  it('güvenilmeyen yeniden doğrulama adresine gitmez', async () => {
-    mockServer.use(
-      http.post('*/api/method/press_tr.api.account.request_deletion', () =>
-        HttpResponse.json({
-          message: {
-            url: 'https://kotu.example.test/realms/platform/protocol/openid-connect/auth',
-          },
-        }),
-      ),
-    );
-    await expect(press().client.requestDeletion(false)).rejects.toMatchObject({
-      kind: 'invalid_response',
-    });
-  });
-
-  it('502 yanıtı sunucu hatasıdır ve oturum bitimi sayılmaz', async () => {
-    mockServer.use(
-      http.post('*/api/method/press_tr.api.account.request_deletion', () =>
-        HttpResponse.json({ exc_type: 'IdentitySyncError' }, { status: 502 }),
-      ),
-    );
-    const { client, onSessionExpired } = press();
-    await expect(client.requestDeletion(true)).rejects.toMatchObject({ kind: 'unavailable' });
-    expect(onSessionExpired).not.toHaveBeenCalled();
+  it('panel Press ucunu çağırmaz', () => {
+    const client = api() as Record<string, unknown>;
+    expect(Object.keys(client).some((key) => /deletion/i.test(key))).toBe(false);
   });
 });

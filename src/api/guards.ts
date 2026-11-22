@@ -363,9 +363,3 @@ export const isAccessSummary: Guard<AccessSummary> = (value): value is AccessSum
     )
   );
 };
-
-// Press hesap silme (press_tr sözleşmesi).
-export type DeletionMessage = { url: string } | { submitted: true } | { pending: true };
-
-export const isDeletionMessage: Guard<DeletionMessage> = (value): value is DeletionMessage =>
-  isRecord(value) && (isString(value.url) || value.submitted === true || value.pending === true);

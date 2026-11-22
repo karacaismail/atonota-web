@@ -43,11 +43,5 @@ export type {
   PermissionExplanation,
   PermissionType,
 } from './guards';
-export { createPressClient, readPressConfig } from './press-client';
-export type {
-  DeletionResult,
-  PressClient,
-  PressClientDeps,
-  PressConfig,
-  PressEnv,
-} from './press-client';
+export { pressAccountDeletionUrl, readPressConfig } from './press';
+export type { PressConfig, PressEnv } from './press';

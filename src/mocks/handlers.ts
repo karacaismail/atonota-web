@@ -5,11 +5,9 @@ import { http, HttpResponse, type JsonBodyType } from 'msw';
 import { TOOL_RESULT_PREFIX } from '@/api/ai-protocol';
 
 import {
-  SAMPLE_PRESS_CSRF_TOKEN,
   SAMPLE_USER as SAMPLE_ACCOUNT,
   sampleAccessSummary,
   sampleLeaves,
-  samplePressReauthUrl,
   SAMPLE_CSRF_TOKEN,
   SAMPLE_DOCTYPE_ETAG,
   SAMPLE_USER,
@@ -28,15 +26,12 @@ export const mockState = {
   signedIn: true,
   proposals: new Map<string, ReturnType<typeof sampleProposal>>(),
   leaves: new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }])),
-  /** Press oturumu son 300 saniyede Keycloak ile yeniden doğrulandı mı? */
-  pressReauthenticated: false,
 };
 
 export function resetMockState(): void {
   mockState.signedIn = true;
   mockState.proposals.clear();
   mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
-  mockState.pressReauthenticated = false;
 }
 
 let versionCounter = 0;
@@ -429,19 +424,6 @@ export const handlers = [
     return doctype === sampleAccessSummary.doctype
       ? message(sampleAccessSummary)
       : frappeError(403, 'PermissionError');
-  }),
-
-  // Press hesap silme (press_tr sözleşmesi). Press ayrı köktür ve kendi CSRF belirtecini ister.
-  http.post('*/api/method/press_tr.api.account.request_deletion', async ({ request }) => {
-    if (request.headers.has('Authorization')) return frappeError(403, 'PermissionError');
-    if (request.headers.get('X-Frappe-CSRF-Token') !== SAMPLE_PRESS_CSRF_TOKEN) {
-      return frappeError(400, 'CSRFTokenError');
-    }
-    const body = (await request.json()) as { confirm?: unknown };
-    if (typeof body.confirm !== 'boolean') return frappeError(417, 'ValidationError');
-    if (!body.confirm) return message({ url: samplePressReauthUrl });
-    if (!mockState.pressReauthenticated) return frappeError(403, 'PermissionError');
-    return message({ submitted: true });
   }),
 
   http.post('*/api/method/platform_core.api.model.complete', async ({ request }) => {

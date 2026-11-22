@@ -79,13 +79,13 @@ export interface JsonRpcRequest {
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const EMPTY_BODY_STATUSES = new Set([202, 204, 304]);
 
-export function isJsonResponse(response: Response): boolean {
+function isJsonResponse(response: Response): boolean {
   const type = response.headers.get('Content-Type') ?? '';
   return /^application\/(.+\+)?json\b/i.test(type);
 }
 
 /** Zaman aşımı ve ağ hatasını ortak türe çeviren fetch. Kullanıcı iptali olduğu gibi iletilir. */
-export function timedFetch(timeoutMs: number) {
+function timedFetch(timeoutMs: number) {
   return async (request: Request): Promise<Response> => {
     const timer = AbortSignal.timeout(timeoutMs);
     const signal = AbortSignal.any([request.signal, timer]);
@@ -113,10 +113,7 @@ function toReadError(error: unknown, userSignal: AbortSignal | undefined): unkno
   return new ApiError({ kind: 'network', status: 0 });
 }
 
-export async function settle<T>(
-  pending: Promise<T>,
-  userSignal: AbortSignal | undefined,
-): Promise<T> {
+async function settle<T>(pending: Promise<T>, userSignal: AbortSignal | undefined): Promise<T> {
   try {
     return await pending;
   } catch (error) {

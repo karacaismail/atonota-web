@@ -200,9 +200,5 @@ export const sampleAccessSummary: AccessSummary = {
   },
 };
 
-// Press ayrı bir köktür. Kendi oturumu ve CSRF belirteci vardır.
+// Press ayrı bir köktür. Panel yalnız Press'in hesap silme sayfasına yönlendirir.
 export const SAMPLE_PRESS_URL = 'https://press.example.test';
-export const SAMPLE_PRESS_CSRF_TOKEN = 'ornek-press-csrf-belirteci';
-export const samplePressReauthUrl =
-  `${SAMPLE_KEYCLOAK_URL}/realms/platform/protocol/openid-connect/auth` +
-  '?client_id=press&prompt=login&max_age=0&code_challenge_method=S256';
