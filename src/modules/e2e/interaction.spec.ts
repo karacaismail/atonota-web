@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../tests/setup/playwright-fixtures';
 import AxeBuilder from '@axe-core/playwright';
 
 test('access form keeps its draft when resized and its branded dropdown opens', async ({

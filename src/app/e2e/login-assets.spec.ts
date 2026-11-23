@@ -1,4 +1,4 @@
-import { expect, test, type Response } from '@playwright/test';
+import { expect, test, type Response } from '../../../tests/setup/playwright-fixtures';
 
 test('login does not download AI Studio, Ant Design X, or table code', async ({ page }) => {
   await page.addInitScript(() => {

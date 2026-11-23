@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../../tests/setup/playwright-fixtures';
 import type { Locator, Page } from '@playwright/test';
 
 // Ortak deneme yolu (AGENTS.md, src/shell/routes.ts). Yalnız e2e derlemesinde açılır.

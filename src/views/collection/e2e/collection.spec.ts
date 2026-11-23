@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../../tests/setup/playwright-fixtures';
 import AxeBuilder from '@axe-core/playwright';
 import designSource from '../../../../design/source/control-size-config.json' with { type: 'json' };
 test('expanded input and select targets work without covering their centers', async ({

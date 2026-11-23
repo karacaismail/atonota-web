@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../tests/setup/playwright-fixtures';
 
 /** Sahte sunucunun tanıdığı liste: tablo gerçekten çizilir. `/satis/teklif` hata ekranını açar. */
 const LIST = `/ornek/${encodeURIComponent('örnek-kayıt')}`;

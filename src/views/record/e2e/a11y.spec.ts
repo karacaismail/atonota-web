@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../../tests/setup/playwright-fixtures';
 
 /** Kayıt deneme sayfası; e2e derlemesi bu yolda sunar. Testler kök Playwright kapısında koşar. */
 const HARNESS = '/src/views/record/harness/';

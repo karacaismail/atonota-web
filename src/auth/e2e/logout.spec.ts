@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../tests/setup/playwright-fixtures';
 
 import { SAMPLE_KEYCLOAK_URL, SAMPLE_USER, sampleLogoutUrl } from '../../mocks/fixtures';
 import { MOCK_SCENARIO_KEY } from '../../mocks/scenarios';

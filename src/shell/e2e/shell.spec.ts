@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../tests/setup/playwright-fixtures';
 
 const isCompact = (page: Page) => {
   const v = page.viewportSize();

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../../tests/setup/playwright-fixtures';
 
 test('shared keyboard mode shows one underline without an internal checkbox ring', async ({
   page,

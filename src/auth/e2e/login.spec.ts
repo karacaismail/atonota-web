@@ -1,11 +1,14 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../tests/setup/playwright-fixtures';
 
+import { isBottomBarOnly, isRingShadow, splitShadows } from '../../../tests/setup/odak-gostergesi';
 import { SAMPLE_KEYCLOAK_URL, sampleLoginUrl } from '../../mocks/fixtures';
 import { MOCK_START_LOGIN_KEY } from '../../mocks/handlers';
 import { MOCK_SCENARIO_KEY } from '../../mocks/scenarios';
 
 const BUTTON = 'AtonotA Login ile oturum aç';
+/** Birincil renk (#00aacc). Odak göstergesinin rengi. */
+const PRIMARY_RGB = 'rgb(0, 170, 204)';
 const START_LOGIN = '/api/method/platform_core.api.auth.start_login';
 
 /**
@@ -65,17 +68,35 @@ test.describe('AtonotA Login düğmesi', () => {
   test('düğme klavyeyle de basılır', async ({ page, browserName }) => {
     await openLogin(page);
     const button = page.getByRole('button', { name: BUTTON });
+    // Tab tuşu görünür odak kipini açar. Alt+Tab kipi açmaz (odak kuralı).
+    await page.keyboard.press('Tab');
+    await expect(page.locator('html')).toHaveAttribute('data-focus-mode', 'keyboard');
     // Tab ile odak düğmeye gelir. Enter ile basılır.
     // macOS WebKit Tab ile düğmeye gitmez. Orada Alt+Tab kullanılır (controls.spec.ts ile aynı).
     const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
     for (let i = 0; i < 10; i += 1) {
-      await page.keyboard.press(tab);
       if (await button.evaluate((node) => node === document.activeElement)) break;
+      await page.keyboard.press(tab);
     }
     await expect(button).toBeFocused();
-    // Çevreleyen odak halkası yoktur.
-    const outline = await button.evaluate((node) => getComputedStyle(node).outlineStyle);
-    expect(outline).toBe('none');
+    // Çevreleyen odak halkası yoktur. outline ve box-shadow ikisi de denetlenir.
+    const outline = await button.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return style.outlineStyle === 'none' || style.outlineWidth === '0px';
+    });
+    expect(outline, 'outline').toBe(true);
+    // Gösterge alt kenarda tek bir birincil renk çizgidir. Gösterge geçişle gelir. Test bu yüzden bekler.
+    const shadows = async () =>
+      splitShadows(await button.evaluate((node) => getComputedStyle(node).boxShadow));
+    await expect
+      .poll(async () => (await shadows()).filter((p) => isBottomBarOnly(p, PRIMARY_RGB)))
+      .toHaveLength(1);
+    const parts = await shadows();
+    expect(
+      parts.filter((p) => p.includes(PRIMARY_RGB)),
+      parts.join(' | '),
+    ).toHaveLength(1);
+    expect(parts.filter(isRingShadow), parts.join(' | ')).toEqual([]);
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(sampleLoginUrl.login_url);
     expect((await readStartLogin(page)).pathname).toBe(START_LOGIN);

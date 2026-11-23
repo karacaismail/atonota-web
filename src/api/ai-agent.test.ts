@@ -2,7 +2,7 @@ import type { useXAgent } from '@ant-design/x';
 import { http, HttpResponse } from 'msw';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { SAMPLE_CSRF_TOKEN, sampleCompletion } from '@/mocks/fixtures';
+import { SAMPLE_CSRF_TOKEN, SAMPLE_KEYCLOAK_URL, sampleCompletion } from '@/mocks/fixtures';
 import { mockState, resetMockState } from '@/mocks/handlers';
 import { mockServer } from '@/mocks/node';
 
@@ -21,7 +21,7 @@ const config: ApiConfig = {
   credentials: 'same-origin',
   timeoutMs: 1_000,
   modelTimeoutMs: 2_000,
-  keycloakUrl: 'https://kimlik.example.test',
+  keycloakUrl: SAMPLE_KEYCLOAK_URL,
   keycloakRealm: 'platform',
   aiRoute: 'ornek-rota',
   csrfMetaName: 'csrf-token',
