@@ -88,7 +88,7 @@ describe('Root: giriş ekranı tema içinde çizilir', () => {
   it('giriş yerleşimi dar form sütununu kullanır', async () => {
     mockState.signedIn = false;
     render(<Root session={session()} initialThemeChoice="light" engines={false} />);
-    const section = await screen.findByRole('region', { name: 'Oturum açın' });
+    const section = await screen.findByRole('main', { name: 'Oturum açın' });
     expect(section.style.maxWidth).toBe('var(--form-max-width)');
   });
 });

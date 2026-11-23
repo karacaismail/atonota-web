@@ -6,7 +6,7 @@ import { LoginScreen } from './LoginScreen';
 describe('LoginScreen', () => {
   it('kenar boşluğu, aralık ve en çok genişlik projenin CSS değişkenlerinden gelir', () => {
     render(<LoginScreen onSignIn={vi.fn()} />);
-    const region = screen.getByRole('region', { name: 'Oturum açın' });
+    const region = screen.getByRole('main', { name: 'Oturum açın' });
     expect(region.style.paddingInline).toBe('var(--space-md)');
     expect(region.style.paddingBlock).toBe('var(--space-xl)');
     expect(region.style.gap).toBe('var(--space-md)');

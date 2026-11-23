@@ -8,7 +8,7 @@ export interface AuthLayoutProps {
 }
 
 /**
- * Giriş, bekleme ve hata ekranlarının ortak yerleşimi.
+ * Giriş, bekleme ve hata ekranlarının ortak yerleşimi. Dış öğe sayfanın ana bölgesidir (`main`).
  * Telefon önce kurulur: 320 px genişlikte kenar boşluğu vardır.
  * Geniş ekranda içerik dar form sütununda (`--form-max-width`) ortalanır.
  * Bütün ölçüler projenin CSS değişkenlerinden gelir (`src/design/css-variables.ts`).
@@ -16,7 +16,7 @@ export interface AuthLayoutProps {
 export function AuthLayout({ children, labelledBy }: AuthLayoutProps) {
   return (
     <Flex
-      component="section"
+      component="main"
       vertical
       gap="var(--space-md)"
       {...(labelledBy ? { 'aria-labelledby': labelledBy } : {})}
