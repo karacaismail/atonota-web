@@ -27,7 +27,8 @@ export function LoginScreen({ onSignIn, brandName = messages.tr.brand, notice }:
       </Typography.Title>
       <Typography.Paragraph style={{ margin: 0 }}>{text.login_body}</Typography.Paragraph>
       {notice ? (
-        <Typography.Paragraph role="status" type="secondary" style={{ margin: 0 }}>
+        // Not soluk çizilmez. antd `secondary` rengi 14 px metinde 4.5:1 vermez (inceleme 2, Ö-1).
+        <Typography.Paragraph role="status" style={{ margin: 0 }}>
           {text[notice]}
         </Typography.Paragraph>
       ) : null}

@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
@@ -76,6 +77,17 @@ test.describe('oturumu kapatma (B1)', () => {
     await page.getByRole('button', { name: 'Oturumu kapat' }).click();
 
     await expect(page.locator('.ant-message').getByText(SIGN_OUT_ERROR)).toBeVisible();
+    // Uyarının simgesi ekran okuyucudan gizlidir. İngilizce simge adı okunmaz (inceleme 2, K-2).
+    // Uyarı 3 saniye sonra kapanır. Bu yüzden denetim beklemeden, tek seferde yapılır.
+    const exposed = await page
+      .locator('.ant-message-notice-content')
+      .first()
+      .evaluate((node) =>
+        Array.from(node.querySelectorAll('[aria-label], [role="img"]'))
+          .filter((el) => !el.closest('[aria-hidden="true"]'))
+          .map((el) => el.getAttribute('aria-label') ?? el.getAttribute('role')),
+      );
+    expect(exposed).toEqual([]);
     // Ekran okuyucu metni yine bir kez duyar.
     await expect(page.getByRole('alert').filter({ hasText: SIGN_OUT_ERROR })).toHaveCount(1);
   });
@@ -103,4 +115,27 @@ test.describe('oturumu kapatma (B1)', () => {
     expect(foreign).toEqual([]);
     expect(new URL(page.url()).hostname).not.toBe('baska.example.test');
   });
+
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`${scheme === 'dark' ? 'koyu' : 'açık'} temada giriş ekranı notu en az 4.5:1 verir (inceleme 2, Ö-1)`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await useScenario(page, 'cikis-yabanci-adres');
+      await openSidebar(page);
+      await page.getByRole('button', { name: 'Oturumu kapat' }).last().click();
+
+      const main = page.getByRole('main', { name: 'Oturum açın' });
+      await expect(main.getByRole('status')).toHaveText(
+        'Panelden çıktınız. Kimlik oturumunuz açık kalmış olabilir.',
+      );
+      await expect(page.locator('html')).toHaveAttribute('data-theme', scheme);
+
+      const results = await new AxeBuilder({ page })
+        .include('main')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+        .analyze();
+      expect(results.violations).toEqual([]);
+    });
+  }
 });

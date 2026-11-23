@@ -1,4 +1,4 @@
-import { SignOut } from '@phosphor-icons/react';
+import { SignOut, XCircle } from '@phosphor-icons/react';
 import { Button, message } from 'antd';
 import { useRef, useState } from 'react';
 
@@ -112,8 +112,15 @@ function SignOutButton({ rail, signOut }: { rail: boolean; signOut: () => Promis
         setPhase('failed');
         if (rail) {
           // Uyarı yalnız gözle görülür. Duyuru `alert` alanındadır. Metin iki kez okunmaz.
+          // Simge de gizlidir. antd simgesi İngilizce "close-circle" adını taşır (inceleme 2, K-2).
+          // `anticon` sınıfı antd'nin hata rengini ve aralığını simgeye verir.
           void toast.open({
             type: 'error',
+            icon: (
+              <span className="anticon" aria-hidden="true">
+                <XCircle />
+              </span>
+            ),
             content: <span aria-hidden="true">{t.footer.signOutError}</span>,
           });
         }
