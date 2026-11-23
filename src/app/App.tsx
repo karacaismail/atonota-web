@@ -1,5 +1,7 @@
 import { lazy, Suspense } from 'react';
 
+import type { ShellViewData } from '@/shell/view-data';
+
 import { AppProviders } from './AppProviders';
 import { DEMO_PATH_PREFIX } from './demo-mode';
 
@@ -21,9 +23,13 @@ function currentPath(): string {
 }
 
 /** Kabuk ya da deneme sayfası. Sağlayıcıları çağıran kurar (bkz. `Root`). */
-export function AppContent() {
+export function AppContent({ viewData = null }: { viewData?: ShellViewData | null }) {
   const demo = DemoFoundationPage && currentPath() === `${DEMO_PATH_PREFIX}foundation`;
-  return <Suspense fallback={null}>{demo ? <DemoFoundationPage /> : <ShellApp />}</Suspense>;
+  return (
+    <Suspense fallback={null}>
+      {demo ? <DemoFoundationPage /> : <ShellApp viewData={viewData} />}
+    </Suspense>
+  );
 }
 
 /** Uygulama kökü: sağlayıcılar içinde kabuk. */

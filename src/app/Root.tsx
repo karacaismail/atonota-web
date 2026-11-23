@@ -6,6 +6,7 @@ import { createModuleClient, ModuleProvider } from '@/modules';
 import { AppContent } from './App';
 import { AppProviders } from './AppProviders';
 import type { ThemeModeChoice } from './theme-mode';
+import { createShellViewData } from './view-data';
 
 export interface RootProps {
   session: PlatformSession;
@@ -24,6 +25,7 @@ export interface RootProps {
  */
 export function Root({ session, initialThemeChoice, engines = true, children }: RootProps) {
   const client = useMemo(() => createModuleClient(session.api), [session]);
+  const viewData = useMemo(() => createShellViewData(session.api), [session]);
   return (
     <AppProviders {...(initialThemeChoice ? { initialThemeChoice } : {})} engines={engines}>
       <AuthGate session={session}>
@@ -31,7 +33,7 @@ export function Root({ session, initialThemeChoice, engines = true, children }: 
           <ModuleProvider
             value={{ tenant: session.config.siteUrl, user, mode: 'live', locale: 'tr', client }}
           >
-            {children ?? <AppContent />}
+            {children ?? <AppContent viewData={viewData} />}
           </ModuleProvider>
         )}
       </AuthGate>
