@@ -10,6 +10,7 @@ export interface AuthLayoutProps {
 /**
  * Giriş, bekleme ve hata ekranlarının ortak yerleşimi.
  * Telefon önce kurulur: 320 px genişlikte kenar boşluğu vardır.
+ * Geniş ekranda içerik dar form sütununda (`--form-max-width`) ortalanır.
  * Bütün ölçüler projenin CSS değişkenlerinden gelir (`src/design/css-variables.ts`).
  */
 export function AuthLayout({ children, labelledBy }: AuthLayoutProps) {
@@ -22,7 +23,7 @@ export function AuthLayout({ children, labelledBy }: AuthLayoutProps) {
       style={{
         boxSizing: 'border-box',
         width: '100%',
-        maxWidth: 'var(--content-max-width)',
+        maxWidth: 'var(--form-max-width)',
         marginInline: 'auto',
         paddingInline: 'var(--space-md)',
         paddingBlock: 'var(--space-xl)',

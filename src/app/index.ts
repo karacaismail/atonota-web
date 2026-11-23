@@ -1,4 +1,5 @@
-export { App } from './App';
+export { App, AppContent } from './App';
+export { Root, type RootProps } from './Root';
 export { DEMO_MODE, DEMO_PATH_PREFIX, isDemoEnabled } from './demo-mode';
 export { AppProviders, type AppProvidersProps } from './AppProviders';
 export {

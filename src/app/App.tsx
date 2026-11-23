@@ -20,12 +20,17 @@ function currentPath(): string {
   return typeof window === 'undefined' ? '/' : window.location.pathname;
 }
 
+/** Kabuk ya da deneme sayfası. Sağlayıcıları çağıran kurar (bkz. `Root`). */
+export function AppContent() {
+  const demo = DemoFoundationPage && currentPath() === `${DEMO_PATH_PREFIX}foundation`;
+  return <Suspense fallback={null}>{demo ? <DemoFoundationPage /> : <ShellApp />}</Suspense>;
+}
+
 /** Uygulama kökü: sağlayıcılar içinde kabuk. */
 export function App() {
-  const demo = DemoFoundationPage && currentPath() === `${DEMO_PATH_PREFIX}foundation`;
   return (
     <AppProviders>
-      <Suspense fallback={null}>{demo ? <DemoFoundationPage /> : <ShellApp />}</Suspense>
+      <AppContent />
     </AppProviders>
   );
 }
