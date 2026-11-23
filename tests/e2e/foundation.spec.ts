@@ -184,9 +184,8 @@ test.describe('kök sayfa', () => {
     expect(family).toContain('Outfit');
   });
 
-  test('deneme sayfası üretim derlemesine girmez: yol yalnız e2e modunda açılır', async ({
-    page,
-  }) => {
+  // Üretim derlemesinde deneme sayfasının olmadığını `src/app/build-output.node.test.ts` denetler.
+  test('deneme sayfası e2e derlemesinde /_demo/foundation yolunda açılır', async ({ page }) => {
     await page.goto(DEMO);
     await expect(page.getByRole('heading', { level: 1, name: 'Atonota' })).toBeVisible();
   });

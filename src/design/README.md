@@ -7,7 +7,7 @@ Tek karar kaynağı `design/source/control-size-config.json` dosyasıdır. Bu kl
 1. Bileşen içinde sabit renk, ölçü, gölge, süre ya da eğri yazmayın. CSS değişkenini ya da `@/design` tokenını kullanın.
 2. CSS değişkenleri `AppProviders` ile sayfaya her zaman yüklenir. Ek içe aktarma gerekmez.
 3. Koyu tema `html[data-theme="dark"]` ile açılır. Tema farkı olan değişkenler orada yeniden tanımlıdır.
-4. Hareket için yalnız `--motion-*` değişkenlerini kullanın. `src/design/` dışında sabit süre ya da `cubic-bezier` yazılırsa `npm run lint` başarısız olur (`scripts/motion-gate.mjs`).
+4. Hareket için yalnız `--motion-*` değişkenlerini kullanın. `src/design/` dışında sabit süre, `cubic-bezier`, `steps` ya da `ease`, `ease-in`, `ease-out`, `ease-in-out`, `linear` sözcüğü yazılırsa `npm run lint` başarısız olur (`scripts/motion-gate.mjs`). Kapı CSS'i bildirim bildirim tarar; Prettier'in satırlara böldüğü değerler ve JS içindeki sayı süreleri (`transitionDuration: 200`) de yakalanır.
 5. antd bileşenleri temayı `AppProviders` içinden alır. antd'nin kendi odak çerçevesi tema düzeyinde kapalıdır. Ek odak stili yazmayın.
 6. Yatay kayması gereken tablo ya da geniş içeriği `data-scroll-x` kapsayıcısına alın. Kapsayıcıya `tabIndex={0}`, `role="region"` ve erişilebilir ad verin. Taşma testi bu kapsayıcının içini saymaz.
 
@@ -21,7 +21,7 @@ Tek karar kaynağı `design/source/control-size-config.json` dosyasıdır. Bu kl
 | Giriş | `--input-h-sm/md/lg`, `--input-fs-sm/md/lg`, `--input-lh-sm/md/lg` | `sizes` |
 | Ağırlık | `--font-weight-sm/md/lg` (400/500/600) | `fontWeight` |
 | Renk | `--color-primary`, `--color-primary-hover`, `--color-primary-active` | `primary` |
-| Birincil metin | `--primary-text`, `--primary-text-hover`. Koyu temada ek olarak `--primary-bg`, `--primary-bg-hover`, `--primary-bg-active` | `primary.light` ve `primary.dark` |
+| Birincil metin | `--primary-text`, `--primary-text-hover`. Koyu temada ek olarak `--primary-bg`, `--primary-bg-hover`, `--primary-bg-active` (düz renk; kaynak tonun yerleşim zeminine bindirilmiş hali) | `primary.light` ve `primary.dark` |
 | Koyu zeminler | `--bg-layout`, `--bg-panel`, `--bg-elevated`, `--bg-input`, `--bg-button` (yalnız koyu tema) | `darkPalette` |
 | Köşe | `--radius` (5), `--card-radius` (10) | `radius`, `cards` |
 | Gölge | `--shadow-card` (7 katman), `--shadow-button` (flat), `--shadow-input` (iç), `--shadow-dropdown` (9 katman) | `derived.shadowCss` / `shadowCssDark` |
@@ -51,5 +51,5 @@ Dropdown açılış hareketi için `@keyframes atonota-dropdown-in` tanımlıdı
 
 - Birim testleri `src/**/*.test.{ts,tsx}` altındadır. `npm test` hepsini koşar.
 - Tarayıcı testleri `tests/e2e/*.spec.ts` ve `src/<klasör>/e2e/*.spec.ts` altındadır. `npm run test:e2e` hepsini koşar. Ayrı Playwright ayarı gerekmez.
-- Deneme sayfaları yalnız e2e derlemesinde açılır: `import.meta.env.MODE === 'e2e'` koşulu ve `/_demo/<iş>` yolu. `npm run build:e2e` ve `npm run dev:e2e` bu modu açar. Üretim derlemesine girmez.
+- Deneme sayfaları yalnız e2e derlemesinde açılır: `import.meta.env.MODE === 'e2e'` koşulu ve `/_demo/<iş>` yolu. `npm run build:e2e` ve `npm run dev:e2e` bu modu açar. Üretim derlemesine girmez; bunu `src/app/build-output.node.test.ts` gerçek `vite build` ile denetler. Deneme rotası shell işinin rota listesine eklenir; `/_demo/` öneki koleksiyon sayfasına düşmez (`isDemoPath`).
 - Temel deneme sayfası `/_demo/foundation` yolundadır.

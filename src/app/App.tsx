@@ -1,9 +1,13 @@
 import { lazy, Suspense } from 'react';
 
-import { ShellApp } from '@/shell';
-
 import { AppProviders } from './AppProviders';
 import { DEMO_PATH_PREFIX } from './demo-mode';
+
+/**
+ * Kabuk kendi parçasında tembel yüklenir. Böylece giriş ve bekleme ekranları (AuthGate) kabuğu
+ * indirmeden açılır; kabuk yalnız oturum kurulunca iner.
+ */
+const ShellApp = lazy(() => import('@/shell').then((m) => ({ default: m.ShellApp })));
 
 /**
  * Deneme sayfaları yalnız e2e derlemesinde pakete girer. Koşul derleme zamanında sabittir;
@@ -21,13 +25,7 @@ export function App() {
   const demo = DemoFoundationPage && currentPath() === `${DEMO_PATH_PREFIX}foundation`;
   return (
     <AppProviders>
-      {demo ? (
-        <Suspense fallback={null}>
-          <DemoFoundationPage />
-        </Suspense>
-      ) : (
-        <ShellApp />
-      )}
+      <Suspense fallback={null}>{demo ? <DemoFoundationPage /> : <ShellApp />}</Suspense>
     </AppProviders>
   );
 }

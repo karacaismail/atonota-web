@@ -30,7 +30,28 @@ export default defineConfig(({ mode }) => ({
       '@design-source': fileURLToPath(new URL('./design/source', import.meta.url)),
     },
   },
-  build: mode === 'e2e' ? { rolldownOptions: { input: e2eInputs() } } : {},
+  build: {
+    // Derleme bildirgesi (.vite/manifest.json): parça ve bağımlılık listesi. Yetenek bazlı teslim
+    // testleri (adaptive, modules) bununla sayfanın yalnız kendi parçalarını indirdiğini doğrular.
+    manifest: true,
+    rolldownOptions: {
+      ...(mode === 'e2e' ? { input: e2eInputs() } : {}),
+      output: {
+        // Paket parçalama: kitaplıklar ayrı parçadır; sürüm değişince yalnız ilgili parça iner.
+        // Sayfalar ve kabuk tembel `import()` ile kendi parçasına düşer (App.tsx ve shell rotaları).
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules\/(react|react-dom|scheduler)\// },
+            { name: 'router', test: /node_modules\/(react-router|react-router-dom)\// },
+            { name: 'antd-x', test: /node_modules\/@ant-design\/x\// },
+            { name: 'antd', test: /node_modules\/(antd|@ant-design|rc-[^/]+|@rc-component)\// },
+            { name: 'icons', test: /node_modules\/@phosphor-icons\// },
+            { name: 'auth', test: /node_modules\/oidc-client-ts\// },
+          ],
+        },
+      },
+    },
+  },
   server: {
     host: '127.0.0.1',
     port: 5173,
