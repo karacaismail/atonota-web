@@ -1,5 +1,6 @@
 import { createContext } from 'react';
 
+import type { ModuleEnvironment } from '@/modules';
 import type { CollectionDefinition, CollectionSource } from '@/views/collection';
 
 /** Liste rotasının adres parçaları. Eşleme sağlayıcının işidir. */
@@ -24,6 +25,8 @@ export interface ShellCollectionData {
  */
 export interface ShellViewData {
   collection?: ShellCollectionData;
+  /** Modül sayfalarının ortamı. Kabuk bunu `ModuleProvider` ile verir. */
+  modules?: ModuleEnvironment;
 }
 
 export const ViewDataContext = createContext<ShellViewData | null>(null);

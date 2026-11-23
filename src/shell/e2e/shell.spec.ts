@@ -77,7 +77,9 @@ test.describe('klavye ile flyout', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Ana sayfa' })).toBeVisible();
     // WebKit, Safari gibi Tab ile bağlantı ve düğmeleri atlar. Bu yüzden
     // menünün kendi aşağı ok gezinmesi kullanılır. Bu yol her motorda aynıdır.
-    await page.getByRole('link', { name: 'Asistan' }).focus();
+    // Modül bağlantıları "Asistan" ile "Satış" arasındadır. Son modül bağlantısı
+    // "Satış" düğmesinden hemen öncedir.
+    await page.getByRole('link', { name: 'Yapay zekâ işlemleri' }).focus();
     await page.keyboard.press('ArrowDown');
     const next = page.getByRole('button', { name: 'Satış', exact: true });
     await expect(next).toBeFocused();

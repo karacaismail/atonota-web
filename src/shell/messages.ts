@@ -88,6 +88,8 @@ export const t = {
     assistantText:
       'Sorunuz alındı. Asistan yanıtı bu sürümde yok. Yanıt yüzeyi sonraki işte gelecek.',
     sample: 'Bu sayfadaki veriler örnektir.',
+    noModuleEnvironment:
+      'Modül bağlantısı kurulmadı. Uygulama girişi kabuğa modül ortamını vermeli.',
     noDataSource: 'Veri kaynağı bağlı değil. Uygulama girişi kabuğa veri bağlantısı vermeli.',
     definitionError: 'Liste tanımı alınamadı. Bağlantıyı denetleyip yeniden deneyin.',
     tableRegion: 'Kayıt tablosu',

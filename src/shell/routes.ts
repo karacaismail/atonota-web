@@ -20,9 +20,23 @@
  * - Bu dosyanın sahibi `shell` işidir. Öteki işler yalnız kendi satırını ekler.
  */
 import type { Icon } from '@phosphor-icons/react';
-import { FileText, House, Robot, Rows, Sparkle } from '@phosphor-icons/react';
+import {
+  Buildings,
+  CalendarCheck,
+  FileText,
+  House,
+  Robot,
+  Rows,
+  ShieldCheck,
+  Sparkle,
+  SquaresFour,
+  UserCircle,
+} from '@phosphor-icons/react';
 import type { ComponentType } from 'react';
-import { lazy } from 'react';
+import { createElement, lazy } from 'react';
+
+import type { ModuleRegistration } from '@/modules';
+import { moduleRegistrations } from '@/modules';
 import type { RouteObject } from 'react-router-dom';
 
 export interface RouteEntry {
@@ -50,6 +64,37 @@ export const aiStudioRoute: RouteEntry = {
 };
 
 /**
+ * Modül sayfasının tembel yükleyicisi.
+ * Sayfa ve `ModuleBoundary` yalnız yükleyici çağrılınca istenir.
+ * Sayfa `ModuleProvider` içinde açılır.
+ */
+export function modulePage(load: ModuleRegistration['load']): RouteEntry['load'] {
+  return () =>
+    Promise.all([load(), import('./pages/ModuleBoundary')]).then(([page, boundary]) => {
+      const Page = page.default;
+      const { ModuleBoundary } = boundary;
+      return { default: () => createElement(ModuleBoundary, { page: Page }) };
+    });
+}
+
+/** Modül ikonları. Kayıtta ikon alanı yoktur. Bilinmeyen modül genel ikonu alır. */
+const moduleIcons: Record<string, Icon> = {
+  account: UserCircle,
+  administration: ShieldCheck,
+  hr: CalendarCheck,
+  'site-plan': Buildings,
+  'ai-operations': Robot,
+};
+
+/** `modules` işinin kayıtları (`src/modules/registry.ts`). Kabuk yalnız biçimi çevirir. */
+export const moduleRoutes: RouteEntry[] = moduleRegistrations.map((m) => ({
+  path: m.path,
+  label: m.label.tr,
+  icon: moduleIcons[m.id] ?? SquaresFour,
+  load: modulePage(m.load),
+}));
+
+/**
  * Tembel rota listesi. Her iş buraya yalnız kendi satırını ekler.
  * Bu satırlar koleksiyon yollarından önce eklenir ve onlardan önce eşleşir.
  */
@@ -62,6 +107,7 @@ export const lazyRoutes: RouteEntry[] = [
     load: () => import('./pages/AssistantPage'),
   },
   { path: '/ajanlar/:id', label: 'AI ajanı', icon: Robot, load: () => import('./pages/AgentPage') },
+  ...moduleRoutes,
   ...(shellFeatures.aiStudio ? [aiStudioRoute] : []),
 ];
 

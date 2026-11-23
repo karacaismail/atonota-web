@@ -81,6 +81,20 @@ Kuralın tamamı dosyanın başındaki yorumdadır. `routes.test.ts` biçimi den
 2. Koleksiyon yolları (`collectionRoutes`). Bu yolların sahibi kabuktur.
 3. Bilinmeyen adres için "Sayfa bulunamadı".
 
+Modül sayfaları `src/modules/registry.ts` dosyasındaki `moduleRegistrations` listesinden gelir. Kabuk her kaydı `lazyRoutes` listesine bir satır olarak ekler. Menü etiketi kaydın Türkçe adıdır. Modüller menüde "Asistan" bağlantısından sonra görünür. Sayfa dosyası yalnız sayfa açılınca istenir.
+
+Modül sayfası `ModuleProvider` içinde açılır. Ortamı uygulama girişi `viewData.modules` alanıyla verir. Ortamı `createShellModuleEnvironment` kurar. Bu işlev istemciyi `createModuleClient` ile ortak API istemcisinden yapar. Örnek:
+
+```tsx
+<ShellApp
+  viewData={{
+    modules: createShellModuleEnvironment({ api: session.api, tenant, user }),
+  }}
+/>
+```
+
+`user` değeri Frappe kullanıcı kimliğidir. Bu değer açılış verisindeki `user.name` alanıdır. Ortam verilmezse modül sayfası "Modül bağlantısı kurulmadı" yazar.
+
 Bazı ilk adres parçaları ayrılmıştır: `_demo` ve `panel`. Bu adresler koleksiyon ya da kayıt sayfasına hiçbir zaman düşmez. Örneğin `/_demo/tablo` adresinin satırı yoksa "Sayfa bulunamadı" görünür.
 
 AI Studio satırı `/panel/ai` adresidir. Satır `shellFeatures.aiStudio` ayarının arkasındadır. Ayar kapalıdır. AI Studio `main` dalına girince `ai-studio` işi yükleyiciyi bağlar ve ayarı açar.
