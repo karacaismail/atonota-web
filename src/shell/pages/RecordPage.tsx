@@ -8,6 +8,7 @@ import { t } from '../messages';
 import { routes } from '../paths';
 import type { SampleRow } from '../sampleData';
 import { findGroup, findLeaf, sampleRows } from '../sampleData';
+import { useViewData } from '../view-data';
 
 type Draft = Pick<SampleRow, 'title' | 'party' | 'amount'>;
 
@@ -19,6 +20,11 @@ export default function RecordPage() {
   const row = rows[index];
   const leaf = findLeaf(module, doctype);
   const group = findGroup(module);
+  // Uygulama girişi kayıt görünümünü bağladıysa kayıt sunucudan gelir. Örnek kayıt yalnız
+  // bağlantı yokken (deneme sayfaları) gösterilir.
+  const Live = useViewData()?.record?.Component;
+
+  if (Live) return <Live module={module} doctype={doctype} name={name} />;
 
   if (!row) {
     return (

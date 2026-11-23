@@ -11,6 +11,11 @@ describe('doctypeFromSlug', () => {
 });
 
 describe('createShellViewData', () => {
+  it('kayıt rotasını kayıt görünümüne bağlar', () => {
+    const data = createShellViewData({ listDocuments: vi.fn(), getDocType: vi.fn() } as never);
+    expect(data.record?.Component).toBeDefined();
+  });
+
   it('liste isteğini API v2 sorgusuna çevirir', async () => {
     const listDocuments = vi.fn().mockResolvedValue({ data: [{ name: 'A' }], hasNextPage: true });
     const data = createShellViewData({ listDocuments, getDocType: vi.fn() } as never);

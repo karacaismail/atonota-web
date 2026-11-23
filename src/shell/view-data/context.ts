@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import type { ComponentType } from 'react';
 
 import type { ModuleEnvironment } from '@/modules';
 import type { CollectionDefinition, CollectionSource } from '@/views/collection';
@@ -19,6 +20,19 @@ export interface ShellCollectionData {
   source: CollectionSource;
 }
 
+/** Kayıt rotasının adres parçaları. */
+export interface RecordAddress {
+  module: string;
+  doctype: string;
+  /** Adresteki kayıt adı, kodlanmış hâliyle. */
+  name: string;
+}
+
+export interface ShellRecordData {
+  /** Kaydı çizen bileşen. Uygulama girişi bunu tembel yükler. */
+  Component: ComponentType<RecordAddress>;
+}
+
 /**
  * Kabuğun görünümlere verdiği veri bağlantısı.
  * Kabuk API istemcisi kurmaz. Bağlantıyı uygulama girişi (`src/app/`) verir.
@@ -33,6 +47,8 @@ export interface ShellAccount {
 
 export interface ShellViewData {
   collection?: ShellCollectionData;
+  /** Kayıt rotasının bağlantısı. Yoksa kabuk örnek kaydı gösterir (deneme sayfaları). */
+  record?: ShellRecordData;
   /** Oturumdaki kişi. Yoksa kabuk örnek kişiyi gösterir (deneme sayfaları). */
   account?: ShellAccount;
   /** Modül sayfalarının ortamı. Kabuk bunu `ModuleProvider` ile verir. */

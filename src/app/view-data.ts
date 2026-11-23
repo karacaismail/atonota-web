@@ -1,3 +1,5 @@
+import { lazy } from 'react';
+
 import type { ApiClient } from '@/api';
 import type { ShellAccount, ShellViewData } from '@/shell/view-data';
 // Hafif giriş: `@/views/collection` ana girişi CollectionView ve yönlendiriciyi getirir.
@@ -30,6 +32,8 @@ export function createShellViewData(
       // Liste isteklerini `views-collection` işinin ortak bağlantısı sunucuya iletir.
       source: createApiSource(api),
     },
+    // Kayıt görünümü kendi parçasında iner; yalnız kayıt rotası açılınca yüklenir.
+    record: { Component: lazy(() => import('./RecordRoute')) },
   };
 }
 
