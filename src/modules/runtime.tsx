@@ -42,7 +42,7 @@ export interface ModuleEnvironment {
   mode: 'example' | 'live';
   locale?: 'en' | 'tr';
   client?: ModuleClient;
-  profile?: { fullName: string; roles: readonly string[] };
+  profile?: { fullName: string; roles: readonly string[]; truncated?: boolean };
   /** Realm URL comes from validated auth configuration, never from an arbitrary query string. */
   identityRealmUrl?: string;
   accountSecurityUrl?: string;
