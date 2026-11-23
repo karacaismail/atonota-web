@@ -1,6 +1,12 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
+/**
+ * Kayıt deneme sayfası. e2e derlemesi sayfayı bu yolda sunar (vite.config.ts, e2eInputs).
+ * Testler kök Playwright kapısında koşar; ayrı ayar dosyası yoktur (AGENTS.md).
+ */
+const HARNESS = '/src/views/record/harness/';
+
 async function overflowX(page: Page): Promise<number> {
   return page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -16,7 +22,7 @@ test.describe('kayıt formu yerleşimi ve 320 px uyumu', () => {
   test('sayfa yatay taşmaz; telefonda tek sütun, geniş ekranda iki sütun olur', async ({
     page,
   }) => {
-    await page.goto('/');
+    await page.goto(HARNESS);
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
     expect(await overflowX(page)).toBeLessThanOrEqual(0);
 
@@ -35,7 +41,7 @@ test.describe('kayıt formu yerleşimi ve 320 px uyumu', () => {
   test('alt tablodaki Tutar alanı 320 px dahil okunur genişliktedir ve tablo kendi kutusunda kayar', async ({
     page,
   }) => {
-    await page.goto('/');
+    await page.goto(HARNESS);
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
     const amountInput = page.locator('.rv-table-cell--num input').first();
@@ -50,7 +56,7 @@ test.describe('kayıt formu yerleşimi ve 320 px uyumu', () => {
 
 test.describe('imza alanı ve bağlantı araması', () => {
   test('imza tuvali birden çok çizgiyi ve sağ yarıdaki çizimi korur', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(HARNESS);
     const canvas = page.getByRole('img', { name: 'Onay İmzası' });
     await canvas.scrollIntoViewIfNeeded();
     const box = await canvas.boundingBox();
@@ -112,7 +118,7 @@ test.describe('imza alanı ve bağlantı araması', () => {
   });
 
   test('bağlantı araması hata alınca hata metni ve Yeniden dene gösterir', async ({ page }) => {
-    await page.goto('/?linkError=1');
+    await page.goto(`${HARNESS}?linkError=1`);
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
     const deptSelector = page.locator('[data-fieldname="department"] .ant-select-selector');
@@ -133,7 +139,7 @@ test.describe('imza alanı ve bağlantı araması', () => {
 
 test.describe('odak kuralları', () => {
   test('fare tıklamasında klavye odak modu açılmaz, yalnız Tab ile açılır', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(HARNESS);
     const root = page.locator('.rv-root');
     await expect(root).toHaveAttribute('data-rv-kbd', 'false');
 
@@ -148,7 +154,7 @@ test.describe('odak kuralları', () => {
   test('klavye odağında çevreleyen halka olmamalı ve görünür alt çizgi olmalı', async ({
     page,
   }) => {
-    await page.goto('/');
+    await page.goto(HARNESS);
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
     // Odak göstergesi geçiş hareketiyle gelir. Ölçüm hareketin bitiş değerinde yapılır.

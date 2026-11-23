@@ -1,7 +1,11 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-for (const url of ['/', '/?theme=dark', '/?scenario=error', '/?scenario=unauthorized']) {
+/** Kayıt deneme sayfası; e2e derlemesi bu yolda sunar. Testler kök Playwright kapısında koşar. */
+const HARNESS = '/src/views/record/harness/';
+
+for (const query of ['', '?theme=dark', '?scenario=error', '?scenario=unauthorized']) {
+  const url = `${HARNESS}${query}`;
   test(`axe erişilebilirlik: ${url}`, async ({ page }) => {
     await page.goto(url);
     await expect(page.locator('.rv-header-title, .rv-state-card').first()).toBeVisible();

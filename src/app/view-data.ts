@@ -1,5 +1,8 @@
 import type { ApiClient } from '@/api';
 import type { ShellAccount, ShellViewData } from '@/shell/view-data';
+// Derin içe aktarım: `@/views/collection` girişi CollectionView ve yönlendiriciyi getirir.
+// Bu dosya ilk yük parçasındadır; yönlendirici ve görünüm yalnız liste rotasıyla inmelidir.
+import { createApiSource } from '@/views/collection/api-source';
 import { createDefinition } from '@/views/collection/model';
 
 /**
@@ -25,23 +28,8 @@ export function createShellViewData(
         if (result.status !== 'fresh') throw new Error('DocType bilgisi alınamadı.');
         return createDefinition(result.meta);
       },
-      source: {
-        kind: 'api',
-        async list(request, signal) {
-          const page = await api.listDocuments(
-            request.doctype,
-            {
-              fields: request.fields,
-              filters: request.filters,
-              orderBy: request.order_by,
-              start: request.limit_start,
-              limit: request.limit_page_length,
-            },
-            { signal },
-          );
-          return { data: page.data, has_next_page: page.hasNextPage };
-        },
-      },
+      // Liste isteklerini `views-collection` işinin ortak bağlantısı sunucuya iletir.
+      source: createApiSource(api),
     },
   };
 }

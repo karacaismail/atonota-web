@@ -37,7 +37,7 @@ describe('createShellViewData', () => {
       },
       { signal },
     );
-    expect(page).toEqual({ data: [{ name: 'A' }], has_next_page: true });
+    expect(page).toEqual({ data: [{ name: 'A' }], hasNextPage: true });
   });
 
   it('tanımı sunucunun DocType bilgisinden kurar', async () => {

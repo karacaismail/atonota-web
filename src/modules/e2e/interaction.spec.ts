@@ -10,11 +10,12 @@ test('access form keeps its draft when resized and its branded dropdown opens', 
   const select = page.getByRole('combobox');
   await select.press('ArrowDown');
   await expect(select).toHaveAttribute('aria-expanded', 'true');
-  await page.locator('.ant-select-dropdown').evaluate(async (element) => {
+  // Every running animation settles first: the dropdown motion and the submit button's
+  // disabled-to-enabled colour transition. axe measures the blended colours of a transition
+  // that is still running (for example #c8e1e7 behind the button label) and reports contrast.
+  await page.evaluate(async () => {
     await Promise.all(
-      element
-        .getAnimations({ subtree: true })
-        .map((animation) => animation.finished.catch(() => undefined)),
+      document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
     );
   });
   expect((await new AxeBuilder({ page }).include('.module-page').analyze()).violations).toEqual([]);
@@ -59,22 +60,19 @@ test('keyboard focus remains visible without a surrounding ring', async ({ page 
 });
 
 test('a long leave heading wraps inside the review', async ({ page }) => {
+  // The e2e build answers the API from the MSW worker, so `page.route` cannot inject a record.
+  // The review of a sample leave is opened and its heading text is replaced with a 120-character
+  // name in the DOM. The wrapping rule is CSS, so the real stylesheet is what gets exercised.
   const name = 'A'.repeat(120);
-  const leave = { name, status: 'Open', docstatus: 0 };
-  const listPath = '/api/resource/Leave%20Application';
-  const detailPath = `${listPath}/${name}`;
-  await page.route(
-    ({ pathname }) => pathname === listPath || pathname === detailPath,
-    (route) =>
-      route.fulfill({
-        json: { data: new URL(route.request().url()).pathname === detailPath ? leave : [leave] },
-      }),
-  );
   await page.goto('/hr');
-  await page.getByRole('button', { name: 'İncele', exact: true }).first().click();
-  const heading = page.getByRole('heading', { name, exact: true, level: 2 });
-  await expect(heading).toHaveCSS('overflow-wrap', 'break-word');
-  expect(await heading.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
-    true,
-  );
+  const record = page.locator('.module-record', { hasText: 'ORNEK-IZIN-0001' });
+  await record.getByRole('button', { name: 'İncele', exact: true }).click();
+  const heading = page.getByRole('heading', { name: 'ORNEK-IZIN-0001', exact: true, level: 2 });
+  await expect(heading).toBeVisible();
+  await heading.evaluate((element, text) => {
+    element.textContent = text;
+  }, name);
+  const long = page.getByRole('heading', { name, exact: true, level: 2 });
+  await expect(long).toHaveCSS('overflow-wrap', 'break-word');
+  expect(await long.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });

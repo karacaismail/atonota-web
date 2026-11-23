@@ -14,7 +14,11 @@ import trTR from 'antd/locale/tr_TR';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { exampleDefinition, exampleSource } from '@/views/collection/example';
+import { createApiClient, createCsrfStore, readApiConfig } from '@/api';
+import { SAMPLE_CSRF_TOKEN } from '@/mocks/fixtures';
+import { startApiMocks } from '@/mocks/start';
+import { createApiSource } from '@/views/collection';
+import { sampleDefinition } from '@/views/collection/sample';
 
 import { ShellApp } from '../ShellApp';
 import { hexToRgba } from '../tokens';
@@ -46,12 +50,18 @@ const buttonTokens = light
       colorPrimaryActive: hexToRgba(pr.color, pr.dark.activeBackground),
     };
 
-// Deneme sayfası views-collection örnek kaynağını kullanır. Her adres aynı
-// örnek tanımı gösterir. Gerçek bağlantıyı uygulama girişi API ile kurar.
+// Deneme sayfası views-collection örnek tanımını kullanır. Her adres aynı örnek tanımı
+// gösterir. Kayıtlar ortak sahte sunucudan (MSW) gelir. Gerçek bağlantıyı uygulama girişi kurar.
+const mocks = await startApiMocks();
 const harnessViewData = {
   collection: {
-    loadDefinition: () => Promise.resolve(exampleDefinition),
-    source: exampleSource,
+    loadDefinition: () => Promise.resolve(sampleDefinition),
+    source: createApiSource(
+      createApiClient({
+        config: readApiConfig({}, window.location.origin),
+        csrf: createCsrfStore(mocks.active ? SAMPLE_CSRF_TOKEN : undefined),
+      }),
+    ),
   },
 };
 

@@ -6,6 +6,13 @@ for (const url of ['/', '/satis/teklif', '/satis/teklif/TEK-0003']) {
     await page.goto(url);
     await expect(page.locator('.shell')).toBeVisible();
     await page.waitForTimeout(400);
+    // Açılıştaki renk geçişleri bitmeden axe karışmış renkleri ölçer ve kontrast bildirir.
+    // Yük altında (WebKit masaüstü) 400 ms yetmiyordu. Bütün hareketlerin bitmesi beklenir.
+    await page.evaluate(async () => {
+      await Promise.all(
+        document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+      );
+    });
     // Birincil düğme rengi kaynak karar D06'dan gelir. Koyu temada karşıtlık
     // 3,94:1 çıkıyor. AA sınırı 4,5:1'dir. Orkestratör kararı: WCAG AA önce gelir.
     // KALDIRMA KOŞULU: `foundation` koyu birincil düğme düzeltmesi `main`
