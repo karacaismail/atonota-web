@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from 'react';
+import type { ConnectionCheck, ConnectionInput, ProviderCatalog, SavedConnection } from '../api';
 import { ModuleContext } from './context';
 
 export interface RequestOptions {
@@ -35,6 +36,23 @@ export interface ModuleClient {
   getProposal?: (id: string, options: RequestOptions) => Promise<unknown>;
   approveProposal?: (id: string, digest: string, options: RequestOptions) => Promise<unknown>;
   rejectProposal?: (id: string, options: RequestOptions) => Promise<unknown>;
+  /** Yapay zekâ sağlayıcı kataloğu. Ortak istemci yanıtı sözleşmeyle denetler. */
+  listProviderCatalog?: (options: RequestOptions) => Promise<ProviderCatalog>;
+  /**
+   * Kayıtlı API bağlantıları, hesaplar ve sağlayıcı kayıtları (Frappe API v2 listesi).
+   * Satırlar ham kayıttır. Sayfa yalnız bilinen alanları okur. Parola alanı istenmez.
+   */
+  listAiConnections?: (options: RequestOptions) => Promise<AiConnectionListing>;
+  saveProviderConnection?: (
+    input: ConnectionInput,
+    options: RequestOptions,
+  ) => Promise<SavedConnection>;
+  checkProviderConnection?: (api: string, options: RequestOptions) => Promise<ConnectionCheck>;
+}
+export interface AiConnectionListing {
+  apis: Record<string, unknown>[];
+  accounts: Record<string, unknown>[];
+  providers: Record<string, unknown>[];
 }
 export interface ModuleEnvironment {
   tenant: string;

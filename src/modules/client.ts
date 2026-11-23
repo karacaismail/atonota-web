@@ -1,6 +1,21 @@
 import type { ApiClient } from '../api';
 import type { ModuleClient } from './runtime';
 
+/** Arka uçtaki kayıt türleri (model geçidi). */
+const AI_DOCTYPES = {
+  api: 'PLT AI API',
+  account: 'PLT AI Account',
+  provider: 'PLT AI Provider',
+} as const;
+/** Okunan alanlar. Parola alanı (`api_key`) bu listede hiç yoktur. */
+const AI_FIELDS = {
+  api: ['name', 'api_name', 'account', 'connection_status', 'connection_checked_at'],
+  account: ['name', 'account_name', 'provider'],
+  provider: ['name', 'provider_name', 'catalog_provider'],
+};
+/** Liste ucunun en büyük sayfası. Daha çok bağlantı MVP kapsamında beklenmez. */
+const AI_LIST_LIMIT = 100;
+
 /** The shared client owns transport, CSRF, authentication, validation and error translation. */
 export function createModuleClient(api: ApiClient): ModuleClient {
   return {
@@ -36,5 +51,24 @@ export function createModuleClient(api: ApiClient): ModuleClient {
     getProposal: (id, options) => api.getProposal(id, options),
     approveProposal: (id, digest, options) => api.approveProposal(id, digest, options),
     rejectProposal: (id, options) => api.rejectProposal(id, options),
+    listProviderCatalog: (options) => api.listProviderCatalog(options),
+    listAiConnections: async (options) => {
+      const read = (kind: keyof typeof AI_DOCTYPES, orderBy: string) =>
+        api
+          .listDocuments(
+            AI_DOCTYPES[kind],
+            { fields: AI_FIELDS[kind], orderBy, limit: AI_LIST_LIMIT },
+            options,
+          )
+          .then((page) => page.data);
+      const [apis, accounts, providers] = await Promise.all([
+        read('api', 'modified desc'),
+        read('account', 'name asc'),
+        read('provider', 'name asc'),
+      ]);
+      return { apis, accounts, providers };
+    },
+    saveProviderConnection: (input, options) => api.saveProviderConnection(input, options),
+    checkProviderConnection: (name, options) => api.checkProviderConnection(name, options),
   };
 }
