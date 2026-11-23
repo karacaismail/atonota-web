@@ -159,21 +159,17 @@ test.describe('odak kuralları', () => {
 
     // Odak göstergesi geçiş hareketiyle gelir. Ölçüm hareketin bitiş değerinde yapılır.
     const inspectFocusedChain = async () =>
-      page.evaluate(async () => {
-        await new Promise<void>((resolve) => {
-          requestAnimationFrame(() => resolve());
-        });
-        // Yalnız biten hareketler beklenir. Sonsuz döngülü hareketin (yükleme simgesi gibi)
-        // `finished` sözü hiç dolmaz; onu beklemek testi zaman aşımına düşürür (inceleme 2, Ö4).
-        await Promise.all(
-          document
-            .getAnimations()
-            .filter((animation) => {
-              const end = animation.effect?.getComputedTiming().endTime;
-              return typeof end === 'number' && Number.isFinite(end);
-            })
-            .map((animation) => animation.finished.catch(() => undefined)),
-        );
+      page.evaluate(() => {
+        // Hareketler beklenmez, bitiş değerine atlatılır (`finish()`). Bekleme çizim karesine
+        // bağlıdır. Linux WebKit yazılımla çizer. Orada kilitli kart gölgesi (`layer7`) yüzünden
+        // bir kare saniyeler sürer. O zaman 2 saniyelik yoklama doluyordu (PR #3 CI hatası).
+        // `getAnimations()` stili hemen hesaplar. Yeni geçiş de bu listeye girer.
+        // Yalnız biten hareketler atlatılır. Sonsuz döngülü hareket (yükleme simgesi gibi)
+        // `finish()` ile bitmez, hata verir (inceleme 2, Ö4).
+        for (const animation of document.getAnimations()) {
+          const end = animation.effect?.getComputedTiming().endTime;
+          if (typeof end === 'number' && Number.isFinite(end)) animation.finish();
+        }
         const root = document.querySelector('.rv-root');
         const active = document.activeElement;
         if (!root || !active || !root.contains(active)) {
