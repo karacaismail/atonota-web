@@ -29,7 +29,9 @@ export default defineConfig({
     // Tarayıcı testleri gerçek arka uca bağlanmaz. Derleme sahte sunucuyu (MSW) açar.
     // Deneme sayfaları yalnız e2e derlemesinde açılır (vite --mode e2e). Üretim derlemesine girmez.
     command: `npm run build:e2e && npx vite preview --port ${PORT} --strictPort --host 127.0.0.1`,
-    env: { VITE_API_MOCKS: 'on' },
+    // Çıkış adresi Keycloak kökeniyle denetlenir. Kök, sahte sunucunun Keycloak köküdür.
+    // Değer `src/mocks/fixtures.ts` içindeki `SAMPLE_KEYCLOAK_URL` ile aynıdır.
+    env: { VITE_API_MOCKS: 'on', VITE_KEYCLOAK_URL: 'https://kimlik.example.test' },
     url: BASE_URL,
     reuseExistingServer: !process.env['CI'],
     timeout: 120_000,

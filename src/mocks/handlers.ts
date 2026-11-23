@@ -22,6 +22,7 @@ import {
   sampleDocTypeMeta,
   sampleDocuments,
   sampleLoginUrl,
+  FOREIGN_LOGOUT_URL,
   sampleLogoutUrl,
   sampleProposal,
   sampleTools,
@@ -47,6 +48,13 @@ export const GATEWAY_FAILURES = {
 
 export type GatewayFailure = keyof typeof GATEWAY_FAILURES;
 
+/**
+ * Sahte çıkış ucunun yanıtı.
+ * `ok`: örnek Keycloak çıkış adresi. `failure`: sunucu hatası, oturum açık kalır.
+ * `foreign_url`: başka kökenli bir çıkış adresi. Panel bu adrese gitmemelidir.
+ */
+export type LogoutOutcome = 'ok' | 'failure' | 'foreign_url';
+
 export const mockState: {
   signedIn: boolean;
   proposals: Map<string, ReturnType<typeof sampleProposal>>;
@@ -54,8 +62,11 @@ export const mockState: {
   installations: { installation_id: string; scope: 'mobile' | 'pwa'; revoked: boolean }[];
   /** Doluysa model geçidi bu hatayı verir. Testler hata ekranını böyle sınar. */
   gatewayFailure: GatewayFailure | undefined;
+  /** Çıkış ucunun yanıtı. Testler hata yolunu böyle sınar. */
+  logoutOutcome: LogoutOutcome;
 } = {
   gatewayFailure: undefined,
+  logoutOutcome: 'ok',
   signedIn: true,
   proposals: new Map<string, ReturnType<typeof sampleProposal>>(),
   leaves: new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }])),
@@ -65,6 +76,7 @@ export const mockState: {
 export function resetMockState(): void {
   mockState.signedIn = true;
   mockState.gatewayFailure = undefined;
+  mockState.logoutOutcome = 'ok';
   mockState.proposals.clear();
   mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
   mockState.installations = sampleInstallations.map((item) => ({ ...item }));
@@ -391,7 +403,11 @@ export const handlers = [
   http.post('*/api/method/platform_core.api.auth.logout', ({ request }) => {
     const denied = guard(request, { write: true });
     if (denied) return denied;
+    if (mockState.logoutOutcome === 'failure') return frappeError(500, 'Exception');
     mockState.signedIn = false;
+    if (mockState.logoutOutcome === 'foreign_url') {
+      return message({ logout_url: FOREIGN_LOGOUT_URL });
+    }
     return message(sampleLogoutUrl);
   }),
 
