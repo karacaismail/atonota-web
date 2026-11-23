@@ -109,11 +109,13 @@ export function buildAntdTheme(mode: ThemeMode, options: BuildThemeOptions = {})
       defaultShadow: shadow.button,
       dangerShadow: shadow.button,
       primaryColor: dark ? primary.dark.text : primary.light.text,
-      // Tehlike düğmesi: kendi kırmızısı, beyaz metin, her durumda en az 4.5:1 (tokens.ts: danger).
-      dangerColor: danger[mode].text,
-      colorError: danger[mode].background,
-      colorErrorHover: danger[mode].backgroundHover,
-      colorErrorActive: danger[mode].backgroundActive,
+      // Tehlike düğmesi (tokens.ts: danger). antd `colorError*` tokenlarını düz düğmede zemin, diğer
+      // türlerde yazı rengi yapar. Burada yazı rengi verilir: her zeminde en az 4.5:1. Düz düğmenin
+      // zemini `--danger-bg*` CSS değişkenlerinden gelir (css-variables.ts); metni beyazdır.
+      dangerColor: danger[mode].solidText,
+      colorError: danger[mode].color,
+      colorErrorHover: danger[mode].colorHover,
+      colorErrorActive: danger[mode].colorActive,
       ...(dark
         ? {
             defaultBg: darkPalette.button,

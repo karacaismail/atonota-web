@@ -1,4 +1,7 @@
 import { build, preview } from 'vite';
+import process from 'node:process';
+// Önizleme sahte sunucuyu (MSW) kullanır. Gerçek arka uca bağlanmaz.
+process.env.VITE_API_MOCKS ??= 'on';
 await build({
   configFile: 'vite.config.ts',
   build: {

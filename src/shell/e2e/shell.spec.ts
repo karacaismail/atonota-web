@@ -12,17 +12,10 @@ async function overflowX(page: Page) {
   );
 }
 
-const PAGES = [
-  '/',
-  '/satis/teklif',
-  '/satis/teklif?gorunum=kanban',
-  '/satis/teklif?gorunum=pivot',
-  '/satis/teklif?durum=hata',
-  '/satis/teklif?durum=yukleniyor',
-  '/satis/teklif?durum=bos',
-  '/satis/teklif?durum=canli',
-  '/satis/teklif/TEK-0003',
-];
+/** Sahte sunucunun tanıdığı liste: tablo gerçekten çizilir. `/satis/teklif` hata ekranını açar. */
+const LIST = `/ornek/${encodeURIComponent('örnek-kayıt')}`;
+
+const PAGES = ['/', '/satis/teklif', LIST, '/asistan', '/satis/teklif/TEK-0003'];
 
 test.describe('yatay taşma', () => {
   for (const url of PAGES) {
@@ -80,16 +73,23 @@ test.describe('klavye ile flyout', () => {
     await expect(page.locator('body')).not.toHaveAttribute('data-focus-dim', 'on');
   });
 
-  test('Tab ile gezinince odak göstergesi halka değildir', async ({ page }) => {
+  test('klavyeyle gezinince odak göstergesi halka değildir', async ({ page }) => {
     test.skip(isCompact(page), 'geniş ekran');
     await page.goto('/');
-    await page.getByRole('link', { name: 'Ana sayfa' }).focus();
-    await page.keyboard.press('Tab');
-    const focused = page.locator(':focus');
-    const outline = await focused.evaluate((el) => getComputedStyle(el).outlineStyle);
-    expect(outline).toBe('none');
-    const line = await focused.evaluate((el) => getComputedStyle(el, '::after').opacity);
-    expect(line).toBe('1');
+    // Tembel sayfa gelene kadar beklenir. Sonra odak denetlenir.
+    await expect(page.getByRole('heading', { level: 1, name: 'Ana sayfa' })).toBeVisible();
+    // WebKit, Safari gibi Tab ile bağlantı ve düğmeleri atlar. Bu yüzden
+    // menünün kendi aşağı ok gezinmesi kullanılır. Bu yol her motorda aynıdır.
+    // Rota bağlantıları "Ana sayfa" ile "Satış" arasındadır. Rota listesinin son
+    // parametresiz satırı "AI Studio" bağlantısıdır. "Satış" düğmesi ondan hemen sonradır.
+    await page.getByRole('link', { name: 'AI Studio' }).focus();
+    await page.keyboard.press('ArrowDown');
+    const next = page.getByRole('button', { name: 'Satış', exact: true });
+    await expect(next).toBeFocused();
+    await expect(next).toHaveCSS('outline-style', 'none');
+    await expect
+      .poll(() => next.evaluate((el) => getComputedStyle(el, '::after').opacity))
+      .toBe('1');
   });
 
   test('fare ile üzerine gelince açılır, ayrılınca kapanır', async ({ page }) => {
@@ -113,7 +113,10 @@ test.describe('telefon kabuğu', () => {
     await page.getByRole('link', { name: 'Siparişler' }).click();
     await expect(page).toHaveURL(/\/satis\/siparis$/);
     await expect(drawer).toBeHidden();
-    await expect(page.getByRole('heading', { level: 1, name: 'Siparişler' })).toBeVisible();
+    // Liste rotası tanımı sunucudan ister. Menüdeki örnek gruplar sahte sunucuda kayıtlı değildir.
+    // Sahte sunucu yetki reddi verir. Sayfa tanım hatasını ve yeniden deneme düğmesini gösterir.
+    await expect(page.getByRole('alert')).toContainText('Liste tanımı alınamadı');
+    await expect(page.getByRole('button', { name: 'Yeniden dene' })).toBeVisible();
   });
 
   test('Escape çekmeceyi kapatır ve odak menü düğmesine döner', async ({ page }) => {
@@ -164,26 +167,20 @@ test.describe('yön değişimi', () => {
   });
 });
 
-test.describe('header', () => {
-  test('görünüm seçimi adrese yazılır ve geri tuşu çalışır', async ({ page }) => {
-    await page.goto('/satis/teklif');
-    await expect(page.getByRole('heading', { level: 1, name: 'Teklifler' })).toBeVisible();
-    await page.locator('label', { has: page.getByRole('radio', { name: 'Kanban' }) }).click();
-    await expect(page).toHaveURL(/gorunum=kanban/);
-    await expect(
-      page
-        .getByRole('list')
-        .filter({ has: page.getByRole('listitem') })
-        .first(),
-    ).toBeVisible();
-    await page.goBack();
-    await expect(page).not.toHaveURL(/gorunum=/);
+test.describe('header ve sayfalar', () => {
+  test('liste rotası views-collection görünümünü çizer', async ({ page }) => {
+    // Uygulama girişi liste rotasını ortak API istemcisine bağlar. Adres parçası DocType adına
+    // çevrilir: `örnek-kayıt` -> `Örnek Kayıt`. Sahte sunucu yalnız bu türü verir.
+    await page.goto(LIST);
+    await expect(page.getByRole('heading', { level: 1, name: 'Kayıtlar' })).toBeAttached();
+    await expect(page.getByText('ORNEK-0001').first()).toBeVisible();
+    await expect(page.getByText('TEK-0001')).toHaveCount(0);
   });
 
-  test('hata durumunda yeniden dene vardır', async ({ page }) => {
-    await page.goto('/satis/teklif?durum=hata');
-    await expect(page.getByRole('alert')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Yeniden dene' })).toBeVisible();
+  test('sahte sunucuda olmayan liste tanım hatasını gösterir', async ({ page }) => {
+    await page.goto('/satis/teklif');
+    await expect(page.getByRole('alert')).toContainText('Liste tanımı alınamadı');
+    await expect(page.getByText('TEK-0001')).toHaveCount(0);
   });
 
   test('formda değişiklik kaydedilmemiş durumunu gösterir', async ({ page }) => {
@@ -195,23 +192,94 @@ test.describe('header', () => {
     await expect(page.getByText('1 değişiklik kaydedilmedi')).toBeHidden();
   });
 
-  test('metin boyutu kaynak alt sınırın altına inmez', async ({ page }) => {
-    await page.goto('/satis/teklif');
-    await page.waitForTimeout(400);
-    const min = await page.evaluate(() => {
-      let m = Infinity;
-      for (const el of document.querySelectorAll<HTMLElement>('.shell *')) {
-        if (!el.childNodes.length) continue;
-        const hasText = [...el.childNodes].some(
-          (n) => n.nodeType === 3 && (n.textContent ?? '').trim(),
-        );
-        if (!hasText || el.closest('.shell-vh')) continue;
-        const r = el.getBoundingClientRect();
-        if (!r.width) continue;
-        m = Math.min(m, parseFloat(getComputedStyle(el).fontSize));
-      }
-      return m;
+  for (const url of ['/satis/teklif', LIST]) {
+    test(`metin boyutu kaynak alt sınırın altına inmez: ${url}`, async ({ page }) => {
+      await page.goto(url);
+      await page.waitForTimeout(400);
+      const min = await page.evaluate(() => {
+        let m = Infinity;
+        for (const el of document.querySelectorAll<HTMLElement>('.shell *')) {
+          if (!el.childNodes.length) continue;
+          const hasText = [...el.childNodes].some(
+            (n) => n.nodeType === 3 && (n.textContent ?? '').trim(),
+          );
+          if (!hasText || el.closest('.shell-vh')) continue;
+          const r = el.getBoundingClientRect();
+          if (!r.width) continue;
+          m = Math.min(m, parseFloat(getComputedStyle(el).fontSize));
+        }
+        return m;
+      });
+      expect(min).toBeGreaterThanOrEqual(12);
     });
-    expect(min).toBeGreaterThanOrEqual(12);
+  }
+});
+
+test.describe('kayan hover zemini (G1–G3)', () => {
+  const glide = (page: Page) => page.locator('.shell-sb .shell-glide').first();
+
+  async function centerY(page: Page, name: string) {
+    const b = await page.getByRole('button', { name, exact: true }).boundingBox();
+    return b ? b.y + b.height / 2 : 0;
+  }
+
+  async function glideCenterY(page: Page) {
+    const b = await glide(page).boundingBox();
+    return b ? b.y + b.height / 2 : -1;
+  }
+
+  /** Yazı tipi gelmeden ölçülen öğe konumu sonra kayar. Zemin eski konuma yerleşmiş olur. */
+  async function fontsReady(page: Page) {
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  }
+
+  test('G1: zemin üzerine gelinen öğeye kayar', async ({ page }) => {
+    test.skip(isCompact(page), 'telefonda hover yok');
+    await page.goto('/satis/teklif');
+    await fontsReady(page);
+    await page.getByRole('button', { name: 'Stok', exact: true }).hover();
+    await expect(glide(page)).toHaveAttribute('data-on', 'true');
+    await page.getByRole('button', { name: 'Muhasebe', exact: true }).hover();
+    await expect.poll(() => glideCenterY(page)).toBeCloseTo(await centerY(page, 'Muhasebe'), 0);
+  });
+
+  test('G3: listeden çıkınca zemin solar', async ({ page }) => {
+    test.skip(isCompact(page), 'telefonda hover yok');
+    await page.goto('/satis/teklif');
+    await page.getByRole('button', { name: 'Stok', exact: true }).hover();
+    await expect(glide(page)).toHaveAttribute('data-on', 'true');
+    await page.mouse.move(900, 700);
+    await expect(glide(page)).toHaveAttribute('data-on', 'false');
+  });
+
+  test('G1: flyout panelinde zemin öğeler arasında kayar', async ({ page }) => {
+    test.skip(isCompact(page), 'telefonda hover yok');
+    await page.goto('/satis/teklif');
+    await fontsReady(page);
+    await page.getByRole('button', { name: 'Satış', exact: true }).hover();
+    const fly = page.getByRole('group', { name: 'Satış' });
+    const flyGlide = fly.locator('.shell-glide');
+    const first = fly.getByRole('link').nth(0);
+    const second = fly.getByRole('link').nth(1);
+    await first.hover();
+    await expect(flyGlide).toHaveAttribute('data-on', 'true');
+    await second.hover();
+    const target = await second.boundingBox();
+    await expect
+      .poll(async () => {
+        const b = await flyGlide.boundingBox();
+        return b ? b.y + b.height / 2 : -1;
+      })
+      .toBeCloseTo(target ? target.y + target.height / 2 : 0, 0);
+  });
+
+  test('G3: klavye odağı zemini taşır', async ({ page }) => {
+    test.skip(isCompact(page), 'geniş ekran');
+    await page.goto('/satis/teklif');
+    await fontsReady(page);
+    await page.getByRole('button', { name: 'Stok', exact: true }).focus();
+    await page.keyboard.press('Escape');
+    await expect(glide(page)).toHaveAttribute('data-on', 'true');
+    await expect.poll(() => glideCenterY(page)).toBeCloseTo(await centerY(page, 'Stok'), 0);
   });
 });

@@ -8,6 +8,7 @@ import {
   rootVariables,
 } from './css-variables';
 import { designSource } from './source';
+import { danger } from './tokens';
 
 describe('CSS değişkenleri', () => {
   afterEach(() => {
@@ -23,6 +24,26 @@ describe('CSS değişkenleri', () => {
     expect(vars['--shadow-input']).toBe(designSource.derived.shadowCss.input);
     expect(vars['--motion-duration-dropdown']).toBe('500ms');
     expect(vars['--focus-dim-color']).toBe('rgba(100,116,139,0.33)');
+  });
+
+  it('kabuk hareket tokenları merkezi değişkenlerle çıkar', () => {
+    const vars = rootVariables();
+    expect(vars['--motion-duration-glide']).toBe('200ms');
+    expect(vars['--motion-duration-glide-fade']).toBe('150ms');
+    expect(vars['--motion-duration-skeleton']).toBe('1200ms');
+    expect(vars['--motion-duration-spin']).toBe('900ms');
+    expect(vars['--motion-duration-instant']).toBe('0ms');
+    expect(String(vars['--motion-easing-glide']).replace(/\s/g, '')).toBe('cubic-bezier(.2,0,0,1)');
+    expect(vars['--motion-easing-linear']).toBe('linear');
+  });
+
+  it('odaklı bağlantı kuralı metin bağlantısı kuralından daha özgüldür', () => {
+    const css = buildDesignCss();
+    const link = 'a:not(.ant-btn):not(.ant-menu-item):not(.ant-tabs-tab)';
+    const rest = css.split('\n').find((line) => line.includes('text-underline-offset: 0.15em'));
+    expect(rest?.startsWith(`${link} {`)).toBe(true);
+    const focus = css.split('\n').find((line) => line.includes('text-decoration-thickness'));
+    expect(focus).toContain(`html[data-focus-mode="keyboard"] ${link}:focus-visible`);
   });
 
   it('koyu tema gölgeleri ve perde rengini değiştirir', () => {
@@ -56,12 +77,24 @@ describe('CSS değişkenleri', () => {
     // antd düz düğmenin üzerine gelme metnini primaryColor yapar; tehlike düğmesi beyaz kalır.
     expect(rootVariables()['--danger-text']).toBe('#ffffff');
     expect(darkVariables()['--danger-text']).toBe('#ffffff');
-    const dangerHover = buildDesignCss()
+    // Düz zemin CSS değişkeninden gelir; antd Button `colorError` tokenı artık yazı rengidir.
+    expect(rootVariables()['--danger-bg']).toBe(danger.light.background);
+    expect(rootVariables()['--danger-bg-hover']).toBe(danger.light.backgroundHover);
+    expect(rootVariables()['--danger-bg-active']).toBe(danger.light.backgroundActive);
+    expect(darkVariables()['--danger-bg']).toBe(danger.dark.background);
+    expect(darkVariables()['--danger-bg-hover']).toBe(danger.dark.backgroundHover);
+    expect(darkVariables()['--danger-bg-active']).toBe(danger.dark.backgroundActive);
+    const solidRules = buildDesignCss()
       .split('\n')
-      .find((line) => line.includes('.ant-btn-dangerous.ant-btn-variant-solid') && line.includes(':hover'));
-    expect(dangerHover).toBeDefined();
-    expect(dangerHover).toContain(':active');
-    expect(dangerHover).toContain('color: var(--danger-text)');
+      .filter((line) => line.includes('.ant-btn-dangerous.ant-btn-variant-solid'));
+    const rest = solidRules.find((line) => !line.includes(':hover') && !line.includes(':active'));
+    const hover = solidRules.find((line) => line.includes(':hover'));
+    const active = solidRules.find((line) => line.includes(':active'));
+    expect(rest).toContain('background: var(--danger-bg)');
+    expect(hover).toContain('background: var(--danger-bg-hover)');
+    expect(hover).toContain('color: var(--danger-text)');
+    expect(active).toContain('background: var(--danger-bg-active)');
+    expect(active).toContain('color: var(--danger-text)');
   });
 
   it('dar form sütunu değişkeni orta buton yüksekliğinin 10 katıdır', () => {

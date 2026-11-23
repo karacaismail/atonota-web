@@ -1,4 +1,5 @@
-/* Preview only. Delete after foundation supplies shared hit geometry and CSS. */
+/* Yalnız önizleme için geçici dokunma alanı kopyası.
+ * Kaldırma koşulu: foundation main dalına girince bu kopya silinir. */
 [data-collection-preview] .collection-hit {
   position: relative;
 }

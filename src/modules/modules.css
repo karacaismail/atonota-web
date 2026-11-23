@@ -36,6 +36,8 @@
   color: var(--module-muted);
 }
 .module-context dd,
+.module-page h1,
+.module-page h2,
 .module-page p {
   overflow-wrap: break-word;
 }

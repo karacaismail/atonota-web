@@ -21,7 +21,15 @@ import { TableView } from './TableView';
 import { collectionVariables, collectionViewOptions } from './collection-tokens';
 import { createCollectionCache } from './query-cache';
 import { readQuery, toListRequest, writeQuery } from './query';
-import type { CollectionDefinition, CollectionQuery, CollectionSource, ViewType } from './types';
+import { toGroupSummaryRequest } from './summary';
+import { useGroupSummary } from './use-group-summary';
+import type {
+  CollectionDefinition,
+  CollectionQuery,
+  CollectionSource,
+  CollectionSummarySource,
+  ViewType,
+} from './types';
 import './collection.css';
 
 const heavyViews = {
@@ -60,12 +68,22 @@ export interface CollectionViewProps {
   definition: CollectionDefinition;
   source: CollectionSource;
   mode?: 'dark' | 'light';
+  /**
+   * Gruplu sayım ve toplam kaynağı (`platform_core.api.collection.group_summary`).
+   * Verilmezse Pivot ve Rapor yalnız gelen sayfayı özetler.
+   */
+  summarySource?: CollectionSummarySource | undefined;
+  /**
+   * Tablo dışındaki görünümleri açar. Varsayılan kapalıdır.
+   * Tipli `group_summary` istemcisi `main` dalına gelene kadar ana uygulamada açılmaz.
+   */
   enableExperimentalCollectionViews?: boolean;
 }
 export function CollectionView({
   definition,
   source,
   mode = 'dark',
+  summarySource,
   enableExperimentalCollectionViews = false,
 }: CollectionViewProps) {
   const [params, setParams] = useSearchParams();
@@ -91,6 +109,14 @@ export function CollectionView({
   );
   const snapshot = useCallback(() => cache.snapshot(key), [cache, key]);
   const current = useSyncExternalStore(subscribe, snapshot, () => undefined);
+  const summaryRequest = useMemo(
+    () =>
+      query.view === 'pivot' || query.view === 'report'
+        ? toGroupSummaryRequest(definition, query)
+        : undefined,
+    [definition, query],
+  );
+  const summary = useGroupSummary(summarySource, summaryRequest);
   const [selection, setSelection] = useState<{
     key: string;
     names: string[];
@@ -136,7 +162,6 @@ export function CollectionView({
             <h2 id={titleId}>{definition.label}</h2>
             {definition.sensitivity === 'restricted' && <p>Hassas kayıtlar</p>}
           </div>
-          {source.kind === 'example' && <span className="collection-example">Örnek veri</span>}
         </header>
         {!enableExperimentalCollectionViews && requestedQuery.view !== 'table' && (
           <p role="status">İstenen görünüm şu anda kapalı. Tablo gösteriliyor.</p>
@@ -283,7 +308,7 @@ export function CollectionView({
             <ViewBoundary key={query.view}>
               <Suspense fallback={<CollectionState state="loading" />}>
                 {HeavyView ? (
-                  <HeavyView definition={definition} rows={page.data} />
+                  <HeavyView definition={definition} rows={page.data} summary={summary} />
                 ) : (
                   <TableView
                     definition={definition}
@@ -299,10 +324,7 @@ export function CollectionView({
           )}
         </div>
         <nav aria-label="Kayıt sayfaları" className="collection-pagination">
-          <p>
-            {query.page}. sayfa
-            {page?.total !== undefined ? '. Toplam ' + page.total + ' kayıt.' : '.'}
-          </p>
+          <p>{query.page}. sayfa.</p>
           <div className="collection-page-actions">
             <Button
               disabled={query.page <= 1}
@@ -313,7 +335,7 @@ export function CollectionView({
               Önceki sayfa
             </Button>
             <Button
-              disabled={!page?.has_next_page}
+              disabled={!page?.hasNextPage}
               onClick={() => {
                 update({ page: query.page + 1 });
               }}

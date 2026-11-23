@@ -47,16 +47,74 @@ async function openKeyboardMode(page: Page) {
   await expect(page.locator('html')).toHaveAttribute('data-focus-mode', 'keyboard');
 }
 
+/**
+ * Uygulama hazır olana kadar bekler: yazı tipleri yüklendi, açılış hareketleri bitti ve dokunma
+ * alanı motoru düğmeyi işledi (`data-hit`). Yük altında odak bu adımlar bitmeden verilince
+ * sayfa yerleşirken odak kayboluyordu.
+ */
+async function appReady(page: Page) {
+  await expect(page.getByRole('heading', { level: 1, name: 'Atonota' })).toBeVisible();
+  await expect(page.getByTestId('btn-md')).toHaveAttribute('data-hit', /./);
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await Promise.all(
+      document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+    );
+  });
+}
+
+/**
+ * Deneme sayfasını açar. Azaltılmış hareket sayfa yüklenmeden önce ayarlanır. Sayfa açıkken
+ * ayarlanırsa tema yeniden kurulur; o sırada verilen odak yük altında kaybolabiliyordu.
+ */
+async function openDemo(page: Page) {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(DEMO);
+  await appReady(page);
+}
+
+/** Dokunma profilinde (`hover: none`) üzerine gelme durumu yoktur; renk değişimi beklenmez. */
+async function canHover(page: Page): Promise<boolean> {
+  return page.evaluate(() => window.matchMedia('(hover: hover)').matches);
+}
+
 test.describe('odak göstergesi: üç durak', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(DEMO);
-    await expect(page.getByRole('heading', { level: 1, name: 'Atonota' })).toBeVisible();
+    await openDemo(page);
+  });
+
+  test('metin bağlantısında klavye odağı 2 px birincil renk alt çizgi olur; halka yok', async ({
+    page,
+  }) => {
+    const link = page.getByRole('link', { name: 'yardım sayfasına' });
+    const look = () =>
+      link.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return {
+          color: s.textDecorationColor,
+          thickness: s.textDecorationThickness,
+          line: s.textDecorationLine,
+          outline: s.outlineStyle === 'none' || s.outlineWidth === '0px',
+          shadow: s.boxShadow,
+        };
+      });
+    const rest = await look();
+    expect(rest.line, 'dinlenmede altı çizili').toBe('underline');
+    await openKeyboardMode(page);
+    await link.focus();
+    await expect(link).toBeFocused();
+    const focused = await look();
+    expect(focused.line).toBe('underline');
+    expect(focused.color, 'odak çizgisi birincil renk').toBe(PRIMARY_RGB);
+    expect(focused.thickness, 'odak çizgisi 2 px').toBe('2px');
+    expect(focused.color, 'odak görünümü dinlenmeden farklı').not.toBe(rest.color);
+    expect(focused.outline, 'çevreleyen halka yok').toBe(true);
+    expect(focused.shadow).toBe('none');
   });
 
   test('düğme, giriş ve açılır listede tek kenarlı gösterge; çevreleyen gölge yok', async ({
     page,
   }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
     await openKeyboardMode(page);
     for (const stop of stops(page)) {
       await stop.focus.focus();
@@ -163,8 +221,7 @@ async function switchToDark(page: Page) {
 test.describe('tehlikeli birincil düğme', () => {
   for (const theme of ['açık', 'koyu'] as const) {
     test(`${theme} temada kırmızı zemin, beyaz metin ve en az 4.5:1`, async ({ page }) => {
-      await page.goto(DEMO);
-      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await openDemo(page);
       if (theme === 'koyu') await switchToDark(page);
       const btn = page.getByTestId('btn-danger-primary');
       const primaryBtn = page.getByTestId('btn-md');
@@ -179,8 +236,11 @@ test.describe('tehlikeli birincil düğme', () => {
       expect(r, `zemin kırmızıdır: ${restBg}`).toBeGreaterThan(b!);
       expect(await colorOf(), 'metin beyaz').toBe('rgb(255, 255, 255)');
       expect(await measureContrast(btn), 'normal').toBeGreaterThanOrEqual(4.5);
+      const hoverable = await canHover(page);
       await btn.hover();
-      await expect.poll(bgOf, { message: 'üzerine gelme zemini değişir' }).not.toBe(restBg);
+      if (hoverable) {
+        await expect.poll(bgOf, { message: 'üzerine gelme zemini değişir' }).not.toBe(restBg);
+      }
       expect(await colorOf(), 'üzerine gelmede metin beyaz').toBe('rgb(255, 255, 255)');
       await expect
         .poll(() => measureContrast(btn), { message: 'üzerine gelme' })
@@ -203,10 +263,76 @@ test.describe('tehlikeli birincil düğme', () => {
   }
 });
 
+/**
+ * Kenarlıklı, metin ve bağlantı türü tehlike düğmesi. antd bu türlerde tehlike rengini yazı rengi
+ * yapar. Yazı rengi düz düğmenin zemininden ayrı türetilir: yerleşim, panel ve yükseltilmiş zeminde,
+ * dinlenme, üzerine gelme ve basılı durumda en az 4.5:1 verir. Düz düğmenin zemini değişmez.
+ */
+test.describe('tehlike düğmesi türleri: kenarlıklı, metin ve bağlantı', () => {
+  const kinds = [
+    { name: 'kenarlıklı', id: 'btn-danger-outlined' },
+    { name: 'metin', id: 'btn-danger-text' },
+    { name: 'bağlantı', id: 'btn-danger-link' },
+    { name: 'kart içinde metin', id: 'btn-card-danger-text' },
+  ] as const;
+  for (const theme of ['açık', 'koyu'] as const) {
+    test(`${theme} temada yazı her türde ve durumda en az 4.5:1`, async ({ page }) => {
+      await openDemo(page);
+      if (theme === 'koyu') await switchToDark(page);
+      const channels = (rgb: string) => (rgb.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
+      const solidBg = await page
+        .getByTestId('btn-danger-primary')
+        .evaluate((el) => getComputedStyle(el).backgroundColor);
+      const hoverable = await canHover(page);
+      for (const kind of kinds) {
+        const btn = page.getByTestId(kind.id);
+        const colorOf = () => btn.evaluate((el) => getComputedStyle(el).color);
+        const restColor = await colorOf();
+        const [r, g, b] = channels(restColor);
+        expect(r, `${kind.name}: yazı kırmızıdır: ${restColor}`).toBeGreaterThan(g!);
+        expect(r, `${kind.name}: yazı kırmızıdır: ${restColor}`).toBeGreaterThan(b!);
+        expect(restColor, `${kind.name}: yazı rengi düz zemin rengi değildir`).not.toBe(solidBg);
+        expect(await measureContrast(btn), `${kind.name}: normal`).toBeGreaterThanOrEqual(4.5);
+        await btn.hover();
+        if (hoverable) {
+          await expect
+            .poll(colorOf, { message: `${kind.name}: üzerine gelme rengi değişir` })
+            .not.toBe(restColor);
+        }
+        await expect
+          .poll(() => measureContrast(btn), { message: `${kind.name}: üzerine gelme` })
+          .toBeGreaterThanOrEqual(4.5);
+        const box = (await btn.boundingBox())!;
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.down();
+        await expect
+          .poll(() => measureContrast(btn), { message: `${kind.name}: basılı` })
+          .toBeGreaterThanOrEqual(4.5);
+        await page.mouse.up();
+        await page.mouse.move(0, 0);
+      }
+      // Pencere (yükseltilmiş zemin) içindeki metin türü tehlike düğmesi.
+      await page.getByTestId('modal-open').click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      const modalBtn = page.getByTestId('btn-modal-danger-text');
+      expect(await measureContrast(modalBtn), 'pencere: normal').toBeGreaterThanOrEqual(4.5);
+      await modalBtn.hover();
+      await expect
+        .poll(() => measureContrast(modalBtn), { message: 'pencere: üzerine gelme' })
+        .toBeGreaterThanOrEqual(4.5);
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2aa'])
+        .include('.ant-btn-dangerous')
+        .analyze();
+      expect(results.violations).toEqual([]);
+    });
+  }
+});
+
 test.describe('koyu birincil düğme kontrastı', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(DEMO);
-    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openDemo(page);
     await switchToDark(page);
   });
 
@@ -217,8 +343,11 @@ test.describe('koyu birincil düğme kontrastı', () => {
     // Zemin düz renktir: saydamlık yok.
     expect(restBg, 'zemin saydam değil').toMatch(/^rgb\(/);
     expect(await measureContrast(btn), 'normal').toBeGreaterThanOrEqual(4.5);
+    const hoverable = await canHover(page);
     await btn.hover();
-    await expect.poll(bgOf, { message: 'üzerine gelme zemini değişir' }).not.toBe(restBg);
+    if (hoverable) {
+      await expect.poll(bgOf, { message: 'üzerine gelme zemini değişir' }).not.toBe(restBg);
+    }
     const hoverBg = await bgOf();
     await expect
       .poll(() => measureContrast(btn), { message: 'üzerine gelme' })
@@ -320,8 +449,7 @@ test.describe('yer tutucu ve açık seçim metni', () => {
     test(`${theme === 'dark' ? 'koyu' : 'açık'} tema: yer tutucu ve açık Select metni en az 4.5:1`, async ({
       page,
     }) => {
-      await page.goto(DEMO);
-      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await openDemo(page);
       if (theme === 'dark') {
         await page
           .getByRole('radiogroup', { name: 'Tema' })

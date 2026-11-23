@@ -10,7 +10,7 @@ describe('LoginScreen', () => {
     expect(region.style.paddingInline).toBe('var(--space-md)');
     expect(region.style.paddingBlock).toBe('var(--space-xl)');
     expect(region.style.gap).toBe('var(--space-md)');
-    expect(region.style.maxWidth).toBe('var(--content-max-width)');
+    expect(region.style.maxWidth).toBe('var(--form-max-width)');
     expect(region).toHaveStyle({ boxSizing: 'border-box', width: '100%' });
   });
 

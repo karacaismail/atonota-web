@@ -29,8 +29,6 @@ function areValuesEqualForField(field: DocField, left: unknown, right: unknown):
     }
     return JSON.stringify(leftArr) === JSON.stringify(rightArr);
   }
-  // Treat undefined and null as equivalent when an unedited field was omitted in v1 read (Ek B),
-  // while keeping "" distinct from null/undefined (SZ-9).
   if ((left === undefined || left === null) && (right === undefined || right === null)) {
     return true;
   }
@@ -43,8 +41,20 @@ export function computeDirtyFields(
   draftValues: Readonly<Record<string, unknown>>,
 ): string[] {
   const dirty: string[] = [];
+  const isExistingRecord =
+    typeof baseRecord['name'] === 'string' && baseRecord['name'].trim().length > 0;
+
   for (const field of fields) {
-    if (NON_DATA_FIELDTYPES.has(field.fieldtype) || field.read_only) {
+    if (NON_DATA_FIELDTYPES.has(field.fieldtype)) {
+      continue;
+    }
+    // Review 1 Minor 4: Check evaluated readOnly (including read_only_depends_on & unsupported_conditions).
+    const evaluated = evaluateFieldState(field, {
+      doc: draftValues,
+      isExistingRecord,
+      baseValue: baseRecord[field.fieldname],
+    });
+    if (evaluated.readOnly) {
       continue;
     }
     const baseVal = baseRecord[field.fieldname];
@@ -65,6 +75,21 @@ function isValidUrlValue(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function parseNumericDraftValue(rawValue: unknown): number {
+  if (typeof rawValue === 'number') {
+    return rawValue;
+  }
+  if (typeof rawValue === 'string') {
+    const trimmed = rawValue.trim();
+    // Review 1 Minor 2: Whitespace-only strings must NOT coerce to 0 via Number(' ').
+    if (trimmed.length === 0) {
+      return Number.NaN;
+    }
+    return Number(trimmed);
+  }
+  return Number.NaN;
 }
 
 export interface ValidateDraftOptions {
@@ -108,7 +133,7 @@ export function validateRecordDraft(
     }
 
     if (field.fieldtype === 'Int') {
-      const num = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+      const num = parseNumericDraftValue(rawValue);
       if (!Number.isInteger(num)) {
         errors[field.fieldname] = formatRecordMessage(locale, 'validationInteger', { label });
         continue;
@@ -124,7 +149,7 @@ export function validateRecordDraft(
       field.fieldtype === 'Currency' ||
       field.fieldtype === 'Percent'
     ) {
-      const num = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+      const num = parseNumericDraftValue(rawValue);
       if (!Number.isFinite(num)) {
         errors[field.fieldname] = formatRecordMessage(locale, 'validationNumber', { label });
         continue;

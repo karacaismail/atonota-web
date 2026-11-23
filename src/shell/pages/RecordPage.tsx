@@ -5,13 +5,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../header/PageHeader';
 import type { HeaderState } from '../header/PageHeader';
 import { t } from '../messages';
-import { routes } from '../routes';
+import { routes } from '../paths';
 import type { SampleRow } from '../sampleData';
 import { findGroup, findLeaf, sampleRows } from '../sampleData';
+import { useViewData } from '../view-data';
 
 type Draft = Pick<SampleRow, 'title' | 'party' | 'amount'>;
 
-export function RecordPage() {
+export default function RecordPage() {
   const { module = '', doctype = '', name = '' } = useParams();
   const navigate = useNavigate();
   const rows = useMemo(() => sampleRows(doctype), [doctype]);
@@ -19,6 +20,11 @@ export function RecordPage() {
   const row = rows[index];
   const leaf = findLeaf(module, doctype);
   const group = findGroup(module);
+  // Uygulama girişi kayıt görünümünü bağladıysa kayıt sunucudan gelir. Örnek kayıt yalnız
+  // bağlantı yokken (deneme sayfaları) gösterilir.
+  const Live = useViewData()?.record?.Component;
+
+  if (Live) return <Live module={module} doctype={doctype} name={name} />;
 
   if (!row) {
     return (

@@ -1,7 +1,7 @@
 import config from '@design-source/control-size-config.json';
 import { describe, expect, it } from 'vitest';
 
-import { shellTokens } from './tokens';
+import { required, shellTokens } from './tokens';
 
 describe('shellTokens', () => {
   it('sidebar ölçülerini kaynak dosyadan alır', () => {
@@ -36,6 +36,15 @@ describe('shellTokens', () => {
     expect(shellTokens.focusDim.dark.color).toBe(config.focusDim.dark.color);
   });
 
+  it('satır kutusu, rozet ve hareket değerlerini kaynaktan alır', () => {
+    expect(shellTokens.lineHeightAdd).toBe(8);
+    expect(shellTokens.fontLg).toBe(config.sizes.lg.button.fontSize);
+    expect(shellTokens.tagHeight).toBe(config.choice.tagHeights[0]);
+    expect(shellTokens.ddBox).toBe(32);
+    expect(shellTokens.motion.pulse).toBe(1400);
+    expect(shellTokens.motion.ring).toBe(1200);
+  });
+
   it('header ölçülerini kaynak dosyadan alır', () => {
     expect(shellTokens.header.titleSize).toBe(config.header.settings.titleSize);
     expect(shellTokens.header.titleLineHeight).toBe(config.header.settings.titleLineHeight);
@@ -49,5 +58,20 @@ describe('shellTokens', () => {
     expect(shellTokens.header.dataStates.map((v) => v.value)).toEqual(
       config.header.dataStates.map((v) => v.value),
     );
+  });
+});
+
+describe('required', () => {
+  it('kaynak alanı yoksa hata verir, sabit yedek kullanmaz', () => {
+    expect(() => required(undefined, 'dropdown.styles described')).toThrow(
+      'Kaynak dosyada değer bulunamadı: dropdown.styles described',
+    );
+    expect(required(0, 'sıfır')).toBe(0);
+  });
+
+  it('rozet ve dropdown ölçüleri kaynaktan gelir', () => {
+    const described = config.dropdown.styles.find((x) => x.key === 'described');
+    expect(shellTokens.ddRow).toBe(described?.itemHeight);
+    expect(shellTokens.ddBox).toBe(described?.contentHeight);
   });
 });

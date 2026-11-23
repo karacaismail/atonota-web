@@ -21,6 +21,13 @@ function e2eInputs(): Record<string, string> {
   ]);
 }
 
+/** `vi.mock('@ant-design/x')` kullanan kabuk testleri. Bkz. aşağıdaki `projects` açıklaması. */
+const ANTD_X_MOCK_TESTS = [
+  'src/shell/layout/AppShell.test.tsx',
+  'src/shell/shellRoutes.test.tsx',
+  'src/shell/sidebar/Sidebar.test.tsx',
+];
+
 export default defineConfig(({ mode }) => ({
   // mockWorkerPlugin: sahte sunucunun işçi dosyasını yalnız gerektiğinde sunar (vite/mock-worker-plugin.ts).
   plugins: [react(), mockWorkerPlugin()],
@@ -70,14 +77,16 @@ export default defineConfig(({ mode }) => ({
     // Tek birim test kapısı: bütün src/**/*.test.{ts,tsx} dosyaları koşar.
     // İki proje vardır. Neden: @ant-design/x paketi CJS derlemesinde bile antd/es dosyalarını ister;
     // Node 24 bunu "antd/es/version" dizin içe aktarımında reddeder. Çözüm paketi önceden
-    // paketlemektir (optimizer). Kabuk testleri ise @ant-design/x paketini vi.mock ile taklit eder;
-    // taklit ile önceden paketleme birlikte çalışmaz. Kabuk taklidi kalkınca "shell" projesi silinir.
+    // paketlemektir (optimizer). Üç kabuk testi ise @ant-design/x paketini vi.mock ile taklit eder;
+    // taklit ile önceden paketleme birlikte çalışmaz. Yalnız bu üç dosya "shell" projesinde koşar.
+    // Öteki kabuk testleri (örneğin rota yükleyicileri AI Studio sayfasını açar) "app" projesindedir.
+    // Kabuk taklidi kalkınca "shell" projesi silinir.
     projects: [
       {
         extends: true,
         test: {
           name: 'shell',
-          include: ['src/shell/**/*.test.{ts,tsx}'],
+          include: ANTD_X_MOCK_TESTS,
           exclude: ['node_modules', 'dist', '**/e2e/**'],
         },
       },
@@ -86,7 +95,7 @@ export default defineConfig(({ mode }) => ({
         test: {
           name: 'app',
           include: ['src/**/*.test.{ts,tsx}'],
-          exclude: ['node_modules', 'dist', '**/e2e/**', 'src/shell/**'],
+          exclude: ['node_modules', 'dist', '**/e2e/**', ...ANTD_X_MOCK_TESTS],
           deps: {
             optimizer: {
               client: { enabled: true, include: ['antd', '@ant-design/x'] },

@@ -70,6 +70,21 @@ export function darkenToContrast(hex: string, background: string, minRatio = 4.5
   return current;
 }
 
+/**
+ * Rengi, verilen zemin üzerinde en az `minRatio` kontrast verene kadar açar (beyaza yaklaştırır).
+ * Her adımda kanal, beyaza olan uzaklığının %3'ü kadar artar; ton korunur. Yeterliyse aynen döner.
+ * Kullanım: koyu temada tehlike yazı rengi (WCAG 2.2 AA, 4.5:1).
+ */
+export function lightenToContrast(hex: string, background: string, minRatio = 4.5): string {
+  let rgb = parseHex(hex);
+  let current = toHex(rgb);
+  for (let step = 0; step < 300 && contrastRatio(current, background) < minRatio; step += 1) {
+    rgb = [rgb[0] + (255 - rgb[0]) * 0.03, rgb[1] + (255 - rgb[1]) * 0.03, rgb[2] + (255 - rgb[2]) * 0.03];
+    current = toHex(rgb);
+  }
+  return current;
+}
+
 /** `fg` rengini `alpha` opaklıkla `background` üzerine bindirir; düz renk döner. */
 export function blendOver(fg: string, alpha: number, background: string): string {
   const f = parseHex(fg);

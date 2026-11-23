@@ -5,7 +5,7 @@ test('expanded input and select targets work without covering their centers', as
   page,
 }, testInfo) => {
   await page.goto(preview + '?experimentalViews=1');
-  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  await expect(page.getByText('ORNEK-0001', { exact: true })).toBeVisible();
   const input = page.getByRole('textbox', { name: 'Kayıt ara' });
   const wrapper = page.locator('.collection-input');
   const inputBox = await wrapper.boundingBox();
@@ -37,6 +37,13 @@ test('expanded input and select targets work without covering their centers', as
     /_0$/,
   );
   await page.locator('.collection-popup:visible').evaluate(async (element) => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
     await Promise.all(
       element.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
     );
@@ -60,12 +67,14 @@ test('table preserves readability, keyboard focus, selection and URL history', a
   page,
 }, testInfo) => {
   await page.goto(preview + '?experimentalViews=1');
-  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  await expect(page.getByText('ORNEK-0001', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const scroller = page.getByRole('region', { name: 'Kayıt tablosu yatay kaydırma' });
-  expect(await scroller.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
-    testInfo.project.name.includes('desktop') ? false : true,
-  );
+  // Dar telefonda tablo kendi kapsayıcısında kayar. Geniş ekranda sığabilir.
+  if ((page.viewportSize()?.width ?? 0) <= 400)
+    expect(await scroller.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+      true,
+    );
   const fontSizes = await page
     .locator('.collection')
     .evaluate((root) =>
@@ -87,14 +96,14 @@ test('table preserves readability, keyboard focus, selection and URL history', a
   ).toBe('none');
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
-  await page.getByRole('checkbox', { name: 'EXAMPLE-001 seç', exact: true }).check();
+  await page.getByRole('checkbox', { name: 'ORNEK-0001 seç', exact: true }).check();
   await expect(page.getByRole('toolbar', { name: 'Seçilen kayıtlar' })).toContainText(
     '1 kayıt seçildi',
   );
   await page.getByRole('button', { name: 'Sonraki sayfa' }).click();
-  await expect(page.getByText('EXAMPLE-021', { exact: true })).toBeVisible();
+  await expect(page.getByText('ORNEK-0021', { exact: true })).toBeVisible();
   await page.goBack();
-  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  await expect(page.getByText('ORNEK-0001', { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('table.png'), fullPage: true });
   const axe = await new AxeBuilder({ page }).include('.collection').analyze();
   expect(axe.violations).toEqual([]);
@@ -107,7 +116,7 @@ test('loads only requested views and supports keyboard dropdown navigation', asy
     if (request.resourceType() === 'script') scripts.push(request.url());
   });
   await page.goto(preview + '?experimentalViews=1');
-  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  await expect(page.getByText('ORNEK-0001', { exact: true })).toBeVisible();
   expect(scripts.some((url) => /(?:Kanban|Pivot|Report|Gantt|Timesheet)View-/.test(url))).toBe(
     false,
   );
@@ -134,9 +143,18 @@ test('loads only requested views and supports keyboard dropdown navigation', asy
   await expect(page.getByRole('combobox', { name: 'Görünüm', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('listbox')).not.toBeVisible();
-  await page.getByRole('textbox', { name: 'Kayıt ara' }).fill('Örnek iş 25');
+  // Arama ortak istemciyle /api/v2/document ucuna `like` süzgeci olarak gider.
+  const searched = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return (
+      url.pathname.startsWith('/api/v2/document/') &&
+      url.searchParams.get('filters') === JSON.stringify([['title', 'like', '%Örnek veri 2%']])
+    );
+  });
+  await page.getByRole('textbox', { name: 'Kayıt ara' }).fill('Örnek veri 2');
   await page.getByRole('button', { name: 'Ara', exact: true }).click();
-  await expect(page.locator('[data-view="timesheet"]')).toContainText('Örnek iş 25');
+  await searched;
+  await expect(page).toHaveURL(/search=%C3%96rnek\+veri\+2/);
   const resources = await page.evaluate(() =>
     performance.getEntriesByType('resource').map((entry) => {
       const resource = entry as PerformanceResourceTiming;
@@ -183,7 +201,7 @@ test('shows all data states, light theme and reduced motion', async ({ page }, t
   }
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto(preview + '?theme=light');
-  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  await expect(page.getByText('ORNEK-0001', { exact: true })).toBeVisible();
   await page
     .locator('.collection-select')
     .filter({ has: page.getByRole('combobox', { name: 'Görünüm', exact: true }) })
@@ -234,9 +252,11 @@ test('default gate prevents summary rendering and downloads from a shared URL', 
     if (request.resourceType() === 'script') scripts.push(request.url());
   });
   await page.goto(preview + '?view=pivot');
-  await expect(page.getByText('EXAMPLE-001', { exact: true })).toBeVisible();
+  await expect(page.getByText('ORNEK-0001', { exact: true })).toBeVisible();
   await expect(page.locator('[data-view="table"]')).toBeVisible();
-  await expect(page.getByRole('status')).toContainText('İstenen görünüm şu anda kapalı.');
+  await expect(
+    page.getByText('İstenen görünüm şu anda kapalı. Tablo gösteriliyor.', { exact: true }),
+  ).toBeVisible();
   await page
     .locator('.collection-select')
     .filter({

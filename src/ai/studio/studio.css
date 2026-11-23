@@ -1,0 +1,377 @@
+/*
+ * AI Studio yerleşimi. Bütün değerler `useGenuiVars` CSS değişkenlerinden gelir.
+ * Önce telefon: tek sütun. Geniş ekranda üç sütun: 260 px, esnek, 280 px.
+ */
+.ai-studio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ai-bg-c);
+  color: var(--ai-text);
+  font-family: var(--font-ui);
+  font-size: var(--font-default);
+  line-height: calc(var(--font-default) + 8px);
+}
+
+.ai-studio .ant-drawer-body,
+.ai-workspace,
+.ai-convs {
+  font-family: var(--font-ui);
+}
+
+.ai-studio.is-wide {
+  grid-template-columns: var(--ai-left-width) minmax(0, 1fr) var(--ai-right-width);
+}
+
+.ai-col {
+  min-height: 0;
+  overflow: auto;
+  background: var(--ai-bg);
+}
+
+.ai-col-left {
+  padding: var(--ai-gap);
+  border-right: 1px solid var(--ai-border);
+}
+
+.ai-col-right {
+  padding: var(--ai-gap);
+  border-left: 1px solid var(--ai-border);
+}
+
+.ai-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ai-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ai-gap-sm);
+  min-width: 0;
+  padding: var(--ai-gap-sm) var(--ai-gap);
+  border-bottom: 1px solid var(--ai-border);
+}
+
+.ai-title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--ai-font-lg);
+  font-weight: 600;
+  line-height: calc(var(--font-default) + 8px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-head-end {
+  margin-left: auto;
+}
+
+.ai-head .ant-tag {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.ai-log {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--ai-gap-md) var(--ai-gap);
+}
+
+.ai-log .ant-bubble-list {
+  gap: var(--ai-gap-lg);
+  max-height: none;
+  overflow: visible;
+}
+
+.ai-log .ant-bubble-content-wrapper {
+  min-width: 0;
+}
+
+.ai-log .ant-bubble-start .ant-bubble-content {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+}
+
+.ai-log .ant-bubble-start {
+  min-width: 0;
+}
+
+.ai-user {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-xs);
+  overflow-wrap: break-word;
+}
+
+.ai-user-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ai-gap-xs);
+}
+
+.ai-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap);
+  min-width: 0;
+}
+
+.ai-text {
+  margin: 0;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.ai-caret {
+  display: inline-block;
+  width: var(--ai-caret-w);
+  height: var(--ai-caret-h);
+  margin-left: var(--ai-gap-xs);
+  vertical-align: text-bottom;
+  background: var(--color-primary);
+  animation: /* motion-gate: allow sahip=ai-studio neden=imleç yanıp sönmesi kesik adım ister, token yok */ ai-caret
+    var(--ai-dur-caret) steps(1) infinite;
+}
+
+@keyframes ai-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.ai-think {
+  padding: var(--ai-gap-xs) var(--ai-gap-sm);
+  border: 1px solid var(--ai-border);
+  border-radius: var(--radius);
+  background: var(--ai-bg);
+}
+
+.ai-think summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ai-gap-xs);
+  color: var(--ai-text-2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ai-think summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-think summary svg,
+.ai-panel-h svg {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+.ai-think .ant-thought-chain {
+  margin-top: var(--ai-gap-sm);
+}
+
+.ai-note {
+  margin: 0;
+  color: var(--ai-text-2);
+}
+
+.ai-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-lg);
+  max-width: var(--ai-welcome-max);
+  margin: var(--ai-gap-md) auto;
+}
+
+.ai-welcome .ant-prompts-item {
+  transition:
+    transform var(--motion-duration-focus-dim) var(--motion-easing-standard),
+    box-shadow var(--motion-duration-focus-dim) var(--motion-easing-standard);
+}
+
+.ai-welcome .ant-prompts-item:hover {
+  transform: translateY(var(--ai-hover-lift));
+}
+
+.ai-welcome .ant-prompts-item:hover .ai-spark {
+  animation: ai-wiggle var(--motion-duration-focus-dim) var(--motion-easing-standard);
+}
+
+.ai-sender {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-xs);
+  padding: var(--ai-gap-sm) var(--ai-gap) var(--ai-gap);
+  border-top: 1px solid var(--ai-border);
+}
+
+.ai-sender-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ai-gap-xs);
+}
+
+.ai-hint {
+  margin: 0;
+  color: var(--ai-text-3);
+  font-size: var(--font-min);
+  text-align: center;
+}
+
+.ai-convs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-sm);
+}
+
+.ai-convs .ant-conversations {
+  padding: 0;
+}
+
+.ai-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-lg);
+}
+
+.ai-panel-h {
+  display: flex;
+  align-items: center;
+  gap: var(--ai-gap-sm);
+  margin: 0 0 var(--ai-gap-sm);
+  font-size: var(--font-default);
+  font-weight: 600;
+}
+
+.ai-files {
+  margin: 0;
+  padding-left: var(--ai-gap-md);
+  overflow-wrap: anywhere;
+}
+
+.ai-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ai-gap-xs) var(--ai-gap-sm);
+  margin: 0;
+}
+
+.ai-facts dt {
+  color: var(--ai-text-3);
+}
+
+.ai-facts dd {
+  margin: 0;
+}
+
+.ai-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* AM1 parıltı, AM2 nabız. Gradyan yok. */
+.ai-spark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ai-spark var(--ai-dur-spark) var(--motion-easing-standard) infinite;
+}
+
+.ai-brain {
+  animation: ai-brain var(--ai-dur-brain) var(--motion-easing-standard) infinite;
+}
+
+@keyframes ai-spark {
+  0%,
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+
+  45% {
+    transform: scale(1.18) rotate(14deg);
+    opacity: 0.85;
+  }
+
+  60% {
+    transform: scale(0.94) rotate(-4deg);
+    opacity: 1;
+  }
+}
+
+@keyframes ai-brain {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-spark,
+  .ai-brain,
+  .ai-caret,
+  .ai-welcome .ant-prompts-item:hover .ai-spark {
+    animation: none;
+  }
+
+  .ai-welcome .ant-prompts-item {
+    transition: none;
+  }
+
+  .ai-welcome .ant-prompts-item:hover {
+    transform: none;
+  }
+}
+
+/*
+ * Çevreleyen odak halkası yasak. Sender odaklanınca renkli çerçeve çizmez.
+ * Odak yüzey tonuyla gösterilir. Metin imleci de odağı gösterir.
+ * Merkezi klavye odak modu `foundation` işinin ortak katmanıdır.
+ */
+.ai-sender .ant-sender:focus-within {
+  border-color: var(--ai-border);
+  background: var(--ai-bg-e);
+}
+
+.ai-sender .ant-sender:focus-within::after {
+  border-width: 1px;
+}
+
+/*
+ * Odak (genel kural: çevreleyen odak halkası yasak).
+ * antd düğmesi ve tarayıcı, odakta çevreleyen çizgi çizer. AI alanında bu çizgi kapalıdır.
+ * Klavye modu foundation işinin motorundan gelir: html[data-focus-mode="keyboard"].
+ * Gösterge alt kenarda tek çizgidir. Renk ve kalınlık foundation değişkenleridir.
+ */
+.ai-scope :focus-visible,
+.ai-scope .ant-btn.ant-btn:focus-visible,
+.ai-scope .ant-actions-list-item:focus-visible {
+  outline: none;
+}
+
+html[data-focus-mode='keyboard'] .ai-scope :focus-visible,
+html[data-focus-mode='keyboard'] .ai-scope .ant-btn.ant-btn:focus-visible {
+  box-shadow: inset 0 calc(var(--focus-indicator-size) * -1) 0 0 var(--focus-indicator-color);
+}
+
+@media (forced-colors: active) {
+  html[data-focus-mode='keyboard'] .ai-scope :focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 0;
+    box-shadow: none;
+  }
+}

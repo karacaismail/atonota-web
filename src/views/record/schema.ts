@@ -479,6 +479,260 @@ export function validateRecordDocument(input: unknown, path = '$.data'): RecordD
   return result;
 }
 
+const STANDARD_RECORD_STRING_KEYS = new Set([
+  'doctype',
+  'owner',
+  'creation',
+  'modified',
+  'modified_by',
+  'amended_from',
+]);
+
+const STANDARD_CHILD_STRING_KEYS = new Set([
+  'name',
+  'doctype',
+  'owner',
+  'creation',
+  'modified',
+  'modified_by',
+  'parent',
+  'parentfield',
+  'parenttype',
+]);
+
+const KNOWN_STRING_FIELDTYPES = new Set([
+  'Data',
+  'Select',
+  'Autocomplete',
+  'Link',
+  'Dynamic Link',
+  'Date',
+  'Datetime',
+  'Time',
+  'Text',
+  'Small Text',
+  'Long Text',
+  'Text Editor',
+  'Markdown',
+  'Markdown Editor',
+  'Code',
+  'Attach',
+  'Attach Image',
+  'Signature',
+  'Color',
+  'Barcode',
+  'Password',
+  'Phone',
+  'Geolocation',
+]);
+
+const KNOWN_NUMERIC_FIELDTYPES = new Set(['Float', 'Currency', 'Percent', 'Rating', 'Duration']);
+
+const KNOWN_PRIMITIVE_ONLY_FIELDTYPES = new Set([
+  'Read Only',
+  'Tab Break',
+  'Section Break',
+  'Column Break',
+  'HTML',
+  'Button',
+  'Heading',
+]);
+
+function validateFieldValueAgainstSchema(
+  val: unknown,
+  field: DocField,
+  meta: DocTypeMeta,
+  path: string,
+): unknown {
+  if (val === null || val === undefined) {
+    return val;
+  }
+
+  const { fieldtype } = field;
+
+  if (fieldtype === 'Int') {
+    const validNumber = typeof val === 'number' && Number.isInteger(val);
+    const validNumericString =
+      typeof val === 'string' &&
+      (val === '' || (/^[+-]?\d+$/.test(val.trim()) && Number.isSafeInteger(Number(val.trim()))));
+    if (!validNumber && !validNumericString) {
+      throw new SchemaValidationError(`Expected integer value for Int field`, path);
+    }
+    return val;
+  }
+
+  if (KNOWN_NUMERIC_FIELDTYPES.has(fieldtype)) {
+    const validNumber = typeof val === 'number' && Number.isFinite(val);
+    const validNumericString =
+      typeof val === 'string' &&
+      (val === '' || (val.trim().length > 0 && Number.isFinite(Number(val.trim()))));
+    if (!validNumber && !validNumericString) {
+      throw new SchemaValidationError(`Expected numeric value for ${fieldtype} field`, path);
+    }
+    return val;
+  }
+
+  if (fieldtype === 'Check') {
+    if (val !== 0 && val !== 1 && val !== true && val !== false) {
+      throw new SchemaValidationError('Expected 0, 1, or boolean for Check field', path);
+    }
+    return val;
+  }
+
+  if (fieldtype === 'Table' || fieldtype === 'Table MultiSelect') {
+    if (!Array.isArray(val)) {
+      throw new SchemaValidationError(`Expected array for ${fieldtype} field`, path);
+    }
+    const childSchema = field.options ? meta.child_tables[field.options] : undefined;
+    const childFieldMap = new Map<string, DocField>();
+    if (childSchema) {
+      for (const cf of childSchema.fields) {
+        childFieldMap.set(cf.fieldname, cf);
+      }
+    }
+
+    return val.map((item: unknown, rowIndex: number) => {
+      const rowPath = `${path}[${rowIndex}]`;
+      if (!isPlainObject(item)) {
+        throw new SchemaValidationError('Expected plain object in child table row', rowPath);
+      }
+      const cleanRow: Record<string, unknown> = {};
+      for (const [rKey, rVal] of Object.entries(item)) {
+        if (rVal === undefined) {
+          continue;
+        }
+        if (STANDARD_CHILD_STRING_KEYS.has(rKey)) {
+          if (rVal !== null && typeof rVal !== 'string') {
+            throw new SchemaValidationError(`Expected string for ${rKey}`, `${rowPath}.${rKey}`);
+          }
+          cleanRow[rKey] = rVal;
+          continue;
+        }
+        if (rKey === 'docstatus') {
+          if (rVal !== null && rVal !== 0 && rVal !== 1 && rVal !== 2) {
+            throw new SchemaValidationError(
+              'Expected docstatus 0, 1, or 2',
+              `${rowPath}.docstatus`,
+            );
+          }
+          cleanRow[rKey] = rVal;
+          continue;
+        }
+        if (rKey === 'idx') {
+          if (rVal !== null && (typeof rVal !== 'number' || !Number.isInteger(rVal))) {
+            throw new SchemaValidationError('Expected integer idx', `${rowPath}.idx`);
+          }
+          cleanRow[rKey] = rVal;
+          continue;
+        }
+        if (childSchema) {
+          const childField = childFieldMap.get(rKey);
+          if (childField) {
+            cleanRow[rKey] = validateFieldValueAgainstSchema(
+              rVal,
+              childField,
+              meta,
+              `${rowPath}.${rKey}`,
+            );
+          }
+          // Undeclared child row keys are dropped (SZ-4).
+        } else {
+          if (
+            rVal !== null &&
+            typeof rVal !== 'string' &&
+            typeof rVal !== 'number' &&
+            typeof rVal !== 'boolean'
+          ) {
+            throw new SchemaValidationError(
+              'Expected primitive value in unschematized child row',
+              `${rowPath}.${rKey}`,
+            );
+          }
+          cleanRow[rKey] = rVal;
+        }
+      }
+      return cleanRow;
+    });
+  }
+
+  if (KNOWN_STRING_FIELDTYPES.has(fieldtype)) {
+    if (typeof val !== 'string') {
+      throw new SchemaValidationError(`Expected string value for ${fieldtype} field`, path);
+    }
+    return val;
+  }
+
+  if (KNOWN_PRIMITIVE_ONLY_FIELDTYPES.has(fieldtype)) {
+    if (typeof val !== 'string' && typeof val !== 'number' && typeof val !== 'boolean') {
+      throw new SchemaValidationError(`Expected primitive value for ${fieldtype} field`, path);
+    }
+    return val;
+  }
+
+  // Unknown/future fieldtype: allow safe JSON primitives only; reject nested objects/functions.
+  if (typeof val !== 'string' && typeof val !== 'number' && typeof val !== 'boolean') {
+    throw new SchemaValidationError(`Expected primitive value for unknown fieldtype`, path);
+  }
+  return val;
+}
+
+/**
+ * Validates a `RecordDocument` against its `DocTypeMeta` field definitions (SZ-4, SZ-9, Review 1 Finding 5).
+ * - Rejects type-mismatched values with `SchemaValidationError`.
+ * - Drops undeclared non-system keys so unapproved fields never reach the form.
+ * - Preserves exact distinction between `null`, `""`, and omitted keys.
+ */
+export function validateRecordAgainstMeta(
+  input: RecordDocument,
+  meta: DocTypeMeta,
+  path = '$.data',
+): RecordDocument {
+  const baseDoc = validateRecordDocument(input, path);
+  const fieldMap = new Map<string, DocField>();
+  for (const field of meta.schema.fields) {
+    fieldMap.set(field.fieldname, field);
+  }
+
+  const sanitized: RecordDocument = { name: baseDoc.name };
+
+  for (const [key, val] of Object.entries(baseDoc)) {
+    if (key === 'name' || val === undefined) {
+      continue;
+    }
+    if (STANDARD_RECORD_STRING_KEYS.has(key)) {
+      if (val !== null && typeof val !== 'string') {
+        throw new SchemaValidationError(`Expected string for ${key}`, `${path}.${key}`);
+      }
+      sanitized[key] = val;
+      continue;
+    }
+    if (key === 'docstatus') {
+      if (val !== 0 && val !== 1 && val !== 2) {
+        throw new SchemaValidationError('Expected docstatus 0, 1, or 2', `${path}.docstatus`);
+      }
+      sanitized.docstatus = val;
+      continue;
+    }
+    if (key === 'idx') {
+      if (val !== null && (typeof val !== 'number' || !Number.isInteger(val))) {
+        throw new SchemaValidationError('Expected integer idx', `${path}.idx`);
+      }
+      sanitized[key] = val;
+      continue;
+    }
+
+    const declaredField = fieldMap.get(key);
+    if (!declaredField) {
+      // Drop undeclared keys (SZ-4, Review 1 Finding 5).
+      continue;
+    }
+
+    sanitized[key] = validateFieldValueAgainstSchema(val, declaredField, meta, `${path}.${key}`);
+  }
+
+  return sanitized;
+}
+
 export function validateRecordEnvelope(input: unknown): RecordDocument {
   if (!isPlainObject(input)) {
     throw new SchemaValidationError('Expected record response envelope', '$');

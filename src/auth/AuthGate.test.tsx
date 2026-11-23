@@ -105,7 +105,7 @@ describe('AuthGate', () => {
     setup();
     const usesProjectSpacing = (element: HTMLElement | null) =>
       element?.style.paddingInline === 'var(--space-md)' &&
-      element.style.maxWidth === 'var(--content-max-width)';
+      element.style.maxWidth === 'var(--form-max-width)';
     expect(usesProjectSpacing(screen.getByRole('status').closest('section'))).toBe(true);
     expect(usesProjectSpacing((await screen.findByRole('alert')).closest('section'))).toBe(true);
   });

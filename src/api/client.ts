@@ -13,6 +13,13 @@ import type { DocumentListQuery, DocumentPage, FrappeV2Paths } from './frappe-v2
 import type { paths as HrmsPaths } from './generated/hrms_tr';
 import type { paths as AccessPaths } from './generated/platform_core-access';
 import type { paths as AiPaths } from './generated/platform_core-ai';
+import type { paths as CollectionPaths } from './generated/platform_core-collection';
+import {
+  GROUP_SUMMARY_PATH,
+  isRawGroupSummary,
+  type GroupSummary,
+  type GroupSummaryQuery,
+} from './group-summary';
 import type { paths as IdentityPaths } from './generated/platform_core-identity';
 import type { paths as MobilePaths } from './generated/platform_core-mobile';
 import type { paths as GatewayPaths } from './generated/platform_core-model-gateway';
@@ -240,6 +247,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   const hrms = make<HrmsPaths>(`${config.siteUrl}/api`);
   const access = make<AccessPaths>(methodRoot);
   const mobile = make<MobilePaths>(methodRoot);
+  const collection = make<CollectionPaths>(methodRoot);
   const frappeV2 = make<FrappeV2Paths>(config.siteUrl);
   // PWA uçlarının zorunlu başlıkları. Tarayıcı `Origin` başlığını kendisi koyar ve bu değeri yok sayar.
   // Panel ve kiracı sitesi aynı köktedir. Bu yüzden değer site köküdür.
@@ -625,7 +633,7 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
     /**
      * Bir kayıt türünün kayıtlarını sayfa sayfa okur (Frappe API v2, `GET /api/v2/document/<doctype>`).
      * Frappe kayıt ve alan iznini uygular. Toplam sayı dönmez. `hasNextPage` sonraki sayfayı söyler.
-     * Gruplu sayım ve toplam bu uçta yoktur. Onlar `group_summary` sözleşmesiyle gelecek.
+     * Gruplu sayım ve toplam için `groupSummary` kullanılır.
      */
     async listDocuments(
       doctype: string,
@@ -661,6 +669,36 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       }
       sessionExpiredNotified = false;
       return { data: data.data, hasNextPage: data.has_next_page };
+    },
+
+    async groupSummary(
+      doctype: string,
+      query: GroupSummaryQuery,
+      options: RequestOptions = {},
+    ): Promise<GroupSummary> {
+      const summary = await unwrap(
+        collection.GET(GROUP_SUMMARY_PATH, {
+          ...signalOf(options),
+          params: {
+            query: {
+              doctype,
+              group_by: query.groupBy,
+              ...(query.aggregate === undefined
+                ? {}
+                : { aggregate: query.aggregate, aggregate_field: query.aggregateField }),
+              ...(query.filters === undefined ? {} : { filters: JSON.stringify(query.filters) }),
+              ...(query.limit === undefined ? {} : { limit: query.limit }),
+            },
+          },
+        }),
+        isRawGroupSummary,
+        options,
+      );
+      return {
+        groups: summary.groups,
+        totalCount: summary.total_count,
+        truncated: summary.truncated,
+      };
     },
 
     /** Model geçidinden yanıt ister. Model anahtarı sunucudadır (AX-2). */

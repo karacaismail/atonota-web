@@ -93,12 +93,10 @@ describe('buildAntdTheme', () => {
         algorithm: mode === 'dark' ? antdThemeApi.darkAlgorithm : antdThemeApi.defaultAlgorithm,
       }).colorError;
       expect(btn?.['dangerColor'], mode).toBe(white);
-      const bg = String(btn?.['colorError']);
-      const hover = String(btn?.['colorErrorHover']);
-      const active = String(btn?.['colorErrorActive']);
+      expect(danger[mode].solidText, mode).toBe(white);
+      const { background: bg, backgroundHover: hover, backgroundActive: active } = danger[mode];
       // Türetme: antd hata rengi beyaz metinle 4.5:1 verene kadar koyulaşır. Ton korunur.
       expect(bg, mode).toBe(darkenToContrast(seed, white, 4.5));
-      expect(bg, mode).toBe(danger[mode].background);
       // Tehlike rengi birincil rengin tonu değildir: kırmızı kanal baskındır.
       const [r, g, b] = [bg.slice(1, 3), bg.slice(3, 5), bg.slice(5, 7)].map((h) => parseInt(h, 16));
       expect(r, mode).toBeGreaterThan(g!);
@@ -109,6 +107,42 @@ describe('buildAntdTheme', () => {
       for (const ratio of ratios) expect(ratio, mode).toBeGreaterThanOrEqual(4.5);
       expect(ratios[1], `${mode} üzerine gelme`).toBeGreaterThan(ratios[0]!);
       expect(ratios[2], `${mode} basılı`).toBeGreaterThan(ratios[1]!);
+    }
+  });
+
+  it('kenarlıklı, metin ve bağlantı türü tehlike düğmesinin yazısı her zeminde en az 4.5:1 verir; düz zemin bozulmaz', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const btn = buildAntdTheme(mode).components?.Button as Record<string, string>;
+      const t = antdThemeApi.getDesignToken({
+        algorithm: mode === 'dark' ? antdThemeApi.darkAlgorithm : antdThemeApi.defaultAlgorithm,
+      });
+      // antd bu tokenları kenarlıklı, metin, bağlantı ve dolgulu türde yazı rengi olarak kullanır.
+      const ink = { normal: btn['colorError']!, hover: btn['colorErrorHover']!, active: btn['colorErrorActive']! };
+      expect(ink.normal, mode).toBe(danger[mode].color);
+      expect(ink.hover, mode).toBe(danger[mode].colorHover);
+      expect(ink.active, mode).toBe(danger[mode].colorActive);
+      // Yazının durduğu zeminler: yerleşim, panel, yükseltilmiş zemin ve antd'nin kırmızımsı durum zeminleri.
+      const dark = designSource.darkPalette;
+      const surfaces =
+        mode === 'dark'
+          ? [dark.layout, dark.panel, dark.elevated]
+          : [t.colorBgContainer, t.colorBgLayout];
+      surfaces.push(t.colorErrorBg, t.colorErrorBgHover, t.colorErrorBgActive, t.colorErrorBgFilledHover);
+      const worst = (c: string) => Math.min(...surfaces.map((bg) => contrastRatio(c, bg)));
+      for (const [state, color] of Object.entries(ink)) {
+        for (const bg of surfaces) {
+          expect(contrastRatio(color, bg), `${mode} ${state} / ${bg}`).toBeGreaterThanOrEqual(4.5);
+        }
+        const [r, g, b] = [color.slice(1, 3), color.slice(3, 5), color.slice(5, 7)].map((h) => parseInt(h, 16));
+        expect(r, `${mode} ${state} kırmızı kalır: ${color}`).toBeGreaterThan(g!);
+        expect(r, `${mode} ${state} kırmızı kalır: ${color}`).toBeGreaterThan(b!);
+      }
+      // Durumlar ayırt edilir: üzerine gelme ve basılı en kötü zeminde bir öncekinden daha çok kontrast verir.
+      expect(worst(ink.hover), `${mode} üzerine gelme`).toBeGreaterThan(worst(ink.normal));
+      expect(worst(ink.active), `${mode} basılı`).toBeGreaterThan(worst(ink.hover));
+      // Düz (solid) zemin yazı renginden ayrıdır ve önceki türetmesini korur.
+      expect(danger[mode].background, mode).not.toBe(ink.normal);
+      expect(contrastRatio('#ffffff', danger[mode].background), mode).toBeGreaterThanOrEqual(4.5);
     }
   });
 

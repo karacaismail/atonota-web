@@ -48,12 +48,6 @@
 .collection-eyebrow {
   color: var(--collection-muted);
 }
-.collection-example {
-  color: var(--collection-badge-text);
-  padding: calc(var(--collection-gap) / 2) var(--collection-gap);
-  background: var(--collection-badge-bg);
-  border-radius: var(--collection-radius);
-}
 .collection-search {
   display: flex;
   flex-wrap: wrap;
@@ -218,6 +212,8 @@
 .collection .collection-input-suffix {
   display: none;
 }
+/* Geçici odak stili kopyası (Küçük 3).
+ * Kaldırma koşulu: foundation main dalına girince bu kopya silinir. */
 .collection-scroll:focus,
 .collection .collection-hit:focus,
 .collection .collection-hit :focus,
@@ -271,6 +267,8 @@ html[data-focus-mode='keyboard'] .collection .collection-hit :focus-visible {
     transition: none;
   }
 }
+/* Geçici odak stili kopyasının yüksek karşıtlık bölümü (Küçük 3).
+ * Kaldırma koşulu: foundation main dalına girince bu kopya silinir. */
 @media (forced-colors: active) {
   html[data-focus-mode='keyboard'] .collection-scroll:focus-visible,
   html[data-focus-mode='keyboard'] .collection .collection-hit:focus-visible,
@@ -283,8 +281,9 @@ html[data-focus-mode='keyboard'] .collection .collection-hit :focus-visible {
   }
 }
 
-/* Affix and Select roots own the expanded edge; their native inner controls remain
- * directly interactive. Shared hit-area geometry supplies these four offsets. */
+/* Geçici dokunma alanı stili kopyası (Küçük 4).
+ * Kaldırma koşulu: foundation main dalına girince bu kopya silinir.
+ * Giriş ve seçim kökleri genişletilmiş kenarı taşır; iç kontroller doğrudan etkileşimli kalır. */
 .collection-input::after,
 .collection-select::after {
   pointer-events: auto;

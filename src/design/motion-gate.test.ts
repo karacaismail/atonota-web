@@ -141,6 +141,30 @@ describe('hareket kapısı', () => {
     expect(bareViolations[0]?.reason).toContain('neden=');
   });
 
+  it('tek satırlı bildirimin içindeki geçerli izin yorumu gereksiz sayılmaz (inceleme 4 örnekleri)', () => {
+    const cssBlock = [
+      '.a {',
+      '  transition: opacity 200ms /* motion-gate: allow sahip=shell neden=geçici kabuk geçişi */;',
+      '}',
+    ].join('\n');
+    expect(findMotionViolations(cssBlock, 'src/shell/a.css')).toHaveLength(0);
+    const cssInline =
+      '.a { transition: opacity 200ms /* motion-gate: allow sahip=shell neden=geçici kabuk geçişi */; }';
+    expect(findMotionViolations(cssInline, 'src/shell/a.css')).toHaveLength(0);
+    const js = [
+      'const s = {',
+      "  transition: /* motion-gate: allow sahip=shell neden=geçici kabuk geçişi */ 'opacity 200ms',",
+      '};',
+    ].join('\n');
+    expect(findMotionViolations(js, 'src/shell/a.ts')).toHaveLength(0);
+    // Aynı satırda bildirim dışında kalan cubic-bezier yine ihlaldir; bildirimin izni onu kapsamaz.
+    const mixed =
+      '.a { transition: opacity 200ms /* motion-gate: allow sahip=shell neden=geçici kabuk geçişi */; } .b { x: cubic-bezier(.2,.9,.3,1.15); }';
+    const violations = findMotionViolations(mixed, 'src/shell/a.css');
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.reason).toContain('cubic-bezier');
+  });
+
   it('ihlali olmayan bildirimdeki izin yorumu gereksizdir ve raporlanır', () => {
     const css = '.a { transition: opacity var(--motion-duration-mid) var(--motion-easing-standard); /* motion-gate: allow sahip=shell neden=eski bir not kaldı burada */ }';
     const violations = findMotionViolations(css, 'src/shell/a.css');

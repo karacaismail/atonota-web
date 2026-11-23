@@ -61,32 +61,30 @@ test('account only requests its production assets and shared dependencies', asyn
 });
 
 test('a leave approval requires review and keeps the original record version', async ({ page }) => {
-  const writes: unknown[] = [];
-  const leave = {
-    name: 'leave-example',
-    status: 'Open',
-    docstatus: 0,
-    modified: '2026-11-23 10:00:00.000001',
-    employee_name: 'Örnek Kişi',
-    leave_type: 'Yıllık izin',
-  };
-  await page.route('**/api/resource/Leave%20Application*', (route) =>
-    route.fulfill({
-      json: { data: route.request().url().includes('leave-example') ? leave : [leave] },
-    }),
-  );
-  await page.route('**/api/method/hrms_tr.api.approve_leave', (route) => {
-    writes.push(route.request().postDataJSON());
-    return route.fulfill({ json: { message: { name: leave.name } } });
+  // The e2e build serves the API from the MSW service worker. `page.route` cannot see requests the
+  // worker answers, so the test uses the sample leave `ORNEK-IZIN-0001` (Open, docstatus 0).
+  // The mock rejects an approval whose `version` differs from the record's `modified`
+  // (TimestampMismatchError, 417). A success message therefore proves the original version was sent.
+  // Writes are counted from the page's own requests. The worker answers them, but the page
+  // still issues them, so no approval request may leave before the consent box is checked.
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('hrms_tr.api.approve_leave')) writes.push(request.method());
   });
   await page.goto('/hr');
-  await page.getByRole('button', { name: 'İncele', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'İzni onayla', exact: true })).toBeDisabled();
-  expect(writes).toEqual([]);
+  const record = page.locator('.module-record', { hasText: 'ORNEK-IZIN-0001' });
+  await expect(record).toContainText('Açık');
+  await record.getByRole('button', { name: 'İncele', exact: true }).click();
+  const approve = page.getByRole('button', { name: 'İzni onayla', exact: true });
+  await expect(approve).toBeDisabled();
   await page.getByLabel('İzin talebini okudum ve onaylıyorum.').check();
-  await page.getByRole('button', { name: 'İzni onayla', exact: true }).click();
+  expect(writes).toEqual([]);
+  await approve.click();
   await expect(
     page.getByText('Sunucu işlemi kabul etti. Güncel kayıt için sayfayı yenileyin.'),
   ).toBeVisible();
-  expect(writes).toEqual([{ name: leave.name, version: leave.modified }]);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(writes).toEqual(['POST']);
+  // The list refreshes after the write: the mock now reports the record as approved.
+  await expect(record).toContainText('Onaylandı');
 });

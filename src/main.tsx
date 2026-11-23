@@ -4,8 +4,8 @@ import '@fontsource/jetbrains-mono/400.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { App } from '@/app/App';
-import { AuthGate, createPlatformSession } from '@/auth';
+import { Root } from '@/app/Root';
+import { createPlatformSession } from '@/auth';
 import { SampleDataNotice } from '@/mocks/SampleDataNotice';
 import { startApiMocks } from '@/mocks/start';
 
@@ -32,8 +32,7 @@ const session = createPlatformSession({
 createRoot(root).render(
   <StrictMode>
     {mocks.active ? <SampleDataNotice /> : null}
-    <AuthGate session={session}>
-      <App />
-    </AuthGate>
+    {/* Sahte sunucu açıkken modüller "Örnek veri" kipindedir. Örnek veri canlı gibi gösterilmez. */}
+    <Root session={session} dataMode={mocks.active ? 'example' : 'live'} />
   </StrictMode>,
 );

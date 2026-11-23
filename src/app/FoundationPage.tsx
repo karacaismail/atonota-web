@@ -86,6 +86,9 @@ function SurfaceButtonsDemo() {
           <Button data-testid="modal-open" onClick={() => setOpen(true)}>
             Pencereyi aç
           </Button>
+          <Button type="text" danger data-testid="btn-card-danger-text">
+            Kartı sil
+          </Button>
         </Flex>
       </Card>
       <Modal
@@ -101,6 +104,9 @@ function SurfaceButtonsDemo() {
         <Typography.Paragraph>
           Bu kayıt silinecek. Devam etmek istiyor musunuz?
         </Typography.Paragraph>
+        <Button type="text" danger data-testid="btn-modal-danger-text">
+          Kalıcı sil
+        </Button>
       </Modal>
     </section>
   );
@@ -148,6 +154,15 @@ export default function FoundationPage() {
               Pasif
             </Button>
             <Button type="primary" danger data-testid="btn-danger-primary">
+              Sil
+            </Button>
+            <Button danger data-testid="btn-danger-outlined">
+              Sil
+            </Button>
+            <Button type="text" danger data-testid="btn-danger-text">
+              Sil
+            </Button>
+            <Button type="link" danger data-testid="btn-danger-link">
               Sil
             </Button>
             <FocusDimDemo />

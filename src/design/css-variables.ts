@@ -3,7 +3,7 @@
  * Kaynaktaki `derived.css` başlangıç noktasıdır; burada aynı adlar korunur ve
  * açık/koyu değerler doğru bloklara ayrılır.
  */
-import { dropdownAnimation, duration, easing } from './motion';
+import { dropdownAnimation, duration, easing, instantMs } from './motion';
 import type { ThemeMode } from './source';
 import {
   danger,
@@ -80,7 +80,10 @@ export function rootVariables(): Record<string, string> {
     '--color-primary-active': primary.active,
     '--primary-text': primary.light.text,
     '--primary-text-hover': primary.light.textHover,
-    '--danger-text': danger.light.text,
+    '--danger-text': danger.light.solidText,
+    '--danger-bg': danger.light.background,
+    '--danger-bg-hover': danger.light.backgroundHover,
+    '--danger-bg-active': danger.light.backgroundActive,
     '--radius': px(radius.control),
     '--card-radius': px(radius.card),
     '--hit-expand': String(hitArea.expand),
@@ -93,6 +96,8 @@ export function rootVariables(): Record<string, string> {
     '--motion-easing-standard': easing.standard,
     '--motion-easing-dropdown': easing.dropdown,
     '--motion-easing-owl-pop': easing.owlPop,
+    '--motion-easing-glide': easing.glide,
+    '--motion-easing-linear': easing.linear,
     '--motion-duration-fast': ms(duration.fast),
     '--motion-duration-mid': ms(duration.mid),
     '--motion-duration-slow': ms(duration.slow),
@@ -101,6 +106,11 @@ export function rootVariables(): Record<string, string> {
     '--motion-duration-flyout': ms(duration.flyout),
     '--motion-duration-rail': ms(duration.rail),
     '--motion-duration-owl-pop': ms(duration.owlPop),
+    '--motion-duration-glide': ms(duration.glide),
+    '--motion-duration-glide-fade': ms(duration.glideFade),
+    '--motion-duration-skeleton': ms(duration.skeleton),
+    '--motion-duration-spin': ms(duration.spin),
+    '--motion-duration-instant': ms(instantMs),
     '--space-xxs': px(space.xxs),
     '--space-xs': px(space.xs),
     '--space-sm': px(space.sm),
@@ -130,7 +140,10 @@ export function darkVariables(): Record<string, string> {
   return {
     '--primary-text': primary.dark.text,
     '--primary-text-hover': primary.dark.textHover,
-    '--danger-text': danger.dark.text,
+    '--danger-text': danger.dark.solidText,
+    '--danger-bg': danger.dark.background,
+    '--danger-bg-hover': danger.dark.backgroundHover,
+    '--danger-bg-active': danger.dark.backgroundActive,
     '--primary-bg': primary.dark.background,
     '--primary-bg-hover': primary.dark.backgroundHover,
     '--primary-bg-active': primary.dark.backgroundActive,
@@ -172,7 +185,9 @@ function controlFixCss(): string {
 /**
  * Birincil buton metni ve koyu tema zemini (kaynak: primary.light / primary.dark; koyu zemin düz renktir).
  * Tehlikeli birincil düğme (`danger`) de `ant-btn-primary` sınıfını taşır; kurallar onu dışarıda
- * bırakır. Tehlike rengi ve beyaz metin antd Button tokenlarından gelir (tokens.ts: danger).
+ * bırakır. Düz tehlike düğmesinin zemini `--danger-bg*` değişkenlerinden, metni `--danger-text`
+ * değişkeninden gelir. antd'nin `colorError*` tokenları bu projede yazı rengidir (tokens.ts: danger);
+ * düz zemin o tokenlardan ayrı tutulur ki kenarlıklı, metin ve bağlantı türünde yazı 4.5:1 versin.
  */
 function primaryButtonCss(): string {
   const primary = '.ant-btn-primary:not(.ant-btn-dangerous):not(:disabled):not(.ant-btn-disabled)';
@@ -184,8 +199,10 @@ function primaryButtonCss(): string {
     `[data-theme="dark"] ${primary}:hover { background: var(--primary-bg-hover); color: var(--primary-text-hover); }`,
     '/* Basılı: klavyeyle (Space) basılınca üzerine gelme yoktur; metin yine %100 olur (AA). */',
     `[data-theme="dark"] ${primary}:active { background: var(--primary-bg-active); color: var(--primary-text-hover); }`,
-    '/* antd, düz (solid) düğmenin üzerine gelme ve basılı metnini primaryColor yapar. Tehlike düğmesinde metin beyaz kalır. */',
-    `${dangerSolid}:hover, ${dangerSolid}:active { color: var(--danger-text); }`,
+    '/* Düz tehlike düğmesi: zemin kendi basamaklarından gelir; antd düz düğmenin üzerine gelme metnini primaryColor yapar, burada beyaz kalır. */',
+    `${dangerSolid} { background: var(--danger-bg); color: var(--danger-text); }`,
+    `${dangerSolid}:hover { background: var(--danger-bg-hover); color: var(--danger-text); }`,
+    `${dangerSolid}:active { background: var(--danger-bg-active); color: var(--danger-text); }`,
   ].join('\n');
 }
 
@@ -193,6 +210,9 @@ function primaryButtonCss(): string {
  * Odak göstergesi. Çevreleyen halka yasaktır. Gösterge alt kenarda tek çizgidir.
  * Görünür odak modu yalnız klavyeyle açılır: `html[data-focus-mode="keyboard"]`.
  */
+/** Metin bağlantısı seçicisi. Düğme, menü ve sekme görünümlü bağlantılar dışarıdadır (türetilmiş karar 3). */
+const TEXT_LINK = 'a:not(.ant-btn):not(.ant-menu-item):not(.ant-tabs-tab)';
+
 function focusCss(): string {
   const on = 'html[data-focus-mode="keyboard"]';
   const bar = 'inset 0 calc(var(--focus-indicator-size) * -1) 0 0 var(--focus-indicator-color)';
@@ -203,7 +223,8 @@ function focusCss(): string {
     '/* antd düğme kuralı 0 px solid bırakır; stil de kapatılır (hesaplanmış outline-style: none). */',
     '.ant-btn.ant-btn:not(:disabled):focus-visible, .ant-btn.ant-btn:focus-visible { outline: none; }',
     `${on} :focus-visible { box-shadow: ${bar}; }`,
-    `${on} a:focus-visible { box-shadow: none; text-decoration: underline; text-decoration-thickness: var(--focus-indicator-size); text-underline-offset: 0.2em; text-decoration-color: var(--focus-indicator-color); }`,
+    '/* Odaklı bağlantı: seçici metin bağlantısı kuralından daha özgüldür; kalınlık ve renk ezilmez. */',
+    `${on} a:focus-visible, ${on} ${TEXT_LINK}:focus-visible { box-shadow: none; text-decoration: underline; text-decoration-thickness: var(--focus-indicator-size); text-underline-offset: 0.2em; text-decoration-color: var(--focus-indicator-color); }`,
     `${on} .ant-btn:focus-visible { box-shadow: var(--shadow-button), ${bar}; }`,
     `${on} .ant-input:focus-visible, ${on} .ant-input-affix-wrapper:focus-within { box-shadow: var(--shadow-input), ${bar}; }`,
     `${on} .ant-input-affix-wrapper > .ant-input:focus-visible { box-shadow: none; }`,
@@ -260,7 +281,8 @@ function baseCss(): string {
     '*, *::before, *::after { box-sizing: border-box; }',
     'img, svg, video { max-width: 100%; height: auto; }',
     '/* Metin bağlantıları altı çizilidir: renk tek ayırt edici olmaz (WCAG 1.4.1). */',
-    'a:not(.ant-btn):not(.ant-menu-item):not(.ant-tabs-tab) { text-decoration: underline; text-underline-offset: 0.15em; }',
+    '/* Özgüllük (0,3,1) antd\'nin `a { text-decoration: none }` kuralını geçer; `:where()` ile sıfırlanırsa antd kazanır. */',
+    `${TEXT_LINK} { text-decoration: underline; text-underline-offset: 0.15em; }`,
   ].join('\n');
 }
 
