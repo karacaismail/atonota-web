@@ -8,6 +8,10 @@
  */
 import type { ReactNode } from 'react';
 
+export function XProvider({ children }: { children: ReactNode }) {
+  return children;
+}
+
 interface SenderProps {
   value?: string;
   placeholder?: string;

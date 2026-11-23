@@ -1,3 +1,4 @@
+import { XProvider } from '@ant-design/x';
 import { useMemo } from 'react';
 
 import { createMockTransport, MOCK_SOURCE } from '../agent';
@@ -24,5 +25,9 @@ export default function AiStudioPage() {
     () => (delayMs > 0 ? createMockTransport({ delayMs }) : undefined),
     [delayMs],
   );
-  return transport ? <AiStudio transport={transport} source={MOCK_SOURCE} /> : <AiStudio />;
+  return (
+    <XProvider>
+      {transport ? <AiStudio transport={transport} source={MOCK_SOURCE} /> : <AiStudio />}
+    </XProvider>
+  );
 }

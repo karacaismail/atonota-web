@@ -1,9 +1,9 @@
+import designSource from '@design-source/control-size-config.json';
 import { theme as antdThemeApi } from 'antd';
 import { describe, expect, it } from 'vitest';
 
 import { buildAntdTheme } from './antd-theme';
 import { blendOver, contrastRatio, darkenToContrast } from './color';
-import { designSource } from './source';
 import { danger, primary, textDescription } from './tokens';
 
 /** `rgba(r,g,b,a)` -> blendOver için renk ve opaklık. */

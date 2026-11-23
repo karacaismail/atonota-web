@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { designSource } from '@/design/source';
+import designSource from '@design-source/control-size-config.json';
 
 import { box, computeHitAreas, idealExtension, type HitTarget } from './compute';
 

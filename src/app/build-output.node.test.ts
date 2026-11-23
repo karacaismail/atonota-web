@@ -25,6 +25,7 @@ const LAZY_CHUNKS = [
   { name: 'kabuk', test: /^(shell|ShellApp)-/ },
   { name: 'yönlendirici', test: /^router-/ },
   { name: 'ikonlar', test: /^icons-/ },
+  { name: 'Ant Design X', test: /^antd-x-/ },
 ];
 
 let outDir = '';
@@ -126,9 +127,7 @@ describe('üretim derlemesi (vite build)', () => {
         `${chunk.name} parçası ilk yükte değildir`,
       ).toBe(false);
     }
-    // Kitaplık parçaları ayrı dosyadadır; `antd-` eşleşmesi `antd-x-` parçasını saymaz.
-    expect(js.some((name) => /^antd-(?!x-)/.test(name))).toBe(true);
-    expect(js.some((name) => name.startsWith('antd-x-'))).toBe(true);
+    // antd bileşenleri kullanım yerine göre bölünür. React ayrı kalır.
     expect(js.some((name) => name.startsWith('react-'))).toBe(true);
     const total = js.reduce((sum, name) => sum + statSync(join(outDir, 'assets', name)).size, 0);
     const initialBytes = initial.reduce((sum, p) => sum + statSync(join(outDir, p)).size, 0);

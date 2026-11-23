@@ -46,7 +46,12 @@ test('account only requests its production assets and shared dependencies', asyn
     return assets;
   };
   const entryKey = 'src/modules/account/Page.tsx';
-  const allowed = new Set([...collect('index.html'), ...collect(entryKey)]);
+  // The signed-in account page always renders inside the shell.
+  const allowed = new Set([
+    ...collect('index.html'),
+    ...collect('src/shell/index.ts'),
+    ...collect(entryKey),
+  ]);
   const forbidden = new Set<string>();
   for (const [id] of pageCases)
     if (id !== 'account')

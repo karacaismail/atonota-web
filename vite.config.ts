@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 import { mockWorkerPlugin } from './vite/mock-worker-plugin.ts';
+import { runtimeDesignSource } from './vite/runtime-design-source.ts';
 
 /**
  * e2e derlemesi (`vite build --mode e2e`): işlerin bağımsız deneme sayfaları da pakete girer.
@@ -31,6 +32,7 @@ const ANTD_X_MOCK_TESTS = [
 export default defineConfig(({ mode }) => ({
   // mockWorkerPlugin: sahte sunucunun işçi dosyasını yalnız gerektiğinde sunar (vite/mock-worker-plugin.ts).
   plugins: [react(), mockWorkerPlugin()],
+  define: { __RUNTIME_DESIGN_SOURCE__: JSON.stringify(runtimeDesignSource) },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -50,8 +52,12 @@ export default defineConfig(({ mode }) => ({
           groups: [
             { name: 'react', test: /node_modules\/(react|react-dom|scheduler)\// },
             { name: 'router', test: /node_modules\/(react-router|react-router-dom)\// },
-            { name: 'antd-x', test: /node_modules\/@ant-design\/x\// },
-            { name: 'antd', test: /node_modules\/(antd|@ant-design|rc-[^/]+|@rc-component)\// },
+            // antd bileşenlerini kullanan rotalar belirler. Ant Design X grubu bunları kendine çekmez.
+            {
+              name: 'antd-x',
+              test: /node_modules\/@ant-design\/x\//,
+              includeDependenciesRecursively: false,
+            },
             { name: 'icons', test: /node_modules\/@phosphor-icons\// },
           ],
         },
