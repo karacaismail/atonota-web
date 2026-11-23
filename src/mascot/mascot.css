@@ -1,0 +1,57 @@
+/* Baykuş maskotu. Süreler OwlMark içindeki token değişkenlerinden gelir. */
+.owl {
+  display: inline-block;
+  flex-shrink: 0;
+  overflow: visible;
+  vertical-align: middle;
+  animation: owl-float var(--owl-dur-float) var(--motion-easing-standard) infinite;
+}
+
+.owl .owl-orbit ellipse {
+  stroke: currentcolor;
+  stroke-opacity: 0.28;
+}
+
+.owl .owl-eyes {
+  transform-origin: 32px 29.6px;
+  animation: owl-blink var(--owl-dur-blink) infinite;
+}
+
+.owl.is-still,
+.owl.is-still .owl-eyes {
+  animation: none;
+}
+
+@keyframes owl-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+
+  30% {
+    transform: translateY(-1.5px) rotate(-3deg);
+  }
+
+  70% {
+    transform: translateY(-0.5px) rotate(3deg);
+  }
+}
+
+@keyframes owl-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  96% {
+    transform: scaleY(0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owl,
+  .owl .owl-eyes {
+    animation: none;
+  }
+}
