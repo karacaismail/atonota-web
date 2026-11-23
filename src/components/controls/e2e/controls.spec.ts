@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Locator } from '@playwright/test';
 
-const demo = '/src/components/controls/demo/';
+const demo = '/src/components/controls/demo/harness/';
 
 async function box(locator: Locator) {
   const bounds = await locator.boundingBox();
