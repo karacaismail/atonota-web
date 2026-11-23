@@ -86,14 +86,66 @@ describe('hareket kapısı', () => {
     expect(findMotionViolations(tsx, 'src/shell/a.ts')).toHaveLength(0);
   });
 
-  it('motion-gate: allow yorumu taşıyan bildirimi atlar', () => {
-    const css = [
+  it('inceleme 3 örnekleri: baştaki sıfırsız süre, JSX nesnesi, animate() ve tırnaklı anahtar', () => {
+    expect(findMotionViolations("const s = { transition: 'opacity .2s' };", 'src/shell/a.ts')).toHaveLength(1);
+    const jsx = "<Box transition={{ duration: 0.3, ease: 'linear' }} />";
+    const jsxViolations = findMotionViolations(jsx, 'src/shell/A.tsx');
+    expect(jsxViolations).toHaveLength(1);
+    expect(jsxViolations[0]?.reason).toContain('süre');
+    expect(jsxViolations[0]?.reason).toContain('linear');
+    const waapi = "el.animate(kareler, { duration: 200, easing: 'linear' });";
+    const waapiViolations = findMotionViolations(waapi, 'src/shell/a.ts');
+    expect(waapiViolations).toHaveLength(1);
+    expect(waapiViolations[0]?.reason).toContain('süre');
+    expect(waapiViolations[0]?.reason).toContain('linear');
+    expect(findMotionViolations("const s = { 'transition': 'opacity 200ms' };", 'src/shell/a.ts')).toHaveLength(1);
+    expect(findMotionViolations('el.animate(kareler, 300);', 'src/shell/a.ts')).toHaveLength(1);
+  });
+
+  it('token kullanan animate() çağrısını ve çok satırlı JSX nesnesini doğru ayırır', () => {
+    const ok = "el.animate(kareler, { duration: motion.duration.mid, easing: motion.easing.standard });";
+    expect(findMotionViolations(ok, 'src/shell/a.ts')).toHaveLength(0);
+    const multi = [
+      '<Box',
+      '  transition={{',
+      '    duration: 0.3,',
+      "    ease: 'ease-in-out',",
+      '  }}',
+      '/>',
+    ].join('\n');
+    const violations = findMotionViolations(multi, 'src/shell/A.tsx');
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.line).toBe(2);
+  });
+
+  it('motion-gate: allow yorumu sahip ve neden ister; yalnız kendi bildirimini susturur', () => {
+    const valid = [
+      '.a {',
+      '  transition: /* motion-gate: allow sahip=shell neden=görünürlük geçişi tokena taşınana kadar */',
+      '    opacity 200ms ease;',
+      '  animation-duration: 300ms;',
+      '}',
+    ].join('\n');
+    const remaining = findMotionViolations(valid, 'src/shell/a.css');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]?.line).toBe(4);
+    const bare = [
       '.a {',
       '  transition: /* motion-gate: allow */',
       '    opacity 200ms ease;',
       '}',
     ].join('\n');
-    expect(findMotionViolations(css, 'src/shell/a.css')).toHaveLength(0);
+    const bareViolations = findMotionViolations(bare, 'src/shell/a.css');
+    expect(bareViolations).toHaveLength(1);
+    expect(bareViolations[0]?.reason).toContain('sahip=');
+    expect(bareViolations[0]?.reason).toContain('neden=');
+  });
+
+  it('ihlali olmayan bildirimdeki izin yorumu gereksizdir ve raporlanır', () => {
+    const css = '.a { transition: opacity var(--motion-duration-mid) var(--motion-easing-standard); /* motion-gate: allow sahip=shell neden=eski bir not kaldı burada */ }';
+    const violations = findMotionViolations(css, 'src/shell/a.css');
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.reason).toContain('gereksiz');
   });
 
   it('src/design, testler ve kaynak dosyalar muaftır', () => {

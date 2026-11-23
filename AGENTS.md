@@ -84,7 +84,7 @@ Her iş yalnız kendi klasörünü değiştirir. Ortak dosya gerekiyorsa raporda
 Proje sahibinin genel kuralları bu depoda da geçerlidir. İki kural için bu projede kayıtlı istisna vardır.
 
 1. **Metin boyutu.** Genel kural en küçük okunur metni 14 px sayar. Bu projede kaynak dosya en küçük metni 12 px yapar. 10 px ve 9 px yalnız kaynak dosyadaki istisnalarda kullanılır. Bu istisnalar buton ve inputta kullanılmaz. Gövde metni 14 px kalır.
-2. **Hareket.** Genel varsayılan eğri `cubic-bezier(.65, 0, .35, 1)` eğrisidir. Dropdown açılışı kaynak dosyadaki "Skew + Scale" hareketini kullanır. Süre 500 ms, eğri `cubic-bezier(.2, .9, .3, 1.15)` olur. Bütün süre ve eğriler merkezi tokendadır. `prefers-reduced-motion` açıksa hareket durur. Hareket kapısı (`npm run lint`) `src/design/` dışında sabit süreyi, `cubic-bezier`, `steps` ve `ease`, `ease-in`, `ease-out`, `ease-in-out`, `linear` sözcüklerini reddeder. Kapı CSS'i bildirim bildirim tarar; JS içindeki sayı süreleri de yakalanır.
+2. **Hareket.** Genel varsayılan eğri `cubic-bezier(.65, 0, .35, 1)` eğrisidir. Dropdown açılışı kaynak dosyadaki "Skew + Scale" hareketini kullanır. Süre 500 ms, eğri `cubic-bezier(.2, .9, .3, 1.15)` olur. Bütün süre ve eğriler merkezi tokendadır. `prefers-reduced-motion` açıksa hareket durur. Hareket kapısı (`npm run lint`) `src/design/` dışında sabit süreyi, `cubic-bezier`, `steps` ve `ease`, `ease-in`, `ease-out`, `ease-in-out`, `linear` sözcüklerini reddeder. Kapı CSS'i bildirim bildirim tarar; JS nesne değerleri (`transition={{ duration: 0.3 }}`), `animate()` çağrıları ve sayı süreleri de yakalanır. Satır içi izin yorumu `motion-gate: allow sahip=<iş> neden=<metin>` biçimindedir; yalnız kendi bildirimini susturur.
 
 Şu genel kurallar istisnasız geçerlidir:
 

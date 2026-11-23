@@ -6,8 +6,13 @@
  * tokenları kullanır.
  *
  * Kapı metni satır satır değil, bildirim bildirim tarar. Bildirim `transition` ya da `animation`
- * ile başlar ve noktalı virgüle (CSS) ya da metin değerinin sonuna (JS) kadar sürer. Prettier'in
- * birden çok satıra böldüğü değerler de böylece yakalanır.
+ * ile başlar ve noktalı virgüle (CSS), metin değerinin sonuna ya da nesne değerinin kapanışına (JS)
+ * kadar sürer. Prettier'in birden çok satıra böldüğü değerler de böylece yakalanır. Web Animations
+ * API (`el.animate(kareler, { duration, easing })`) çağrıları da taranır.
+ *
+ * Satır içi izin: bildirimin içine `motion-gate: allow sahip=<iş> neden=<en az 10 karakter>`
+ * yorumu yazılır. Yorum yalnız kendi bildirimini susturur. Sahip ya da neden eksikse kapı yine
+ * ihlal verir. İhlali olmayan bildirimdeki izin yorumu gereksizdir ve ihlal sayılır.
  *
  * Kullanım: node scripts/motion-gate.mjs [kök]
  */
@@ -41,54 +46,139 @@ export function isMotionExempt(file) {
 }
 
 /**
- * Bildirim başlangıcı: CSS (`transition-duration:`) ya da JS (`transitionDuration:` / `= `).
- * Grup 1 özellik adı, grup 2 ek (süre, gecikme, eğri), grup 3 ayraç.
+ * Bildirim başlangıcı: CSS (`transition-duration:`) ya da JS (`transitionDuration:`, `'transition':`,
+ * `transition =`, JSX `transition=`). Grup 1 özellik adı, grup 2 ek (süre, gecikme, eğri), grup 3 ayraç.
  */
 const DECLARATION_START =
-  /(?<![-\w])(transition|animation)(-duration|-delay|-timing-function|Duration|Delay|TimingFunction)?\s*([:=])\s*/g;
+  /(?<![-\w])(transition|animation)(-duration|-delay|-timing-function|Duration|Delay|TimingFunction)?['"]?\s*([:=])\s*/g;
 
-const DURATION_RE = /(?<![-\w.])\d+(?:\.\d+)?m?s(?![-\w])/;
-const NUMBER_ONLY_RE = /^\d+(?:\.\d+)?\s*(?:[,;)}\]]|$)/;
+/** Web Animations API ve hareket kitaplıkları: `el.animate(kareler, seçenekler)`. */
+const ANIMATE_CALL = /(?<![-\w])animate\s*\(/g;
+
+/** Sabit süre: `200ms`, `0.3s`, `.2s`, `1.5s`. */
+const DURATION_RE = /(?<![-\w.])(?:\d+(?:\.\d+)?|\.\d+)m?s(?![-\w])/;
+/** Çıplak sayı (JS): `200`, `0.3`, `.3`. */
+const NUMBER_ONLY_RE = /^(?:\d+(?:\.\d+)?|\.\d+)\s*(?:[,;)}\]]|$)/;
 const KEYWORD_RE = /(?<![-\w])(ease-in-out|ease-in|ease-out|ease|linear)(?![-\w])/;
+/** Seçenek nesnesinde sayı süre: `duration: 200`, `delay: .3`. */
+const OPTION_NUMBER_RE =
+  /(?<![-\w])(?:duration|delay)['"]?\s*:\s*(?:\d+(?:\.\d+)?|\.\d+)(?![-\w.])/;
+/** Seçenek nesnesinde eğri sözcüğü: `ease: 'linear'`, `easing: "ease-in"`. */
+const OPTION_KEYWORD_RE =
+  /(?<![-\w])(?:ease|easing|timingFunction)['"]?\s*:\s*['"`](ease-in-out|ease-in|ease-out|ease|linear)['"`]/;
+/** Satır içi izin yorumu: sahip ve neden zorunludur. */
+const ALLOW_RE = /motion-gate:\s*allow(?:\s+sahip=(\S+)\s+neden=([^*\n]+?))?\s*(?:\*\/|$|\n)/m;
+const ALLOW_MIN_REASON = 10;
 
-/** Bildirimin değerini ve bittiği konumu döner. Metin değeri tırnakla sınırlıdır. */
-function readValue(text, start) {
-  const first = text[start];
-  if (first === "'" || first === '"' || first === '`') {
-    let i = start + 1;
-    while (i < text.length && text[i] !== first) {
-      if (text[i] === '\\') i += 1;
-      i += 1;
-    }
-    return { value: text.slice(start + 1, i), end: i + 1, quoted: true };
+const CLOSER = { '{': '}', '[': ']', '(': ')' };
+
+/** Tırnaklı metnin kapanışından sonraki konumu döner. */
+function skipString(text, start) {
+  const quote = text[start];
+  let i = start + 1;
+  while (i < text.length && text[i] !== quote) {
+    if (text[i] === '\\') i += 1;
+    i += 1;
   }
-  let i = start;
-  while (i < text.length && !';{}'.includes(text[i])) i += 1;
-  return { value: text.slice(start, i), end: i, quoted: false };
+  return i + 1;
 }
 
-function reasonsFor(value, suffix, quoted) {
+/** `text[start]` açılış ayracıdır; eşleşen kapanıştan sonraki konumu döner. Metinler atlanır. */
+function skipBalanced(text, start) {
+  const stack = [CLOSER[text[start]]];
+  let i = start + 1;
+  while (i < text.length && stack.length) {
+    const c = text[i];
+    if (c === "'" || c === '"' || c === '`') {
+      i = skipString(text, i);
+      continue;
+    }
+    if (CLOSER[c]) stack.push(CLOSER[c]);
+    else if (c === stack[stack.length - 1]) stack.pop();
+    i += 1;
+  }
+  return i;
+}
+
+/**
+ * Bildirimin değerini ve bittiği konumu döner.
+ * - Tırnaklı metin tırnakla sınırlıdır (`quoted`).
+ * - Nesne ya da dizi değeri eşleşen kapanışa kadar sürer (`object`); JSX `{{ ... }}` dahil.
+ * - Diğer değerler CSS'te `;{}` ayracına, JS'te ayrıca `,` ve satır sonuna kadar sürer.
+ */
+function readValue(text, start, isJs) {
+  const first = text[start];
+  if (first === "'" || first === '"' || first === '`') {
+    const end = skipString(text, start);
+    return { value: text.slice(start + 1, end - 1), end, quoted: true, object: false };
+  }
+  if (CLOSER[first]) {
+    const end = skipBalanced(text, start);
+    return { value: text.slice(start, end), end, quoted: false, object: true };
+  }
+  const stops = isJs ? ';{},\n' : ';{}';
+  let i = start;
+  while (i < text.length && !stops.includes(text[i])) i += 1;
+  return { value: text.slice(start, i), end: i, quoted: false, object: false };
+}
+
+const CUBIC_REASON = 'eğri sabit yazılmış (cubic-bezier); --motion-easing-* kullanın';
+const STEPS_REASON = 'steps() eğrisi normal profilde yasaktır';
+const DURATION_REASON = 'süre sabit yazılmış; --motion-duration-* kullanın';
+const NUMBER_REASON = 'süre sabit sayı olarak yazılmış (JS); motion tokenlarını kullanın';
+const keywordReason = (word) =>
+  `eğri anahtar sözcüğü yasaktır (${word}); --motion-easing-* kullanın`;
+
+/** Seçenek nesnesi ya da `animate(...)` argümanları için nedenler. */
+function reasonsForOptions(value) {
   const reasons = [];
-  if (/cubic-bezier\s*\(/.test(value)) {
-    reasons.push('eğri sabit yazılmış (cubic-bezier); --motion-easing-* kullanın');
+  if (/cubic-bezier\s*\(/.test(value)) reasons.push(CUBIC_REASON);
+  if (/\bsteps\s*\(\s*\d/.test(value)) reasons.push(STEPS_REASON);
+  if (DURATION_RE.test(value)) reasons.push(DURATION_REASON);
+  else if (OPTION_NUMBER_RE.test(value) || /,\s*(?:\d+(?:\.\d+)?|\.\d+)\s*\)?\s*$/.test(value)) {
+    reasons.push(NUMBER_REASON);
   }
-  if (/\bsteps\s*\(\s*\d/.test(value)) {
-    reasons.push('steps() eğrisi normal profilde yasaktır');
-  }
+  const keyword = value.match(OPTION_KEYWORD_RE);
+  if (keyword) reasons.push(keywordReason(keyword[1]));
+  return reasons;
+}
+
+function reasonsFor({ value, suffix, quoted, object }) {
+  if (object) return reasonsForOptions(value);
+  const reasons = [];
+  if (/cubic-bezier\s*\(/.test(value)) reasons.push(CUBIC_REASON);
+  if (/\bsteps\s*\(\s*\d/.test(value)) reasons.push(STEPS_REASON);
   if (DURATION_RE.test(value)) {
-    reasons.push('süre sabit yazılmış; --motion-duration-* kullanın');
+    reasons.push(DURATION_REASON);
   } else if (
     !quoted &&
     /^(Duration|Delay)$/.test(suffix ?? '') &&
     NUMBER_ONLY_RE.test(value.trim())
   ) {
-    reasons.push('süre sabit sayı olarak yazılmış (JS); motion tokenlarını kullanın');
+    reasons.push(NUMBER_REASON);
   }
   const keyword = value.match(KEYWORD_RE);
-  if (keyword) {
-    reasons.push(`eğri anahtar sözcüğü yasaktır (${keyword[1]}); --motion-easing-* kullanın`);
-  }
+  if (keyword) reasons.push(keywordReason(keyword[1]));
   return reasons;
+}
+
+/**
+ * İzin yorumunu uygular. Geçerli yorum ve gerçek ihlal: bildirim susturulur (null döner).
+ * Eksik sahip ya da neden: ihlal listesine eklenir. İhlalsiz bildirimde izin: gereksiz sayılır.
+ */
+function applyAllow(text, reasons) {
+  const allow = text.match(ALLOW_RE);
+  if (!allow) return reasons;
+  const owner = allow[1];
+  const why = (allow[2] ?? '').trim();
+  if (!owner || why.length < ALLOW_MIN_REASON) {
+    return [
+      ...reasons,
+      `motion-gate: allow yorumu sahip=<iş> ve neden=<en az ${ALLOW_MIN_REASON} karakter> ister`,
+    ];
+  }
+  if (reasons.length === 0) return ['motion-gate: allow yorumu gereksiz: bildirimde ihlal yok'];
+  return null;
 }
 
 function lineAt(text, index) {
@@ -100,42 +190,45 @@ function lineAt(text, index) {
 /** Metindeki ihlalleri döner: { file, line, reason, text }. Her bildirim için en çok bir kayıt. */
 export function findMotionViolations(text, file) {
   if (isMotionExempt(file)) return [];
+  const isJs = /\.[cm]?[jt]sx?$/.test(file);
   const out = [];
+  const covered = [];
   const clean = text.replace(/\r\n/g, '\n');
-  for (const match of clean.matchAll(DECLARATION_START)) {
-    const [, , suffix] = match;
-    const { value, end, quoted } = readValue(clean, match.index + match[0].length);
-    const declaration = clean.slice(match.index, end);
-    if (/motion-gate:\s*allow/.test(declaration)) continue;
-    const reasons = reasonsFor(value, suffix, quoted);
-    if (reasons.length === 0) continue;
+  const record = (start, end, reasons) => {
+    covered.push([start, end]);
+    const declaration = clean.slice(start, end);
+    const final = applyAllow(declaration, reasons);
+    if (!final || final.length === 0) return;
     out.push({
       file,
-      line: lineAt(clean, match.index),
-      reason: reasons.join('; '),
+      line: lineAt(clean, start),
+      reason: final.join('; '),
       text: declaration.replace(/\s+/g, ' ').trim(),
     });
+  };
+  for (const match of clean.matchAll(DECLARATION_START)) {
+    const [, , suffix] = match;
+    const read = readValue(clean, match.index + match[0].length, isJs);
+    record(match.index, read.end, reasonsFor({ ...read, suffix }));
+  }
+  for (const match of clean.matchAll(ANIMATE_CALL)) {
+    const open = match.index + match[0].length - 1;
+    const end = skipBalanced(clean, open);
+    record(match.index, end, reasonsForOptions(clean.slice(open + 1, end - 1)));
   }
   // Bildirim dışındaki steps(...) ve cubic-bezier(...) çağrıları da yasaktır.
-  const seenLines = new Set(out.map((v) => v.line));
-  clean.split('\n').forEach((line, i) => {
-    if (seenLines.has(i + 1) || /motion-gate:\s*allow/.test(line)) return;
-    if (/cubic-bezier\s*\(/.test(line)) {
-      out.push({
-        file,
-        line: i + 1,
-        reason: 'eğri sabit yazılmış (cubic-bezier); --motion-easing-* kullanın',
-        text: line.trim(),
-      });
-    } else if (/\bsteps\s*\(\s*\d/.test(line)) {
-      out.push({
-        file,
-        line: i + 1,
-        reason: 'steps() eğrisi normal profilde yasaktır',
-        text: line.trim(),
-      });
-    }
-  });
+  const isCovered = (index) => covered.some(([s, e]) => index >= s && index < e);
+  let offset = 0;
+  for (const line of clean.split('\n')) {
+    const start = offset;
+    offset += line.length + 1;
+    if (isCovered(start) || isCovered(start + line.length - 1)) continue;
+    const reasons = [];
+    if (/cubic-bezier\s*\(/.test(line)) reasons.push(CUBIC_REASON);
+    else if (/\bsteps\s*\(\s*\d/.test(line)) reasons.push(STEPS_REASON);
+    if (reasons.length === 0 && !ALLOW_RE.test(line)) continue;
+    record(start, start + line.length, reasons);
+  }
   return out.sort((a, b) => a.line - b.line);
 }
 
