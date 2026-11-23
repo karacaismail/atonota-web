@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { build } from 'vite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { E2E_ENV } from '../../vite/e2e-env.ts';
+
 /** Deneme sayfasının yalnız orada geçen metni. Üretim paketinde bulunmamalıdır. */
 const DEMO_PAGE_MARKER = 'Arayüz temeli hazır';
 
@@ -17,6 +19,9 @@ const DEMO_ROUTE = /\/_demo\/[\w-]+/;
 
 /** Deneme sayfalarının parça adları. Üretim çıktısında bu adlarla dosya bulunmamalıdır. */
 const DEMO_CHUNK = /^(DemoPage|ControlsDemoPage)-/;
+
+/** e2e kipinin sahte Keycloak alan adı (`vite/e2e-env.ts`). Üretim paketine girmez. */
+const SAMPLE_KEYCLOAK_HOST = new URL(E2E_ENV.VITE_KEYCLOAK_URL).host;
 
 const DEV_ENV = {
   VITE_DEV_BACKEND: 'https://build-test-backend.example.test',
@@ -89,6 +94,15 @@ describe('üretim derlemesi (vite build)', () => {
       for (const [key, value] of Object.entries(DEV_ENV)) {
         expect(contents.includes(value), `${name}: ${key}`).toBe(false);
       }
+    }
+  });
+
+  it('e2e kipinin sahte Keycloak adresini içermez', () => {
+    for (const name of [...assetFiles(outDir, '.js'), ...readdirSync(outDir)]) {
+      const path = name.endsWith('.js') ? join(outDir, 'assets', name) : join(outDir, name);
+      if (!statSync(path).isFile()) continue;
+      const text = readFileSync(path, 'utf8');
+      expect(text.includes(SAMPLE_KEYCLOAK_HOST), `${name}: sahte Keycloak adresi`).toBe(false);
     }
   });
 

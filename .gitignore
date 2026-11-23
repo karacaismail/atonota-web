@@ -6,8 +6,6 @@ test-results/
 .env
 .env.*
 !.env.example
-# e2e kipinin örnek ayarı. Gizli bilgi taşımaz.
-!.env.e2e
 .pane/
 .DS_Store
 *.log

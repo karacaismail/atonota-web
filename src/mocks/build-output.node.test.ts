@@ -8,7 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 const outDirs: string[] = [];
 
-async function buildWith(mocks: string | undefined): Promise<string> {
+async function buildWith(mocks: string | undefined, mode = 'production'): Promise<string> {
   const outDir = mkdtempSync(join(tmpdir(), 'atonota-derleme-'));
   outDirs.push(outDir);
   const saved = { mocks: process.env.VITE_API_MOCKS, nodeEnv: process.env.NODE_ENV };
@@ -17,7 +17,7 @@ async function buildWith(mocks: string | undefined): Promise<string> {
   // Vitest NODE_ENV değerini `test` yapar. Gerçek üretim derlemesi `production` kullanır.
   process.env.NODE_ENV = 'production';
   try {
-    await build({ logLevel: 'silent', mode: 'production', build: { outDir, emptyOutDir: true } });
+    await build({ logLevel: 'silent', mode, build: { outDir, emptyOutDir: true } });
   } finally {
     if (saved.mocks === undefined) delete process.env.VITE_API_MOCKS;
     else process.env.VITE_API_MOCKS = saved.mocks;
@@ -46,4 +46,13 @@ describe('üretim çıktısı', () => {
       true,
     );
   }, 60_000);
+
+  it('e2e kipinde ortam değişkeni olmadan da işçi dosyasını ve sahte sunucu kodunu üretir', async () => {
+    // Değer vite/e2e-env.ts dosyasından gelir. Depoda .env.e2e dosyası yoktur.
+    const outDir = await buildWith(undefined, 'e2e');
+    expect(existsSync(join(outDir, 'mockServiceWorker.js'))).toBe(true);
+    expect(readdirSync(join(outDir, 'assets')).some((name) => name.startsWith('browser-'))).toBe(
+      true,
+    );
+  }, 120_000);
 });

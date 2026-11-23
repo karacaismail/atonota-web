@@ -29,7 +29,7 @@ export default defineConfig({
     // Tarayıcı testleri gerçek arka uca bağlanmaz. Derleme sahte sunucuyu (MSW) açar.
     // Deneme sayfaları yalnız e2e derlemesinde açılır (vite --mode e2e). Üretim derlemesine girmez.
     command: `npm run build:e2e && npx vite preview --port ${PORT} --strictPort --host 127.0.0.1`,
-    // Sahte sunucu ve Keycloak kökü `.env.e2e` dosyasından gelir. Vite o dosyayı e2e kipinde okur.
+    // Sahte sunucu ve Keycloak kökü `vite/e2e-env.ts` dosyasından gelir. Vite onları e2e kipinde verir.
     // Böylece `npm run dev:e2e` ile açılan sunucu da aynı ayarı kullanır (inceleme 2, K-3).
     url: BASE_URL,
     reuseExistingServer: !process.env['CI'],
