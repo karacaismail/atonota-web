@@ -145,3 +145,36 @@ test.describe('çalışma alanı menüsü: Tab ve fareyle açma (Ö-1, K-1)', ()
     });
   }
 });
+
+test.describe('çalışma alanı menüsü: fareyle açılınca Tab (inceleme 2, K-1)', () => {
+  for (const key of ['Tab', 'Shift+Tab']) {
+    test(`fareyle açılan menüde ilk ${key} menüyü kapatır`, async ({ page }) => {
+      const button = await switcher(page);
+      await button.click();
+      await expect(menu(page)).toBeVisible();
+
+      await page.keyboard.press(key);
+
+      await expect(menu(page)).toBeHidden();
+      await expect(button).toHaveAttribute('aria-expanded', 'false');
+      expect(await focusAfter(page, button)).not.toBe('menu');
+    });
+  }
+
+  test('fareyle açılan menüde Tab odağı düğmeden sonraki öğeye taşır', async ({
+    page,
+    browserName,
+  }) => {
+    // Chromium tıklanan düğmeye odak verir. WebKit vermez; orada odağın yeri tarayıcıya kalır.
+    test.skip(browserName !== 'chromium', 'Yalnız Chromium tıklanan düğmeye odak verir.');
+    const button = await switcher(page);
+    await button.click();
+    await expect(menu(page)).toBeVisible();
+    await expect(button).toBeFocused();
+
+    await page.keyboard.press('Tab');
+
+    await expect(menu(page)).toBeHidden();
+    expect(await focusAfter(page, button)).toBe('after');
+  });
+});

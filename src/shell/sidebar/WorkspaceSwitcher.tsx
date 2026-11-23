@@ -100,14 +100,22 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
   // Liste fareyle açıldıysa odak menüde değildir (K-1).
   // Chromium'da odak düğmededir. Bu durumu düğmenin kendi tuş işleyicisi karşılar.
   // WebKit tıklanan düğmeye odak vermez. Odak sayfa gövdesinde kalır. Bu dinleyici o durumu karşılar.
+  // Tab ve Shift+Tab listeyi kapatır (inceleme 2, K-1). Olay pencereye ulaşmaz.
+  // Böylece antd'nin pencere dinleyicisi Tab'ı engelleyemez. Tarayıcı odağı yine kendisi taşır.
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.defaultPrevented) return;
-      const target = arrowTarget(event.key);
-      if (!target) return;
       const active = document.activeElement;
       if (active && active !== document.body) return;
+      if (event.key === 'Tab') {
+        event.stopPropagation();
+        pendingFocus.current = null;
+        setOpen(false);
+        return;
+      }
+      const target = arrowTarget(event.key);
+      if (!target) return;
       if (focusMenuItem(menuId, target)) event.preventDefault();
     };
     document.addEventListener('keydown', onKey);
@@ -126,6 +134,14 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
     if (open) {
       // Liste fareyle açıldı ve odak düğmede kaldı. Oklar odağı hemen menüye taşır (K-1).
       // Enter ve Space burada karşılanmaz. Tıklama olarak listeyi kapatır.
+      // Tab ve Shift+Tab listeyi kapatır. Tarayıcı odağı düğmeden sonraki ya da önceki öğeye taşır.
+      // Olay antd'nin pencere dinleyicisine ulaşmaz. O dinleyici ilk Tab'ı engellerdi (inceleme 2, K-1).
+      if (event.key === 'Tab') {
+        event.stopPropagation();
+        pendingFocus.current = null;
+        setOpen(false);
+        return;
+      }
       const arrow = arrowTarget(event.key);
       if (arrow && focusMenuItem(menuId, arrow)) event.preventDefault();
       return;
