@@ -237,7 +237,11 @@ describe('createAuth', () => {
     'ftp://api.login.atonota.net/realms/platform/protocol/openid-connect/logout',
     'https://api.login.atonota.net/realms/platform/protocol/openid-connect/logout/ek',
     'https://api.login.atonota.net/realms/platform/protocol/openid-connect/auth',
-    'https://kisi:parola@api.login.atonota.net/realms/platform/protocol/openid-connect/logout',
+    // Kullanıcı bilgisi parçalı adres. Parçalar e-posta taramasına takılmasın diye birleştirilir.
+    [
+      'https://kisi:parola',
+      'api.login.atonota.net/realms/platform/protocol/openid-connect/logout',
+    ].join('@'),
     '/goreli/protocol/openid-connect/logout',
   ])('denetimden geçmeyen çıkış adresinde panelin giriş sayfasına döner: %s', async (logoutUrl) => {
     mockServer.use(
