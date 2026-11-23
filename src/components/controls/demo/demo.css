@@ -1,0 +1,17 @@
+.controls-demo {
+  display: grid;
+  gap: var(--btn-h-sm);
+  padding: var(--radius);
+}
+
+.controls-demo-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--radius);
+  min-inline-size: 0;
+}
+
+.controls-demo-isolated {
+  padding-block: var(--radius);
+}
