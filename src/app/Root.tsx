@@ -1,12 +1,12 @@
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { AuthGate, type PlatformSession } from '@/auth';
-import { createModuleClient, ModuleProvider } from '@/modules';
+import { createShellModuleEnvironment } from '@/shell/view-data/modules';
 
 import { AppContent } from './App';
 import { AppProviders } from './AppProviders';
 import type { ThemeModeChoice } from './theme-mode';
-import { createShellViewData } from './view-data';
+import { createShellViewData, loadShellAccount } from './view-data';
 
 export interface RootProps {
   session: PlatformSession;
@@ -17,25 +17,47 @@ export interface RootProps {
   children?: ReactNode;
 }
 
+/** Oturum açıkken kabuğun veri bağlantısını kurar: koleksiyon kaynağı ve modül ortamı. */
+function SignedIn({ session, user }: { session: PlatformSession; user: string }) {
+  const [fullName, setFullName] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    void loadShellAccount(session.api, user, ctrl.signal).then((account) => {
+      if (!ctrl.signal.aborted) setFullName(account.fullName);
+    });
+    return () => ctrl.abort();
+  }, [session, user]);
+  // Veri bağlantısı yalnız oturum ya da kullanıcı değişince yeniden kurulur. Ad sonradan gelir.
+  const base = useMemo(
+    () => ({
+      ...createShellViewData(session.api),
+      modules: createShellModuleEnvironment({
+        api: session.api,
+        tenant: session.config.siteUrl,
+        user,
+        locale: 'tr',
+      }),
+    }),
+    [session, user],
+  );
+  const viewData = useMemo(
+    () => ({ ...base, account: { user, ...(fullName ? { fullName } : {}) } }),
+    [base, user, fullName],
+  );
+  return <AppContent viewData={viewData} />;
+}
+
 /**
  * Uygulamanın en dış kökü.
  * Tema ve tasarım sağlayıcıları AuthGate'in dışındadır. Böylece giriş, bekleme ve hata
  * ekranları da açık ve koyu temanın tokenlarını kullanır.
- * Oturum açılınca modüller oturumdaki kullanıcıyla ve ortak API istemcisiyle bağlanır.
+ * Oturum açılınca kabuk, oturumdaki kullanıcıyla ve ortak API istemcisiyle bağlanır.
  */
 export function Root({ session, initialThemeChoice, engines = true, children }: RootProps) {
-  const client = useMemo(() => createModuleClient(session.api), [session]);
-  const viewData = useMemo(() => createShellViewData(session.api), [session]);
   return (
     <AppProviders {...(initialThemeChoice ? { initialThemeChoice } : {})} engines={engines}>
       <AuthGate session={session}>
-        {(user) => (
-          <ModuleProvider
-            value={{ tenant: session.config.siteUrl, user, mode: 'live', locale: 'tr', client }}
-          >
-            {children ?? <AppContent viewData={viewData} />}
-          </ModuleProvider>
-        )}
+        {(user) => children ?? <SignedIn session={session} user={user} />}
       </AuthGate>
     </AppProviders>
   );

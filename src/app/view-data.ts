@@ -1,5 +1,5 @@
 import type { ApiClient } from '@/api';
-import type { ShellViewData } from '@/shell/view-data';
+import type { ShellAccount, ShellViewData } from '@/shell/view-data';
 import { createDefinition } from '@/views/collection/model';
 
 /**
@@ -44,4 +44,23 @@ export function createShellViewData(
       },
     },
   };
+}
+
+/**
+ * Kullanıcı kartı için oturumdaki kişiyi okur. Görünen ad açılış verisinden gelir.
+ * Açılış verisi başka kullanıcıya aitse ya da istek başarısızsa yalnız kimlik döner.
+ */
+export async function loadShellAccount(
+  api: Pick<ApiClient, 'getBootstrap'>,
+  user: string,
+  signal?: AbortSignal,
+): Promise<ShellAccount> {
+  try {
+    const bootstrap = await api.getBootstrap(signal ? { signal } : {});
+    const fullName = bootstrap.user.full_name?.trim();
+    if (bootstrap.user.name === user && fullName) return { user, fullName };
+  } catch {
+    /* Ad okunamazsa kart kimliği gösterir. */
+  }
+  return { user };
 }

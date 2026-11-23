@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createShellViewData, doctypeFromSlug } from './view-data';
+import { createShellViewData, doctypeFromSlug, loadShellAccount } from './view-data';
 
 describe('doctypeFromSlug', () => {
   it('adres parçasını DocType adına çevirir', () => {
@@ -50,5 +50,33 @@ describe('createShellViewData', () => {
       ),
     ).rejects.toThrow();
     expect(getDocType).toHaveBeenCalledWith('User', undefined, expect.objectContaining({}));
+  });
+});
+
+describe('loadShellAccount', () => {
+  it('görünen adı açılış verisinden alır', async () => {
+    const getBootstrap = vi
+      .fn()
+      .mockResolvedValue({ user: { name: 'a@example.test', full_name: 'Ada Kaya' } });
+    await expect(loadShellAccount({ getBootstrap } as never, 'a@example.test')).resolves.toEqual({
+      user: 'a@example.test',
+      fullName: 'Ada Kaya',
+    });
+  });
+
+  it('açılış verisi başka kullanıcıya aitse adı kullanmaz', async () => {
+    const getBootstrap = vi
+      .fn()
+      .mockResolvedValue({ user: { name: 'b@example.test', full_name: 'Başka' } });
+    await expect(loadShellAccount({ getBootstrap } as never, 'a@example.test')).resolves.toEqual({
+      user: 'a@example.test',
+    });
+  });
+
+  it('istek başarısızsa yalnız kullanıcı kimliğini döner', async () => {
+    const getBootstrap = vi.fn().mockRejectedValue(new Error('ağ'));
+    await expect(loadShellAccount({ getBootstrap } as never, 'a@example.test')).resolves.toEqual({
+      user: 'a@example.test',
+    });
   });
 });
