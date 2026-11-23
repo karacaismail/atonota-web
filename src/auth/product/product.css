@@ -16,8 +16,9 @@
   /*
    * Tanıtım sayfası herkese açık bir sayfadır. G-165 ve genel kural gövde metnini en az 16 px ister.
    * Panelin 14 px gövde kuralı bu sayfaya uygulanmaz. Değer orta buton yazısından gelir (16 px).
+   * Kullanıcı tarayıcının yazı boyutunu büyütürse metin 1rem altına düşmez (inceleme 2, bulgu 3).
    */
-  font-size: var(--btn-fs-md);
+  font-size: max(var(--btn-fs-md), 1rem);
   line-height: 1.5;
 }
 
@@ -26,17 +27,17 @@
  * antd teması bu sayfada kullanılmaz; böylece sayfa ilk yükü büyütmez. Renk `.ant-app` öğesinden gelir.
  */
 .product-page h1 {
-  font-size: calc(var(--btn-fs-lg) * 2);
+  font-size: max(calc(var(--btn-fs-lg) * 2), 2.25rem);
   line-height: 1.25;
 }
 
 .product-page h2 {
-  font-size: calc(var(--btn-fs-lg) * 4 / 3);
+  font-size: max(calc(var(--btn-fs-lg) * 4 / 3), 1.5rem);
   line-height: 1.3;
 }
 
 .product-page h3 {
-  font-size: var(--btn-fs-lg);
+  font-size: max(var(--btn-fs-lg), 1.125rem);
   line-height: 1.4;
 }
 

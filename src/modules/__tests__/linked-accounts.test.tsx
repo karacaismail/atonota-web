@@ -86,6 +86,26 @@ describe('Bağlı hesaplar', () => {
     expect(within(region).getByRole('link', { name: 'LinkedIn hesabını bağla' })).toBeVisible();
   });
 
+  it('durum bölgesi baştan boş çizilir, metin sonra yazılır (inceleme 2, bulgu 4)', async () => {
+    const region = await renderPage(
+      linked(
+        vi.fn().mockResolvedValue(accounts(['google', 'linkedin'])),
+        vi.fn().mockResolvedValue(accounts(['google'])),
+      ),
+    );
+    await within(region).findByRole('button', { name: 'LinkedIn bağını kaldır' });
+    const status = within(region).getByTestId('linked-status');
+    expect(status).toHaveAttribute('role', 'status');
+    expect(status).toBeEmptyDOMElement();
+    const user = userEvent.setup();
+    await user.click(within(region).getByRole('button', { name: 'LinkedIn bağını kaldır' }));
+    await user.click(within(region).getByRole('button', { name: 'Bağı kaldır' }));
+    expect(await within(region).findByTestId('linked-status')).toHaveTextContent(
+      'LinkedIn bağı kaldırıldı.',
+    );
+    expect(within(region).getByTestId('linked-status')).toBe(status);
+  });
+
   it('vazgeçince istek gönderilmez ve odak düğmeye döner', async () => {
     const unlinkAccount = vi.fn();
     const region = await renderPage(

@@ -52,6 +52,28 @@ describe('ProductPage', () => {
     }
   });
 
+  it('giriş metni kurulmamış yeteneği bugün varmış gibi anlatmaz (inceleme 2, bulgu 1)', () => {
+    // Giriş metni ürünün tanımıdır. Yetenek iddiası yalnız "Bugün neler var?" bölümünde durur.
+    const intro = [messages.tr.lead, messages.tr.lead_more].join(' ');
+    for (const claim of ['girer', 'eklenir', 'desteklenir', 'bağlar', 'durur', 'yapılır']) {
+      expect(intro).not.toMatch(new RegExp(`\\b${claim}\\b`));
+    }
+    // "Yakında" önerilerinin şimdiki zamanlı hali giriş metninde geçmez.
+    expect(intro).not.toContain('tek hesapla birçok uygulamaya girer');
+  });
+
+  it('"Tek giriş kapısı" önerisi "Yakında" bölümündedir', () => {
+    render(<ProductPage />);
+    const soon = screen.getByRole('region', { name: 'Yakında' });
+    expect(within(soon).getByText('Tek giriş kapısı')).toBeVisible();
+  });
+
+  it('durum metinleri "Yakında" önerilerinde gelecek zamanla yazılır', () => {
+    for (const item of valueProps.filter((value) => value.status === 'soon')) {
+      expect(messages.tr.values[item.key].body).toMatch(/(ecek|acak)(tır|tir)?\./);
+    }
+  });
+
   it('her değer önerisi bir gereksinime bağlıdır', () => {
     expect(valueProps.length).toBeGreaterThan(0);
     for (const item of valueProps) {

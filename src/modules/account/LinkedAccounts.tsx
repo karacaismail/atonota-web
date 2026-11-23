@@ -104,7 +104,6 @@ function ProviderRow({
       ) : confirming ? (
         <div role="group" aria-label={fill(copy.linkedConfirmGroup, name)} className="module-stack">
           <p>{fill(copy.linkedConfirmText, name)}</p>
-          {pending ? <p role="status">{copy.linkedPending}</p> : null}
           <div className="module-actions">
             <Button ref={cancelRef} onClick={onCancel} disabled={pending}>
               {copy.linkedCancel}
@@ -190,9 +189,18 @@ export function LinkedAccounts() {
           return (
             <>
               <p>{copy.linkedIntro}</p>
-              {outcome?.kind === 'unlinked' ? (
-                <p role="status">{fill(copy.linkedUnlinked, outcome.name)}</p>
-              ) : outcome ? (
+              {/*
+               * Durum bölgesi baştan boş çizilir. Metin sonra yazılır. Böylece ekran okuyucu
+               * yeni metni duyar (inceleme 2, bulgu 4). Bekleme ve sonuç aynı bölgededir.
+               */}
+              <p role="status" data-testid="linked-status">
+                {pending
+                  ? copy.linkedPending
+                  : outcome?.kind === 'unlinked'
+                    ? fill(copy.linkedUnlinked, outcome.name)
+                    : null}
+              </p>
+              {outcome && outcome.kind !== 'unlinked' ? (
                 <Alert
                   role="alert"
                   type="error"

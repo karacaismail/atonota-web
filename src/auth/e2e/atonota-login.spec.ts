@@ -215,6 +215,22 @@ test.describe('tanıtım sayfası (G-165)', () => {
     });
   }
 
+  test('kullanıcı kök yazı boyutunu büyütünce metin 1rem altına düşmez (inceleme 2, bulgu 3)', async ({
+    page,
+  }) => {
+    await page.goto('/atonota-login');
+    // Tarayıcı ayarındaki 20 px yazı boyutunu taklit eder: 1rem = 20 px olur.
+    await page.addStyleTag({ content: 'html { font-size: 125% !important; }' });
+    const main = page.getByRole('main', { name: 'AtonotA Login' });
+    await expect(main.getByRole('heading', { level: 1 })).toBeVisible();
+    const rem = await page.evaluate(() =>
+      Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+    );
+    expect(rem).toBe(20);
+    expect(await smallestFont(main)).toBeGreaterThanOrEqual(rem);
+    expect(await pageOverflow(page)).toBeLessThanOrEqual(0);
+  });
+
   test('giriş ekranından tanıtım sayfasına klavyeyle gidilir', async ({ page }) => {
     await useScenario(page, 'oturum-kapali');
     await page.goto('/');

@@ -1,8 +1,8 @@
 {
   "en": {
     "title": "AtonotA Login",
-    "lead": "AtonotA Login is a shared sign-in gate for applications.",
-    "lead_more": "People use one account to enter many applications.",
+    "lead": "AtonotA Login is a sign-in product for applications.",
+    "lead_more": "The goal of the product: a person will use one account to enter many applications.",
     "ready_title": "What is available today?",
     "soon_title": "Coming soon",
     "soon_intro": "These features are not ready yet. When they are ready, they move to “What is available today?”.",
@@ -17,6 +17,10 @@
       "single_door": {
         "title": "Sign in with AtonotA Login",
         "body": "The panel has a “Sign in with AtonotA Login” button. Sign-in runs through Keycloak, an open source sign-in server."
+      },
+      "one_account": {
+        "title": "One sign-in gate",
+        "body": "A person will use one account to enter the panel, Press and tenant sites."
       },
       "many_platforms": {
         "title": "Sign in with many platforms",
@@ -54,8 +58,8 @@
   },
   "tr": {
     "title": "AtonotA Login",
-    "lead": "AtonotA Login, uygulamalar için ortak bir giriş kapısıdır.",
-    "lead_more": "Kullanıcılar tek hesapla birçok uygulamaya girer.",
+    "lead": "AtonotA Login, uygulamalar için bir giriş ürünüdür.",
+    "lead_more": "Ürünün amacı şudur: kullanıcı tek hesapla birçok uygulamaya girecek.",
     "ready_title": "Bugün neler var?",
     "soon_title": "Yakında",
     "soon_intro": "Bu özellikler henüz hazır değil. Hazır olunca “Bugün neler var?” bölümüne geçecek.",
@@ -70,6 +74,10 @@
       "single_door": {
         "title": "AtonotA Login ile giriş",
         "body": "Panelde “AtonotA Login ile oturum aç” düğmesi var. Giriş, açık kaynak giriş sunucusu Keycloak üzerinden yapılır."
+      },
+      "one_account": {
+        "title": "Tek giriş kapısı",
+        "body": "Kullanıcı tek hesapla panele, Press'e ve kiracı sitelerine girecek."
       },
       "many_platforms": {
         "title": "Birçok platformla giriş",
