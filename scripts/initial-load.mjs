@@ -11,9 +11,13 @@
  *
  * Önizleme sunucusu `vite` ikilisini doğrudan Node ile başlatır (`npx` ara süreci yoktur). Betik
  * biterken sunucuya SIGTERM gönderir, çıkışını bekler, gerekirse SIGKILL yollar. Böylece port boş kalır.
+ *
+ * Bağlantı noktası doluysa betik sunucuyu hiç başlatmaz ve 2 koduyla durur; başka bir sunucu ölçülmez.
+ * Sunucu açılınca betik `index.html` yanıtını `dist/index.html` ile karşılaştırır; farklıysa durur.
  */
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { connect } from 'node:net';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -85,6 +89,25 @@ if (existsSync(join(outPath, 'mockServiceWorker.js'))) {
   process.exit(2);
 }
 
+/** Bağlantı noktası boş mu? Bir şey yanıt veriyorsa doludur; ECONNREFUSED boş demektir. */
+function isPortFree(portToCheck) {
+  return new Promise((done) => {
+    const socket = connect({ host: '127.0.0.1', port: portToCheck });
+    socket.once('connect', () => {
+      socket.destroy();
+      done(false);
+    });
+    socket.once('error', () => done(true));
+  });
+}
+
+if (!(await isPortFree(port))) {
+  console.error(
+    `Bağlantı noktası ${port} dolu. Önizleme sunucusu başlatılmadı; başka bir sunucu ölçülmez. Boş bir port için \`--port\` kullanın.`,
+  );
+  process.exit(2);
+}
+
 const preview = spawn(
   process.execPath,
   [
@@ -125,12 +148,24 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   });
 }
 
+/** Sunucu açılana kadar bekler; sonra verilen `index.html` dosyasının gerçekten sunulduğunu doğrular. */
 async function waitForServer() {
   for (let i = 0; i < 100; i += 1) {
     if (previewExited) throw new Error(`Önizleme sunucusu açılamadı (port ${port} dolu olabilir).`);
     try {
-      if ((await fetch(`${base}/`)).ok) return;
-    } catch {
+      const response = await fetch(`${base}/index.html`);
+      if (response.ok) {
+        const served = await response.text();
+        const expected = readFileSync(join(outPath, 'index.html'), 'utf8');
+        if (served.trim() !== expected.trim()) {
+          throw new Error(
+            `${base} başka bir içerik sunuyor: ${outPath}/index.html ile aynı değil. Ölçüm yapılmadı.`,
+          );
+        }
+        return;
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('başka bir içerik')) throw error;
       /* sunucu henüz açılmadı */
     }
     await new Promise((resolve) => setTimeout(resolve, 200));

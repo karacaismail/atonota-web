@@ -194,9 +194,9 @@ export function findMotionViolations(text, file) {
   const out = [];
   const covered = [];
   const clean = text.replace(/\r\n/g, '\n');
-  const record = (start, end, reasons) => {
+  const record = (start, end, reasons, textOverride) => {
     covered.push([start, end]);
-    const declaration = clean.slice(start, end);
+    const declaration = textOverride ?? clean.slice(start, end);
     const final = applyAllow(declaration, reasons);
     if (!final || final.length === 0) return;
     out.push({
@@ -216,18 +216,22 @@ export function findMotionViolations(text, file) {
     const end = skipBalanced(clean, open);
     record(match.index, end, reasonsForOptions(clean.slice(open + 1, end - 1)));
   }
-  // Bildirim dışındaki steps(...) ve cubic-bezier(...) çağrıları da yasaktır.
-  const isCovered = (index) => covered.some(([s, e]) => index >= s && index < e);
+  // Bildirim dışındaki steps(...) ve cubic-bezier(...) çağrıları da yasaktır. İşlenmiş bildirimlerin
+  // kapladığı parçalar boşlukla maskelenir; böylece bildirimin içindeki izin yorumu ve eğri ikinci
+  // kez okunmaz (tek satırlı bildirimde satırın başı ve sonu bildirimin dışında kalabilir).
+  const masked = covered.reduce(
+    (acc, [s, e]) => acc.slice(0, s) + ' '.repeat(e - s) + acc.slice(e),
+    clean,
+  );
   let offset = 0;
-  for (const line of clean.split('\n')) {
+  for (const line of masked.split('\n')) {
     const start = offset;
     offset += line.length + 1;
-    if (isCovered(start) || isCovered(start + line.length - 1)) continue;
     const reasons = [];
     if (/cubic-bezier\s*\(/.test(line)) reasons.push(CUBIC_REASON);
     else if (/\bsteps\s*\(\s*\d/.test(line)) reasons.push(STEPS_REASON);
     if (reasons.length === 0 && !ALLOW_RE.test(line)) continue;
-    record(start, start + line.length, reasons);
+    record(start, start + line.length, reasons, line);
   }
   return out.sort((a, b) => a.line - b.line);
 }
