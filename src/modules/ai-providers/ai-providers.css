@@ -1,0 +1,39 @@
+/* "Yapay zekâ sağlayıcıları" sayfası. Değerler ortak tokenlardan gelir. */
+.ai-provider-form {
+  max-width: var(--form-max-width);
+  min-width: 0;
+}
+.ai-provider-field {
+  gap: var(--space-xs);
+}
+.ai-provider-field label {
+  overflow-wrap: break-word;
+}
+.ai-provider-muted {
+  color: var(--module-muted);
+}
+/* Hata metni renge dayanmaz: metin ve kalın yazı yeter. Kenarlık rengini antd verir. */
+.ai-provider-error {
+  color: var(--module-text);
+  font-weight: 600;
+}
+.ai-provider-row {
+  padding-block: var(--space-sm);
+  /* Kalınlık kaynak `border.width` değerinden gelir (antd `lineWidth`). */
+  border-bottom: var(--ant-line-width) solid var(--module-line);
+}
+.ai-provider-name {
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+.ai-provider-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+}
+.ai-provider-facts dt {
+  color: var(--module-muted);
+}
+.ai-provider-facts dd {
+  overflow-wrap: break-word;
+}

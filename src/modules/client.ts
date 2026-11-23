@@ -36,5 +36,7 @@ export function createModuleClient(api: ApiClient): ModuleClient {
     getProposal: (id, options) => api.getProposal(id, options),
     approveProposal: (id, digest, options) => api.approveProposal(id, digest, options),
     rejectProposal: (id, options) => api.rejectProposal(id, options),
+    // Sağlayıcı istemcisi ayrı parçadadır. Yalnız sayfa açılınca yüklenir (ilk yük bütçesi).
+    aiProviders: () => import('../api/provider-client').then((m) => m.createProviderClient(api)),
   };
 }

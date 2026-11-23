@@ -26,6 +26,7 @@ export interface ApiErrorInit {
   code?: string | undefined;
   retryAfterSeconds?: number | undefined;
   needsSessionCheck?: boolean | undefined;
+  fields?: readonly string[] | undefined;
 }
 
 export class ApiError extends Error {
@@ -35,6 +36,11 @@ export class ApiError extends Error {
   /** Sunucunun hata kodu. Örneğin `exc_type` ya da model geçidinin `error` değeri. */
   readonly code: string | undefined;
   readonly retryAfterSeconds: number | undefined;
+  /**
+   * Sunucunun hatalı bulduğu alan adları. Model geçidinin `invalid_fields` yanıtında sağlayıcı istemcisi doldurur.
+   * Ekran bu alanları formda işaretler. Değerler ya da sunucu iletisi taşınmaz (SZ-8).
+   */
+  readonly fields: readonly string[] | undefined;
   /**
    * Belirsiz 403 yanıtında doğrudur. Oturum bitmiş olabilir.
    * İstemci oturumu ayrı ve önbelleksiz bir istekle doğrular.
@@ -48,6 +54,7 @@ export class ApiError extends Error {
     this.status = init.status;
     this.code = init.code;
     this.retryAfterSeconds = init.retryAfterSeconds;
+    this.fields = init.fields;
     this.needsSessionCheck = init.needsSessionCheck ?? false;
   }
 }

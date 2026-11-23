@@ -1,4 +1,11 @@
 import { Fragment, type ReactNode } from 'react';
+import type {
+  AiConnectionListing,
+  ConnectionCheck,
+  ConnectionInput,
+  ProviderCatalog,
+  SavedConnection,
+} from '../api';
 import { ModuleContext } from './context';
 
 export interface RequestOptions {
@@ -35,6 +42,23 @@ export interface ModuleClient {
   getProposal?: (id: string, options: RequestOptions) => Promise<unknown>;
   approveProposal?: (id: string, digest: string, options: RequestOptions) => Promise<unknown>;
   rejectProposal?: (id: string, options: RequestOptions) => Promise<unknown>;
+  /**
+   * Yapay zekâ sağlayıcı istemcisini yükler: katalog, bağlantı listesi, kayıt ve deneme.
+   * İstemci kodu ilk yüke girmez; yalnız "Yapay zekâ sağlayıcıları" sayfası çağırınca iner.
+   */
+  aiProviders?: () => Promise<AiProviderClient>;
+}
+export type { AiConnectionListing };
+/** Sayfanın kullandığı sağlayıcı uçları. Ortak istemci yanıtları sözleşmeyle denetler. */
+export interface AiProviderClient {
+  listProviderCatalog: (options: RequestOptions) => Promise<ProviderCatalog>;
+  /** Satırlar ham kayıttır. Sayfa yalnız bilinen alanları okur. Parola alanı istenmez. */
+  listAiConnections: (options: RequestOptions) => Promise<AiConnectionListing>;
+  saveProviderConnection: (
+    input: ConnectionInput,
+    options: RequestOptions,
+  ) => Promise<SavedConnection>;
+  checkProviderConnection: (api: string, options: RequestOptions) => Promise<ConnectionCheck>;
 }
 export interface ModuleEnvironment {
   tenant: string;

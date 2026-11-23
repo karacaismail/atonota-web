@@ -24,6 +24,7 @@ export const BROWSER_CONTRACTS = [
   'platform_core-shell',
   'platform_core-ai',
   'platform_core-model-gateway',
+  'platform_core-collection',
   'platform_core-access',
   'hrms_tr',
   'platform_core-mobile',

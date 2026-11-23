@@ -222,6 +222,8 @@ export interface DocumentRequest {
   /** Verilirse `If-None-Match` başlığı olur. Sunucu 304 dönebilir. */
   etag?: string | undefined;
   signal?: AbortSignal | undefined;
+  /** `model` seçilirse model geçidinin daha uzun süresi kullanılır. */
+  timeout?: 'model' | undefined;
 }
 
 /**
@@ -778,7 +780,9 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           ...(request.signal ? { signal: request.signal } : {}),
         }),
       );
-      const response = await timedFetch(config.timeoutMs)(outgoing);
+      const response = await timedFetch(
+        request.timeout === 'model' ? config.modelTimeoutMs : config.timeoutMs,
+      )(outgoing);
       const etag = response.headers.get('ETag') ?? undefined;
       if (response.status === 304) return { ok: true, status: 304, etag, body: undefined };
       if (response.ok) {

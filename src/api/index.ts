@@ -56,3 +56,14 @@ export type {
   FilterScalar,
 } from './frappe-v2';
 export type { GroupSummary, GroupSummaryFilters, GroupSummaryQuery } from './group-summary';
+export type {
+  ConnectionCheck,
+  ConnectionInput,
+  ConnectionStatus,
+  ProviderCatalog,
+  ProviderDefinition,
+  ProviderFieldDefinition,
+  SavedConnection,
+  AiConnectionListing,
+  ProviderClient,
+} from './provider-client';

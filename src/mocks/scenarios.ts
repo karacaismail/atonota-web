@@ -14,6 +14,10 @@ const SCENARIOS: Record<string, () => void> = {
   'oturum-kapali': () => {
     mockState.signedIn = false;
   },
+  /** Sağlayıcı kaydetme ve deneme uçları hız sınırı (429 `gateway_busy`) verir. */
+  'saglayici-mesgul': () => {
+    mockState.providerBusy = true;
+  },
 };
 
 function setLogout(outcome: LogoutOutcome): void {

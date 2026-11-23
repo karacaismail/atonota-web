@@ -1,6 +1,6 @@
 # Panel modülleri
 
-Bu klasör beş sayfanın kayıtlarını ve ekranlarını içerir.
+Bu klasör altı sayfanın kayıtlarını ve ekranlarını içerir.
 Kabuk, `moduleRegistrations` listesini okur.
 Kabuk, seçilen sayfanın `load()` işlevini çağırır.
 Sayfa kodu ancak bu çağrıyla yüklenir.
@@ -23,6 +23,21 @@ Ekranlar yazmayı kendiliğinden yinelemez.
 - Sunucu işlemi reddederse ekran başarı göstermez.
 - Sunucu sonucu bilinmiyorsa ekran yeniden yazmayı önermez.
 - Erişim açıklaması sunucunun kararını gösterir.
+
+## Yapay zekâ sağlayıcıları
+
+Sayfa `/administration/ai-providers` adresindedir. Sayfa Yönetim bölümünün alt sayfasıdır.
+
+- Sayfa kayıtlı bağlantıları listeler. Her satırda durum ve son deneme zamanı görünür.
+- "API ekle" formu sunucu kataloğundan çizilir. Kodda sağlayıcı listesi yoktur.
+- Sunucu kataloğu 403 dönerse "API ekle" düğmesi görünmez. Rol denetimini sunucu yapar.
+- Sır alanı maskelidir. Kaydettikten sonra sır ekranda ve durumda tutulmaz.
+- "Kaydet" ve "Bağlantıyı dene" ayrı adımlardır. Deneme sırasında düğme bekler.
+- Denemede 429 yanıtı "Çok sık denendi" iletisiyle görünür. Kayıtta aynı yanıt "Çok sık kaydedildi" iletisiyle görünür.
+- Kayıt yanıtı bazen gelmez. Örneğin zaman aşımında ya da 5xx yanıtında yanıt gelmez. Sunucu kaydı yazmış olabilir. Bu durumda ekran "İşlem sonucu bilinmiyor" der ve listeyi yeniden okur. Ekran "yeniden deneyin" demez, çünkü her kayıt yeni bir bağlantı açar.
+- Kayıttan sonra odak "Bağlantıyı dene" düğmesine gider. Form kapanınca odak "API ekle" düğmesine döner.
+- Sağlayıcı uçları `src/api/provider-client.ts` dosyasındadır. Bu dosya ilk yüke girmez. Modül istemcisi onu `aiProviders()` çağrısında yükler.
+- Ekran metinleri `ai-providers/messages.ts` dosyasındadır.
 
 ## Eksik sözleşmeler
 
