@@ -1,8 +1,10 @@
 // Sözleşmeye uygun sahte uçlar (SZ-12). Geliştirme ve testler gerçek arka uca bağlanmaz.
 // Adresler `*/api/method/...` biçimindedir. Böylece her kökte çalışır.
-import { http, HttpResponse, type JsonBodyType } from 'msw';
+import { http, HttpResponse, matchRequestUrl, type JsonBodyType } from 'msw';
 
 import { TOOL_RESULT_PREFIX } from '@/api/ai-protocol';
+import { GROUP_SUMMARY_PATH } from '@/api/group-summary';
+import type { components as CollectionComponents } from '@/api/generated/platform_core-collection';
 
 import {
   SAMPLE_USER as SAMPLE_ACCOUNT,
@@ -178,6 +180,74 @@ function collectionOrder(orderBy: string | null) {
       'tr',
       { numeric: true },
     );
+}
+
+const SUMMARY_FILTER_OPERATORS = {
+  ...COMPARE,
+  between: (left: unknown, right: unknown) =>
+    Array.isArray(right) &&
+    right.length === 2 &&
+    COMPARE['>=']?.(left, right[0]) &&
+    COMPARE['<=']?.(left, right[1]),
+  like: (left: unknown, right: unknown) =>
+    typeof right === 'string' &&
+    new RegExp(
+      '^' +
+        right
+          .split(/([%_])/)
+          .map((part) => {
+            if (part === '%') return '.*';
+            if (part === '_') return '.';
+            return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          })
+          .join('') +
+        '$',
+      'isu',
+    ).test(String(left)),
+  'not like': (left: unknown, right: unknown) => !SUMMARY_FILTER_OPERATORS.like(left, right),
+  is: (left: unknown, right: unknown) =>
+    (right === 'set' && left != null && left !== '') ||
+    (right === 'not set' && (left == null || left === '')),
+};
+
+function isCollectionField(value: unknown): value is keyof CollectionRow {
+  const sample = sampleCollection[0];
+  return typeof value === 'string' && sample !== undefined && Object.hasOwn(sample, value);
+}
+
+function summaryFilters(filters: unknown): ((row: CollectionRow) => boolean)[] | undefined {
+  if (filters === undefined) return [];
+  if (filters === null || typeof filters !== 'object') return undefined;
+
+  const conditions: unknown[] = Array.isArray(filters)
+    ? filters
+    : Object.entries(filters).map(([field, value]) =>
+        Array.isArray(value) ? [field, ...value] : [field, '=', value],
+      );
+  if (conditions.length > 100) return undefined;
+
+  const predicates: ((row: CollectionRow) => boolean)[] = [];
+  for (const condition of conditions) {
+    if (!Array.isArray(condition)) return undefined;
+    const [field, operator, value] =
+      condition.length === 4 && condition[0] === SAMPLE_COLLECTION_DOCTYPE
+        ? condition.slice(1)
+        : condition;
+    if (
+      (condition.length !== 3 &&
+        !(condition.length === 4 && condition[0] === SAMPLE_COLLECTION_DOCTYPE)) ||
+      !isCollectionField(field) ||
+      typeof operator !== 'string' ||
+      !Object.hasOwn(SUMMARY_FILTER_OPERATORS, operator) ||
+      (Array.isArray(value) && value.length > 100)
+    )
+      return undefined;
+
+    const compare = SUMMARY_FILTER_OPERATORS[operator as keyof typeof SUMMARY_FILTER_OPERATORS];
+    if (!compare) return undefined;
+    predicates.push((row) => Boolean(compare(row[field], value)));
+  }
+  return predicates;
 }
 
 const LEAVE_FIELDS = new Set([
@@ -531,6 +601,65 @@ export const handlers = [
       has_next_page: rows.length > start + limit,
     });
   }),
+
+  http.get(
+    ({ request }) => {
+      const url = new URL(request.url);
+      const doctype = url.searchParams.get('doctype');
+      return (
+        (doctype === SAMPLE_COLLECTION_DOCTYPE || doctype === RESTRICTED_SAMPLE_DOCTYPE) &&
+        matchRequestUrl(url, `*/api/method${GROUP_SUMMARY_PATH}`).matches
+      );
+    },
+    ({ request }) => {
+      const url = new URL(request.url);
+      const doctype = url.searchParams.get('doctype');
+      const denied = guard(request, { write: false });
+      if (denied) return denied;
+      if (doctype === RESTRICTED_SAMPLE_DOCTYPE) return frappeError(403, 'PermissionError');
+
+      const groupBy = url.searchParams.get('group_by');
+      const aggregate = url.searchParams.get('aggregate');
+      const aggregateField = url.searchParams.get('aggregate_field');
+      const limit = Number(url.searchParams.get('limit') ?? 100);
+      const filters = summaryFilters(parseJsonParam(url, 'filters'));
+      if (
+        !isCollectionField(groupBy) ||
+        (aggregate === null
+          ? aggregateField !== null
+          : (aggregate !== 'sum' && aggregate !== 'avg') || aggregateField !== 'amount') ||
+        !Number.isInteger(limit) ||
+        limit < 1 ||
+        limit > 100 ||
+        (url.searchParams.get('filters')?.length ?? 0) > 8192 ||
+        !filters
+      ) {
+        return frappeError(400, 'InvalidSummaryQuery');
+      }
+
+      const rows = sampleCollection.filter((row) => filters.every((matches) => matches(row)));
+      const groups = new Map<CollectionRow[keyof CollectionRow], { count: number; sum: number }>();
+      for (const row of rows.sort(collectionOrder(`${groupBy} asc`))) {
+        const value = row[groupBy];
+        const group = groups.get(value) ?? { count: 0, sum: 0 };
+        group.count += 1;
+        group.sum += row.amount;
+        groups.set(value, group);
+      }
+      const summary: CollectionComponents['schemas']['Summary'] = {
+        groups: Array.from(groups.entries())
+          .slice(0, limit)
+          .map(([value, { count, sum }]) => ({
+            value,
+            count,
+            ...(aggregate === null ? {} : { aggregate: aggregate === 'sum' ? sum : sum / count }),
+          })),
+        total_count: rows.length,
+        truncated: groups.size > limit,
+      };
+      return message(summary);
+    },
+  ),
 
   // Erişim kuralı motoru (platform_core-access sözleşmesi).
   http.get('*/api/method/platform_core.api.access.explain_permission', ({ request }) => {

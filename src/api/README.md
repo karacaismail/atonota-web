@@ -81,6 +81,58 @@ Yanıt şöyledir:
 
 İstemci işlevi `listDocuments(doctype, query, options)` olur. Tipler `frappe-v2.ts` dosyasındadır. İstemci sayfa boyunu 1 ile 100 arasında tutar. Bu sınır proje kararıdır (SZ-10).
 
-Gruplu sayım ve toplam bu uçta yoktur. Arka uç bunlar için `platform_core.api.collection.group_summary` ucunu yazıyor. Sözleşme gelince istemci o uca bağlanacak.
+Gruplu sayım ve toplam için `groupSummary` işlevini kullanın.
 
 Frappe sürümü değişince biçimi yeniden doğrulayın.
+
+## Grup özeti
+
+İmza `groupSummary(doctype, query, options?)` biçimindedir.
+`doctype` kayıt türünü, `groupBy` gruplama alanını belirtir.
+`filters` ile kayıtları süzebilirsiniz. `limit` en fazla kaç grubun döneceğini belirtir.
+Sınır 1 ile 100 grup arasındadır. Varsayılan sınır 100 gruptur.
+`options.signal` ile isteği iptal edebilirsiniz.
+
+```ts
+const summary = await api.groupSummary('Örnek Kayıt', {
+  groupBy: 'status',
+  aggregate: 'sum',
+  aggregateField: 'amount',
+  filters: [['amount', '>', 0]],
+  limit: 10,
+});
+```
+
+Toplam için `sum`, ortalama için `avg` kullanın.
+Hesaplama isterken `aggregate` ve `aggregateField` alanlarını birlikte verin.
+Her grup `value` ve `count` alanlarını içerir.
+İstek hesaplama içerirse her grup `aggregate` alanını da içerir.
+`totalCount` süzgece uyan ve kullanıcının okuyabildiği tüm kayıtları sayar.
+Grup sınırı bazı grupları dışarıda bırakırsa `truncated` alanı `true` olur.
+
+İstemci, sunucu hatalarını mevcut `ApiError` türlerine çevirir.
+
+| HTTP kodu | Hata türü |
+| --- | --- |
+| 400 | `invalid_request` |
+| 401 | `session_expired` |
+| 403 | `forbidden` |
+| 404 | `not_found` |
+| 429 | `rate_limited` |
+
+Tiplerin kaynağı arka uçtaki `backend/contracts/platform_core-collection.openapi.yaml` dosyasıdır.
+Tipleri üretmek için sözleşme kopyasının yolunu ilk komuta verin.
+İkinci komut dosyanın başına üretim notunu ekler.
+
+```sh
+output=src/api/generated/platform_core-collection.ts
+npx --no-install openapi-typescript .pane/prompts/platform_core-collection.openapi.yaml \
+  --output "$output" --alphabetize --empty-objects-unknown
+node --input-type=module -e '
+  import { readFileSync, writeFileSync } from "node:fs";
+  const output = process.argv[1];
+  const header = "/* eslint-disable */\n// Bu dosya OpenAPI sözleşmesinden üretildi. Üretim komutu src/api/README.md dosyasındadır.\n";
+  writeFileSync(output, header + readFileSync(output, "utf8"));
+' "$output"
+npx --no-install prettier --write "$output"
+```
