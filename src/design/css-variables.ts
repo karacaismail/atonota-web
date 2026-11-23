@@ -6,6 +6,7 @@
 import { dropdownAnimation, duration, easing } from './motion';
 import type { ThemeMode } from './source';
 import {
+  danger,
   darkPalette,
   layer,
   layout,
@@ -79,6 +80,7 @@ export function rootVariables(): Record<string, string> {
     '--color-primary-active': primary.active,
     '--primary-text': primary.light.text,
     '--primary-text-hover': primary.light.textHover,
+    '--danger-text': danger.light.text,
     '--radius': px(radius.control),
     '--card-radius': px(radius.card),
     '--hit-expand': String(hitArea.expand),
@@ -128,6 +130,7 @@ export function darkVariables(): Record<string, string> {
   return {
     '--primary-text': primary.dark.text,
     '--primary-text-hover': primary.dark.textHover,
+    '--danger-text': danger.dark.text,
     '--primary-bg': primary.dark.background,
     '--primary-bg-hover': primary.dark.backgroundHover,
     '--primary-bg-active': primary.dark.backgroundActive,
@@ -166,15 +169,23 @@ function controlFixCss(): string {
   ].join('\n');
 }
 
-/** Birincil buton metni ve koyu tema zemini (kaynak: primary.light / primary.dark; koyu zemin düz renktir). */
+/**
+ * Birincil buton metni ve koyu tema zemini (kaynak: primary.light / primary.dark; koyu zemin düz renktir).
+ * Tehlikeli birincil düğme (`danger`) de `ant-btn-primary` sınıfını taşır; kurallar onu dışarıda
+ * bırakır. Tehlike rengi ve beyaz metin antd Button tokenlarından gelir (tokens.ts: danger).
+ */
 function primaryButtonCss(): string {
+  const primary = '.ant-btn-primary:not(.ant-btn-dangerous):not(:disabled):not(.ant-btn-disabled)';
+  const dangerSolid = '.ant-btn-dangerous.ant-btn-variant-solid:not(:disabled):not(.ant-btn-disabled)';
   return [
-    '.ant-btn-primary:not(:disabled):not(.ant-btn-disabled) { color: var(--primary-text); }',
-    '.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover { color: var(--primary-text-hover); }',
-    '[data-theme="dark"] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled) { background: var(--primary-bg); color: var(--primary-text); }',
-    '[data-theme="dark"] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover { background: var(--primary-bg-hover); color: var(--primary-text-hover); }',
+    `${primary} { color: var(--primary-text); }`,
+    `${primary}:hover { color: var(--primary-text-hover); }`,
+    `[data-theme="dark"] ${primary} { background: var(--primary-bg); color: var(--primary-text); }`,
+    `[data-theme="dark"] ${primary}:hover { background: var(--primary-bg-hover); color: var(--primary-text-hover); }`,
     '/* Basılı: klavyeyle (Space) basılınca üzerine gelme yoktur; metin yine %100 olur (AA). */',
-    '[data-theme="dark"] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):active { background: var(--primary-bg-active); color: var(--primary-text-hover); }',
+    `[data-theme="dark"] ${primary}:active { background: var(--primary-bg-active); color: var(--primary-text-hover); }`,
+    '/* antd, düz (solid) düğmenin üzerine gelme ve basılı metnini primaryColor yapar. Tehlike düğmesinde metin beyaz kalır. */',
+    `${dangerSolid}:hover, ${dangerSolid}:active { color: var(--danger-text); }`,
   ].join('\n');
 }
 

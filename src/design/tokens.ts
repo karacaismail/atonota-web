@@ -118,6 +118,37 @@ export const link = {
   dark: { color: s.primary.color, hover: s.primary.hover, active: s.primary.active },
 } as const;
 
+const WHITE = '#ffffff';
+
+/** Tehlike düğmesi kontrast basamakları: normal, üzerine gelme ve basılı zemin beyaz metinle en az bu oranı verir. */
+export const DANGER_CONTRAST = { normal: 4.5, hover: 5.2, active: 6 } as const;
+
+/**
+ * Tehlike (danger) rengi. Kaynak dosyada tehlike rengi yoktur; antd'nin tema hata rengi kullanılır.
+ * antd kırmızısı beyaz metinle açık temada 3.27:1, koyu temada 4.24:1 verir; WCAG 2.2 AA 4.5:1 ister.
+ * Zemin, beyaz metinle 4.5:1 verene kadar koyulaştırılır (ton korunur). Üzerine gelme ve basılı
+ * zemin aynı tonun daha koyu basamaklarıdır (5.2:1 ve 6:1); böylece her durum ayırt edilir ve
+ * kontrast hiçbir zeminde düşmez. Metin her durumda beyazdır. Tehlikeli birincil düğme birincil
+ * düğme kurallarının dışındadır (`src/design/css-variables.ts`).
+ */
+function dangerFor(mode: ThemeMode) {
+  const seed: string = antdThemeApi.getDesignToken({
+    algorithm: mode === 'dark' ? antdThemeApi.darkAlgorithm : antdThemeApi.defaultAlgorithm,
+  }).colorError;
+  const background = darkenToContrast(seed, WHITE, DANGER_CONTRAST.normal);
+  return {
+    text: WHITE,
+    background,
+    backgroundHover: darkenToContrast(background, WHITE, DANGER_CONTRAST.hover),
+    backgroundActive: darkenToContrast(background, WHITE, DANGER_CONTRAST.active),
+  };
+}
+
+export const danger = {
+  light: dangerFor('light'),
+  dark: dangerFor('dark'),
+} as const;
+
 /**
  * Yer tutucu metni. antd varsayılanı siyah %25 ve beyaz %25'tir; AA (4.5:1) sınırının altındadır.
  * Opaklık, giriş zemininde 4.5:1 veren en küçük değere programatik çıkar.

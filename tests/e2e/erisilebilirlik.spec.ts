@@ -155,6 +155,54 @@ async function switchToDark(page: Page) {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 }
 
+/**
+ * Tehlikeli birincil düğme (`type="primary" danger`). antd bu düğmeye de `ant-btn-primary` sınıfını
+ * verir. Projenin birincil düğme kuralları onu dışarıda bırakır: zemin kırmızı kalır, metin beyazdır,
+ * kontrast iki temada ve üç durumda en az 4.5:1 olur.
+ */
+test.describe('tehlikeli birincil düğme', () => {
+  for (const theme of ['açık', 'koyu'] as const) {
+    test(`${theme} temada kırmızı zemin, beyaz metin ve en az 4.5:1`, async ({ page }) => {
+      await page.goto(DEMO);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      if (theme === 'koyu') await switchToDark(page);
+      const btn = page.getByTestId('btn-danger-primary');
+      const primaryBtn = page.getByTestId('btn-md');
+      const bgOf = () => btn.evaluate((el) => getComputedStyle(el).backgroundColor);
+      const colorOf = () => btn.evaluate((el) => getComputedStyle(el).color);
+      const channels = (rgb: string) => (rgb.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
+      const restBg = await bgOf();
+      const primaryBg = await primaryBtn.evaluate((el) => getComputedStyle(el).backgroundColor);
+      expect(restBg, 'tehlikeli düğme birincil düğmeyle aynı görünmez').not.toBe(primaryBg);
+      const [r, g, b] = channels(restBg);
+      expect(r, `zemin kırmızıdır: ${restBg}`).toBeGreaterThan(g!);
+      expect(r, `zemin kırmızıdır: ${restBg}`).toBeGreaterThan(b!);
+      expect(await colorOf(), 'metin beyaz').toBe('rgb(255, 255, 255)');
+      expect(await measureContrast(btn), 'normal').toBeGreaterThanOrEqual(4.5);
+      await btn.hover();
+      await expect.poll(bgOf, { message: 'üzerine gelme zemini değişir' }).not.toBe(restBg);
+      expect(await colorOf(), 'üzerine gelmede metin beyaz').toBe('rgb(255, 255, 255)');
+      await expect
+        .poll(() => measureContrast(btn), { message: 'üzerine gelme' })
+        .toBeGreaterThanOrEqual(4.5);
+      const hoverBg = await bgOf();
+      const box = (await btn.boundingBox())!;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await expect.poll(bgOf, { message: 'basılı zemin değişir' }).not.toBe(hoverBg);
+      await expect
+        .poll(() => measureContrast(btn), { message: 'basılı' })
+        .toBeGreaterThanOrEqual(4.5);
+      await page.mouse.up();
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2aa'])
+        .include('.ant-btn-dangerous')
+        .analyze();
+      expect(results.violations).toEqual([]);
+    });
+  }
+});
+
 test.describe('koyu birincil düğme kontrastı', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(DEMO);

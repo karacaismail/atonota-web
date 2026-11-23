@@ -2,9 +2,9 @@ import { theme as antdThemeApi } from 'antd';
 import { describe, expect, it } from 'vitest';
 
 import { buildAntdTheme } from './antd-theme';
-import { blendOver, contrastRatio } from './color';
+import { blendOver, contrastRatio, darkenToContrast } from './color';
 import { designSource } from './source';
-import { primary } from './tokens';
+import { danger, primary } from './tokens';
 
 const derived = designSource.derived.antdTheme;
 
@@ -82,6 +82,33 @@ describe('buildAntdTheme', () => {
         const ratio = contrastRatio(blendOver(text, state.textAlpha, bg), bg);
         expect(ratio, `${state.name} / ${surface}`).toBeGreaterThanOrEqual(4.5);
       }
+    }
+  });
+
+  it('tehlikeli birincil düğme kendi kırmızısını korur; beyaz metin her durumda en az 4.5:1 verir', () => {
+    const white = '#ffffff';
+    for (const mode of ['light', 'dark'] as const) {
+      const btn = buildAntdTheme(mode).components?.Button as Record<string, unknown>;
+      const seed = antdThemeApi.getDesignToken({
+        algorithm: mode === 'dark' ? antdThemeApi.darkAlgorithm : antdThemeApi.defaultAlgorithm,
+      }).colorError;
+      expect(btn?.['dangerColor'], mode).toBe(white);
+      const bg = String(btn?.['colorError']);
+      const hover = String(btn?.['colorErrorHover']);
+      const active = String(btn?.['colorErrorActive']);
+      // Türetme: antd hata rengi beyaz metinle 4.5:1 verene kadar koyulaşır. Ton korunur.
+      expect(bg, mode).toBe(darkenToContrast(seed, white, 4.5));
+      expect(bg, mode).toBe(danger[mode].background);
+      // Tehlike rengi birincil rengin tonu değildir: kırmızı kanal baskındır.
+      const [r, g, b] = [bg.slice(1, 3), bg.slice(3, 5), bg.slice(5, 7)].map((h) => parseInt(h, 16));
+      expect(r, mode).toBeGreaterThan(g!);
+      expect(r, mode).toBeGreaterThan(b!);
+      expect(bg, mode).not.toBe(primary.dark.background);
+      // Normal, üzerine gelme ve basılı: hepsi en az 4.5:1; her durum bir öncekinden koyudur.
+      const ratios = [bg, hover, active].map((c) => contrastRatio(white, c));
+      for (const ratio of ratios) expect(ratio, mode).toBeGreaterThanOrEqual(4.5);
+      expect(ratios[1], `${mode} üzerine gelme`).toBeGreaterThan(ratios[0]!);
+      expect(ratios[2], `${mode} basılı`).toBeGreaterThan(ratios[1]!);
     }
   });
 

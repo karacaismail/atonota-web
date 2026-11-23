@@ -147,6 +147,9 @@ export default function FoundationPage() {
             <Button disabled data-testid="btn-disabled">
               Pasif
             </Button>
+            <Button type="primary" danger data-testid="btn-danger-primary">
+              Sil
+            </Button>
             <FocusDimDemo />
           </Flex>
           <Space.Compact style={{ marginTop: 'var(--space-md)' }} data-testid="compact">

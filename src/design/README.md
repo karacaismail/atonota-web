@@ -21,6 +21,7 @@ Tek karar kaynağı `design/source/control-size-config.json` dosyasıdır. Bu kl
 | Giriş | `--input-h-sm/md/lg`, `--input-fs-sm/md/lg`, `--input-lh-sm/md/lg` | `sizes` |
 | Ağırlık | `--font-weight-sm/md/lg` (400/500/600) | `fontWeight` |
 | Renk | `--color-primary`, `--color-primary-hover`, `--color-primary-active` | `primary` |
+| Tehlike | `--danger-text` (beyaz). Zemin için CSS değişkeni yoktur. antd Button tokenları `colorError`, `colorErrorHover`, `colorErrorActive` ve `dangerColor` (beyaz) `@/design` içindeki `danger` tokenından gelir. Zemin beyaz metinle 4.5:1, 5.2:1 ve 6:1 verir. | antd hata rengi, türetilmiş karar 13 |
 | Birincil metin | `--primary-text`, `--primary-text-hover`. Koyu temada ek olarak `--primary-bg`, `--primary-bg-hover`, `--primary-bg-active` (düz renk; kaynak tonun yerleşim zeminine bindirilmiş hali) | `primary.light` ve `primary.dark` |
 | Koyu zeminler | `--bg-layout`, `--bg-panel`, `--bg-elevated`, `--bg-input`, `--bg-button` (yalnız koyu tema) | `darkPalette` |
 | Köşe | `--radius` (5), `--card-radius` (10) | `radius`, `cards` |
@@ -39,7 +40,7 @@ Dropdown açılış hareketi için `@keyframes atonota-dropdown-in` tanımlıdı
 
 ## TypeScript tokenları
 
-`@/design` şunları dışa aktarır: `designSource`, `buildAntdTheme(mode)`, `buildDesignCss()`, `ensureDesignStyles()`, `tokens` (`sizes`, `primary`, `link`, `radius`, `shadows`, `darkPalette`, `space`, `layer`, `layout`, `table`, `hitArea`, `focusDim`, `focusIndicator`), `motion` (`duration`, `easing`, `dropdownAnimation`) ve renk yardımcıları (`hexToRgba`, `contrastRatio`, `darkenToContrast`, `blendOver`, `minAlphaForContrast`).
+`@/design` şunları dışa aktarır: `designSource`, `buildAntdTheme(mode)`, `buildDesignCss()`, `ensureDesignStyles()`, `tokens` (`sizes`, `primary`, `danger`, `link`, `radius`, `shadows`, `darkPalette`, `space`, `layer`, `layout`, `table`, `hitArea`, `focusDim`, `focusIndicator`), `motion` (`duration`, `easing`, `dropdownAnimation`) ve renk yardımcıları (`hexToRgba`, `contrastRatio`, `darkenToContrast`, `blendOver`, `minAlphaForContrast`).
 
 ## Motorlar
 

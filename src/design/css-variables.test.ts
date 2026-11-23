@@ -45,6 +45,25 @@ describe('CSS değişkenleri', () => {
     expect(active).toContain('color: var(--primary-text-hover)');
   });
 
+  it('birincil düğme kuralları tehlikeli (danger) düğmeyi dışarıda bırakır', () => {
+    const rules = buildDesignCss()
+      .split('\n')
+      .filter((line) => line.includes('.ant-btn-primary') && !line.trim().startsWith('/*'));
+    expect(rules.length).toBeGreaterThanOrEqual(5);
+    for (const rule of rules) {
+      expect(rule, rule).toContain('.ant-btn-primary:not(.ant-btn-dangerous)');
+    }
+    // antd düz düğmenin üzerine gelme metnini primaryColor yapar; tehlike düğmesi beyaz kalır.
+    expect(rootVariables()['--danger-text']).toBe('#ffffff');
+    expect(darkVariables()['--danger-text']).toBe('#ffffff');
+    const dangerHover = buildDesignCss()
+      .split('\n')
+      .find((line) => line.includes('.ant-btn-dangerous.ant-btn-variant-solid') && line.includes(':hover'));
+    expect(dangerHover).toBeDefined();
+    expect(dangerHover).toContain(':active');
+    expect(dangerHover).toContain('color: var(--danger-text)');
+  });
+
   it('dar form sütunu değişkeni orta buton yüksekliğinin 10 katıdır', () => {
     const vars = rootVariables();
     expect(vars['--form-max-width']).toBe(`${designSource.sizes.md.button.height * 10}px`);

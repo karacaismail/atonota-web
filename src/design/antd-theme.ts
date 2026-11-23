@@ -8,6 +8,7 @@ import { duration, easing, seconds } from './motion';
 import { designSource, type ThemeMode } from './source';
 import {
   border,
+  danger,
   darkPalette,
   fontFamily,
   fontWeight,
@@ -108,6 +109,11 @@ export function buildAntdTheme(mode: ThemeMode, options: BuildThemeOptions = {})
       defaultShadow: shadow.button,
       dangerShadow: shadow.button,
       primaryColor: dark ? primary.dark.text : primary.light.text,
+      // Tehlike düğmesi: kendi kırmızısı, beyaz metin, her durumda en az 4.5:1 (tokens.ts: danger).
+      dangerColor: danger[mode].text,
+      colorError: danger[mode].background,
+      colorErrorHover: danger[mode].backgroundHover,
+      colorErrorActive: danger[mode].backgroundActive,
       ...(dark
         ? {
             defaultBg: darkPalette.button,
