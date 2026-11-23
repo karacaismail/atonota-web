@@ -183,13 +183,18 @@ test.describe('header ve sayfalar', () => {
     await expect(page.getByText('TEK-0001')).toHaveCount(0);
   });
 
-  test('formda değişiklik kaydedilmemiş durumunu gösterir', async ({ page }) => {
+  test('kayıt rotası views-record görünümünü çizer; kabuğun örnek formu çizilmez', async ({
+    page,
+  }) => {
+    // Uygulama girişi kayıt rotasını `RecordView` bileşenine bağlar. Adres parçası DocType adına
+    // çevrilir (`teklif` -> `Teklif`). Sahte sunucu bu türün tanımını vermez (403). Görünüm
+    // erişim reddi durumunu gösterir. Kabuğun örnek formu yalnız bağlantısız deneme sayfasındadır.
     await page.goto('/satis/teklif/TEK-0003');
-    await expect(page.getByText('3 / 24')).toBeVisible();
-    await page.getByLabel('Başlık').fill('Yeni başlık');
-    await expect(page.getByText('1 değişiklik kaydedilmedi')).toBeVisible();
-    await page.getByRole('button', { name: 'Vazgeç' }).click();
-    await expect(page.getByText('1 değişiklik kaydedilmedi')).toBeHidden();
+    const state = page.locator('.rv-state-card[role="alert"]');
+    await expect(state).toContainText('Erişim izni yok');
+    await expect(state).toContainText('Bu kaydı görüntüleme yetkiniz bulunmuyor.');
+    await expect(page.getByText('3 / 24')).toHaveCount(0);
+    await expect(page.getByLabel('Başlık')).toHaveCount(0);
   });
 
   for (const url of ['/satis/teklif', LIST]) {
