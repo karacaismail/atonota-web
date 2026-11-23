@@ -99,6 +99,13 @@ test.describe('imza alanı ve bağlantı araması', () => {
     expect(inkRegions.rightInk).toBeGreaterThan(10);
     await expect(page.getByText('İmza alındı')).toBeVisible();
     await expect(page.getByText('1 kaydedilmemiş değişiklik')).toBeVisible();
+  });
+
+  // Her davranış kendi testindedir. Linux WebKit yük altında kareleri saniyelerce geciktirir.
+  // Tek testte sıralanan adımlar süreyi birbirine yükler (inceleme 1, Ö-1). Beklentiler aynıdır.
+  test('yazarak imzalama gerçek tarayıcıda PNG üretir', async ({ page }) => {
+    await page.goto(HARNESS);
+    await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
     // Küçük 1: Yazarak imzalama gerçek tarayıcıda PNG üretmeli
     await page.getByText('Yazarak imzala').click();
@@ -108,6 +115,11 @@ test.describe('imza alanı ve bağlantı araması', () => {
     await expect(
       page.locator('[data-fieldname="signature"] img.rv-attach-preview'),
     ).toHaveAttribute('src', /^data:image\/png;base64,/);
+  });
+
+  test('bölüm kartında dekoratif kenarlık yoktur', async ({ page }) => {
+    await page.goto(HARNESS);
+    await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
     // Küçük 12: Bölüm kartında dekoratif kenarlık olmamalı (yalnız gölge / yüzey tonu)
     const cardBorderTop = await page

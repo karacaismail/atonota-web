@@ -32,18 +32,51 @@ interface Run {
   easing: string;
 }
 
+interface Recording {
+  runs: Run[];
+  /** Transitions that began (`transitionrun`) and have not ended or been cancelled yet. */
+  open: Set<string>;
+}
+
 /**
- * Starts recording every CSS transition that begins inside `scope`. Each run is read at its
- * `transitionrun` event, so a short transition cannot finish before it is measured.
+ * Starts recording every CSS transition that begins inside `scope`.
+ * Each run is read at its `transitionrun` event. The running animation gives the timing.
+ * On a slow frame the browser can deliver `transitionrun` and `transitionend` together, after
+ * the animation has already finished and left `getAnimations()`. Then the timing comes from the
+ * computed transition style that started it. So the measurement does not depend on one frame.
+ * `transitionend` and `transitioncancel` close each run. `settled()` is true when every run closed.
  */
 async function recordTransitions(scope: Locator) {
   await scope.evaluate((element) => {
-    const runs: Run[] = [];
-    (window as unknown as { __runs: Run[] }).__runs = runs;
+    const recording: Recording = { runs: [], open: new Set() };
+    (window as unknown as { __recording: Recording }).__recording = recording;
+    const keys = new WeakMap<EventTarget, number>();
+    let next = 0;
+    const keyOf = (event: TransitionEvent) => {
+      const target = event.target as EventTarget;
+      if (!keys.has(target)) keys.set(target, (next += 1));
+      return `${keys.get(target)} ${event.pseudoElement} ${event.propertyName}`;
+    };
+    // Computed lists repeat when they are shorter than transition-property (CSS Transitions 1).
+    const declared = (target: Element, pseudo: string, property: string) => {
+      const style = getComputedStyle(target, pseudo || null);
+      const properties = style.transitionProperty.split(/,\s*/);
+      const durations = style.transitionDuration.split(/,\s*/);
+      const easings = style.transitionTimingFunction.split(/,\s*(?![^()]*\))/);
+      let index = properties.indexOf(property);
+      if (index < 0) index = properties.lastIndexOf('all');
+      if (index < 0) return null;
+      return {
+        duration: parseFloat(durations[index % durations.length] ?? '0') * 1000,
+        easing: easings[index % easings.length] ?? '',
+      };
+    };
     element.addEventListener('transitionrun', (raw) => {
       const event = raw as TransitionEvent;
       const target = event.target;
       if (!(target instanceof Element)) return;
+      recording.open.add(keyOf(event));
+      const property = `${target.className} ${event.pseudoElement} ${event.propertyName}`;
       for (const animation of target.getAnimations({ subtree: true })) {
         if (!(animation instanceof CSSTransition)) continue;
         if (animation.transitionProperty !== event.propertyName) continue;
@@ -52,22 +85,31 @@ async function recordTransitions(scope: Locator) {
           continue;
         }
         const timing = effect.getComputedTiming();
-        runs.push({
-          property: `${target.className} ${event.pseudoElement} ${event.propertyName}`,
+        recording.runs.push({
+          property,
           duration: Number(timing.duration ?? 0),
           easing: timing.easing ?? '',
         });
+        return;
       }
+      const style = declared(target, event.pseudoElement, event.propertyName);
+      if (style) recording.runs.push({ property: `${property} (style)`, ...style });
     });
+    for (const type of ['transitionend', 'transitioncancel']) {
+      element.addEventListener(type, (raw) => {
+        recording.open.delete(keyOf(raw as TransitionEvent));
+      });
+    }
   });
+  // Page functions are sent as source text. Each one reads the recording from `window`.
+  const page = scope.page();
+  interface Store {
+    __recording: Recording;
+  }
   return {
-    count: () =>
-      scope.page().evaluate(() => (window as unknown as { __runs: Run[] }).__runs.length),
-    take: () =>
-      scope.page().evaluate(() => {
-        const store = window as unknown as { __runs: Run[] };
-        return store.__runs.splice(0);
-      }),
+    count: () => page.evaluate(() => (window as unknown as Store).__recording.runs.length),
+    settled: () => page.evaluate(() => (window as unknown as Store).__recording.open.size === 0),
+    take: () => page.evaluate(() => (window as unknown as Store).__recording.runs.splice(0)),
   };
 }
 
@@ -483,41 +525,72 @@ for (const scheme of ['light', 'dark'] as const) {
   });
 }
 
-test('choice transitions use the shared easing and duration in both directions', async ({
-  page,
-}) => {
-  const cases = [
-    { name: 'switch', root: page.getByRole('switch', { name: 'Etkin' }) },
-    {
-      name: 'radio card',
-      root: page.getByTestId('radio-cards').locator('.ant-radio-wrapper', { hasText: 'Aylık' }),
-      back: page.getByTestId('radio-cards').locator('.ant-radio-wrapper', { hasText: 'Haftalık' }),
-    },
-    {
-      name: 'radio button',
-      root: page.getByTestId('radio-buttons').locator('.ant-radio-button-wrapper', {
-        hasText: 'İkinci',
-      }),
-      back: page.getByTestId('radio-buttons').locator('.ant-radio-button-wrapper', {
-        hasText: 'Birinci',
-      }),
-    },
-    {
-      name: 'segmented',
-      root: page.getByTestId('tabs').locator('.ant-segmented-item', { hasText: 'Ay' }),
-      back: page.getByTestId('tabs').locator('.ant-segmented-item', { hasText: 'Gün' }),
-    },
-  ];
-  for (const { name, root, back } of cases) {
+/** Waits until a clicked choice control shows its final, selected state. */
+async function settled(target: Locator) {
+  const className = await target.evaluate((element) => element.className);
+  if (className.includes('ant-segmented-item')) {
+    await expect(target).toHaveClass(/\bant-segmented-item-selected\b/);
+    await expect(target.locator('xpath=..').locator('.ant-segmented-thumb')).toHaveCount(0);
+  } else if (className.includes('ant-radio-button-wrapper')) {
+    await expect(target).toHaveClass(/\bant-radio-button-wrapper-checked\b/);
+  } else if (className.includes('ant-radio-wrapper')) {
+    await expect(target).toHaveClass(/\bant-radio-wrapper-checked\b/);
+  }
+  // The switch changes aria-checked on click; its transitions all start in that frame.
+}
+
+/** The choice controls whose transitions are measured. `back` restores the first state. */
+const choiceCases: Record<
+  'switch' | 'radio card' | 'radio button' | 'segmented',
+  (page: Page) => { root: Locator; back?: Locator }
+> = {
+  switch: (page) => ({ root: page.getByRole('switch', { name: 'Etkin' }) }),
+  'radio card': (page) => ({
+    root: page.getByTestId('radio-cards').locator('.ant-radio-wrapper', { hasText: 'Aylık' }),
+    back: page.getByTestId('radio-cards').locator('.ant-radio-wrapper', { hasText: 'Haftalık' }),
+  }),
+  'radio button': (page) => ({
+    root: page.getByTestId('radio-buttons').locator('.ant-radio-button-wrapper', {
+      hasText: 'İkinci',
+    }),
+    back: page.getByTestId('radio-buttons').locator('.ant-radio-button-wrapper', {
+      hasText: 'Birinci',
+    }),
+  }),
+  segmented: (page) => ({
+    root: page.getByTestId('tabs').locator('.ant-segmented-item', { hasText: 'Ay' }),
+    back: page.getByTestId('tabs').locator('.ant-segmented-item', { hasText: 'Gün' }),
+  }),
+};
+
+// Each control has its own test. Linux WebKit can hold a frame for seconds under load.
+// Eight clicks in one test would share one time budget (review 1, Ö-1). Expectations are unchanged.
+for (const [name, build] of Object.entries(choiceCases)) {
+  test(`${name} transitions use the shared easing and duration in both directions`, async ({
+    page,
+  }) => {
+    const { root, back } = build(page);
     for (const [direction, target] of [
       ['forward', root],
       ['back', back ?? root],
     ] as const) {
       const scope = name === 'segmented' ? page.getByTestId('tabs') : root.locator('..');
       const recorder = await recordTransitions(scope);
+      // Hover first and let the hover feedback finish. Otherwise, on a slow frame, the item
+      // can become selected while its hover layer is still fading in. The browser then reverses
+      // that transition with a shortened duration (CSS Transitions 1, reversing). Hover
+      // transitions are recorded and checked too.
+      await target.hover();
+      await expect.poll(recorder.settled).toBe(true);
+      await expect.poll(() => transitions(scope)).toBe(0);
       await target.click();
       await expect.poll(recorder.count).toBeGreaterThan(0);
-      // Let every transition finish so the next click is not a shortened reversal.
+      // Wait for the end of the whole motion, so the next click is not a shortened reversal.
+      // Segmented moves in steps: label color, then the sliding thumb, then the selected item's
+      // hover layer. Between the steps no transition runs for a moment. So the wait first checks
+      // the final state (thumb gone, item selected), then that every started transition ended.
+      await settled(target);
+      await expect.poll(recorder.settled).toBe(true);
       await expect.poll(() => transitions(scope)).toBe(0);
       const running = await recorder.take();
       expect(running.length, `${name} ${direction}: no transition ran`).toBeGreaterThan(0);
@@ -526,8 +599,8 @@ test('choice transitions use the shared easing and duration in both directions',
         expect(sharedDurations, `${name} ${direction} ${t.property}`).toContain(t.duration);
       }
     }
-  }
-});
+  });
+}
 
 test('checkbox mark uses the shared transition in both directions', async ({ page }) => {
   const checkbox = page.getByRole('checkbox', { name: 'Seç', exact: true });

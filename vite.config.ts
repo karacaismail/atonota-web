@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
-import { e2eEnvDefine } from './vite/e2e-env.ts';
+import { e2eEnvPlugin } from './vite/e2e-env.ts';
 import { mockWorkerPlugin } from './vite/mock-worker-plugin.ts';
 import { runtimeDesignSource } from './vite/runtime-design-source.ts';
 
@@ -32,11 +32,11 @@ const ANTD_X_MOCK_TESTS = [
 
 export default defineConfig(({ mode }) => ({
   // mockWorkerPlugin: sahte sunucunun işçi dosyasını yalnız gerektiğinde sunar (vite/mock-worker-plugin.ts).
-  plugins: [react(), mockWorkerPlugin()],
+  // e2eEnvPlugin: e2e kipinin sahte sunucu ve Keycloak değerleri (vite/e2e-env.ts). Depoda `.env`
+  // dosyası yoktur. Değerler `loadEnv` sonucundan gelir; `.env.e2e.local` de okunur.
+  plugins: [react(), mockWorkerPlugin(), e2eEnvPlugin()],
   define: {
     __RUNTIME_DESIGN_SOURCE__: JSON.stringify(runtimeDesignSource),
-    // e2e kipinin sahte sunucu ve Keycloak değerleri (vite/e2e-env.ts). Depoda `.env` dosyası yoktur.
-    ...e2eEnvDefine(mode),
   },
   resolve: {
     alias: {
