@@ -14,7 +14,7 @@ describe('hexToRgba', () => {
   });
 });
 
-import { contrastRatio, darkenToContrast, relativeLuminance } from './color';
+import { contrastRatio, darkenToContrast, lightenToContrast, relativeLuminance } from './color';
 
 describe('kontrast yardımcıları', () => {
   it('siyah ve beyaz 21:1 verir', () => {
@@ -31,6 +31,17 @@ describe('kontrast yardımcıları', () => {
   });
   it('yeterli renk değişmez', () => {
     expect(darkenToContrast('#000000', '#ffffff')).toBe('#000000');
+  });
+
+  it('lightenToContrast koyu zeminde rengi açarak en az 4.5:1 verir; ton korunur', () => {
+    const lifted = lightenToContrast('#dc4446', '#2a2a30');
+    expect(contrastRatio(lifted, '#2a2a30')).toBeGreaterThanOrEqual(4.5);
+    expect(relativeLuminance(lifted)).toBeGreaterThan(relativeLuminance('#dc4446'));
+    const [r, g, b] = [lifted.slice(1, 3), lifted.slice(3, 5), lifted.slice(5, 7)].map((h) => parseInt(h, 16));
+    expect(r).toBeGreaterThan(g!);
+    expect(r).toBeGreaterThan(b!);
+    expect(lightenToContrast('#ffffff', '#000000')).toBe('#ffffff');
+    expect(lightenToContrast('#dc4446', '#2a2a30', 6)).not.toBe(lifted);
   });
 });
 

@@ -203,6 +203,71 @@ test.describe('tehlikeli birincil düğme', () => {
   }
 });
 
+/**
+ * Kenarlıklı, metin ve bağlantı türü tehlike düğmesi. antd bu türlerde tehlike rengini yazı rengi
+ * yapar. Yazı rengi düz düğmenin zemininden ayrı türetilir: yerleşim, panel ve yükseltilmiş zeminde,
+ * dinlenme, üzerine gelme ve basılı durumda en az 4.5:1 verir. Düz düğmenin zemini değişmez.
+ */
+test.describe('tehlike düğmesi türleri: kenarlıklı, metin ve bağlantı', () => {
+  const kinds = [
+    { name: 'kenarlıklı', id: 'btn-danger-outlined' },
+    { name: 'metin', id: 'btn-danger-text' },
+    { name: 'bağlantı', id: 'btn-danger-link' },
+    { name: 'kart içinde metin', id: 'btn-card-danger-text' },
+  ] as const;
+  for (const theme of ['açık', 'koyu'] as const) {
+    test(`${theme} temada yazı her türde ve durumda en az 4.5:1`, async ({ page }) => {
+      await page.goto(DEMO);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      if (theme === 'koyu') await switchToDark(page);
+      const channels = (rgb: string) => (rgb.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
+      const solidBg = await page
+        .getByTestId('btn-danger-primary')
+        .evaluate((el) => getComputedStyle(el).backgroundColor);
+      for (const kind of kinds) {
+        const btn = page.getByTestId(kind.id);
+        const colorOf = () => btn.evaluate((el) => getComputedStyle(el).color);
+        const restColor = await colorOf();
+        const [r, g, b] = channels(restColor);
+        expect(r, `${kind.name}: yazı kırmızıdır: ${restColor}`).toBeGreaterThan(g!);
+        expect(r, `${kind.name}: yazı kırmızıdır: ${restColor}`).toBeGreaterThan(b!);
+        expect(restColor, `${kind.name}: yazı rengi düz zemin rengi değildir`).not.toBe(solidBg);
+        expect(await measureContrast(btn), `${kind.name}: normal`).toBeGreaterThanOrEqual(4.5);
+        await btn.hover();
+        await expect
+          .poll(colorOf, { message: `${kind.name}: üzerine gelme rengi değişir` })
+          .not.toBe(restColor);
+        await expect
+          .poll(() => measureContrast(btn), { message: `${kind.name}: üzerine gelme` })
+          .toBeGreaterThanOrEqual(4.5);
+        const box = (await btn.boundingBox())!;
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.down();
+        await expect
+          .poll(() => measureContrast(btn), { message: `${kind.name}: basılı` })
+          .toBeGreaterThanOrEqual(4.5);
+        await page.mouse.up();
+        await page.mouse.move(0, 0);
+      }
+      // Pencere (yükseltilmiş zemin) içindeki metin türü tehlike düğmesi.
+      await page.getByTestId('modal-open').click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      const modalBtn = page.getByTestId('btn-modal-danger-text');
+      expect(await measureContrast(modalBtn), 'pencere: normal').toBeGreaterThanOrEqual(4.5);
+      await modalBtn.hover();
+      await expect
+        .poll(() => measureContrast(modalBtn), { message: 'pencere: üzerine gelme' })
+        .toBeGreaterThanOrEqual(4.5);
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2aa'])
+        .include('.ant-btn-dangerous')
+        .analyze();
+      expect(results.violations).toEqual([]);
+    });
+  }
+});
+
 test.describe('koyu birincil düğme kontrastı', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(DEMO);

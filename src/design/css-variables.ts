@@ -80,7 +80,10 @@ export function rootVariables(): Record<string, string> {
     '--color-primary-active': primary.active,
     '--primary-text': primary.light.text,
     '--primary-text-hover': primary.light.textHover,
-    '--danger-text': danger.light.text,
+    '--danger-text': danger.light.solidText,
+    '--danger-bg': danger.light.background,
+    '--danger-bg-hover': danger.light.backgroundHover,
+    '--danger-bg-active': danger.light.backgroundActive,
     '--radius': px(radius.control),
     '--card-radius': px(radius.card),
     '--hit-expand': String(hitArea.expand),
@@ -130,7 +133,10 @@ export function darkVariables(): Record<string, string> {
   return {
     '--primary-text': primary.dark.text,
     '--primary-text-hover': primary.dark.textHover,
-    '--danger-text': danger.dark.text,
+    '--danger-text': danger.dark.solidText,
+    '--danger-bg': danger.dark.background,
+    '--danger-bg-hover': danger.dark.backgroundHover,
+    '--danger-bg-active': danger.dark.backgroundActive,
     '--primary-bg': primary.dark.background,
     '--primary-bg-hover': primary.dark.backgroundHover,
     '--primary-bg-active': primary.dark.backgroundActive,
@@ -172,7 +178,9 @@ function controlFixCss(): string {
 /**
  * Birincil buton metni ve koyu tema zemini (kaynak: primary.light / primary.dark; koyu zemin düz renktir).
  * Tehlikeli birincil düğme (`danger`) de `ant-btn-primary` sınıfını taşır; kurallar onu dışarıda
- * bırakır. Tehlike rengi ve beyaz metin antd Button tokenlarından gelir (tokens.ts: danger).
+ * bırakır. Düz tehlike düğmesinin zemini `--danger-bg*` değişkenlerinden, metni `--danger-text`
+ * değişkeninden gelir. antd'nin `colorError*` tokenları bu projede yazı rengidir (tokens.ts: danger);
+ * düz zemin o tokenlardan ayrı tutulur ki kenarlıklı, metin ve bağlantı türünde yazı 4.5:1 versin.
  */
 function primaryButtonCss(): string {
   const primary = '.ant-btn-primary:not(.ant-btn-dangerous):not(:disabled):not(.ant-btn-disabled)';
@@ -184,8 +192,10 @@ function primaryButtonCss(): string {
     `[data-theme="dark"] ${primary}:hover { background: var(--primary-bg-hover); color: var(--primary-text-hover); }`,
     '/* Basılı: klavyeyle (Space) basılınca üzerine gelme yoktur; metin yine %100 olur (AA). */',
     `[data-theme="dark"] ${primary}:active { background: var(--primary-bg-active); color: var(--primary-text-hover); }`,
-    '/* antd, düz (solid) düğmenin üzerine gelme ve basılı metnini primaryColor yapar. Tehlike düğmesinde metin beyaz kalır. */',
-    `${dangerSolid}:hover, ${dangerSolid}:active { color: var(--danger-text); }`,
+    '/* Düz tehlike düğmesi: zemin kendi basamaklarından gelir; antd düz düğmenin üzerine gelme metnini primaryColor yapar, burada beyaz kalır. */',
+    `${dangerSolid} { background: var(--danger-bg); color: var(--danger-text); }`,
+    `${dangerSolid}:hover { background: var(--danger-bg-hover); color: var(--danger-text); }`,
+    `${dangerSolid}:active { background: var(--danger-bg-active); color: var(--danger-text); }`,
   ].join('\n');
 }
 

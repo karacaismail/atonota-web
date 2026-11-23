@@ -4,7 +4,14 @@
  */
 import { theme as antdThemeApi } from 'antd';
 
-import { blendOver, contrastRatio, darkenToContrast, hexToRgba, minAlphaForContrast } from './color';
+import {
+  blendOver,
+  contrastRatio,
+  darkenToContrast,
+  hexToRgba,
+  lightenToContrast,
+  minAlphaForContrast,
+} from './color';
 import { designSource, type SizeKey, type ThemeMode } from './source';
 
 const s = designSource;
@@ -120,27 +127,54 @@ export const link = {
 
 const WHITE = '#ffffff';
 
-/** Tehlike düğmesi kontrast basamakları: normal, üzerine gelme ve basılı zemin beyaz metinle en az bu oranı verir. */
+/**
+ * Tehlike düğmesi kontrast basamakları: normal, üzerine gelme ve basılı durum en az bu oranı verir.
+ * Düz düğmede ölçü beyaz metinle zemindir; diğer türlerde yazı rengiyle en kötü zemindir.
+ */
 export const DANGER_CONTRAST = { normal: 4.5, hover: 5.2, active: 6 } as const;
 
 /**
  * Tehlike (danger) rengi. Kaynak dosyada tehlike rengi yoktur; antd'nin tema hata rengi kullanılır.
  * antd kırmızısı beyaz metinle açık temada 3.27:1, koyu temada 4.24:1 verir; WCAG 2.2 AA 4.5:1 ister.
- * Zemin, beyaz metinle 4.5:1 verene kadar koyulaştırılır (ton korunur). Üzerine gelme ve basılı
- * zemin aynı tonun daha koyu basamaklarıdır (5.2:1 ve 6:1); böylece her durum ayırt edilir ve
- * kontrast hiçbir zeminde düşmez. Metin her durumda beyazdır. Tehlikeli birincil düğme birincil
- * düğme kurallarının dışındadır (`src/design/css-variables.ts`).
+ *
+ * İki ayrı türetme vardır, çünkü antd aynı `colorError` tokenını iki işte kullanır:
+ * - Düz (solid) düğme zemini: antd rengi beyaz metinle 4.5:1 verene kadar koyulaştırılır (ton korunur).
+ *   Üzerine gelme ve basılı zemin aynı tonun daha koyu basamaklarıdır (5.2:1 ve 6:1). Metin beyazdır.
+ *   Bu değerler CSS değişkenleriyle (`--danger-bg*`) yalnız düz düğmeye uygulanır.
+ * - Yazı rengi (kenarlıklı, kesikli, metin, bağlantı, dolgulu ve hayalet tür): aynı antd rengi, yazının
+ *   durabileceği her zeminde 4.5:1 verene kadar açık temada koyulaştırılır, koyu temada açılır.
+ *   Zeminler yerleşim, panel, yükseltilmiş zemin ve antd'nin kırmızımsı durum zeminleridir
+ *   (`colorErrorBg*`, metin ve dolgulu türün üzerine gelme ve basılı zemini). Üzerine gelme ve basılı
+ *   yazı aynı yönde 5.2:1 ve 6:1 basamağıdır. Bu değerler antd Button `colorError*` tokenlarına gider.
+ * Tehlikeli birincil düğme birincil düğme kurallarının dışındadır (`src/design/css-variables.ts`).
  */
 function dangerFor(mode: ThemeMode) {
-  const seed: string = antdThemeApi.getDesignToken({
+  const t = antdThemeApi.getDesignToken({
     algorithm: mode === 'dark' ? antdThemeApi.darkAlgorithm : antdThemeApi.defaultAlgorithm,
-  }).colorError;
+  });
+  const seed: string = t.colorError;
   const background = darkenToContrast(seed, WHITE, DANGER_CONTRAST.normal);
+  const surfaces: string[] =
+    mode === 'dark'
+      ? [s.darkPalette.layout, s.darkPalette.panel, s.darkPalette.elevated]
+      : [t.colorBgContainer, t.colorBgLayout];
+  surfaces.push(t.colorErrorBg, t.colorErrorBgHover, t.colorErrorBgActive, t.colorErrorBgFilledHover);
+  const adjust = mode === 'dark' ? lightenToContrast : darkenToContrast;
+  // Her zemin için sırayla ayarlanır; yön tek olduğundan son renk bütün zeminlerde sınırı sağlar.
+  const ink = (minRatio: number) => surfaces.reduce((c, bg) => adjust(c, bg, minRatio), seed);
   return {
-    text: WHITE,
+    /** Düz düğme metni. */
+    solidText: WHITE,
+    /** Düz düğme zemini: normal, üzerine gelme, basılı. */
     background,
     backgroundHover: darkenToContrast(background, WHITE, DANGER_CONTRAST.hover),
     backgroundActive: darkenToContrast(background, WHITE, DANGER_CONTRAST.active),
+    /** Yazı rengi (düz olmayan türler): normal, üzerine gelme, basılı. */
+    color: ink(DANGER_CONTRAST.normal),
+    colorHover: ink(DANGER_CONTRAST.hover),
+    colorActive: ink(DANGER_CONTRAST.active),
+    /** Yazı renginin denendiği zeminler; test aynı listeyi kullanır. */
+    surfaces,
   };
 }
 
