@@ -51,6 +51,12 @@ export interface ShellViewData {
   record?: ShellRecordData;
   /** Oturumdaki kişi. Yoksa kabuk örnek kişiyi gösterir (deneme sayfaları). */
   account?: ShellAccount;
+  /**
+   * Oturumu kapatır. Başarılı olursa tarayıcı Keycloak çıkış sayfasına gider.
+   * İstek başarısız olursa işlev reddedilir ve oturum açık kalır.
+   * Yoksa kabuk çıkış düğmesini çizmez (deneme sayfaları).
+   */
+  signOut?: () => Promise<void>;
   /** Modül sayfalarının ortamı. Kabuk bunu `ModuleProvider` ile verir. */
   modules?: ModuleEnvironment;
 }

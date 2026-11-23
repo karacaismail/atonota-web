@@ -1,3 +1,7 @@
+import { SignOut } from '@phosphor-icons/react';
+import { Button } from 'antd';
+import { useRef, useState } from 'react';
+
 import { t } from '../messages';
 import { sampleCredit, sampleUser } from '../sampleData';
 import type { ShellAccount } from '../view-data';
@@ -27,7 +31,8 @@ function cardUser(account: ShellAccount | undefined) {
 
 /** B1: AI kredisi ve kullanıcı. Sidebar'ın en koyu yüzeyidir. */
 export function SidebarFooter({ rail }: SidebarFooterProps) {
-  const user = cardUser(useViewData()?.account);
+  const viewData = useViewData();
+  const user = cardUser(viewData?.account);
   const percent = Math.round((sampleCredit.used / sampleCredit.total) * 100);
   const r = 15;
   const c = 2 * Math.PI * r;
@@ -74,6 +79,59 @@ export function SidebarFooter({ rail }: SidebarFooterProps) {
           </span>
         )}
       </div>
+      {viewData?.signOut ? <SignOutButton rail={rail} signOut={viewData.signOut} /> : null}
+    </div>
+  );
+}
+
+type SignOutPhase = 'idle' | 'pending' | 'failed';
+
+/**
+ * B1: oturumu kapatma düğmesi. İstek sürerken ikinci istek gönderilmez.
+ * İstek başarısız olursa oturum açık kalır ve yalın bir hata metni görünür.
+ */
+function SignOutButton({ rail, signOut }: { rail: boolean; signOut: () => Promise<void> }) {
+  const [phase, setPhase] = useState<SignOutPhase>('idle');
+  const busy = useRef(false);
+
+  const run = () => {
+    if (busy.current) return;
+    busy.current = true;
+    setPhase('pending');
+    signOut().then(
+      () => {
+        // Başarılı çıkışta tarayıcı sayfadan ayrılır ya da giriş ekranı açılır.
+        busy.current = false;
+      },
+      () => {
+        busy.current = false;
+        setPhase('failed');
+      },
+    );
+  };
+
+  return (
+    <div className="shell-signout">
+      <Button
+        type="text"
+        block={!rail}
+        icon={<SignOut aria-hidden="true" />}
+        loading={phase === 'pending'}
+        onClick={run}
+        // Yazı rengi alt kartın yüzeyinden gelir.
+        style={{ color: 'inherit', justifyContent: rail ? 'center' : 'flex-start' }}
+        {...(rail ? { 'aria-label': t.footer.signOut } : {})}
+      >
+        {rail ? null : t.footer.signOut}
+      </Button>
+      <span className="shell-vh" role="status">
+        {phase === 'pending' ? t.footer.signingOut : ''}
+      </span>
+      {phase === 'failed' ? (
+        <p role="alert" className={rail ? 'shell-vh' : undefined} style={{ margin: 0 }}>
+          {t.footer.signOutError}
+        </p>
+      ) : null}
     </div>
   );
 }
