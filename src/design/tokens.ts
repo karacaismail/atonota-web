@@ -211,6 +211,40 @@ export const placeholder = {
   ),
 } as const;
 
+/**
+ * Açıklama metni (antd `colorTextDescription`). antd `Result` alt metni ve benzer yardımcı metinler
+ * bu rengi kullanır. antd varsayılanı açık temada siyah %45 (yerleşim zemininde 3.29:1), koyu temada
+ * beyaz %45'tir (4.47:1); WCAG 2.2 AA 4.5:1 ister. Opaklık, metnin durabileceği her zeminde 4.5:1
+ * veren en küçük değere programatik çıkar. Zeminler: açık temada yerleşim, kapsayıcı ve yükseltilmiş
+ * zemin; koyu temada kaynak yerleşim, panel ve yükseltilmiş zemini.
+ */
+function textDescriptionFor(mode: ThemeMode) {
+  const dark = mode === 'dark';
+  const t = antdThemeApi.getDesignToken({
+    algorithm: dark ? antdThemeApi.darkAlgorithm : antdThemeApi.defaultAlgorithm,
+  });
+  const text = dark ? '#ffffff' : '#000000';
+  const surfaces: string[] = dark
+    ? [s.darkPalette.layout, s.darkPalette.panel, s.darkPalette.elevated]
+    : [t.colorBgLayout, t.colorBgContainer, t.colorBgElevated];
+  // antd varsayılan opaklığı (rgba(..., 0.45)) başlangıçtır.
+  const startAlpha = Number(/,\s*([\d.]+)\)$/.exec(t.colorTextDescription)?.[1] ?? 0.45);
+  // Zemin saydamlığı 0: metin doğrudan her zeminin üstündedir.
+  const opacity = minAlphaForContrast({
+    text,
+    startAlpha,
+    background: text,
+    backgroundAlpha: 0,
+    surfaces,
+  });
+  return { color: hexToRgba(text, opacity), opacity, surfaces };
+}
+
+export const textDescription = {
+  light: textDescriptionFor('light'),
+  dark: textDescriptionFor('dark'),
+} as const;
+
 export const radius = {
   control: s.radius.default,
   card: s.cards.radius,
@@ -352,6 +386,11 @@ export const layout = {
   cardPadding: s.cards.padding,
   /** Dar form sütunu (giriş, parola, kısa ayar). Kaynak ölçeğinden türetilir: 10 orta buton yüksekliği = 420 px. */
   formMaxWidth: sizes.button.md.height * 10,
+  /**
+   * Telefon kabuğunun yapışkan üst çubuğu: orta buton ve üstte, altta en küçük boşluk (42 + 2 × 4 px).
+   * Sayfanın kaydırma payı (`scroll-padding-top`) bu değerdir; odaklanan öğe çubuğun altında kalmaz.
+   */
+  topbarHeight: sizes.button.md.height + 2 * space.xxs,
 } as const;
 
 /**

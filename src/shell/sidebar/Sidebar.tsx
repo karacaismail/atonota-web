@@ -159,7 +159,13 @@ export function Sidebar({
       items: g.children.map((c) => ({
         key: c.id,
         render: (itemProps) => (
-          <NavLink to={c.to} className="shell-item" onClick={handleNavigate} {...itemProps}>
+          <NavLink
+            to={c.to}
+            className="shell-item"
+            data-nav-link=""
+            onClick={handleNavigate}
+            {...itemProps}
+          >
             <span className="shell-ic" aria-hidden="true">
               <c.icon />
             </span>
@@ -196,6 +202,7 @@ export function Sidebar({
         to={l.to}
         end={l.to === '/'}
         className="shell-item"
+        data-nav-link=""
         data-sb-top=""
         onClick={handleNavigate}
         onFocus={close}
@@ -243,6 +250,7 @@ export function Sidebar({
             <NavLink
               to={routes.agent(a.id)}
               className="shell-item"
+              data-nav-link=""
               onClick={handleNavigate}
               {...itemProps}
             >
@@ -311,10 +319,15 @@ export function Sidebar({
           <ul className="shell-list">
             {nav.map((e) => (e.kind === 'group' ? renderGroup(e) : renderLeaf(e)))}
           </ul>
-          {!rail && <h2 className="shell-sec">{t.nav.sectionAgents}</h2>}
-          <ul className="shell-list" aria-label={rail ? t.nav.sectionAgents : undefined}>
-            {agents.map(renderAgent)}
-          </ul>
+          {/* Ajan verisi yoksa bölüm gizlidir. Uydurma ajan gösterilmez. */}
+          {agents.length > 0 && (
+            <>
+              {!rail && <h2 className="shell-sec">{t.nav.sectionAgents}</h2>}
+              <ul className="shell-list" aria-label={rail ? t.nav.sectionAgents : undefined}>
+                {agents.map(renderAgent)}
+              </ul>
+            </>
+          )}
         </nav>
       </div>
 

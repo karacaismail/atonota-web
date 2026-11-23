@@ -83,6 +83,19 @@ Kuralın tamamı dosyanın başındaki yorumdadır. `routes.test.ts` biçimi den
 
 Modül sayfaları `src/modules/registry.ts` dosyasındaki `moduleRegistrations` listesinden gelir. Kabuk her kaydı `lazyRoutes` listesine bir satır olarak ekler. Menü etiketi kaydın Türkçe adıdır. Modüller menüde "Asistan" bağlantısından sonra görünür. Sayfa dosyası yalnız sayfa açılınca istenir.
 
+## Menü verisi
+
+Menü yalnız açılabilen sayfaları gösterir. Menüyü `nav.ts` dosyası kurar. Sıra şöyledir:
+
+1. Rota kaydındaki parametresiz sayfalar gelir. Modül kayıtları da bu listededir.
+2. Sonra sunucunun sidebar grupları gelir. Uygulama girişi grupları `viewData.navigation` alanıyla verir.
+
+Gruplar açılış verisinden (`get_bootstrap`) gelir. Grupta yalnız DocType bağlantıları vardır. Sahte sunucunun açılış verisinde grup yoktur. Bu yüzden sahte sunucuyla menüde grup görünmez.
+
+Canlı menüde uydurma sayı yoktur. Ajan listesi için sunucuda veri yoktur. Bu yüzden canlı menüde ajan bölümü gizlidir. Üst çubuktaki çalışma alanı adı da gizlidir.
+
+Örnek gruplar ve örnek ajanlar yalnız deneme sayfasında görünür. Deneme sayfası `/_demo/shell` adresidir. Bu sayfa yalnız e2e derlemesinde vardır. Flyout, kayan zemin ve bağlantı odağı testleri bu sayfada koşar.
+
 Modül sayfası `ModuleProvider` içinde açılır. Ortamı uygulama girişi `viewData.modules` alanıyla verir. Ortamı `createShellModuleEnvironment` kurar. Bu işlev istemciyi `createModuleClient` ile ortak API istemcisinden yapar. Örnek:
 
 ```tsx

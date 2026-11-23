@@ -24,6 +24,7 @@ import {
   Buildings,
   CalendarCheck,
   FileText,
+  Flask,
   House,
   Robot,
   Rows,
@@ -34,6 +35,8 @@ import {
 } from '@phosphor-icons/react';
 import type { ComponentType } from 'react';
 import { createElement, lazy } from 'react';
+
+import { isDemoEnabled } from '@/app/demo-mode';
 
 import type { ModuleRegistration } from '@/modules';
 import { moduleRegistrations } from '@/modules';
@@ -109,6 +112,17 @@ export const lazyRoutes: RouteEntry[] = [
   { path: '/ajanlar/:id', label: 'AI ajanı', icon: Robot, load: () => import('./pages/AgentPage') },
   ...moduleRoutes,
   ...(shellFeatures.aiStudio ? [aiStudioRoute] : []),
+  // Kabuğun deneme sayfası. Yalnız e2e derlemesinde vardır; menüde görünmez (`nav.ts`).
+  ...(isDemoEnabled(import.meta.env.MODE)
+    ? [
+        {
+          path: '/_demo/shell',
+          label: 'Kabuk denemesi',
+          icon: Flask,
+          load: () => import('./pages/DemoPage'),
+        },
+      ]
+    : []),
 ];
 
 /**

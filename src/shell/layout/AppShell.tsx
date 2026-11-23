@@ -1,16 +1,21 @@
 import { List, X } from '@phosphor-icons/react';
 import { theme } from 'antd';
 import type { CSSProperties, ReactNode } from 'react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+
+import { isDemoEnabled, isDemoPath } from '@/app/demo-mode';
 
 import { FocusDimProvider } from '../focus-dim';
 import { isDarkColor } from '../focus-dim/isDarkColor';
 import { t } from '../messages';
-import { shellNav } from '../nav';
-import { sampleAgents, sampleWorkspaces } from '../sampleData';
+import { buildShellNav, navFromSidebars, routeNav } from '../nav';
+import type { NavEntry, NavGroup } from '../sampleData';
+import { sampleAgents, sampleNav, sampleWorkspaces } from '../sampleData';
 import type { SidebarVariant } from '../sidebar/Sidebar';
 import { Sidebar } from '../sidebar/Sidebar';
 import { shellCssVars } from '../tokens';
+import { useViewData } from '../view-data';
 import { useCompactLayout } from './useMedia';
 
 const STORAGE_KEY = 'atonota.shell.sidebar';
@@ -60,6 +65,34 @@ function useThemeVars(): CSSProperties {
   } as CSSProperties;
 }
 
+/** Deneme sayfaları yalnız e2e derlemesinde vardır. Koşul derleme zamanında sabittir. */
+const DEMO_ENABLED = isDemoEnabled(import.meta.env.MODE);
+
+/**
+ * Menü verisi. Canlı menü rota kaydından ve sunucunun sidebar verisinden gelir.
+ * Örnek gruplar ve örnek ajanlar yalnız deneme sayfasında (`/_demo/...`) görünür.
+ * Ajan listesi için sunucuda veri yoktur; canlı menüde ajan bölümü gizlidir.
+ */
+function useShellNav(): { nav: NavEntry[]; agents: typeof sampleAgents; demo: boolean } {
+  const navigation = useViewData()?.navigation;
+  const { pathname } = useLocation();
+  const demo = DEMO_ENABLED && isDemoPath(pathname);
+  const [groups, setGroups] = useState<NavGroup[]>([]);
+  useEffect(() => {
+    if (!navigation) return undefined;
+    const ctrl = new AbortController();
+    void navigation.loadSidebars(ctrl.signal).then((sidebars) => {
+      if (!ctrl.signal.aborted) setGroups(navFromSidebars(sidebars));
+    });
+    return () => ctrl.abort();
+  }, [navigation]);
+  const nav = useMemo(
+    () => (demo ? [...routeNav, ...sampleNav] : buildShellNav(groups)),
+    [demo, groups],
+  );
+  return { nav, agents: demo ? sampleAgents : [], demo };
+}
+
 interface AppShellProps {
   children: ReactNode;
 }
@@ -77,6 +110,7 @@ export function AppShell({ children }: AppShellProps) {
   const mainRef = useRef<HTMLElement>(null);
   const topRef = useRef<HTMLElement>(null);
   const vars = useThemeVars();
+  const { nav, agents, demo } = useShellNav();
   const isDrawer = compact;
   const modalOpen = isDrawer && drawerOpen;
 
@@ -121,7 +155,8 @@ export function AppShell({ children }: AppShellProps) {
     return () => document.removeEventListener('keydown', onKey);
   }, [modalOpen, closeDrawer]);
 
-  const ws = sampleWorkspaces[0];
+  // Üst çubuk örnek çalışma alanı adını yalnız deneme sayfasında yazar. Canlıda veri yoksa gizlidir.
+  const ws = demo ? sampleWorkspaces[0] : undefined;
 
   return (
     <FocusDimProvider>
@@ -147,7 +182,7 @@ export function AppShell({ children }: AppShellProps) {
             <span className="shell-logo" aria-hidden="true">
               A
             </span>
-            <span className="shell-topbar-t">{ws?.name}</span>
+            {ws && <span className="shell-topbar-t">{ws.name}</span>}
           </header>
         )}
         {isDrawer && (
@@ -181,8 +216,8 @@ export function AppShell({ children }: AppShellProps) {
           <Sidebar
             variant={variant}
             onVariantChange={changeVariant}
-            nav={shellNav}
-            agents={sampleAgents}
+            nav={nav}
+            agents={agents}
             compact={isDrawer}
             onNavigate={isDrawer ? closeDrawer : undefined}
           />

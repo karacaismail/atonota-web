@@ -75,8 +75,16 @@ export const t = {
       save: 'Kaydet',
     },
   },
+  demo: {
+    title: 'Kabuk denemesi',
+    linkBefore: 'Sorunuz varsa',
+    link: 'yardım sayfası',
+    linkAfter: 'size yol gösterir.',
+  },
   pages: {
     home: 'Ana sayfa',
+    /** Liste sayfasının genel başlığı. Türün adı bilinmezse kullanılır. */
+    records: 'Kayıtlar',
     notFound: 'Sayfa bulunamadı',
     notFoundText: 'Adres yanlış olabilir. Ana sayfaya dönün.',
     goHome: 'Ana sayfaya dön',

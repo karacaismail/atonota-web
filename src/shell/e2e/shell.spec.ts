@@ -21,7 +21,13 @@ const RECORD = `${LIST}/ORNEK-0003`;
 /** Kabuk deneme sayfası. Kayıt bağlantısı yoktur; kayıt adresi kabuğun örnek formunu çizer. */
 const harness = (path: string) => `/src/shell/harness/?yol=${encodeURIComponent(path)}`;
 
-const PAGES = ['/', '/satis/teklif', LIST, '/asistan', '/satis/teklif/TEK-0003', RECORD];
+/**
+ * Kabuğun deneme sayfası. Örnek menü grupları (Satış, Stok, Muhasebe) yalnız burada görünür.
+ * Canlı menü sahte sunucuda olmayan türleri göstermez. Flyout ve kayan zemin burada denenir.
+ */
+const DEMO = '/_demo/shell';
+
+const PAGES = ['/', '/satis/teklif', LIST, '/asistan', '/satis/teklif/TEK-0003', RECORD, DEMO];
 
 test.describe('yatay taşma', () => {
   for (const url of PAGES) {
@@ -40,7 +46,7 @@ test.describe('yatay taşma', () => {
 
   test('telefonda açık çekmece taşma yapmaz', async ({ page }) => {
     test.skip(!isCompact(page), 'yalnız telefon kabuğu');
-    await page.goto('/satis/teklif');
+    await page.goto(DEMO);
     await page.getByRole('button', { name: 'Menüyü aç' }).click();
     await expect(page.getByRole('dialog', { name: 'Menü' })).toBeVisible();
     await page.getByRole('button', { name: 'Satış', exact: true }).click();
@@ -52,7 +58,7 @@ test.describe('yatay taşma', () => {
 test.describe('klavye ile flyout', () => {
   test('odak açar, sağ ok içeri girer, Escape kapatır', async ({ page }) => {
     test.skip(isCompact(page), 'telefonda panel çekmece içinde açılır');
-    await page.goto('/');
+    await page.goto(DEMO);
     const parent = page.getByRole('button', { name: 'Satış', exact: true });
     await parent.focus();
     const fly = page.getByRole('group', { name: 'Satış' });
@@ -86,9 +92,9 @@ test.describe('klavye ile flyout', () => {
 
   test('klavyeyle gezinince odak göstergesi halka değildir', async ({ page }) => {
     test.skip(isCompact(page), 'geniş ekran');
-    await page.goto('/');
+    await page.goto(DEMO);
     // Tembel sayfa gelene kadar beklenir. Sonra odak denetlenir.
-    await expect(page.getByRole('heading', { level: 1, name: 'Ana sayfa' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Kabuk denemesi' })).toBeVisible();
     // WebKit, Safari gibi Tab ile bağlantı ve düğmeleri atlar. Bu yüzden
     // menünün kendi aşağı ok gezinmesi kullanılır. Bu yol her motorda aynıdır.
     // Rota bağlantıları "Ana sayfa" ile "Satış" arasındadır. Rota listesinin son
@@ -105,7 +111,7 @@ test.describe('klavye ile flyout', () => {
 
   test('fare ile üzerine gelince açılır, ayrılınca kapanır', async ({ page }) => {
     test.skip(isCompact(page), 'telefonda hover yok');
-    await page.goto('/');
+    await page.goto(DEMO);
     await page.getByRole('button', { name: 'Stok', exact: true }).hover();
     await expect(page.getByRole('group', { name: 'Stok' })).toBeVisible();
     await page.mouse.move(900, 600);
@@ -116,7 +122,7 @@ test.describe('klavye ile flyout', () => {
 test.describe('telefon kabuğu', () => {
   test('çekmece açılır, flyout dokunmayla açılır, sayfaya gider', async ({ page }) => {
     test.skip(!isCompact(page), 'yalnız telefon kabuğu');
-    await page.goto('/');
+    await page.goto(DEMO);
     await page.getByRole('button', { name: 'Menüyü aç' }).click();
     const drawer = page.getByRole('dialog', { name: 'Menü' });
     await expect(drawer).toBeVisible();
@@ -132,7 +138,7 @@ test.describe('telefon kabuğu', () => {
 
   test('Escape çekmeceyi kapatır ve odak menü düğmesine döner', async ({ page }) => {
     test.skip(!isCompact(page), 'yalnız telefon kabuğu');
-    await page.goto('/');
+    await page.goto(DEMO);
     const menu = page.getByRole('button', { name: 'Menüyü aç' });
     await menu.click();
     await expect(page.getByRole('dialog', { name: 'Menü' })).toBeVisible();
@@ -148,7 +154,7 @@ test.describe('yön değişimi', () => {
     const v = page.viewportSize();
     test.skip(!v, '');
     if (!v) return;
-    await page.goto('/');
+    await page.goto(DEMO);
     await page.getByRole('button', { name: 'Menüyü aç' }).click();
     await page.getByRole('button', { name: 'Satış', exact: true }).click();
     const link = page.getByRole('link', { name: 'Siparişler' });
@@ -164,7 +170,7 @@ test.describe('yön değişimi', () => {
 
   test('geniş ekranda açık flyout ve odak korunur', async ({ page }) => {
     test.skip(isCompact(page), 'geniş ekran');
-    await page.goto('/');
+    await page.goto(DEMO);
     await page.getByRole('button', { name: 'Satış', exact: true }).focus();
     await page.keyboard.press('ArrowRight');
     const link = page.getByRole('link', { name: /^Teklifler/ });
@@ -183,7 +189,8 @@ test.describe('header ve sayfalar', () => {
     // Uygulama girişi liste rotasını ortak API istemcisine bağlar. Adres parçası DocType adına
     // çevrilir: `örnek-kayıt` -> `Örnek Kayıt`. Sahte sunucu yalnız bu türü verir.
     await page.goto(LIST);
-    await expect(page.getByRole('heading', { level: 1, name: 'Kayıtlar' })).toBeAttached();
+    // Başlık DocType'ın görünen adıdır; genel "Kayıtlar" yazmaz.
+    await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kayıt' })).toBeAttached();
     await expect(page.getByText('ORNEK-0001').first()).toBeVisible();
     await expect(page.getByText('TEK-0001')).toHaveCount(0);
   });
@@ -339,7 +346,7 @@ test.describe('kayan hover zemini (G1–G3)', () => {
 
   test('G1: zemin üzerine gelinen öğeye kayar', async ({ page }) => {
     test.skip(isCompact(page), 'telefonda hover yok');
-    await page.goto('/satis/teklif');
+    await page.goto(DEMO);
     await fontsReady(page);
     await page.getByRole('button', { name: 'Stok', exact: true }).hover();
     await expect(glide(page)).toHaveAttribute('data-on', 'true');
@@ -353,7 +360,7 @@ test.describe('kayan hover zemini (G1–G3)', () => {
 
   test('G3: listeden çıkınca zemin solar', async ({ page }) => {
     test.skip(isCompact(page), 'telefonda hover yok');
-    await page.goto('/satis/teklif');
+    await page.goto(DEMO);
     await page.getByRole('button', { name: 'Stok', exact: true }).hover();
     await expect(glide(page)).toHaveAttribute('data-on', 'true');
     await page.mouse.move(900, 700);
@@ -362,7 +369,7 @@ test.describe('kayan hover zemini (G1–G3)', () => {
 
   test('G1: flyout panelinde zemin öğeler arasında kayar', async ({ page }) => {
     test.skip(isCompact(page), 'telefonda hover yok');
-    await page.goto('/satis/teklif');
+    await page.goto(DEMO);
     await fontsReady(page);
     await page.getByRole('button', { name: 'Satış', exact: true }).hover();
     const fly = page.getByRole('group', { name: 'Satış' });
@@ -383,7 +390,7 @@ test.describe('kayan hover zemini (G1–G3)', () => {
 
   test('G3: klavye odağı zemini taşır', async ({ page }) => {
     test.skip(isCompact(page), 'geniş ekran');
-    await page.goto('/satis/teklif');
+    await page.goto(DEMO);
     await fontsReady(page);
     await page.getByRole('button', { name: 'Stok', exact: true }).focus();
     await page.keyboard.press('Escape');

@@ -10,6 +10,7 @@ Tek karar kaynağı `design/source/control-size-config.json` dosyasıdır. Bu kl
 4. Hareket için yalnız `--motion-*` değişkenlerini kullanın. `src/design/` dışında sabit süre, `cubic-bezier`, `steps` ya da `ease`, `ease-in`, `ease-out`, `ease-in-out`, `linear` sözcüğü yazılırsa `npm run lint` başarısız olur (`scripts/motion-gate.mjs`). Kapı CSS'i bildirim bildirim tarar; Prettier'in satırlara böldüğü değerler, JS nesne değerleri (`transition={{ duration: 0.3, ease: 'linear' }}`), `el.animate(kareler, { duration: 200 })` çağrıları ve sayı süreleri (`transitionDuration: 200`) de yakalanır. Geçici istisna için iki yol vardır. Dosya düzeyinde `scripts/motion-gate.allow.json` kaydı (dosya, sahip, neden). Bildirim düzeyinde bildirimin içine `/* motion-gate: allow sahip=<iş> neden=<en az 10 karakter> */` yorumu. Yorum yalnız kendi bildirimini susturur; sahip ya da neden eksikse kapı yine ihlal verir. Bilinen sınır: kapı değişkende duran seçenek nesnesini bildirime bağlamaz (`const o = { duration: 300 }; el.animate(k, o);` ihlal vermez). Projede bugün hareket kitaplığı yoktur; kitaplık eklenince kural genişletilir.
 5. antd bileşenleri temayı `AppProviders` içinden alır. antd'nin kendi odak çerçevesi tema düzeyinde kapalıdır. Ek odak stili yazmayın.
 6. Yatay kayması gereken tablo ya da geniş içeriği `data-scroll-x` kapsayıcısına alın. Kapsayıcıya `tabIndex={0}`, `role="region"` ve erişilebilir ad verin. Taşma testi bu kapsayıcının içini saymaz.
+7. Metin bağlantılarının altı çizilidir. Odaklanınca çizgi 2 px birincil renk olur. Menü görünümlü bağlantı bu kuralın dışındadır. Böyle bir bağlantıya `data-nav-link` özelliğini verin. Örnek: kabuk menüsünün bağlantıları. Bu bağlantı kendi tek odak göstergesini taşır.
 
 ## Değişken listesi
 
@@ -27,7 +28,7 @@ Tek karar kaynağı `design/source/control-size-config.json` dosyasıdır. Bu kl
 | Köşe | `--radius` (5), `--card-radius` (10) | `radius`, `cards` |
 | Gölge | `--shadow-card` (7 katman), `--shadow-button` (flat), `--shadow-input` (iç), `--shadow-dropdown` (9 katman) | `derived.shadowCss` / `shadowCssDark` |
 | Boşluk | `--space-xxs/xs/sm/md/lg/xl/xxl` (4/8/12/16/24/32/48) | antd takma tokenları |
-| Yerleşim | `--content-max-width`, `--form-max-width` (420, dar form sütunu), `--sidebar-width` (288), `--sidebar-rail-width` (68), `--card-padding` (24) | antd ekran eşiği, buton ölçeği, `sidebar`, `cards` |
+| Yerleşim | `--content-max-width`, `--form-max-width` (420, dar form sütunu), `--topbar-height` (50, telefon üst çubuğu ve sayfanın kaydırma payı), `--sidebar-width` (288), `--sidebar-rail-width` (68), `--card-padding` (24) | antd ekran eşiği, buton ölçeği, `sidebar`, `cards` |
 | Katman | `--z-popup-base`, `--z-dim-overlay`, `--z-dim-source` | antd `zIndexPopupBase` |
 | Tablo | `--table-col-min-action/number/date/text/title` | buton ölçeğinden türetilir |
 | Dokunma | `--hit-expand` (0.12), `--hit-min-target` (24) | `hitArea` |
@@ -40,6 +41,8 @@ Tek karar kaynağı `design/source/control-size-config.json` dosyasıdır. Bu kl
 **Solma eğrisi kararı.** Kayan hover zemininin solması kaynak örnek sayfada `.15s ease` idi. `ease` sözcüğü genel hareket sözleşmesinde yoktur ve hareket kapısı onu reddeder. Bu yüzden solma, süresini kaynaktan alır (`--motion-duration-glide-fade`, 150 ms). Eğrisi genel S eğrisidir (`--motion-easing-standard`). Karar `src/shell/shell.css` içindeki `--shell-glide-fade-ease` değişkenindedir.
 
 Kabuk süreleri (`glide`, `glideFade`, `skeleton`, `spin`) `motion.ts` içinde sayı olarak yazılıdır. Kaynak JSON dosyasında bu süreler yoktur; yalnız örnek sayfanın CSS kurallarında vardır. Değerler o kurallarla aynıdır.
+
+Açıklama metni rengi antd `colorTextDescription` tokenıyla verilir. antd varsayılanı açık temada 3.29:1, koyu temada 4.47:1 verir. Opaklık her zeminde 4.5:1 veren en küçük değere çıkar. Hesap `tokens.ts` içindeki `textDescription` tokenıdır.
 
 Dropdown açılış hareketi için `@keyframes atonota-dropdown-in` tanımlıdır. Süre `--motion-duration-dropdown`, eğri `--motion-easing-dropdown` olur.
 

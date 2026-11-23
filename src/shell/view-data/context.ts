@@ -18,6 +18,33 @@ export interface ShellCollectionData {
   ) => Promise<CollectionDefinition>;
   /** Liste isteklerini sunucuya ileten kaynak. */
   source: CollectionSource;
+  /**
+   * Adresteki türün görünen adı. Tanım gelmeden (bekleme ve hata ekranı) sayfa başlığı budur.
+   * Örnek: `/satis/teklif` -> `Teklif`. Yoksa başlık genel "Kayıtlar" olur.
+   */
+  title?: (address: CollectionAddress) => string;
+}
+
+/** Sidebar grubundaki liste bağlantısı. */
+export interface ShellSidebarLink {
+  /** Menüde görünen ad. */
+  label: string;
+  /** Frappe DocType adı. Adres parçası bundan üretilir. */
+  doctype: string;
+}
+
+/** Sunucunun açılış verisindeki bir sidebar grubu. Eşleme uygulama girişinin işidir. */
+export interface ShellSidebar {
+  id: string;
+  label: string;
+  /** Liste adresinin ilk parçası. Örnek: `selling`. */
+  module: string;
+  links: ShellSidebarLink[];
+}
+
+export interface ShellNavigationData {
+  /** Menü gruplarını getirir. Veri yoksa ya da istek başarısızsa boş liste döner. */
+  loadSidebars: (signal: AbortSignal) => Promise<ShellSidebar[]>;
 }
 
 /** Kayıt rotasının adres parçaları. */
@@ -51,6 +78,8 @@ export interface ShellViewData {
   record?: ShellRecordData;
   /** Oturumdaki kişi. Yoksa kabuk örnek kişiyi gösterir (deneme sayfaları). */
   account?: ShellAccount;
+  /** Menü grupları. Yoksa menüde yalnız rota kaydındaki sayfalar görünür. */
+  navigation?: ShellNavigationData;
   /** Modül sayfalarının ortamı. Kabuk bunu `ModuleProvider` ile verir. */
   modules?: ModuleEnvironment;
 }

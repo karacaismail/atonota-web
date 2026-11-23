@@ -53,11 +53,14 @@ export default function CollectionRoute() {
 
   // Yanıt bu adrese ait değilse tanım yükleniyor sayılır. Eski yanıt yeni sayfayı ezmez.
   const current = loaded?.key === key ? loaded : null;
+  // Tanım gelmeden sayfa başlığı adresteki türün adıdır. Ad verilmezse genel başlık kullanılır.
+  const title = data.title?.({ module, doctype }) || t.pages.records;
 
   if (!current) {
     return (
       <div className="shell-page" aria-busy="true">
         <div className="shell-body">
+          <h1 className="shell-vh">{title}</h1>
           <p role="status">{t.header.state.loading}</p>
         </div>
       </div>
@@ -68,6 +71,7 @@ export default function CollectionRoute() {
     return (
       <div className="shell-page">
         <div className="shell-body">
+          <h1 className="shell-h1">{title}</h1>
           <div className="shell-hd-err" role="alert">
             <span>{t.pages.definitionError}</span>
             <Button

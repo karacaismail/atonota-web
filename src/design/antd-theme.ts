@@ -18,6 +18,7 @@ import {
   radius,
   shadowsFor,
   sizes,
+  textDescription,
   typography,
 } from './tokens';
 
@@ -46,6 +47,7 @@ export function buildAntdTheme(mode: ThemeMode, options: BuildThemeOptions = {})
     colorLinkActive: link[mode].active,
     colorInfo: primary.color,
     colorTextPlaceholder: placeholder[mode],
+    colorTextDescription: textDescription[mode].color,
     fontFamily: fontFamily.ui,
     fontFamilyCode: fontFamily.code,
     fontSize: typography.default,
