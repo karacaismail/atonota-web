@@ -18,7 +18,7 @@ Kod yalnız `src/views/collection/` klasöründe değişti.
 | --- | --- | --- |
 | `npm run lint` | pass | ESLint ve Prettier temiz |
 | `npm run typecheck` | pass | Üç tip denetimi temiz |
-| `npm test` | pass, 345 test | 30 test dosyası geçti. Koleksiyonda 62 test var. |
+| `npm test` | pass, 346 test | 30 test dosyası geçti. Koleksiyonda 63 test var. |
 | Kök `npm run test:e2e` (`E2E_PORT=4391`) | pass, 40 test | `./tests/e2e` geçti. Koleksiyon yolunu kapsamaz. |
 | Koleksiyon Playwright matrisi | pass, 60 test | `expected: 60, unexpected: 0, flaky: 0` |
 | Gerçek Safari ve fiziksel telefon | not_run | Emülasyon bunların yerine geçmez. |
