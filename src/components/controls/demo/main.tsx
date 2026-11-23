@@ -1,9 +1,10 @@
 import '@fontsource-variable/outfit';
 import '@fontsource/jetbrains-mono/400.css';
 
-import type { ComponentType, PropsWithChildren } from 'react';
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
+
+import { AppProviders } from '@/app';
 
 import {
   Button,
@@ -100,21 +101,11 @@ export function ControlsDemo() {
   );
 }
 
-// The preview also loads on the controls branch before Foundation is merged.
-const providers = import.meta.glob<{ AppProviders: ComponentType<PropsWithChildren> }>(
-  '/src/app/AppProviders.tsx',
-  { eager: true },
-);
-const AppProviders = providers['/src/app/AppProviders.tsx']?.AppProviders;
 const root = document.getElementById('root');
 if (root) {
   createRoot(root).render(
-    AppProviders ? (
-      <AppProviders>
-        <ControlsDemo />
-      </AppProviders>
-    ) : (
+    <AppProviders>
       <ControlsDemo />
-    ),
+    </AppProviders>,
   );
 }

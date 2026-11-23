@@ -1,5 +1,4 @@
-export { Checkbox, Radio, Switch, Tag } from 'antd';
-export { Segmented as Tabs } from 'antd';
+export { Checkbox, Radio, Switch, Tabs, Tag } from './ChoiceControls';
 
 export { Button, Card, Link } from './SurfaceControls';
 export { Input, InputNumber, Select } from './FormControls';

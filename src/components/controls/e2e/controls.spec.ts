@@ -36,16 +36,22 @@ test('controls match the locked height and font size', async ({ page }) => {
 });
 
 test('choice controls match the locked height and font size', async ({ page }) => {
+  // Source: control-size-config.json choice.C3 and the per-control antdTheme blocks.
   for (const [control, height, fontSize] of [
     ['.ant-checkbox-wrapper', 32, 14],
     ['.ant-radio-button-wrapper', 32, 14],
-    ['.ant-switch', 28, 14],
+    ['.atonota-switch', 28, 14],
+    ['.ant-switch', 24, 14],
     ['.ant-segmented', 32, 16],
     ['.ant-tag', 24, 12],
   ] as const) {
-    const target = page.locator(control);
+    const target = page.locator(control).first();
     await expect.soft(target, control).toHaveCSS('height', `${height}px`, { timeout: 1000 });
     await expect.soft(target, control).toHaveCSS('font-size', `${fontSize}px`, { timeout: 1000 });
+  }
+  await expect(page.locator('.ant-checkbox-inner')).toHaveCSS('width', '20px');
+  for (const control of ['.ant-checkbox-wrapper', '.ant-radio-button-wrapper', '.ant-switch']) {
+    await expect(page.locator(control).first(), control).toHaveClass(/\bhit\b/);
   }
 });
 
@@ -245,3 +251,30 @@ test('forced colors outlines the focused control only in keyboard mode', async (
   await next.click();
   await expect(next).toHaveCSS('outline-style', 'none');
 });
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`danger menu item keeps 4.5:1 contrast on hover in ${scheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', scheme);
+    await page.getByRole('button', { name: 'İşlemler' }).click();
+    const item = page.getByRole('menuitem', { name: 'Sil' });
+    await item.hover();
+    const colors = await item.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { text: style.color, background: style.backgroundColor };
+    });
+    const ratio = await page.evaluate(({ text, background }) => {
+      const luminance = (value: string) => {
+        const [r = 0, g = 0, b = 0] = (value.match(/[\d.]+/g) ?? []).slice(0, 3).map((part) => {
+          const channel = Number(part) / 255;
+          return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const [high = 0, low = 0] = [luminance(text), luminance(background)].sort((a, b) => b - a);
+      return (high + 0.05) / (low + 0.05);
+    }, colors);
+    expect(colors.text).toBe('rgb(255, 255, 255)');
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+}

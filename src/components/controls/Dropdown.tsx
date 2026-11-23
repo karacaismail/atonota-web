@@ -1,8 +1,11 @@
 import { CaretDown, Check } from '@phosphor-icons/react';
-import { Dropdown as AntDropdown, Space } from 'antd';
+import { ConfigProvider, Dropdown as AntDropdown, Space } from 'antd';
 import type { MenuProps } from 'antd';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+
+import { useThemeMode } from '@/app';
+import { danger as dangerTokens } from '@/design';
 
 import { groupDropdownItems } from './dropdown-items';
 import { Input } from './FormControls';
@@ -52,6 +55,7 @@ function ActionDropdown({
   const triggerId = useId();
   const popupId = useId();
   const restoreFocus = useRef(false);
+  const { resolved } = useThemeMode();
   const menuItemSelector =
     ':is([role="menuitem"], [role="menuitemradio"]):not([aria-disabled="true"])';
 
@@ -147,56 +151,66 @@ function ActionDropdown({
   if (menuItems.length > 0 && danger.length > 0) menuItems.push({ type: 'divider' });
   menuItems.push(...danger.map(buildItem));
 
+  const dangerColor = dangerTokens[resolved];
   const dropdown = (
-    <AntDropdown
-      open={open}
-      align={{ offset: [0, 0] }}
-      placement={onAction ? 'bottomRight' : 'bottomLeft'}
-      overlayClassName={`atonota-dropdown-popup atonota-control-popup atonota-dropdown-${style}`}
-      transitionName="atonota-popup-motion"
-      trigger={['click']}
-      onOpenChange={(next) => (next ? setOpen(true) : close())}
-      menu={{
-        id: popupId,
-        items: menuItems,
-        selectable: style === 'selectable',
-        selectedKeys: selectedKey === undefined ? [] : [selectedKey],
-        onClick: ({ key }) => {
-          restoreFocus.current = true;
-          close();
-          onSelect(key);
+    // Foundation decision 13: danger items use the darkened red that gives white text 4.5:1.
+    <ConfigProvider
+      theme={{
+        components: {
+          Dropdown: { colorError: dangerColor.background, colorTextLightSolid: dangerColor.text },
         },
       }}
-      popupRender={(menu) => (
-        <div
-          id={`${popupId}-surface`}
-          onKeyDown={handlePopupKey}
-          aria-hidden={!open}
-          {...(!open ? { inert: '' } : {})}
-        >
-          {style === 'searchable' && (
-            <Input
-              aria-label={searchLabel}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          )}
-          {menu}
-          {menuItems.length === 0 && <p role="status">Sonuç yok.</p>}
-        </div>
-      )}
     >
-      <Button
-        id={triggerId}
-        className="atonota-dropdown-trigger"
-        aria-label={menuLabel}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={open ? popupId : undefined}
+      <AntDropdown
+        open={open}
+        align={{ offset: [0, 0] }}
+        placement={onAction ? 'bottomRight' : 'bottomLeft'}
+        overlayClassName={`atonota-dropdown-popup atonota-control-popup atonota-dropdown-${style}`}
+        transitionName="atonota-popup-motion"
+        trigger={['click']}
+        onOpenChange={(next) => (next ? setOpen(true) : close())}
+        menu={{
+          id: popupId,
+          items: menuItems,
+          selectable: style === 'selectable',
+          selectedKeys: selectedKey === undefined ? [] : [selectedKey],
+          onClick: ({ key }) => {
+            restoreFocus.current = true;
+            close();
+            onSelect(key);
+          },
+        }}
+        popupRender={(menu) => (
+          <div
+            id={`${popupId}-surface`}
+            onKeyDown={handlePopupKey}
+            aria-hidden={!open}
+            {...(!open ? { inert: '' } : {})}
+          >
+            {style === 'searchable' && (
+              <Input
+                aria-label={searchLabel}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            )}
+            {menu}
+            {menuItems.length === 0 && <p role="status">Sonuç yok.</p>}
+          </div>
+        )}
       >
-        {onAction ? <CaretDown aria-hidden /> : label}
-      </Button>
-    </AntDropdown>
+        <Button
+          id={triggerId}
+          className="atonota-dropdown-trigger"
+          aria-label={menuLabel}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? popupId : undefined}
+        >
+          {onAction ? <CaretDown aria-hidden /> : label}
+        </Button>
+      </AntDropdown>
+    </ConfigProvider>
   );
   if (!onAction) return dropdown;
 

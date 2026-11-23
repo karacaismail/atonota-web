@@ -130,8 +130,9 @@
 
 .atonota-dropdown-popup
   .ant-dropdown-menu-item-danger:not(.ant-dropdown-menu-item-disabled):is(:hover, :focus-visible) {
-  color: var(--dropdown-danger-text, var(--ant-color-text-light-solid));
-  background: var(--dropdown-danger-background, var(--ant-color-error));
+  color: var(--danger-text);
+  /* Foundation decision 13: colorError is darkened until white text reaches 4.5:1. */
+  background: var(--ant-color-error);
 }
 
 .atonota-dropdown-popup .ant-dropdown-menu-item-danger :is(kbd, small) {
