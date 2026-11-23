@@ -85,6 +85,8 @@ Tarayıcı testleri `VITE_KEYCLOAK_URL` değerini sahte sunucunun Keycloak kök�
 
 Bu uçlar backend OpenAPI sözleşmelerinde henüz yoktur. Panel bu sözleşmeyi sahte sunucuda uygular. Backend aynı biçimi uygulamalıdır. Kaynak, proje sahibinin 23 Kasım 2026 Pazartesi günkü AtonotA Login kararlarıdır. Ürün sayfası "Kurumsal kimlik ve erişim" analizine dayanır.
 
+Bu uçların istemcisi `src/api/login-client.ts` dosyasındadır. Dosya ilk yüke girmez. Giriş ekranı onu `providers/ProviderSignIn.tsx` parçasıyla yükler. Hesap sayfası onu `linkedAccounts` istemcisiyle yükler. Oturumu açık kullanıcı giriş ekranının platform kodunu indirmez.
+
 Platform adı Keycloak'taki kimlik sağlayıcı takma adıdır. Ad şu kurala uyar: `^[a-z0-9][a-z0-9_-]{0,63}$`. Panel adı adrese koymadan önce bu kuralı denetler. Kurala uymayan ad adrese girmez.
 
 ### Platform listesi (G-159)
@@ -122,6 +124,7 @@ Platform adı Keycloak'taki kimlik sağlayıcı takma adıdır. Ad şu kurala uy
 - Sunucu oturumu denetler. Sonra Keycloak'ın hesap bağlama akışını başlatır (`kc_action=idp_link:<provider>`).
 - Bağ, platformun adı ve değişmeyen kullanıcı numarasıyla kurulur. E-postayla kurulmaz.
 - İş bitince tarayıcı `redirect_to` yoluna döner. Panel listeyi yeniden okur.
+- Sahte sunucu adresi oturum deposuna yazar ve tarayıcıyı `redirect_to` yoluna geri gönderir. Bağ kurulmaz.
 
 `POST /api/method/platform_core.api.auth.unlink_account`
 
@@ -136,7 +139,11 @@ Platform adı Keycloak'taki kimlik sağlayıcı takma adıdır. Ad şu kurala uy
 
 ## Sahte sunucuda giriş
 
-Sahte sunucu açıkken örnek kullanıcının oturumu baştan açıktır. Giriş ekranını görmek için `oturum-kapali` senaryosunu seçin. Platformsuz giriş ekranı için `platform-yok` senaryosunu seçin. Senaryo seçimi `src/mocks/scenarios.ts` dosyasında yazar. Giriş düğmesi bir sayfa geçişidir. Sahte sunucu sayfa geçişlerini karşılamaz. Bu yüzden giriş akışını yalnız gerçek arka uçla deneyebilirsiniz.
+Sahte sunucu açıkken örnek kullanıcının oturumu baştan açıktır. Giriş ekranını görmek için `oturum-kapali` senaryosunu seçin. Platformsuz giriş ekranı için `platform-yok` senaryosunu seçin. Senaryolar `src/mocks/scenarios.ts` dosyasındadır.
+
+Giriş düğmesi bir sayfa geçişidir. Sahte sunucu `start_login` isteğine 302 yanıtı verir. Yanıt tarayıcıyı `https://api.login.atonota.net` köküne gönderir. O adreste gerçek bir sayfa yoktur. Bu yüzden giriş akışının tamamını yalnız gerçek arka uçla deneyebilirsiniz.
+
+Tarayıcı testi `oturum-kapali` senaryosuyla giriş ekranını açar. Test Keycloak sayfasını boş bir sayfayla taklit eder. Test `src/auth/e2e/login.spec.ts` dosyasındadır.
 
 ## Ayarlar
 

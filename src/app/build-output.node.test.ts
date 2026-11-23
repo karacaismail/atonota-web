@@ -7,6 +7,7 @@ import { build } from 'vite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { E2E_ENV } from '../../vite/e2e-env.ts';
+import { DEFAULT_KEYCLOAK_URL } from '../api/config';
 
 /** Deneme sayfasının yalnız orada geçen metni. Üretim paketinde bulunmamalıdır. */
 const DEMO_PAGE_MARKER = 'Arayüz temeli hazır';
@@ -20,8 +21,11 @@ const DEMO_ROUTE = /\/_demo\/[\w-]+/;
 /** Deneme sayfalarının parça adları. Üretim çıktısında bu adlarla dosya bulunmamalıdır. */
 const DEMO_CHUNK = /^(DemoPage|ControlsDemoPage)-/;
 
-/** e2e kipinin sahte Keycloak alan adı (`vite/e2e-env.ts`). Üretim paketine girmez. */
-const SAMPLE_KEYCLOAK_HOST = new URL(E2E_ENV.VITE_KEYCLOAK_URL).host;
+/**
+ * Örnek alan adları (`*.example.test`). Sahte sunucu ve e2e değerleri bunları kullanır.
+ * Üretim paketine girmezler.
+ */
+const SAMPLE_HOST = /[\w.-]+\.example\.test/;
 
 const DEV_ENV = {
   VITE_DEV_BACKEND: 'https://build-test-backend.example.test',
@@ -97,12 +101,17 @@ describe('üretim derlemesi (vite build)', () => {
     }
   });
 
-  it('e2e kipinin sahte Keycloak adresini içermez', () => {
+  it('e2e kipinin Keycloak kökü üretim varsayılanıyla aynıdır', () => {
+    // e2e kipi AtonotA Login adresini kullanır. Tarayıcı testleri bu alana giden isteği keser.
+    expect(E2E_ENV.VITE_KEYCLOAK_URL).toBe(DEFAULT_KEYCLOAK_URL);
+  });
+
+  it('örnek alan adlarını içermez', () => {
     for (const name of [...assetFiles(outDir, '.js'), ...readdirSync(outDir)]) {
       const path = name.endsWith('.js') ? join(outDir, 'assets', name) : join(outDir, name);
       if (!statSync(path).isFile()) continue;
       const text = readFileSync(path, 'utf8');
-      expect(text.includes(SAMPLE_KEYCLOAK_HOST), `${name}: sahte Keycloak adresi`).toBe(false);
+      expect(text.match(SAMPLE_HOST)?.[0], `${name}: örnek alan adı`).toBeUndefined();
     }
   });
 

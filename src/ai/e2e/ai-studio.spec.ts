@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../../../tests/setup/playwright-fixtures';
 
 /**
  * AI Studio tarayıcı testleri. Sayfa üretim derlemesinde `/panel/ai` yolundadır.

@@ -1094,6 +1094,19 @@ export interface operations {
     responses: {
       200: components['responses']['CleanupResultSuccess'];
       401: components['responses']['MobileAuthenticationError'];
+      /**
+       * @description The account is not a site administrator. The endpoint checks the System Manager role and answers with code `cleanup_forbidden`.
+       *     The body can also be Frappe's generic permission error. That body carries `exc_type` and no `code`.
+       *     Clients treat both bodies as the same refusal.
+       */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Error'];
+        };
+      };
       413: components['responses']['Error'];
       429: components['responses']['Throttled'];
       503: components['responses']['Unavailable'];

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../setup/playwright-fixtures';
 
 // Tarayıcıdaki sahte sunucu (MSW) testleri. Derleme `VITE_API_MOCKS=on` ile yapılır.
 

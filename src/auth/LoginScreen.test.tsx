@@ -3,6 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { LoginScreen } from './LoginScreen';
+import { Button } from 'antd';
+
+import { tr } from './messages.json';
+import { ProviderList } from './providers/ProviderSignIn';
+
+const labels = { list: tr.providers_label, button: tr.login_button };
 
 describe('LoginScreen', () => {
   it('kenar boşluğu, aralık ve en çok genişlik projenin CSS değişkenlerinden gelir', () => {
@@ -35,7 +41,14 @@ describe('LoginScreen', () => {
     );
   });
   it('platform listesi boşsa yalnız AtonotA Login düğmesi görünür', () => {
-    render(<LoginScreen onSignIn={vi.fn()} providers={[]} />);
+    render(
+      <LoginScreen
+        onSignIn={vi.fn()}
+        platforms={
+          <ProviderList labels={labels} button={Button} providers={[]} onSignIn={vi.fn()} />
+        }
+      />,
+    );
     expect(screen.getAllByRole('button')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'AtonotA Login ile oturum aç' })).toBeVisible();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
@@ -45,11 +58,18 @@ describe('LoginScreen', () => {
     const onSignIn = vi.fn();
     render(
       <LoginScreen
-        onSignIn={onSignIn}
-        providers={[
-          { alias: 'ornek-platform', display_name: 'Örnek Platform' },
-          { alias: 'x', display_name: 'X' },
-        ]}
+        onSignIn={vi.fn()}
+        platforms={
+          <ProviderList
+            labels={labels}
+            button={Button}
+            onSignIn={onSignIn}
+            providers={[
+              { alias: 'ornek-platform', display_name: 'Örnek Platform' },
+              { alias: 'x', display_name: 'X' },
+            ]}
+          />
+        }
       />,
     );
     const list = screen.getByRole('list', { name: 'Başka bir hesapla oturum açın' });
@@ -64,7 +84,7 @@ describe('LoginScreen', () => {
 
   it('AtonotA Login düğmesi platform adı vermez', async () => {
     const onSignIn = vi.fn();
-    render(<LoginScreen onSignIn={onSignIn} providers={[]} />);
+    render(<LoginScreen onSignIn={onSignIn} />);
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: 'AtonotA Login ile oturum aç' }));
@@ -74,7 +94,17 @@ describe('LoginScreen', () => {
   it('düğmeler klavyeyle sırayla gezilir', async () => {
     const onSignIn = vi.fn();
     render(
-      <LoginScreen onSignIn={onSignIn} providers={[{ alias: 'google', display_name: 'Google' }]} />,
+      <LoginScreen
+        onSignIn={onSignIn}
+        platforms={
+          <ProviderList
+            labels={labels}
+            button={Button}
+            onSignIn={onSignIn}
+            providers={[{ alias: 'google', display_name: 'Google' }]}
+          />
+        }
+      />,
     );
     const user = userEvent.setup();
     await user.tab();

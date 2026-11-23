@@ -165,7 +165,9 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
+        401: components['responses']['AuthenticationFailedV2'];
         403: components['responses']['PermissionDeniedV2'];
+        404: components['responses']['NotFoundV2'];
       };
     };
     put?: never;
@@ -185,7 +187,9 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
+        401: components['responses']['AuthenticationFailedV2'];
         403: components['responses']['PermissionDeniedV2'];
+        404: components['responses']['NotFoundV2'];
       };
     };
     delete?: never;
@@ -235,8 +239,13 @@ export interface components {
         type: string;
       }[];
     };
-    /** @description A leave application can include additional fields that the user has permission to read. */
-    LeaveApplication: {
+    /** @description A full leave application record always includes its name. */
+    LeaveApplication: WithRequired<components['schemas']['LeaveApplicationFields'], 'name'>;
+    /**
+     * @description Leave application fields the user has permission to read. A list item holds only the fields
+     *     that the request names in the fields parameter. Frappe passes those fields to frappe.get_list.
+     */
+    LeaveApplicationFields: {
       /** @description Cancelled request that this amendment replaces. */
       amended_from?: string | null;
       /** @description Company responsible for the leave request. */
@@ -266,7 +275,7 @@ export interface components {
       /** @description Frappe returns this version in the site time zone without a UTC offset. Send it unchanged in approval and cancellation requests. */
       modified?: string;
       /** @description Opaque leave application identifier. New original portal requests use UUIDv7 by default. Existing and amended record names remain valid. */
-      name: string;
+      name?: string;
       /**
        * @description Business workflow state of the request.
        * @enum {string|null}
@@ -292,8 +301,8 @@ export interface components {
      *     }
      */
     LeaveApplicationListResponse: {
-      /** @description Page of readable leave applications. */
-      data: components['schemas']['LeaveApplication'][];
+      /** @description Page of readable leave applications. Each item holds only the requested fields. */
+      data: components['schemas']['LeaveApplicationFields'][];
     };
     /**
      * @example {
@@ -328,6 +337,24 @@ export interface components {
         'application/json': components['schemas']['FrappeError'];
       };
     };
+    /** @description Frappe rejected the supplied session cookie or API token before it ran the method. */
+    AuthenticationFailedV2: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "errors": [
+         *         {
+         *           "type": "AuthenticationError"
+         *         }
+         *       ]
+         *     }
+         */
+        'application/json': components['schemas']['FrappeV2Error'];
+      };
+    };
     /** @description Leave application not found. */
     LeaveNotFound: {
       headers: {
@@ -340,6 +367,27 @@ export interface components {
          *     }
          */
         'application/json': components['schemas']['FrappeError'];
+      };
+    };
+    /**
+     * @description Frappe found no route for the requested path. For example, a record name with a line break
+     *     does not match the v2 document route.
+     */
+    NotFoundV2: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "errors": [
+         *         {
+         *           "type": "DoesNotExistError"
+         *         }
+         *       ]
+         *     }
+         */
+        'application/json': components['schemas']['FrappeV2Error'];
       };
     };
     /** @description Access denied. The session or a required permission may be missing. */
@@ -586,6 +634,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      401: components['responses']['AuthenticationFailed'];
       403: components['responses']['PermissionDenied'];
     };
   };
@@ -598,6 +647,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      401: components['responses']['AuthenticationFailed'];
       403: components['responses']['PermissionDenied'];
     };
   };
@@ -726,3 +776,6 @@ export interface operations {
     };
   };
 }
+type WithRequired<T, K extends keyof T> = T & {
+  [P in K]-?: T[P];
+};

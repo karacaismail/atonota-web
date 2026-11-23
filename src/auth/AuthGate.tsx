@@ -1,13 +1,11 @@
 import { Button, Typography } from 'antd';
-import { type ReactNode, useEffect, useState } from 'react';
-
-import type { LoginProvider } from '@/api/guards';
+import { lazy, type ReactNode, Suspense, useEffect } from 'react';
 
 import { userMessage } from '@/api/errors';
 
 import { AuthLayout } from './AuthLayout';
 import { LoginScreen } from './LoginScreen';
-import messages from './messages.json';
+import { tr } from './messages.json';
 import type { PlatformSession } from './session';
 import { useAuthState } from './useAuthState';
 
@@ -20,36 +18,19 @@ export interface AuthGateProps {
 }
 
 /**
+ * Platform düğmeleri ayrı parçadır. Parça yalnız giriş ekranı açılınca yüklenir.
+ * Oturumu açık kullanıcının ilk yüküne girmez.
+ */
+const ProviderSignIn = lazy(() => import('./providers/ProviderSignIn'));
+
+/**
  * Paneli oturuma bağlar.
  * İlk açılışta oturumu sorar. Oturum yoksa giriş ekranını gösterir ve kendiliğinden yönlendirmez.
  * Sunucu hatasında yalın bir metin ve yeniden deneme düğmesi gösterir.
  */
-/**
- * Giriş ekranı açıkken platform listesini sunucudan okur (G-159).
- * İstek başarısız olursa liste boş kalır. O zaman yalnız AtonotA Login düğmesi görünür.
- */
-function useLoginProviders(session: PlatformSession, active: boolean): readonly LoginProvider[] {
-  const [providers, setProviders] = useState<readonly LoginProvider[]>([]);
-  useEffect(() => {
-    if (!active) return;
-    const controller = new AbortController();
-    session.api.listLoginProviders({ signal: controller.signal }).then(
-      (list) => {
-        if (!controller.signal.aborted) setProviders(list);
-      },
-      () => {
-        if (!controller.signal.aborted) setProviders([]);
-      },
-    );
-    return () => controller.abort();
-  }, [session, active]);
-  return providers;
-}
-
 export function AuthGate({ session, children, brandName }: AuthGateProps) {
   const state = useAuthState(session.auth);
-  const text = messages.tr;
-  const providers = useLoginProviders(session, state.status === 'signed_out');
+  const text = tr;
 
   useEffect(() => {
     void session.auth.check();
@@ -62,7 +43,16 @@ export function AuthGate({ session, children, brandName }: AuthGateProps) {
       return (
         <LoginScreen
           onSignIn={(provider) => session.auth.signIn(undefined, provider)}
-          providers={providers}
+          platforms={
+            <Suspense fallback={null}>
+              <ProviderSignIn
+                api={session.api}
+                button={Button}
+                labels={{ list: text.providers_label, button: text.login_button }}
+                onSignIn={(provider) => session.auth.signIn(undefined, provider)}
+              />
+            </Suspense>
+          }
           {...(brandName ? { brandName } : {})}
           {...(state.notice ? { notice: state.notice } : {})}
         />

@@ -56,23 +56,6 @@ export function startLoginUrl(siteUrl: string, redirectTo: string, provider?: st
   return url.toString();
 }
 
-/**
- * Hesap bağlama adresini kurar (G-160). Tarayıcı bu adrese sayfa geçişiyle gider.
- * Sunucu oturumu denetler ve Keycloak'ın bağlama akışını başlatır. Tarayıcı belirteç tutmaz.
- * Platform adı kurala uymazsa adres kurulmaz ve `undefined` döner.
- */
-export function startLinkUrl(
-  siteUrl: string,
-  provider: string,
-  redirectTo: string,
-): string | undefined {
-  if (!isProviderAlias(provider)) return undefined;
-  const url = new URL(`${siteUrl}/api/method/platform_core.api.auth.start_link`);
-  url.searchParams.set('provider', provider);
-  if (isSafeRedirect(redirectTo)) url.searchParams.set('redirect_to', redirectTo);
-  return url.toString();
-}
-
 const LOGOUT_PATH_SUFFIX = '/protocol/openid-connect/logout';
 
 /**

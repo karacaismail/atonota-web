@@ -1,14 +1,16 @@
 /**
- * e2e kipinin ortam değerleri. Gizli bilgi değildir. Değerler örnek alan adlarıdır.
+ * e2e kipinin ortam değerleri. Gizli bilgi değildir.
  * Vite bu değerleri yalnız `e2e` kipinde verir: `npm run build:e2e` ve `npm run dev:e2e`.
  * Depoda `.env` dosyası tutulmaz. Yayın kapısı her `.env` dosyasını gizli dosya sayar.
- * Keycloak kökü sahte sunucunun köküdür: `src/mocks/fixtures.ts` içindeki `SAMPLE_KEYCLOAK_URL`.
+ * Keycloak kökü AtonotA Login giriş adresidir. Testler bu adresin yanıtını taklit eder.
+ * Bu kök sahte sunucunun köküyle aynıdır: `src/mocks/fixtures.ts` içindeki `SAMPLE_KEYCLOAK_URL`.
+ * Tarayıcı testleri `atonota.net` alanına giden isteği keser: `tests/setup/playwright-fixtures.ts`.
  * Test: `src/auth/e2e-env.test.ts` ve `src/mocks/build-output.node.test.ts`.
  * Üretim paketine girmediğini `src/app/build-output.node.test.ts` denetler.
  */
 export const E2E_ENV = {
   VITE_API_MOCKS: 'on',
-  VITE_KEYCLOAK_URL: 'https://kimlik.example.test',
+  VITE_KEYCLOAK_URL: 'https://api.login.atonota.net',
 } as const;
 
 export type E2eEnvKey = keyof typeof E2E_ENV;

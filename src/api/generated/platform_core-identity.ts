@@ -6,6 +6,47 @@
  */
 
 export interface paths {
+  '/platform_core.api.auth.get_csrf_token': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Returns the CSRF token of the current session.
+     * @description The separate web frontend calls this endpoint after sign-in and after a page reload.
+     *     The frontend is served as static files on the same origin. Its page carries no token.
+     *     The frontend sends the returned value in the `X-Frappe-CSRF-Token` header of every writing request.
+     *
+     *     The endpoint needs an open Frappe session. The `sid` cookie must point at the session of the signed-in user.
+     *     A request without a session cookie gets 403 and `PermissionError`.
+     *     A cookie of an expired or closed session gets 401 and `SessionExpired`.
+     *     Frappe opens such a request as Guest and marks the session as expired (frappe/sessions.py:346).
+     *     The endpoint is not open to guests, so Frappe raises `SessionExpired` (frappe/__init__.py:483).
+     *     The idle timeout of 1 hour gives the same 401 (O-25). The test `test_get_csrf_token_expired_session` checks both cases.
+     *     If the session has no token yet, the endpoint creates one with `frappe.sessions.get_csrf_token()` and stores it in the session.
+     *     Only one request per session creates the first token. It holds a short Redis lock for this session.
+     *     A request that waited for the lock reads the stored token from the shared session record.
+     *     So two tabs of one session get the same token. Repeated calls return the same token while the session lives.
+     *
+     *     The response is never cached. It carries `Cache-Control: private, no-store` and `Vary: Cookie, Authorization`.
+     *     It has no `ETag` and does not answer conditional requests.
+     *     The endpoint grants no cross-origin access. The tenant site does not set `allow_cors` (G-45).
+     *     Only GET is accepted. POST returns 403.
+     *     The limit is 30 requests per minute per signed-in user.
+     *
+     *     The request has no body. The endpoint does not close sessions. The endpoint does not do paid work.
+     */
+    get: operations['getCsrfToken'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/platform_core.api.auth.get_login_url': {
     parameters: {
       query?: never;
@@ -93,6 +134,8 @@ export interface paths {
      *        A request is a background request if it carries the `X-Platform-Background: 1` header,
      *        or if it calls `frappe.realtime.*`, `frappe.desk.notifications.*`, `frappe.auth.get_logged_user` or `frappe.sessions.get*`.
      *        Frappe's own idle limit of 1 hour (`session_expiry`) also stays.
+     *        If the Frappe user has no language, the server writes the verified ID token `locale` claim to it.
+     *        The value must be an enabled Language record code. Otherwise nothing is written. A chosen language never changes.
      *     9. The server redirects the browser to the `redirect_to` path. If the record has no path, it redirects to the `platform_panel_url` address.
      *
      *     If the code exchange fails or the key list cannot be fetched, it returns 503.
@@ -1145,6 +1188,13 @@ export interface components {
       /** @description The new name of the user. If nothing changed, the old name is returned. */
       user: components['schemas']['Email'];
     };
+    CsrfToken: {
+      /**
+       * @description The CSRF token of the session. The frontend sends it in the `X-Frappe-CSRF-Token` header
+       *     of POST, PUT, PATCH and DELETE requests. The value is bound to this session only.
+       */
+      csrf_token: string;
+    };
     /**
      * Format: email
      * @description The e-mail of the user. In Frappe the user name is this value.
@@ -1190,7 +1240,7 @@ export interface components {
       brand_name: string;
       /**
        * @description Label of the sign-in button. The English source text is `Sign in with {0}`. The brand name fills `{0}`.
-       *     The Turkish text comes from `translations/tr.csv` with the context `platform_core.kimlik`.
+       *     The Turkish text comes from `translations/tr.csv` with the context `platform_core.identity`.
        */
       label: string;
       /**
@@ -1447,7 +1497,7 @@ export interface components {
     };
     /**
      * @description Local sign-in is closed. The `kimlik_yalniz_keycloak` setting is 1. The `exc_type` value is `PermissionError`.
-     *     The user signs in with the brand button on the sign-in page.
+     *     The tenant sign-in page redirects guests to the identity provider's sign-in flow.
      */
     YerelGirisKapali: {
       headers: {
@@ -1465,6 +1515,44 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  getCsrfToken: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The token of the current session. */
+      200: {
+        headers: {
+          /** @description Always `private, no-store`. */
+          'Cache-Control'?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            message: components['schemas']['CsrfToken'];
+          };
+        };
+      };
+      401: components['responses']['OturumBitti'];
+      /**
+       * @description The request has no session cookie, or the request method is not GET. The `exc_type` value is `PermissionError`.
+       *     A cookie of an expired session gets 401, not 403.
+       */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FrappeError'];
+        };
+      };
+      429: components['responses']['IstekSiniri'];
+    };
+  };
   getPlatformLoginUrl: {
     parameters: {
       query?: never;
@@ -1584,6 +1672,9 @@ export interface operations {
        *     - the user is disabled.
        *
        *     The page does not give the reason in detail. The page tells the user to contact their admin.
+       *     If the user does not exist on this site, the page is the `tenant_account_missing` template. It offers a “Sign in with another account” link. The page uses the request language and writes it to the `lang` attribute.
+       *     The link opens the Keycloak logout page. Keycloak returns to `start_login` with `switch_account=1`. The first `redirect_to` path is dropped.
+       *     The template has no standalone address. A direct request of `/tenant_account_missing` gets the 404 page.
        */
       403: {
         headers: {
@@ -1705,6 +1796,12 @@ export interface operations {
          *     It is at most 2048 characters. If it is not given, the return address is `platform_panel_url`.
          */
         redirect_to?: string;
+        /**
+         * @description The account-switch return address sends 1 to require a fresh Keycloak sign-in.
+         *     The return address is fixed. It carries no `redirect_to`. After the switch the browser goes to the `platform_panel_url` address.
+         *     The path the user first asked for is not kept. This keeps the Keycloak return-address list short. This is accepted.
+         */
+        switch_account?: number;
       };
       header?: never;
       path?: never;

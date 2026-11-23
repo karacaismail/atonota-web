@@ -49,7 +49,7 @@ export { pressAccountDeletionUrl, readPressConfig } from './press';
 export type { PressConfig, PressEnv } from './press';
 export type { Installation, InstallationPage, Revoked } from './guards';
 export { PROVIDER_ALIAS_PATTERN, isProviderAlias } from './guards';
-export type { LinkedAccounts, LinkedProvider, LoginProvider } from './guards';
+export type { LinkedAccounts, LinkedProvider, LoginClient, LoginProvider } from './login-client';
 export type {
   DocumentFilters,
   DocumentListQuery,
@@ -58,3 +58,14 @@ export type {
   FilterScalar,
 } from './frappe-v2';
 export type { GroupSummary, GroupSummaryFilters, GroupSummaryQuery } from './group-summary';
+export type {
+  ConnectionCheck,
+  ConnectionInput,
+  ConnectionStatus,
+  ProviderCatalog,
+  ProviderDefinition,
+  ProviderFieldDefinition,
+  SavedConnection,
+  AiConnectionListing,
+  ProviderClient,
+} from './provider-client';

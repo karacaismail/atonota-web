@@ -1,10 +1,10 @@
 import { Button, Typography } from 'antd';
 
-import type { LoginProvider } from '@/api/guards';
+import type { ReactNode } from 'react';
 
 import type { SignedOutNotice } from './auth';
 import { AuthLayout } from './AuthLayout';
-import messages from './messages.json';
+import { tr } from './messages.json';
 import { PRODUCT_PATH } from './product/path';
 
 export interface LoginScreenProps {
@@ -18,10 +18,11 @@ export interface LoginScreenProps {
   /** Verilirse açıklamanın altında kısa bir not görünür. Örnek: `idp_session_may_remain`. */
   notice?: SignedOutNotice;
   /**
-   * Sunucudan gelen açık platformlar (G-159). Kodda platform listesi yoktur.
-   * Liste boşsa ya da verilmezse yalnız AtonotA Login düğmesi görünür.
+   * Platform düğmeleri (G-159). AtonotA Login düğmesinin altında çizilir.
+   * AuthGate buraya tembel yüklenen `ProviderSignIn` bileşenini koyar. Verilmezse yalnız
+   * AtonotA Login düğmesi görünür.
    */
-  providers?: readonly LoginProvider[];
+  platforms?: ReactNode;
 }
 
 /**
@@ -31,11 +32,11 @@ export interface LoginScreenProps {
  */
 export function LoginScreen({
   onSignIn,
-  brandName = messages.tr.brand,
+  brandName = tr.brand,
   notice,
-  providers = [],
+  platforms,
 }: LoginScreenProps) {
-  const text = messages.tr;
+  const text = tr;
   return (
     <AuthLayout labelledBy="login-title">
       <Typography.Title level={1} id="login-title" style={{ margin: 0 }}>
@@ -51,27 +52,7 @@ export function LoginScreen({
       <Button type="primary" block onClick={() => onSignIn(undefined)} style={{ width: '100%' }}>
         {text.login_button.replace('{brand}', brandName)}
       </Button>
-      {providers.length > 0 ? (
-        <ul
-          aria-label={text.providers_label}
-          style={{
-            listStyle: 'none',
-            margin: 0,
-            padding: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-sm)',
-          }}
-        >
-          {providers.map((provider) => (
-            <li key={provider.alias}>
-              <Button block onClick={() => onSignIn(provider.alias)} style={{ width: '100%' }}>
-                {text.login_button.replace('{brand}', provider.display_name)}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {platforms}
       <Typography.Paragraph style={{ margin: 0 }}>
         <a href={PRODUCT_PATH}>{text.product_link}</a>
       </Typography.Paragraph>

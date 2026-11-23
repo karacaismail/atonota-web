@@ -15,24 +15,24 @@
     "cta": "Sign in to the panel",
     "values": {
       "single_door": {
-        "title": "One sign-in gate",
-        "body": "A person uses one account to enter many applications. No separate account is needed for each application."
+        "title": "Sign in with AtonotA Login",
+        "body": "The panel has a “Sign in with AtonotA Login” button. Sign-in runs through Keycloak, an open source sign-in server."
       },
       "many_platforms": {
         "title": "Sign in with many platforms",
-        "body": "A person signs in with a Google, Facebook, LinkedIn or X account. A new platform is added without a code change."
+        "body": "A person will sign in with a Google, Facebook, LinkedIn or X account. A new platform will be added without a code change."
       },
       "linked_accounts": {
         "title": "Linked accounts",
-        "body": "A person links other platform accounts to their own account. The last way to sign in cannot be removed by mistake."
+        "body": "A person will link other platform accounts to their own account. The last way to sign in will not be removable by mistake."
       },
       "open_source": {
         "title": "Open source base",
-        "body": "The product is built on Keycloak, an open source sign-in server."
+        "body": "The code of AtonotA Login is open source. The product is built on Keycloak, an open source sign-in server."
       },
       "data_location": {
         "title": "Platform data at Hetzner",
-        "body": "The platform data stays on Hetzner servers."
+        "body": "The sign-in server and the platform data will stay on Hetzner servers."
       },
       "access_rules": {
         "title": "Sign-in and permission are separate",
@@ -68,24 +68,24 @@
     "cta": "Panelde oturum açın",
     "values": {
       "single_door": {
-        "title": "Tek giriş kapısı",
-        "body": "Kullanıcı tek hesapla birçok uygulamaya girer. Her uygulama için ayrı hesap gerekmez."
+        "title": "AtonotA Login ile giriş",
+        "body": "Panelde “AtonotA Login ile oturum aç” düğmesi var. Giriş, açık kaynak giriş sunucusu Keycloak üzerinden yapılır."
       },
       "many_platforms": {
         "title": "Birçok platformla giriş",
-        "body": "Kullanıcı Google, Facebook, LinkedIn ya da X hesabıyla girer. Yeni platform kod değişmeden eklenir."
+        "body": "Kullanıcı Google, Facebook, LinkedIn ya da X hesabıyla girecek. Yeni platform kod değişmeden eklenecek."
       },
       "linked_accounts": {
         "title": "Bağlı hesaplar",
-        "body": "Kullanıcı başka platform hesaplarını kendi hesabına bağlar. Son giriş yolu yanlışlıkla kaldırılamaz."
+        "body": "Kullanıcı başka platform hesaplarını kendi hesabına bağlayacak. Son giriş yolu yanlışlıkla kaldırılamayacak."
       },
       "open_source": {
         "title": "Açık kaynak temel",
-        "body": "Ürün, açık kaynak giriş sunucusu Keycloak üzerine kuruludur."
+        "body": "AtonotA Login'in kodu açık kaynaktır. Ürün, açık kaynak giriş sunucusu Keycloak üzerine kurulur."
       },
       "data_location": {
         "title": "Platform verisi Hetzner'de",
-        "body": "Platformun verisi Hetzner sunucularında durur."
+        "body": "Giriş sunucusu ve platform verisi Hetzner sunucularında duracak."
       },
       "access_rules": {
         "title": "Giriş ile yetki ayrı",

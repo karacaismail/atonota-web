@@ -42,7 +42,7 @@ Bu kararlar orkestratörün kararlarıdır. Kayıt tarihi 23 Kasım 2026 Pazarte
 | Birim testi | Vitest ve Testing Library |
 | Tarayıcı testi | Playwright: Chromium, WebKit ve iPhone 13 profili. Firefox koşulmaz. |
 | Erişilebilirlik testi | axe |
-| Kimlik | Keycloak, OIDC ve PKCE. Sunucu `id.atonota.net`. |
+| Kimlik | Keycloak, OIDC ve PKCE. Sunucu `api.login.atonota.net` (AtonotA Login). |
 | API istemcisi | Arka uç OpenAPI sözleşmelerinden üretilir. |
 | Sahte sunucu | MSW. Geliştirme ve testler gerçek arka uca bağlı değildir. |
 

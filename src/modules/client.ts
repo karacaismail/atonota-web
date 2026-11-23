@@ -36,7 +36,9 @@ export function createModuleClient(api: ApiClient): ModuleClient {
     getProposal: (id, options) => api.getProposal(id, options),
     approveProposal: (id, digest, options) => api.approveProposal(id, digest, options),
     rejectProposal: (id, options) => api.rejectProposal(id, options),
-    listLinkedAccounts: (options) => api.listLinkedAccounts(options),
-    unlinkAccount: (provider, options) => api.unlinkAccount(provider, options),
+    // Bağlı hesap istemcisi ayrı parçadadır. Yalnız hesap sayfası açılınca yüklenir.
+    linkedAccounts: () => import('../api/login-client').then((m) => m.createLoginClient(api)),
+    // Sağlayıcı istemcisi ayrı parçadadır. Yalnız sayfa açılınca yüklenir (ilk yük bütçesi).
+    aiProviders: () => import('../api/provider-client').then((m) => m.createProviderClient(api)),
   };
 }

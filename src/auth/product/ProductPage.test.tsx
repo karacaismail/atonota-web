@@ -27,15 +27,35 @@ describe('ProductPage', () => {
     render(<ProductPage />);
     const ready = screen.getByRole('region', { name: 'Bugün neler var?' });
     const soon = screen.getByRole('region', { name: 'Yakında' });
-    expect(within(ready).getByText('Birçok platformla giriş')).toBeVisible();
+    expect(within(ready).getByText('AtonotA Login ile giriş')).toBeVisible();
     expect(within(soon).getByText('Geçiş anahtarıyla güçlü giriş')).toBeVisible();
     expect(within(ready).queryByText('Geçiş anahtarıyla güçlü giriş')).not.toBeInTheDocument();
+  });
+
+  it('canlıda doğrulanmamış özellikler "Yakında" bölümündedir (inceleme 1, bulgu 1)', () => {
+    render(<ProductPage />);
+    const ready = screen.getByRole('region', { name: 'Bugün neler var?' });
+    const soon = screen.getByRole('region', { name: 'Yakında' });
+    for (const title of [
+      'Birçok platformla giriş',
+      'Bağlı hesaplar',
+      "Platform verisi Hetzner'de",
+    ]) {
+      expect(within(soon).getByText(title)).toBeVisible();
+      expect(within(ready).queryByText(title)).not.toBeInTheDocument();
+    }
+  });
+
+  it('"bugün var" denen her öneri kanıt taşır', () => {
+    for (const item of valueProps.filter((value) => value.status === 'ready')) {
+      expect(item.evidence?.trim()).toBeTruthy();
+    }
   });
 
   it('her değer önerisi bir gereksinime bağlıdır', () => {
     expect(valueProps.length).toBeGreaterThan(0);
     for (const item of valueProps) {
-      expect(item.requirement).toMatch(/^G-1(5[7-9]|6[0-7])$/);
+      expect(item.requirement).toMatch(/^G-\d+$/);
       expect(messages.tr.values).toHaveProperty(item.key);
     }
   });

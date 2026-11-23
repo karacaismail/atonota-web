@@ -39,7 +39,8 @@ afterAll(() => mockServer.close());
 
 describe('AuthGate', () => {
   it('çıkış adresi denetimden geçmezse giriş ekranı kimlik oturumu notunu gösterir', async () => {
-    // Ayarda Keycloak kökü verilmedi. Sahte sunucunun çıkış adresi başka kökendedir.
+    // Sahte sunucu başka kökenli bir çıkış adresi verir. Adres Keycloak kökünden gelmez.
+    mockState.logoutOutcome = 'foreign_url';
     const { session, navigate } = setup();
     expect(await screen.findByText('Panel içeriği')).toBeInTheDocument();
 

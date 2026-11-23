@@ -2,8 +2,10 @@
 // Testler bütün projelerde koşar: 320 px telefondan masaüstüne kadar. Firefox koşulmaz.
 import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page } from '@playwright/test';
-import { expect, test } from '@playwright/test';
 
+import { expect, test } from '../../../tests/setup/playwright-fixtures';
+import { SAMPLE_KEYCLOAK_URL } from '../../mocks/fixtures';
+import { MOCK_START_LINK_KEY, MOCK_START_LOGIN_KEY } from '../../mocks/handlers';
 import { MOCK_SCENARIO_KEY } from '../../mocks/scenarios';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
@@ -30,16 +32,26 @@ function tabKey(page: Page): string {
   return page.context().browser()?.browserType().name() === 'webkit' ? 'Alt+Tab' : 'Tab';
 }
 
-/** Tab tuşuyla hedefe gider. Fare kullanılmaz. En çok 40 adım dener. */
+/**
+ * Tab tuşuyla hedefe gider. Fare kullanılmaz. En çok 40 adım dener.
+ * İlk basış her tarayıcıda Tab olur: görünür odak kipini yalnız Tab açar (odak kuralı).
+ */
 async function tabTo(page: Page, target: Locator) {
   for (let step = 0; step < 40; step += 1) {
-    await page.keyboard.press(tabKey(page));
+    await page.keyboard.press(step === 0 ? 'Tab' : tabKey(page));
     if (await target.evaluate((el) => el === document.activeElement)) return;
   }
   throw new Error('Hedefe klavyeyle ulaşılamadı.');
 }
 
-/** Hesaplanmış yazı boyutu en az 14 px mi? Görünen metin öğelerine bakar. */
+/** Sahte sunucunun oturum deposuna yazdığı istek adresini okur. Sayfa kendi kökünde olmalıdır. */
+async function readMockUrl(page: Page, key: string): Promise<URL> {
+  const value = await page.evaluate((name) => sessionStorage.getItem(name), key);
+  expect(value).not.toBeNull();
+  return new URL(value ?? '');
+}
+
+/** En küçük hesaplanmış yazı boyutu. Görünen metin öğelerine bakar. */
 async function smallestFont(root: Locator): Promise<number> {
   return root.evaluate((node) =>
     Math.min(
@@ -72,6 +84,14 @@ test.describe('giriş ekranı platformları (G-159)', () => {
   });
 
   test('klavyeyle platform düğmesine basınca backend giriş yoluna gidilir', async ({ page }) => {
+    // Sahte sunucu `start_login` isteğine 302 verir. Hedef sahte Keycloak köküdür.
+    await page.route(`${SAMPLE_KEYCLOAK_URL}/**`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<title>AtonotA Login</title>',
+      }),
+    );
     await useScenario(page, 'oturum-kapali');
     await page.goto('/');
     const google = page.getByRole('button', { name: 'Google ile oturum aç' });
@@ -80,9 +100,12 @@ test.describe('giriş ekranı platformları (G-159)', () => {
     await tabTo(page, google);
     await page.keyboard.press('Enter');
 
-    // Bu bir sayfa geçişidir. Sahte sunucu sayfa geçişini karşılamaz; adres yine değişir.
-    await page.waitForURL(/platform_core\.api\.auth\.start_login/);
-    const url = new URL(page.url());
+    await page.waitForURL((url) => url.origin === SAMPLE_KEYCLOAK_URL);
+    // Sahte sunucu isteğin adresini kaydetti. Panele dönüp kaydı okuyoruz.
+    await page.goBack();
+    await expect(page.getByRole('heading', { name: 'Oturum açın' })).toBeVisible();
+    const url = await readMockUrl(page, MOCK_START_LOGIN_KEY);
+    expect(url.pathname).toBe('/api/method/platform_core.api.auth.start_login');
     expect(url.searchParams.get('provider')).toBe('google');
     expect(url.searchParams.get('redirect_to')).toBe('/');
   });
@@ -117,7 +140,8 @@ test.describe('bağlı hesaplar (G-160)', () => {
     await page.keyboard.press('Enter');
 
     await expect(region.getByRole('status')).toHaveText('LinkedIn bağı kaldırıldı.');
-    await expect(region.getByRole('link', { name: 'LinkedIn hesabını bağla' })).toBeVisible();
+    // Kaldırma düğmesi artık yoktur. Odak aynı satırın bağlama bağlantısına geçer.
+    await expect(region.getByRole('link', { name: 'LinkedIn hesabını bağla' })).toBeFocused();
     // Google artık tek giriş yoludur. Kaldırma düğmesi yoktur, nedeni yazılıdır.
     await expect(region.getByRole('button', { name: 'Google bağını kaldır' })).toHaveCount(0);
     await expect(
@@ -137,8 +161,17 @@ test.describe('bağlı hesaplar (G-160)', () => {
     const link = page.getByRole('link', { name: 'Facebook hesabını bağla' });
     await tabTo(page, link);
     await page.keyboard.press('Enter');
-    await page.waitForURL(/platform_core\.api\.auth\.start_link/);
-    const url = new URL(page.url());
+    // Sahte sunucu adresi kaydeder ve tarayıcıyı hesap sayfasına geri gönderir.
+    // Geçiş sürerken sayfa okunamaz. Okuma hatası `null` sayılır ve yeniden denenir.
+    await expect
+      .poll(() =>
+        page.evaluate((key) => sessionStorage.getItem(key), MOCK_START_LINK_KEY).catch(() => null),
+      )
+      .not.toBeNull();
+    await expect(page).toHaveURL(/\/account$/);
+    await expect(page.getByRole('region', { name: 'Bağlı hesaplar' })).toBeVisible();
+    const url = await readMockUrl(page, MOCK_START_LINK_KEY);
+    expect(url.pathname).toBe('/api/method/platform_core.api.auth.start_link');
     expect(url.searchParams.get('provider')).toBe('facebook');
     expect(url.searchParams.get('redirect_to')).toBe('/account');
   });
@@ -162,7 +195,8 @@ test.describe('tanıtım sayfası (G-165)', () => {
     await expect(page.getByRole('heading', { name: 'Oturum açın' })).toHaveCount(0);
 
     expect(await pageOverflow(page)).toBeLessThanOrEqual(0);
-    expect(await smallestFont(main)).toBeGreaterThanOrEqual(14);
+    // Herkese açık sayfada metin en az 16 px olur (G-165 ve genel gövde kuralı).
+    expect(await smallestFont(main)).toBeGreaterThanOrEqual(16);
     const results = await new AxeBuilder({ page }).include('main').withTags(AXE_TAGS).analyze();
     expect(results.violations).toEqual([]);
     expect(foreign).toEqual([]);

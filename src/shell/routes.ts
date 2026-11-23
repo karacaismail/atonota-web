@@ -26,6 +26,7 @@ import {
   FileText,
   Flask,
   House,
+  PlugsConnected,
   Robot,
   Rows,
   ShieldCheck,
@@ -84,6 +85,7 @@ export function modulePage(load: ModuleRegistration['load']): RouteEntry['load']
 const moduleIcons: Record<string, Icon> = {
   account: UserCircle,
   administration: ShieldCheck,
+  'ai-providers': PlugsConnected,
   hr: CalendarCheck,
   'site-plan': Buildings,
   'ai-operations': Robot,

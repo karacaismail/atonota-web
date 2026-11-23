@@ -5,12 +5,17 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { createApiClient } from '@/api/client';
 import type { ApiConfig } from '@/api/config';
 import { createCsrfStore } from '@/api/csrf';
-import { isLinkedAccounts, isLoginProviderList } from '@/api/guards';
+import {
+  createLoginClient,
+  isLinkedAccounts,
+  isLoginProviderList,
+  startLinkUrl,
+} from '@/api/login-client';
 import { SAMPLE_CSRF_TOKEN, SAMPLE_KEYCLOAK_URL, sampleLoginProviders } from '@/mocks/fixtures';
 import { mockState, resetMockState } from '@/mocks/handlers';
 import { mockServer } from '@/mocks/node';
 
-import { createAuth, startLinkUrl, startLoginUrl } from './auth';
+import { createAuth, startLoginUrl } from './auth';
 
 const SITE = 'https://kiraci.example.test';
 const config: ApiConfig = {
@@ -25,7 +30,7 @@ const config: ApiConfig = {
 };
 
 function client() {
-  return createApiClient({ config, csrf: createCsrfStore(SAMPLE_CSRF_TOKEN) });
+  return createLoginClient(createApiClient({ config, csrf: createCsrfStore(SAMPLE_CSRF_TOKEN) }));
 }
 
 beforeAll(() => mockServer.listen({ onUnhandledFrame: 'error' }));
@@ -68,20 +73,14 @@ describe('startLoginUrl', () => {
 });
 
 describe('startLinkUrl', () => {
-  it('bağlama adresini platform adı ve dönüş yoluyla kurar', () => {
-    expect(startLinkUrl(SITE, 'facebook', '/account')).toBe(
+  it('bağlama adresini platform adı ve hesap sayfası dönüşüyle kurar', () => {
+    expect(startLinkUrl(SITE, 'facebook')).toBe(
       `${SITE}/api/method/platform_core.api.auth.start_link?provider=facebook&redirect_to=%2Faccount`,
     );
   });
 
   it('platform adı kurala uymuyorsa adres kurulmaz', () => {
-    expect(startLinkUrl(SITE, 'Face Book', '/account')).toBeUndefined();
-  });
-
-  it('güvensiz dönüş yolu adrese eklenmez', () => {
-    expect(startLinkUrl(SITE, 'x', '//kotu.example.test')).toBe(
-      `${SITE}/api/method/platform_core.api.auth.start_link?provider=x`,
-    );
+    expect(startLinkUrl(SITE, 'Face Book')).toBeUndefined();
   });
 });
 

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../setup/playwright-fixtures';
 
 const DEMO = '/_demo/foundation';
 

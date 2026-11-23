@@ -1,5 +1,5 @@
 import { App as AntdApp, ConfigProvider, theme as antdThemeApi } from 'antd';
-import trTR from 'antd/locale/tr_TR';
+import trTR from 'antd/es/locale/tr_TR';
 import { useEffect, useMemo, type ReactNode } from 'react';
 
 import { buildAntdTheme } from '@/design/antd-theme';

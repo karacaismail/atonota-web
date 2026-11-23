@@ -1,5 +1,12 @@
 import { Fragment, type ReactNode } from 'react';
-import type { LinkedAccounts } from '../api';
+import type {
+  AiConnectionListing,
+  ConnectionCheck,
+  ConnectionInput,
+  LinkedAccounts,
+  ProviderCatalog,
+  SavedConnection,
+} from '../api';
 import { ModuleContext } from './context';
 
 export interface RequestOptions {
@@ -36,10 +43,34 @@ export interface ModuleClient {
   getProposal?: (id: string, options: RequestOptions) => Promise<unknown>;
   approveProposal?: (id: string, digest: string, options: RequestOptions) => Promise<unknown>;
   rejectProposal?: (id: string, options: RequestOptions) => Promise<unknown>;
-  /** AtonotA Login: bağlı platformlar (G-160). Yanıt ortak istemcide denetlenmiştir. */
-  listLinkedAccounts?: (options: RequestOptions) => Promise<LinkedAccounts>;
+  /**
+   * AtonotA Login bağlı hesap istemcisini yükler (G-160). İstemci kodu ilk yüke girmez;
+   * yalnız hesap sayfasının "Bağlı hesaplar" bölümü çağırınca iner.
+   */
+  linkedAccounts?: () => Promise<LinkedAccountsClient>;
+  /**
+   * Yapay zekâ sağlayıcı istemcisini yükler: katalog, bağlantı listesi, kayıt ve deneme.
+   * İstemci kodu ilk yüke girmez; yalnız "Yapay zekâ sağlayıcıları" sayfası çağırınca iner.
+   */
+  aiProviders?: () => Promise<AiProviderClient>;
+}
+export type { AiConnectionListing };
+/** Bağlı hesap uçları. Ortak istemci yanıtları sözleşmeyle denetler. */
+export interface LinkedAccountsClient {
+  listLinkedAccounts: (options: RequestOptions) => Promise<LinkedAccounts>;
   /** Bir platform bağını kaldırır. Son giriş yolunda sunucu 409 `LastSignInMethod` döner. */
-  unlinkAccount?: (provider: string, options: RequestOptions) => Promise<LinkedAccounts>;
+  unlinkAccount: (provider: string, options: RequestOptions) => Promise<LinkedAccounts>;
+}
+/** Sayfanın kullandığı sağlayıcı uçları. Ortak istemci yanıtları sözleşmeyle denetler. */
+export interface AiProviderClient {
+  listProviderCatalog: (options: RequestOptions) => Promise<ProviderCatalog>;
+  /** Satırlar ham kayıttır. Sayfa yalnız bilinen alanları okur. Parola alanı istenmez. */
+  listAiConnections: (options: RequestOptions) => Promise<AiConnectionListing>;
+  saveProviderConnection: (
+    input: ConnectionInput,
+    options: RequestOptions,
+  ) => Promise<SavedConnection>;
+  checkProviderConnection: (api: string, options: RequestOptions) => Promise<ConnectionCheck>;
 }
 export interface ModuleEnvironment {
   tenant: string;

@@ -13,6 +13,12 @@
   flex-direction: column;
   gap: var(--space-xl);
   font-family: var(--font-ui);
+  /*
+   * Tanıtım sayfası herkese açık bir sayfadır. G-165 ve genel kural gövde metnini en az 16 px ister.
+   * Panelin 14 px gövde kuralı bu sayfaya uygulanmaz. Değer orta buton yazısından gelir (16 px).
+   */
+  font-size: var(--btn-fs-md);
+  line-height: 1.5;
 }
 
 /*

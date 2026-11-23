@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../../tests/setup/playwright-fixtures';
 
 /**
  * Kayıt deneme sayfası. e2e derlemesi sayfayı bu yolda sunar (vite.config.ts, e2eInputs).

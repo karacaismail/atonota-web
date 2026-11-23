@@ -20,6 +20,13 @@ export const moduleRegistrations: readonly ModuleRegistration[] = [
     load: () => import('./administration/Page'),
   },
   {
+    // Yönetim bölümünün alt sayfası. Kod yalnız bu sayfa açılınca iner.
+    id: 'ai-providers',
+    path: '/administration/ai-providers',
+    label: { en: 'AI providers', tr: 'Yapay zekâ sağlayıcıları' },
+    load: () => import('./ai-providers/Page'),
+  },
+  {
     id: 'hr',
     path: '/hr',
     label: { en: 'Leave requests', tr: 'İzin talepleri' },

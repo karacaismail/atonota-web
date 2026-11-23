@@ -1,0 +1,34 @@
+{
+  "en": {
+    "linkedTitle": "Linked accounts",
+    "linkedIntro": "You can also sign in with the accounts of these platforms.",
+    "linkedLinked": "Linked",
+    "linkedNotLinked": "Not linked",
+    "linkedLink": "Link your {name} account",
+    "linkedUnlink": "Remove the {name} link",
+    "linkedConfirmGroup": "Confirm removing the {name} link",
+    "linkedConfirmText": "Remove the {name} link? You will no longer sign in with {name}.",
+    "linkedConfirm": "Remove link",
+    "linkedCancel": "Cancel",
+    "linkedPending": "Removing the link.",
+    "linkedUnlinked": "The {name} link was removed.",
+    "linkedLastMethod": "This is your last way to sign in. You cannot remove this link.",
+    "linkedEmpty": "There is no platform to link."
+  },
+  "tr": {
+    "linkedTitle": "Bağlı hesaplar",
+    "linkedIntro": "Bu platformların hesaplarıyla da oturum açabilirsiniz.",
+    "linkedLinked": "Bağlı",
+    "linkedNotLinked": "Bağlı değil",
+    "linkedLink": "{name} hesabını bağla",
+    "linkedUnlink": "{name} bağını kaldır",
+    "linkedConfirmGroup": "{name} bağını kaldırma onayı",
+    "linkedConfirmText": "{name} bağı kaldırılsın mı? Sonra {name} ile oturum açamazsınız.",
+    "linkedConfirm": "Bağı kaldır",
+    "linkedCancel": "Vazgeç",
+    "linkedPending": "Bağ kaldırılıyor.",
+    "linkedUnlinked": "{name} bağı kaldırıldı.",
+    "linkedLastMethod": "Bu sizin son giriş yolunuz. Bu bağı kaldıramazsınız.",
+    "linkedEmpty": "Bağlanabilecek platform yok."
+  }
+}

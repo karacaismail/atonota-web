@@ -2,18 +2,27 @@
 // Liste sunucudan gelir. Kodda platform listesi yoktur.
 // Bağlama bir sayfa geçişidir: tarayıcı backend'in `start_link` yoluna gider. Tarayıcı belirteç tutmaz.
 // Bağı kaldırma önce onay ister. Son giriş yolu kaldırılamaz; son kararı sunucu verir.
+// İstemci ayrı parçadır (`linkedAccounts`). Parça yalnız bu bölüm açılınca yüklenir.
 import { Alert, Button } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { LinkedAccounts as Accounts, LinkedProvider } from '../../api';
-import { startLinkUrl } from '../../auth/auth';
+import { startLinkUrl } from '../../api/login-client';
 import { useModule } from '../context';
 import { failureKind, useRead, type FailureKind } from '../data';
-import { useCopy } from '../messages';
+import { useCopy as useModuleCopy } from '../messages';
+import linkedMessages from './messages.json';
+import type { LinkedAccountsClient } from '../runtime';
 import { ResourceView, Section } from '../shared';
 
-/** Bağlamadan sonra dönülecek yol. Hesap sayfasının yoludur. */
-const ACCOUNT_PATH = '/account';
+/**
+ * Bölümün metinleri. Katalog yalnız hesap sayfasının parçasına girer (ilk yük bütçesi).
+ * Ortak hata metinleri modül kataloğundan gelir.
+ */
+function useCopy() {
+  const env = useModule();
+  return { ...useModuleCopy(), ...linkedMessages[env?.locale ?? 'tr'] };
+}
 
 function fill(template: string, name: string): string {
   return template.replaceAll('{name}', name);
@@ -30,41 +39,50 @@ type Outcome =
   | { kind: 'last_method' }
   | { kind: 'error'; error: FailureKind };
 
-function ProviderRow({
-  provider,
-  removable,
-  actionable,
-  confirming,
-  pending,
-  onAsk,
-  onCancel,
-  onConfirm,
-}: {
+interface RowProps {
   provider: LinkedProvider;
   /** Bu bağ kaldırılırsa giriş yolu kalır mı? */
   removable: boolean;
-  /** Bağı kaldırma isteği gönderilebilir mi? İstemci yoksa düğme çizilmez. */
-  actionable: boolean;
   confirming: boolean;
   pending: boolean;
+  /** Doğruysa odak bu satırın "hesabını bağla" bağlantısına gider. Bağ kaldırılınca olur. */
+  focusLink: boolean;
   onAsk: () => void;
   onCancel: () => void;
   onConfirm: () => void;
-}) {
+}
+
+function ProviderRow({
+  provider,
+  removable,
+  confirming,
+  pending,
+  focusLink,
+  onAsk,
+  onCancel,
+  onConfirm,
+}: RowProps) {
   const env = useModule();
   const copy = useCopy();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const askRef = useRef<HTMLButtonElement>(null);
+  const linkRef = useRef<HTMLAnchorElement>(null);
   const wasConfirming = useRef(false);
   const name = provider.display_name;
-  const href = env ? startLinkUrl(env.tenant, provider.alias, ACCOUNT_PATH) : undefined;
+  const href = env ? startLinkUrl(env.tenant, provider.alias) : undefined;
 
   useEffect(() => {
-    // Onay açılınca odak "Vazgeç" düğmesine gider. Kapanınca kaldırma düğmesine döner.
+    // Onay açılınca odak "Vazgeç" düğmesine gider.
+    // Vazgeçilince odak kaldırma düğmesine döner. Bağ kalktıysa o düğme yoktur;
+    // o zaman odak aynı satırdaki "hesabını bağla" bağlantısına gider (aşağıdaki etki).
     if (confirming) cancelRef.current?.focus();
     else if (wasConfirming.current) askRef.current?.focus();
     wasConfirming.current = confirming;
   }, [confirming]);
+
+  useEffect(() => {
+    if (focusLink && !provider.linked) linkRef.current?.focus();
+  }, [focusLink, provider.linked]);
 
   return (
     <li className="module-stack">
@@ -74,15 +92,16 @@ function ProviderRow({
       </div>
       {!provider.linked ? (
         href ? (
-          <a className="tlink" href={href}>
+          <a ref={linkRef} className="tlink" href={href}>
             {fill(copy.linkedLink, name)}
           </a>
         ) : null
-      ) : !actionable ? null : !removable ? (
+      ) : !removable ? (
         <p>{copy.linkedLastMethod}</p>
       ) : confirming ? (
         <div role="group" aria-label={fill(copy.linkedConfirmGroup, name)} className="module-stack">
           <p>{fill(copy.linkedConfirmText, name)}</p>
+          {pending ? <p role="status">{copy.linkedPending}</p> : null}
           <div className="module-actions">
             <Button ref={cancelRef} onClick={onCancel} disabled={pending}>
               {copy.linkedCancel}
@@ -106,27 +125,41 @@ function ProviderRow({
 export function LinkedAccounts() {
   const env = useModule();
   const copy = useCopy();
-  const list = env?.client?.listLinkedAccounts;
-  const unlink = env?.client?.unlinkAccount;
-  const load = useMemo(() => (list ? (signal: AbortSignal) => list({ signal }) : null), [list]);
+  const loadClient = env?.client?.linkedAccounts;
+  // İstemci bir kez yüklenir. Okuma ve kaldırma aynı istemciyi kullanır.
+  const getClient = useMemo(() => {
+    if (!loadClient) return null;
+    let cached: Promise<LinkedAccountsClient> | undefined;
+    return () => (cached ??= loadClient());
+  }, [loadClient]);
+  const load = useMemo(
+    () =>
+      getClient
+        ? async (signal: AbortSignal) => (await getClient()).listLinkedAccounts({ signal })
+        : null,
+    [getClient],
+  );
   const read = useRead(load, 'linked-accounts');
   // Kaldırmadan sonra sunucunun döndüğü yeni liste. Yeniden okuma gerekmez.
   const [latest, setLatest] = useState<Accounts | undefined>(undefined);
   const [confirming, setConfirming] = useState<string | undefined>(undefined);
   const [pending, setPending] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | undefined>(undefined);
+  const [focusAlias, setFocusAlias] = useState<string | undefined>(undefined);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
 
   async function confirm(provider: LinkedProvider) {
-    if (!unlink || controller.current) return;
+    if (!getClient || controller.current) return;
     const ctrl = new AbortController();
     controller.current = ctrl;
     setPending(true);
     try {
-      const next = await unlink(provider.alias, { signal: ctrl.signal });
+      const client = await getClient();
+      const next = await client.unlinkAccount(provider.alias, { signal: ctrl.signal });
       if (ctrl.signal.aborted) return;
       setLatest(next);
+      setFocusAlias(provider.alias);
       setOutcome({ kind: 'unlinked', name: provider.display_name });
     } catch (error) {
       if (ctrl.signal.aborted) return;
@@ -174,11 +207,12 @@ export function LinkedAccounts() {
                       key={provider.alias}
                       provider={provider}
                       removable={removable}
-                      actionable={!!unlink}
                       confirming={confirming === provider.alias}
                       pending={pending && confirming === provider.alias}
+                      focusLink={focusAlias === provider.alias}
                       onAsk={() => {
                         setOutcome(undefined);
+                        setFocusAlias(undefined);
                         setConfirming(provider.alias);
                       }}
                       onCancel={() => setConfirming(undefined)}
