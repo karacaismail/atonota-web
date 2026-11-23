@@ -8,7 +8,15 @@ import {
   WarningCircle,
 } from '@phosphor-icons/react';
 import { Button, ConfigProvider, Tabs } from 'antd';
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { createFrappeRecordAdapter, RecordApiError } from './adapter';
 import { CatalogField } from './catalog';
@@ -24,7 +32,12 @@ import {
   UnauthorizedRecordState,
 } from './RecordStates';
 import { SchemaValidationError, validateRecordAgainstMeta } from './schema';
-import { buildRecordAntdTheme, buildRecordCssVariables, type RecordThemeMode } from './tokens';
+import {
+  buildRecordAntdTheme,
+  buildRecordCssVariables,
+  RECORD_PHONE_MAX_WIDTH_PX,
+  type RecordThemeMode,
+} from './tokens';
 import type {
   DocField,
   DocTypeMeta,
@@ -37,30 +50,106 @@ import type {
 } from './types';
 import { computeDirtyFields, validateRecordDraft } from './validation';
 
-const PHONE_MAX_WIDTH_PX = 767;
-
-function useIsPhoneViewport(): boolean {
+/**
+ * Measures container width against central `RECORD_PHONE_MAX_WIDTH_PX` token (Review 3 Minor 9).
+ * Falls back to `window.innerWidth` in non-layout environments such as jsdom (`width === 0`).
+ */
+function useIsPhoneContainer(containerRef: RefObject<HTMLDivElement | null>): boolean {
   const [isPhone, setIsPhone] = useState<boolean>(() => {
     if (typeof window === 'undefined') {
       return true;
     }
-    return window.innerWidth <= PHONE_MAX_WIDTH_PX;
+    return window.innerWidth <= RECORD_PHONE_MAX_WIDTH_PX;
   });
 
   useEffect(() => {
     if (typeof window === 'undefined') {
       return undefined;
     }
-    const handleResize = () => {
-      setIsPhone(window.innerWidth <= PHONE_MAX_WIDTH_PX);
+
+    const handleWindowResize = () => {
+      const containerWidth = containerRef.current?.getBoundingClientRect().width ?? 0;
+      const effectiveWidth = containerWidth > 0 ? containerWidth : window.innerWidth;
+      setIsPhone(effectiveWidth <= RECORD_PHONE_MAX_WIDTH_PX);
     };
-    window.addEventListener('resize', handleResize);
+
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        const observedWidth = entry ? entry.contentRect.width : 0;
+        const effectiveWidth = observedWidth > 0 ? observedWidth : window.innerWidth;
+        setIsPhone(effectiveWidth <= RECORD_PHONE_MAX_WIDTH_PX);
+      });
+      observer.observe(containerRef.current);
+    }
+
+    window.addEventListener('resize', handleWindowResize);
     return () => {
-      window.removeEventListener('resize', handleResize);
+      observer?.disconnect();
+      window.removeEventListener('resize', handleWindowResize);
+    };
+  }, [containerRef]);
+
+  return isPhone;
+}
+
+/**
+ * Tracks keyboard focus modality at the document capture level so Tab entering from outside
+ * `.rv-root` activates focus indicators on the very first focused control (Review 3 Minor 10).
+ * Also respects `document.documentElement.dataset.focusMode` when managed by `foundation`.
+ */
+function useKeyboardFocusModality(): boolean {
+  const [isKeyboard, setIsKeyboard] = useState<boolean>(() => {
+    if (typeof document === 'undefined') {
+      return false;
+    }
+    return document.documentElement.dataset['focusMode'] === 'keyboard';
+  });
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        setIsKeyboard(true);
+      }
+    };
+    const onPointerDown = () => {
+      setIsKeyboard(false);
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('touchstart', onPointerDown, true);
+
+    let attrObserver: MutationObserver | undefined;
+    if (typeof MutationObserver !== 'undefined') {
+      attrObserver = new MutationObserver(() => {
+        const mode = document.documentElement.dataset['focusMode'];
+        if (mode === 'keyboard') {
+          setIsKeyboard(true);
+        } else if (mode === 'pointer') {
+          setIsKeyboard(false);
+        }
+      });
+      attrObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-focus-mode'],
+      });
+    }
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('touchstart', onPointerDown, true);
+      attrObserver?.disconnect();
     };
   }, []);
 
-  return isPhone;
+  return isKeyboard;
 }
 
 function buildInitialNewRecord(meta: DocTypeMeta): RecordDocument {
@@ -203,7 +292,11 @@ function RecordSectionCard(props: {
   );
 }
 
-function RecordViewBody(props: RecordViewProps) {
+interface RecordViewBodyProps extends RecordViewProps {
+  isPhoneViewport: boolean;
+}
+
+function RecordViewBody(props: RecordViewBodyProps) {
   const {
     doctype,
     name,
@@ -216,11 +309,11 @@ function RecordViewBody(props: RecordViewProps) {
     onSaved,
     onCreateNew,
     onSignIn,
+    isPhoneViewport,
   } = props;
 
   const defaultAdapter = useMemo(() => createFrappeRecordAdapter({ locale }), [locale]);
   const adapter = externalAdapter ?? defaultAdapter;
-  const isPhoneViewport = useIsPhoneViewport();
 
   const [screenState, setScreenState] = useState<RecordScreenState>(() =>
     !name && !createMode ? { status: 'empty', reason: 'no_record' } : { status: 'loading' },
@@ -228,6 +321,8 @@ function RecordViewBody(props: RecordViewProps) {
   const [reloadNonce, setReloadNonce] = useState(0);
 
   // RE-5: Server record stays in screenState; only user draft overrides live in draftEdits.
+  // Review 3 Blocker 1: Keying RecordViewBody by record identity resets local state on navigation
+  // without calling setState synchronously inside useEffect.
   const [draftEdits, setDraftEdits] = useState<Record<string, unknown>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [actionError, setActionError] = useState<string | null>(null);
@@ -240,22 +335,13 @@ function RecordViewBody(props: RecordViewProps) {
   const savingLockRef = useRef(false);
 
   useEffect(() => {
-    setDraftEdits({});
-    setFieldErrors({});
-    setActionError(null);
-    setConflict(null);
-    setCollapsedSections({});
-    setActiveTabKey(undefined);
-
     if (!name && !createMode) {
-      setScreenState({ status: 'empty', reason: 'no_record' });
       return undefined;
     }
 
     const controller = new AbortController();
     requestSeqRef.current += 1;
     const currentSeq = requestSeqRef.current;
-    setScreenState({ status: 'loading' });
 
     const load = async () => {
       try {
@@ -363,6 +449,17 @@ function RecordViewBody(props: RecordViewProps) {
     };
   }, [adapter, createMode, doctype, locale, name, reloadNonce]);
 
+  const handleRetry = useCallback(() => {
+    setDraftEdits({});
+    setFieldErrors({});
+    setActionError(null);
+    setConflict(null);
+    setScreenState(
+      !name && !createMode ? { status: 'empty', reason: 'no_record' } : { status: 'loading' },
+    );
+    setReloadNonce((n) => n + 1);
+  }, [createMode, name]);
+
   const handleFieldChange = useCallback((fieldname: string, nextValue: unknown) => {
     setDraftEdits((prev) => ({
       ...prev,
@@ -423,9 +520,14 @@ function RecordViewBody(props: RecordViewProps) {
       return;
     }
     const { meta, record } = screenState;
+    // Review 3 Finding 2: Once saved, record.name is populated so the view exits new-record mode.
+    const isNewRecord = record.name.length === 0;
+    if (!isNewRecord && dirtyFields.length === 0) {
+      return;
+    }
 
     const validationErrors = validateRecordDraft(meta, effectiveDoc, locale, {
-      isExistingRecord: !createMode && record.name.length > 0,
+      isExistingRecord: !isNewRecord,
       baseRecord: record,
     });
 
@@ -439,7 +541,7 @@ function RecordViewBody(props: RecordViewProps) {
     setActionError(null);
 
     const payload: Record<string, unknown> = {};
-    if (createMode || record.name.length === 0) {
+    if (isNewRecord) {
       for (const field of meta.schema.fields) {
         if (!isLayoutBreakFieldType(field.fieldtype) && !field.read_only) {
           if (field.fieldname in effectiveDoc) {
@@ -454,12 +556,28 @@ function RecordViewBody(props: RecordViewProps) {
     }
 
     try {
-      const saved = await adapter.saveRecord({
+      const rawSaved = await adapter.saveRecord({
         doctype,
-        name: createMode || record.name.length === 0 ? undefined : record.name,
+        name: isNewRecord ? undefined : record.name,
         modified: record.modified,
         data: payload,
       });
+
+      // Review 3 Finding 4: Validate saveRecord response against DocTypeMeta before applying (SZ-4).
+      let saved: RecordDocument;
+      try {
+        saved = validateRecordAgainstMeta(rawSaved, meta);
+      } catch (validationErr) {
+        if (validationErr instanceof SchemaValidationError) {
+          setScreenState({
+            status: 'error',
+            code: 'invalid_response',
+            message: formatRecordMessage(locale, 'invalidServerResponse'),
+          });
+          return;
+        }
+        throw validationErr;
+      }
 
       setScreenState({
         status: 'ready',
@@ -476,8 +594,22 @@ function RecordViewBody(props: RecordViewProps) {
           let latestServerRecord: RecordDocument | undefined;
           if (record.name.length > 0) {
             try {
-              latestServerRecord = await adapter.getRecord({ doctype, name: record.name });
-            } catch {
+              const rawLatest = await adapter.getRecord({ doctype, name: record.name });
+              // Review 3 Finding 4: Validate conflict latestRecord against DocTypeMeta (SZ-4).
+              latestServerRecord = validateRecordAgainstMeta(rawLatest, meta);
+            } catch (conflictFetchErr) {
+              if (
+                conflictFetchErr instanceof SchemaValidationError ||
+                (conflictFetchErr instanceof RecordApiError &&
+                  conflictFetchErr.code === 'invalid_response')
+              ) {
+                setScreenState({
+                  status: 'error',
+                  code: 'invalid_response',
+                  message: formatRecordMessage(locale, 'invalidServerResponse'),
+                });
+                return;
+              }
               latestServerRecord = undefined;
             }
           }
@@ -492,6 +624,12 @@ function RecordViewBody(props: RecordViewProps) {
             setFieldErrors({ ...err.fieldErrors });
           }
           setActionError(err.message);
+        } else if (err.code === 'invalid_response') {
+          setScreenState({
+            status: 'error',
+            code: 'invalid_response',
+            message: err.message,
+          });
         } else if (err.code === 'session_expired') {
           setScreenState({ status: 'unauthorized', reason: 'session_expired' });
         } else if (err.code === 'unauthorized') {
@@ -506,7 +644,7 @@ function RecordViewBody(props: RecordViewProps) {
       savingLockRef.current = false;
       setIsSaving(false);
     }
-  }, [adapter, createMode, dirtyFields, doctype, effectiveDoc, locale, onSaved, screenState]);
+  }, [adapter, dirtyFields, doctype, effectiveDoc, locale, onSaved, screenState]);
 
   const handleFieldAction = useCallback(
     async (field: DocField) => {
@@ -532,13 +670,22 @@ function RecordViewBody(props: RecordViewProps) {
           modified: screenState.record.modified,
         });
         if (updated) {
+          const validatedUpdated = validateRecordAgainstMeta(updated, screenState.meta);
           setScreenState({
             status: 'ready',
             meta: screenState.meta,
-            record: updated,
+            record: validatedUpdated,
           });
         }
       } catch (err) {
+        if (err instanceof SchemaValidationError) {
+          setScreenState({
+            status: 'error',
+            code: 'invalid_response',
+            message: formatRecordMessage(locale, 'invalidServerResponse'),
+          });
+          return;
+        }
         setActionError(
           err instanceof RecordApiError
             ? err.message
@@ -569,22 +716,17 @@ function RecordViewBody(props: RecordViewProps) {
   }
 
   if (screenState.status === 'error') {
-    return (
-      <ErrorRecordState
-        locale={locale}
-        message={screenState.message}
-        onRetry={() => setReloadNonce((n) => n + 1)}
-      />
-    );
+    return <ErrorRecordState locale={locale} message={screenState.message} onRetry={handleRetry} />;
   }
 
   const { meta, record } = screenState;
+  const isNewRecord = record.name.length === 0;
   const titleField = meta.schema.title_field;
   const rawTitle = titleField ? effectiveDoc[titleField] : undefined;
   const displayTitle =
     typeof rawTitle === 'string' && rawTitle.trim().length > 0
       ? rawTitle.trim()
-      : record.name.length > 0
+      : !isNewRecord
         ? record.name
         : meta.schema.name;
 
@@ -636,7 +778,7 @@ function RecordViewBody(props: RecordViewProps) {
         adapter={adapter}
         locale={locale}
         formatting={formatting}
-        isExistingRecord={!createMode && record.name.length > 0}
+        isExistingRecord={!isNewRecord}
         isRecordReadOnly={isRecordReadOnly}
         dirtySet={dirtySet}
         fieldErrors={fieldErrors}
@@ -652,7 +794,10 @@ function RecordViewBody(props: RecordViewProps) {
     <div>
       <header className="rv-header">
         {crumbItems.length > 0 ? (
-          <nav className="rv-header-breadcrumbs" aria-label="Breadcrumb">
+          <nav
+            className="rv-header-breadcrumbs"
+            aria-label={formatRecordMessage(locale, 'breadcrumbLabel')}
+          >
             {crumbItems.map((crumb, idx) => (
               <span key={`${crumb}-${idx}`}>
                 {idx > 0 ? ' / ' : ''}
@@ -691,7 +836,7 @@ function RecordViewBody(props: RecordViewProps) {
                 type="primary"
                 icon={<FloppyDisk weight="regular" />}
                 loading={isSaving}
-                disabled={isSaving || (!isDirty && !createMode)}
+                disabled={isSaving || (!isDirty && !isNewRecord)}
                 onClick={() => {
                   void handleSave();
                 }}
@@ -820,29 +965,32 @@ function RecordViewBody(props: RecordViewProps) {
 export function RecordView(props: RecordViewProps) {
   const themeMode: RecordThemeMode = props.themeMode ?? 'light';
   const locale: RecordLocale = props.locale ?? 'tr';
-  const [isKeyboardModality, setIsKeyboardModality] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const isKeyboardModality = useKeyboardFocusModality();
+  const isPhoneContainer = useIsPhoneContainer(rootRef);
+  const [boundaryResetCount, setBoundaryResetCount] = useState(0);
 
   const antdThemeConfig = useMemo(() => buildRecordAntdTheme(themeMode), [themeMode]);
   const cssVars = useMemo(() => buildRecordCssVariables(themeMode), [themeMode]);
 
+  const recordIdentityKey = `${props.doctype}::${props.createMode ? '__new__' : (props.name ?? '__empty__')}::${locale}::${boundaryResetCount}`;
+
   return (
     <ConfigProvider theme={antdThemeConfig}>
       <div
+        ref={rootRef}
         className="rv-root"
         data-theme={themeMode}
+        data-rv-viewport={isPhoneContainer ? 'phone' : 'wide'}
         data-rv-kbd={isKeyboardModality ? 'true' : 'false'}
         style={cssVars}
-        onKeyDownCapture={(event) => {
-          if (event.key === 'Tab') {
-            setIsKeyboardModality(true);
-          }
-        }}
-        onPointerDownCapture={() => {
-          setIsKeyboardModality(false);
-        }}
       >
-        <RecordErrorBoundary locale={locale}>
-          <RecordViewBody {...props} />
+        <RecordErrorBoundary
+          locale={locale}
+          resetKey={recordIdentityKey}
+          onReset={() => setBoundaryResetCount((n) => n + 1)}
+        >
+          <RecordViewBody key={recordIdentityKey} {...props} isPhoneViewport={isPhoneContainer} />
         </RecordErrorBoundary>
       </div>
     </ConfigProvider>

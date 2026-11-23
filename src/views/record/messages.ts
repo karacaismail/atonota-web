@@ -2,6 +2,7 @@ import type { RecordLocale } from './types';
 
 export const RECORD_MESSAGES = {
   en: {
+    breadcrumbLabel: 'Breadcrumb',
     defaultTabLabel: 'Details',
     loadingRecord: 'Loading record...',
     syncingStatus: 'Synchronizing',
@@ -106,6 +107,7 @@ export const RECORD_MESSAGES = {
     validationServerError: 'The server rejected the submitted values.',
   },
   tr: {
+    breadcrumbLabel: 'Sayfa yolu',
     defaultTabLabel: 'Detaylar',
     loadingRecord: 'Kayıt yükleniyor...',
     syncingStatus: 'Senkronize ediliyor',

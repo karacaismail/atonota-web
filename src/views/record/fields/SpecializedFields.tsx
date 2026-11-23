@@ -110,20 +110,47 @@ interface StrokePoint {
   y: number;
 }
 
-function readCanvasThemeTokens(canvas: HTMLCanvasElement | null): {
+interface SignatureThemeTokens {
   strokeColor: string;
   strokeWidth: number;
   fontFamily: string;
-} {
-  if (!canvas || typeof window === 'undefined') {
-    return { strokeColor: 'currentColor', strokeWidth: 2, fontFamily: 'sans-serif' };
+  fontSizePx: number;
+  paddingXPx: number;
+  defaultWidthPx: number;
+  defaultHeightPx: number;
+}
+
+function parseTokenPx(raw: string, fallback: number): number {
+  const num = Number.parseFloat(raw);
+  return Number.isFinite(num) && num > 0 ? num : fallback;
+}
+
+function readSignatureThemeTokens(element: HTMLElement | null): SignatureThemeTokens {
+  if (!element || typeof window === 'undefined') {
+    return {
+      strokeColor: 'currentColor',
+      strokeWidth: 2,
+      fontFamily: 'sans-serif',
+      fontSizePx: 28,
+      paddingXPx: 16,
+      defaultWidthPx: 288,
+      defaultHeightPx: 120,
+    };
   }
-  const computed = window.getComputedStyle(canvas);
-  const rawLine = Number.parseFloat(computed.getPropertyValue('--rv-focus-line-size'));
+  const computed = window.getComputedStyle(element);
+  const baseBodyPx = parseTokenPx(computed.fontSize, 14);
   return {
     strokeColor: computed.color || 'currentColor',
-    strokeWidth: Number.isFinite(rawLine) && rawLine > 0 ? rawLine : 2,
+    strokeWidth: parseTokenPx(computed.getPropertyValue('--rv-focus-line-size'), 2),
     fontFamily: computed.fontFamily || 'sans-serif',
+    fontSizePx: parseTokenPx(computed.getPropertyValue('--rv-signature-font-size'), baseBodyPx * 2),
+    paddingXPx: parseTokenPx(computed.getPropertyValue('--rv-signature-pad-x'), baseBodyPx),
+    defaultWidthPx: Math.round(
+      parseTokenPx(computed.getPropertyValue('--rv-signature-w'), baseBodyPx * 20),
+    ),
+    defaultHeightPx: Math.round(
+      parseTokenPx(computed.getPropertyValue('--rv-signature-h'), baseBodyPx * 8),
+    ),
   };
 }
 
@@ -137,14 +164,16 @@ export interface SignatureFieldProps {
 
 export function SignatureField(props: SignatureFieldProps) {
   const { value, readOnly, locale, a11y, onChange } = props;
+  const padRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [signMode, setSignMode] = useState<'draw' | 'type'>('draw');
   const [typedName, setTypedName] = useState('');
 
   // Review 2 Finding 2: Accumulate all strokes instead of resetting on each pointerdown.
   const strokesRef = useRef<StrokePoint[][]>([]);
-  const sizeRef = useRef<{ width: number; height: number }>({ width: 320, height: 120 });
+  const sizeRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
 
   const hasSignature = typeof value === 'string' && value.startsWith('data:image/');
 
@@ -169,7 +198,7 @@ export function SignatureField(props: SignatureFieldProps) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.scale(dpr, dpr);
 
-    const tokens = readCanvasThemeTokens(canvas);
+    const tokens = readSignatureThemeTokens(canvas);
     ctx.strokeStyle = tokens.strokeColor;
     ctx.lineWidth = tokens.strokeWidth;
     ctx.lineCap = 'round';
@@ -209,9 +238,10 @@ export function SignatureField(props: SignatureFieldProps) {
     if (!canvas || typeof window === 'undefined') {
       return;
     }
+    const tokens = readSignatureThemeTokens(canvas);
     const rect = canvas.getBoundingClientRect();
-    const cssWidth = rect.width > 0 ? Math.round(rect.width) : 320;
-    const cssHeight = rect.height > 0 ? Math.round(rect.height) : 120;
+    const cssWidth = rect.width > 0 ? Math.round(rect.width) : tokens.defaultWidthPx;
+    const cssHeight = rect.height > 0 ? Math.round(rect.height) : tokens.defaultHeightPx;
     const dpr = window.devicePixelRatio || 1;
     const targetW = Math.round(cssWidth * dpr);
     const targetH = Math.round(cssHeight * dpr);
@@ -224,19 +254,34 @@ export function SignatureField(props: SignatureFieldProps) {
     }
   }, [redrawAllStrokes]);
 
-  useEffect(() => {
-    syncCanvasDimensions();
-    if (typeof ResizeObserver === 'undefined' || !canvasRef.current) {
-      return undefined;
-    }
-    const observer = new ResizeObserver(() => {
+  // Review 3 Minor 3: Bind ResizeObserver in the canvas callback ref so remounting after mode switch is observed.
+  const setCanvasElement = useCallback(
+    (node: HTMLCanvasElement | null) => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      canvasRef.current = node;
+
+      if (!node) {
+        return;
+      }
       syncCanvasDimensions();
-    });
-    observer.observe(canvasRef.current);
+      if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => {
+          syncCanvasDimensions();
+        });
+        observer.observe(node);
+        resizeObserverRef.current = observer;
+      }
+    },
+    [syncCanvasDimensions],
+  );
+
+  useEffect(() => {
     return () => {
-      observer.disconnect();
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
     };
-  }, [syncCanvasDimensions]);
+  }, []);
 
   const serializeStrokes = (): string => {
     const canvas = canvasRef.current;
@@ -253,8 +298,9 @@ export function SignatureField(props: SignatureFieldProps) {
         // Fall through to multi-stroke SVG in headless jsdom environments.
       }
     }
-    const { width, height } = sizeRef.current;
-    const tokens = readCanvasThemeTokens(canvas);
+    const tokens = readSignatureThemeTokens(canvas ?? padRef.current);
+    const width = sizeRef.current.width > 0 ? sizeRef.current.width : tokens.defaultWidthPx;
+    const height = sizeRef.current.height > 0 ? sizeRef.current.height : tokens.defaultHeightPx;
     const pathD = strokesRef.current
       .filter((stroke) => stroke.length > 0)
       .map((stroke) => stroke.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' '))
@@ -306,29 +352,39 @@ export function SignatureField(props: SignatureFieldProps) {
     onChange(serializeStrokes());
   };
 
+  // Review 3 Minor 1 & Minor 2: Render typed signature onto an offscreen canvas with token font/padding to produce PNG.
   const handleApplyTypedSignature = () => {
     const cleanText = typedName.trim();
     if (!cleanText || readOnly) {
       return;
     }
-    const canvas = canvasRef.current;
-    const { width, height } = sizeRef.current;
-    const tokens = readCanvasThemeTokens(canvas);
-    if (canvas) {
+    const tokens = readSignatureThemeTokens(padRef.current);
+    const padWidth = padRef.current ? Math.round(padRef.current.getBoundingClientRect().width) : 0;
+    const width =
+      padWidth > 0
+        ? padWidth
+        : sizeRef.current.width > 0
+          ? sizeRef.current.width
+          : tokens.defaultWidthPx;
+    const height = tokens.defaultHeightPx;
+
+    if (typeof document !== 'undefined') {
       try {
-        const ctx = canvas.getContext('2d');
+        const offscreen = document.createElement('canvas');
+        const dpr =
+          typeof window !== 'undefined' && window.devicePixelRatio ? window.devicePixelRatio : 1;
+        offscreen.width = Math.round(width * dpr);
+        offscreen.height = Math.round(height * dpr);
+        const ctx = offscreen.getContext('2d');
         if (ctx) {
-          syncCanvasDimensions();
-          const dpr =
-            typeof window !== 'undefined' && window.devicePixelRatio ? window.devicePixelRatio : 1;
           ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.clearRect(0, 0, offscreen.width, offscreen.height);
           ctx.scale(dpr, dpr);
           ctx.fillStyle = tokens.strokeColor;
-          ctx.font = `italic 24px ${tokens.fontFamily}`;
+          ctx.font = `italic ${tokens.fontSizePx}px ${tokens.fontFamily}`;
           ctx.textBaseline = 'middle';
-          ctx.fillText(cleanText, 16, Math.round(height / 2));
-          const png = canvas.toDataURL('image/png');
+          ctx.fillText(cleanText, tokens.paddingXPx, Math.round(height / 2));
+          const png = offscreen.toDataURL('image/png');
           if (png.startsWith('data:image/png') && png.length > 32) {
             onChange(png);
             return;
@@ -338,17 +394,16 @@ export function SignatureField(props: SignatureFieldProps) {
         // Fall through to safe SVG text serialization in jsdom.
       }
     }
+
     const escapedText = cleanText
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><text x="16" y="${Math.round(height / 2)}" fill="${tokens.strokeColor}" font-size="24" font-style="italic">${escapedText}</text></svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><text x="${tokens.paddingXPx}" y="${Math.round(height / 2)}" fill="${tokens.strokeColor}" font-size="${tokens.fontSizePx}" font-style="italic">${escapedText}</text></svg>`;
     onChange(`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`);
   };
 
-  const handleClear = () => {
-    strokesRef.current = [];
-    setTypedName('');
+  const clearCanvasPixels = () => {
     const canvas = canvasRef.current;
     if (canvas) {
       try {
@@ -359,17 +414,30 @@ export function SignatureField(props: SignatureFieldProps) {
         // Ignore in non-canvas environments.
       }
     }
+  };
+
+  const handleModeChange = (nextMode: 'draw' | 'type') => {
+    strokesRef.current = [];
+    setDrawing(false);
+    clearCanvasPixels();
+    setSignMode(nextMode);
+  };
+
+  const handleClear = () => {
+    strokesRef.current = [];
+    setTypedName('');
+    clearCanvasPixels();
     onChange(null);
   };
 
   return (
-    <div className="rv-signature-pad">
+    <div ref={padRef} className="rv-signature-pad">
       {!readOnly ? (
         <div className="rv-editor-toolbar">
           <Segmented<'draw' | 'type'>
             size="small"
             value={signMode}
-            onChange={(next) => setSignMode(next)}
+            onChange={handleModeChange}
             options={[
               { value: 'draw', label: formatRecordMessage(locale, 'signatureModeDraw') },
               { value: 'type', label: formatRecordMessage(locale, 'signatureModeType') },
@@ -381,9 +449,7 @@ export function SignatureField(props: SignatureFieldProps) {
       {!readOnly && signMode === 'draw' ? (
         <canvas
           id={a11y.controlId}
-          ref={canvasRef}
-          width={320}
-          height={120}
+          ref={setCanvasElement}
           role="img"
           aria-labelledby={a11y.labelId}
           aria-describedby={a11y.ariaDescribedBy}
@@ -394,22 +460,25 @@ export function SignatureField(props: SignatureFieldProps) {
           onPointerLeave={handlePointerUp}
         />
       ) : !readOnly && signMode === 'type' ? (
-        <div className="rv-attach-row">
-          <Input
-            id={a11y.controlId}
-            aria-label={formatRecordMessage(locale, 'signatureTextLabel')}
-            size="middle"
-            value={typedName}
-            onChange={(e) => setTypedName(e.target.value)}
-          />
-          <Button
-            size="middle"
-            onClick={handleApplyTypedSignature}
-            disabled={typedName.trim().length === 0}
-          >
-            {formatRecordMessage(locale, 'signatureApplyAction')}
-          </Button>
-        </div>
+        <>
+          <div className="rv-attach-row">
+            <Input
+              id={a11y.controlId}
+              aria-label={formatRecordMessage(locale, 'signatureTextLabel')}
+              size="middle"
+              value={typedName}
+              onChange={(e) => setTypedName(e.target.value)}
+            />
+            <Button
+              size="middle"
+              onClick={handleApplyTypedSignature}
+              disabled={typedName.trim().length === 0}
+            >
+              {formatRecordMessage(locale, 'signatureApplyAction')}
+            </Button>
+          </div>
+          {hasSignature ? <img src={value} alt="" className="rv-attach-preview" /> : null}
+        </>
       ) : hasSignature ? (
         <img src={value} alt="" className="rv-attach-preview" />
       ) : null}

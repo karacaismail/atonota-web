@@ -151,8 +151,15 @@ test.describe('odak kuralları', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
+    // Odak göstergesi geçiş hareketiyle gelir. Ölçüm hareketin bitiş değerinde yapılır.
     const inspectFocusedChain = async () =>
-      page.evaluate(() => {
+      page.evaluate(async () => {
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => resolve());
+        });
+        await Promise.all(
+          document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+        );
         const root = document.querySelector('.rv-root');
         const active = document.activeElement;
         if (!root || !active || !root.contains(active)) {
@@ -209,8 +216,14 @@ test.describe('odak kuralları', () => {
                 Number.parseFloat(v),
               );
               const [offX = 0, offY = 0, blur = 0, spread = 0] = nums;
+              const alphaMatch = /rgba\([^)]*,\s*([\d.]+)\)/.exec(layer);
+              const isTransparent = alphaMatch
+                ? Number.parseFloat(alphaMatch[1] ?? '1') === 0
+                : false;
               if (isInset && offX === 0 && offY < 0 && blur === 0) {
-                hasUnderline = true;
+                if (!isTransparent) {
+                  hasUnderline = true;
+                }
               } else if (!isInset && (spread > 0 || (offX === 0 && offY === 0 && blur > 0))) {
                 spreadRings.push(`${node.tagName}:${layer}`);
               }
@@ -236,7 +249,16 @@ test.describe('odak kuralları', () => {
       visitedCount += 1;
       expect(check.visibleOutlines, `Tab adımı ${step} outline bulundu`).toEqual([]);
       expect(check.spreadRings, `Tab adımı ${step} çevreleyen gölge bulundu`).toEqual([]);
-      expect(check.hasUnderline, `Tab adımı ${step} alt çizgi göstergesi eksik`).toBe(true);
+      // antd bazı denetimlerde odak sınıfını bir sonraki çizimde ekler. Gösterge kısa süre beklenir.
+      await expect
+        .poll(async () => (await inspectFocusedChain()).hasUnderline, {
+          message: `Tab adımı ${step} alt çizgi göstergesi eksik`,
+          timeout: 2_000,
+        })
+        .toBe(true);
+      const settled = await inspectFocusedChain();
+      expect(settled.visibleOutlines, `Tab adımı ${step} outline bulundu`).toEqual([]);
+      expect(settled.spreadRings, `Tab adımı ${step} çevreleyen gölge bulundu`).toEqual([]);
     }
 
     expect(visitedCount).toBeGreaterThanOrEqual(5);
@@ -247,10 +269,12 @@ test.describe('odak kuralları', () => {
       page.getByRole('checkbox', { name: 'Ödendi' }),
     ]) {
       await target.focus();
+      await expect
+        .poll(async () => (await inspectFocusedChain()).hasUnderline, { timeout: 2_000 })
+        .toBe(true);
       const check = await inspectFocusedChain();
       expect(check.visibleOutlines).toEqual([]);
       expect(check.spreadRings).toEqual([]);
-      expect(check.hasUnderline).toBe(true);
     }
   });
 });

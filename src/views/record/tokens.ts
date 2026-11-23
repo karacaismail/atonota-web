@@ -15,6 +15,16 @@ export type RecordThemeMode = 'light' | 'dark';
 
 const LIGHT_SHADOWS = controlSizeConfig.derived.shadowCss;
 const DARK_SHADOWS = controlSizeConfig.derived.shadowCssDark;
+const BASE_ANTD_TOKENS = antdTheme.getDesignToken();
+
+/**
+ * Central phone breakpoint (<= screenSMMax) and link search debounce delay from design tokens.
+ * The design source has no dedicated search-delay token yet. The debounce reuses the shortest
+ * interaction delay in the source (`sidebar.flyout.closeDelay`, 180 ms) so the value stays central.
+ * Kaldırma koşulu: `foundation` ortak bir arama bekleme tokenı eklerse bu değer ona bağlanır.
+ */
+export const RECORD_PHONE_MAX_WIDTH_PX: number = BASE_ANTD_TOKENS.screenSMMax;
+export const RECORD_LINK_SEARCH_DEBOUNCE_MS: number = controlSizeConfig.sidebar.flyout.closeDelay;
 
 function hexToRgba(hex: string, alpha: number): string {
   const clean = hex.replace('#', '');
@@ -102,11 +112,13 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
         inputFontSize: sizes.md.input.fontSize,
         inputFontSizeSM: sizes.sm.input.fontSize,
         inputFontSizeLG: sizes.lg.input.fontSize,
+        activeShadow: 'none',
         ...(isDark
           ? {
               colorBgContainer: darkPalette.input,
               activeBg: darkPalette.input,
               hoverBg: darkPalette.input,
+              activeBorderColor: darkPalette.border,
             }
           : {}),
       },
@@ -115,11 +127,13 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
         controlHeightSM: sizes.sm.input.height,
         controlHeightLG: sizes.lg.input.height,
         inputFontSize: sizes.md.input.fontSize,
+        activeShadow: 'none',
         ...(isDark
           ? {
               colorBgContainer: darkPalette.input,
               activeBg: darkPalette.input,
               hoverBg: darkPalette.input,
+              activeBorderColor: darkPalette.border,
             }
           : {}),
       },
@@ -130,10 +144,12 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
         fontSize: sizes.md.input.fontSize,
         fontSizeLG: sizes.lg.input.fontSize,
         optionFontSize: controlSizeConfig.typography.default,
+        activeOutlineColor: 'transparent',
         ...(isDark
           ? {
               selectorBg: darkPalette.input,
               colorBgContainer: darkPalette.input,
+              activeBorderColor: darkPalette.border,
             }
           : {}),
       },
@@ -183,6 +199,15 @@ export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
     '--rv-color-warning': resolved.colorWarningText,
     '--rv-color-warning-bg': resolved.colorWarningBg,
     '--rv-color-dirty-dot': resolved.colorWarning,
+    '--rv-btn-primary-fg': isDark
+      ? hexToRgba(primary.dark.text, primary.dark.opacity)
+      : hexToRgba(primary.light.text, primary.light.opacity),
+    '--rv-btn-primary-hover-fg': isDark
+      ? hexToRgba(primary.dark.text, primary.dark.hoverOpacity)
+      : hexToRgba(primary.light.text, primary.light.hoverOpacity),
+    '--rv-btn-primary-dark-bg': hexToRgba(primary.color, primary.dark.background),
+    '--rv-btn-primary-dark-hover-bg': hexToRgba(primary.color, primary.dark.hoverBackground),
+    '--rv-btn-primary-dark-active-bg': hexToRgba(primary.color, primary.dark.activeBackground),
     '--rv-pill-primary-fg': isDark ? primary.hover : hexToRgba(primary.light.text, 1),
     '--rv-pill-primary-bg': hexToRgba(primary.color, primary.dark.background),
     '--rv-pill-success-fg': resolved.colorSuccessText,
@@ -224,7 +249,10 @@ export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
     '--rv-table-col-text-min': `${sizes.sm.input.height * 5}px`,
     '--rv-table-col-action-w': `${sizes.sm.button.height * 1.5}px`,
     '--rv-color-input-w': `${sizes.sm.input.height * 4}px`,
+    '--rv-signature-w': `${sizes.lg.input.height * 6}px`,
     '--rv-signature-h': `${sizes.lg.input.height * 2.5}px`,
+    '--rv-signature-font-size': `${headerCfg.titleSize}px`,
+    '--rv-signature-pad-x': `${resolved.padding}px`,
     '--rv-shadow-card': shadows.card,
     '--rv-shadow-button': shadows.button,
     '--rv-shadow-input': shadows.input,

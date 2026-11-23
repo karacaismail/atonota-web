@@ -381,7 +381,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
             placeholder={formatRecordMessage(locale, 'selectPlaceholder')}
             options={choices}
             value={selectVal}
-            onChange={(next) => onChange(field.fieldname, next ?? '')}
+            onChange={(next) => onChange(field.fieldname, next ?? null)}
           />
         );
       }
@@ -398,7 +398,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
             locale={locale}
             adapter={adapter}
             a11y={a11y}
-            onChange={(next) => onChange(field.fieldname, next ?? '')}
+            onChange={(next) => onChange(field.fieldname, next)}
           />
         );
 
@@ -423,7 +423,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
                 ? formatRecordMessage(locale, 'linkSelectTargetFirst')
                 : undefined
             }
-            onChange={(next) => onChange(field.fieldname, next ?? '')}
+            onChange={(next) => onChange(field.fieldname, next)}
           />
         );
       }

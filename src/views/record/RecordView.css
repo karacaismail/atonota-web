@@ -29,27 +29,75 @@
  * Kaldırma koşulu: `foundation` işinin `src/design` odak kuralları `main` dalına birleşince silinir.
  */
 .rv-root :focus,
-.rv-root :focus-visible {
+.rv-root :focus-visible,
+.rv-root .ant-btn:focus,
+.rv-root .ant-btn:focus-visible,
+.rv-root .ant-checkbox-inner {
   outline: none;
+  outline-width: 0;
+}
+
+.rv-root .ant-upload[role='button'] {
+  display: inline-flex;
+  border-radius: var(--rv-radius);
+}
+
+.rv-root .ant-btn-primary:not(:disabled):not(.ant-btn-disabled) {
+  color: var(--rv-btn-primary-fg);
+}
+
+.rv-root .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover {
+  color: var(--rv-btn-primary-hover-fg);
+}
+
+.rv-root[data-theme='dark'] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled) {
+  background: var(--rv-btn-primary-dark-bg);
+  color: var(--rv-btn-primary-fg);
+}
+
+.rv-root[data-theme='dark'] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover {
+  background: var(--rv-btn-primary-dark-hover-bg);
+  color: var(--rv-btn-primary-hover-fg);
+}
+
+.rv-root[data-theme='dark'] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):active {
+  background: var(--rv-btn-primary-dark-active-bg);
 }
 
 .rv-root[data-rv-kbd='true'] :focus-visible,
-.rv-root[data-rv-kbd='true'] .ant-btn:focus-visible,
-.rv-root[data-rv-kbd='true'] .ant-checkbox-wrapper:focus-within,
-.rv-root[data-rv-kbd='true'] .ant-segmented-item:focus-within,
-.rv-root[data-rv-kbd='true'] .ant-rate-star > div:focus-visible {
+.rv-root[data-rv-kbd='true'] .ant-btn.ant-btn:focus-visible,
+.rv-root[data-rv-kbd='true'] .ant-checkbox-wrapper.ant-checkbox-wrapper:focus-within,
+.rv-root[data-rv-kbd='true'] .ant-segmented .ant-segmented-item:focus-within,
+.rv-root[data-rv-kbd='true'] .ant-rate .ant-rate-star > div:focus-visible,
+.rv-root[data-rv-kbd='true'] .ant-color-picker-trigger.ant-color-picker-trigger:focus-visible {
   outline: none;
   box-shadow: inset 0 calc(var(--rv-focus-line-size) * -1) 0 0 var(--rv-color-primary);
 }
 
-.rv-root[data-rv-kbd='true'] .ant-input:focus,
-.rv-root[data-rv-kbd='true'] .ant-input-affix-wrapper:focus-within,
-.rv-root[data-rv-kbd='true'] .ant-input-number-focused,
-.rv-root[data-rv-kbd='true'] .ant-select-focused .ant-select-selector {
+.rv-root[data-rv-kbd='true'] .ant-input.ant-input-outlined:focus,
+.rv-root[data-rv-kbd='true'] .ant-input-affix-wrapper.ant-input-outlined:focus-within,
+.rv-root[data-rv-kbd='true'] .ant-input-textarea-affix-wrapper.ant-input-outlined:focus-within,
+.rv-root[data-rv-kbd='true'] .ant-input-number-affix-wrapper.ant-input-number-outlined:focus-within,
+.rv-root[data-rv-kbd='true'] .ant-input-number.ant-input-number-outlined.ant-input-number-focused,
+.rv-root[data-rv-kbd='true']
+  .ant-select.ant-select-focused.ant-select-outlined:not(.ant-select-disabled):not(
+    .ant-select-customize-input
+  ):not(.ant-pagination-size-changer)
+  .ant-select-selector {
   outline: none;
   box-shadow:
     var(--rv-shadow-input),
     inset 0 calc(var(--rv-focus-line-size) * -1) 0 0 var(--rv-color-primary);
+}
+
+.rv-root[data-rv-kbd='true'] .ant-input-affix-wrapper .ant-input.ant-input-outlined:focus,
+.rv-root[data-rv-kbd='true'] .ant-input-affix-wrapper :focus-visible,
+.rv-root[data-rv-kbd='true'] .ant-input-number-affix-wrapper :focus-visible,
+.rv-root[data-rv-kbd='true'] .ant-input-number :focus-visible,
+.rv-root[data-rv-kbd='true'] .ant-select :focus-visible,
+.rv-root[data-rv-kbd='true'] .ant-checkbox-wrapper :focus-visible,
+.rv-root[data-rv-kbd='true'] .ant-segmented-item :focus-visible {
+  box-shadow: none;
 }
 
 @media (forced-colors: active) {
@@ -216,7 +264,6 @@
 
 .rv-section-card {
   border-radius: var(--rv-card-radius);
-  border: 1px solid var(--rv-color-border-secondary);
   background-color: var(--rv-color-panel);
   box-shadow: var(--rv-shadow-card);
   padding: var(--rv-space-md);
@@ -522,7 +569,6 @@
   padding: var(--rv-space-xl);
   margin: var(--rv-space-sm);
   border-radius: var(--rv-card-radius);
-  border: 1px solid var(--rv-color-border-secondary);
   background-color: var(--rv-color-panel);
   box-shadow: var(--rv-shadow-card);
 }
@@ -550,38 +596,36 @@
   line-height: var(--rv-font-min-lh);
 }
 
-/* Tablet & desktop layout upgrades (>= 768px) */
-@media (min-width: 768px) {
-  .rv-header {
-    padding: var(--rv-space-md) var(--rv-space-xl);
-  }
+/* Tablet & desktop layout upgrades driven by container width token (`data-rv-viewport='wide'`) */
+.rv-root[data-rv-viewport='wide'] .rv-header {
+  padding: var(--rv-space-md) var(--rv-space-xl);
+}
 
-  .rv-header-top {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
+.rv-root[data-rv-viewport='wide'] .rv-header-top {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
 
-  .rv-header-title {
-    font-size: var(--rv-font-title);
-    line-height: var(--rv-font-title-lh);
-  }
+.rv-root[data-rv-viewport='wide'] .rv-header-title {
+  font-size: var(--rv-font-title);
+  line-height: var(--rv-font-title-lh);
+}
 
-  .rv-body {
-    padding: var(--rv-space-xl);
-  }
+.rv-root[data-rv-viewport='wide'] .rv-body {
+  padding: var(--rv-space-xl);
+}
 
-  .rv-section-card {
-    padding: var(--rv-space-xl);
-  }
+.rv-root[data-rv-viewport='wide'] .rv-section-card {
+  padding: var(--rv-space-xl);
+}
 
-  .rv-section-grid {
-    grid-template-columns: repeat(var(--rv-section-cols, 1), minmax(0, 1fr));
-  }
+.rv-root[data-rv-viewport='wide'] .rv-section-grid {
+  grid-template-columns: repeat(var(--rv-section-cols, 1), minmax(0, 1fr));
+}
 
-  .rv-geo-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.rv-root[data-rv-viewport='wide'] .rv-geo-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @media (prefers-reduced-motion: reduce) {

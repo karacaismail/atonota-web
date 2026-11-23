@@ -7,6 +7,7 @@ import type { RecordLocale } from './types';
 
 export interface RecordErrorBoundaryProps {
   locale?: RecordLocale | undefined;
+  resetKey?: string | number | undefined;
   onReset?: (() => void) | undefined;
   children: ReactNode;
 }
@@ -63,5 +64,5 @@ class RecordErrorBoundaryInner extends Component<
 }
 
 export function RecordErrorBoundary(props: RecordErrorBoundaryProps): ReactNode {
-  return <RecordErrorBoundaryInner {...props} />;
+  return <RecordErrorBoundaryInner key={props.resetKey} {...props} />;
 }

@@ -1,12 +1,12 @@
 import { ArrowClockwise, Plus, Trash } from '@phosphor-icons/react';
 import { Button, Select, Table, type TableProps } from 'antd';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useRef } from 'react';
 
-import { RecordApiError } from '../adapter';
 import { isLayoutBreakFieldType } from '../layout';
 import { formatRecordMessage } from '../messages';
-import type { DocField, DocTypeMeta, LinkOption, RecordDataAdapter, RecordLocale } from '../types';
+import type { DocField, DocTypeMeta, RecordDataAdapter, RecordLocale } from '../types';
 import type { FieldControlA11yProps } from './FieldShell';
+import { useLinkSearch } from './useLinkSearch';
 
 function columnCellWidthClass(fieldtype: string): string {
   switch (fieldtype) {
@@ -212,148 +212,92 @@ export function TableMultiSelectField(props: TableMultiSelectFieldProps) {
   const targetDoctype = linkChildField?.options ?? '';
   const linkKey = linkChildField?.fieldname ?? 'value';
 
-  const [options, setOptions] = useState<readonly LinkOption[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const seqRef = useRef(0);
-  const lastQueryRef = useRef('');
+  const search = useLinkSearch({
+    targetDoctype,
+    referenceDoctype,
+    linkFieldname: field.fieldname,
+    readOnly,
+    locale,
+    adapter,
+  });
 
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
+  const rows: Record<string, unknown>[] = Array.isArray(value)
+    ? value.filter((r): r is Record<string, unknown> => typeof r === 'object' && r !== null)
+    : [];
 
-  const rows = useMemo(() => {
-    if (!Array.isArray(value)) {
-      return [];
+  const selectedValues: string[] = [];
+  for (const row of rows) {
+    const cell = row[linkKey];
+    if (typeof cell === 'string' && cell.length > 0) {
+      selectedValues.push(cell);
     }
-    return value.filter((r): r is Record<string, unknown> => typeof r === 'object' && r !== null);
-  }, [value]);
+  }
 
-  const selectedValues = useMemo(() => {
-    const out: string[] = [];
-    for (const row of rows) {
-      const cell = row[linkKey];
-      if (typeof cell === 'string' && cell.length > 0) {
-        out.push(cell);
-      }
+  const selectOptions: { value: string; label: string }[] = [];
+  if (!search.searchError) {
+    for (const opt of search.options) {
+      selectOptions.push({ value: opt.value, label: opt.label ?? opt.value });
     }
-    return out;
-  }, [linkKey, rows]);
-
-  const runSearch = useCallback(
-    (txt: string) => {
-      if (!targetDoctype || readOnly) {
-        return;
-      }
-      lastQueryRef.current = txt;
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-      seqRef.current += 1;
-      const reqId = seqRef.current;
-      setSearching(true);
-      setSearchError(null);
-
-      void adapter
-        .searchLink({
-          doctype: targetDoctype,
-          txt,
-          referenceDoctype,
-          linkFieldname: field.fieldname,
-          signal: controller.signal,
-        })
-        .then((res) => {
-          if (controller.signal.aborted || reqId !== seqRef.current) {
-            return;
-          }
-          setOptions(res);
-          setSearchError(null);
-          setSearching(false);
-        })
-        .catch((err: unknown) => {
-          if (controller.signal.aborted || reqId !== seqRef.current) {
-            return;
-          }
-          setOptions([]);
-          setSearchError(
-            err instanceof RecordApiError
-              ? err.message
-              : formatRecordMessage(locale, 'networkError'),
-          );
-          setSearching(false);
-        });
-    },
-    [adapter, field.fieldname, locale, readOnly, referenceDoctype, targetDoctype],
-  );
-
-  const selectOptions = useMemo(() => {
-    if (searchError) {
-      return [];
-    }
-    const mapped = options.map((o) => ({ value: o.value, label: o.label ?? o.value }));
     for (const sel of selectedValues) {
-      if (!mapped.some((m) => m.value === sel)) {
-        mapped.push({ value: sel, label: sel });
+      if (!selectOptions.some((m) => m.value === sel)) {
+        selectOptions.push({ value: sel, label: sel });
       }
     }
-    return mapped;
-  }, [options, searchError, selectedValues]);
+  }
 
-  const notFoundNode = searching ? (
-    formatRecordMessage(locale, 'linkSearching')
-  ) : searchError ? (
-    <div className="rv-link-error-popup" role="alert">
-      <span>{searchError}</span>
-      <Button
-        size="small"
-        icon={<ArrowClockwise weight="regular" />}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => runSearch(lastQueryRef.current)}
-      >
-        {formatRecordMessage(locale, 'retryAction')}
-      </Button>
-    </div>
-  ) : (
-    formatRecordMessage(locale, 'linkNoResults')
-  );
+  const notFoundNode = search.searching
+    ? formatRecordMessage(locale, 'linkSearching')
+    : search.searchError
+      ? null
+      : formatRecordMessage(locale, 'linkNoResults');
 
   return (
-    <Select<string[]>
-      id={a11y.controlId}
-      aria-labelledby={a11y.labelId}
-      aria-describedby={a11y.ariaDescribedBy}
-      aria-invalid={a11y.ariaInvalid}
-      mode="multiple"
-      size="middle"
-      style={{ width: '100%' }}
-      showSearch
-      filterOption={false}
-      disabled={readOnly || !targetDoctype}
-      loading={searching}
-      notFoundContent={notFoundNode}
-      placeholder={
-        targetDoctype
-          ? formatRecordMessage(locale, 'linkSearchPlaceholder', { doctype: targetDoctype })
-          : formatRecordMessage(locale, 'tableMissingSchema')
-      }
-      value={selectedValues}
-      options={selectOptions}
-      onOpenChange={(open) => {
-        if (open) {
-          runSearch('');
+    <div className="rv-signature-pad">
+      <Select<string[]>
+        id={a11y.controlId}
+        aria-labelledby={a11y.labelId}
+        aria-describedby={a11y.ariaDescribedBy}
+        aria-invalid={a11y.ariaInvalid}
+        mode="multiple"
+        size="middle"
+        style={{ width: '100%' }}
+        showSearch
+        autoClearSearchValue={search.searchError === null}
+        filterOption={false}
+        disabled={readOnly || !targetDoctype}
+        loading={search.searching}
+        open={search.dropdownOpen && search.searchError === null}
+        notFoundContent={notFoundNode}
+        placeholder={
+          targetDoctype
+            ? formatRecordMessage(locale, 'linkSearchPlaceholder', { doctype: targetDoctype })
+            : formatRecordMessage(locale, 'tableMissingSchema')
         }
-      }}
-      onSearch={runSearch}
-      onChange={(nextSelected) => {
-        const nextRows = nextSelected.map((val) => {
-          const existing = rows.find((r) => r[linkKey] === val);
-          return existing ? { ...existing } : { [linkKey]: val };
-        });
-        onChange(nextRows);
-      }}
-    />
+        value={selectedValues}
+        options={selectOptions}
+        onOpenChange={search.handleOpenChange}
+        onSearch={search.handleSearchInput}
+        onInputKeyDown={search.handleInputKeyDown}
+        onChange={(nextSelected) => {
+          const nextRows = nextSelected.map((val) => {
+            const existing = rows.find((r) => r[linkKey] === val);
+            return existing ? { ...existing } : { [linkKey]: val };
+          });
+          onChange(nextRows);
+        }}
+      />
+      {search.searchError ? (
+        <div className="rv-link-error-popup" role="alert">
+          <span>{search.searchError}</span>
+          <Button
+            size="small"
+            icon={<ArrowClockwise weight="regular" />}
+            onClick={search.handleRetry}
+          >
+            {formatRecordMessage(locale, 'retryAction')}
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }
