@@ -452,6 +452,26 @@ describe('kayıt uçları (frappeDocument)', () => {
     expect(onSessionExpired).toHaveBeenCalledTimes(1);
   });
 
+  it('sahte sunucu tanımadığı kayıt türüne yetki reddi verir; okuma ve kaydetme sahte veriyle çalışır', async () => {
+    const { api } = setup();
+    const denied = await api.frappeDocument({
+      method: 'GET',
+      path: '/api/resource/Teklif/TEK-0003',
+    });
+    expect(denied.ok ? 'ok' : denied.error.kind).toBe('forbidden');
+
+    const read = await api.frappeDocument({ method: 'GET', path: RECORD_PATH });
+    if (!read.ok) throw new Error('okuma başarısız');
+    const record = (read.body as { data: { title: string; modified: string } }).data;
+    expect(record.title).toBe('Örnek veri 1');
+    const saved = await api.frappeDocument({
+      method: 'PUT',
+      path: RECORD_PATH,
+      body: { title: 'Yeni', modified: record.modified },
+    });
+    expect(saved.ok && (saved.body as { data: { title: string } }).data.title).toBe('Yeni');
+  });
+
   it('başarılı yanıt JSON değilse geçersiz yanıt hatası verir', async () => {
     mockServer.use(http.get(`${SITE}${RECORD_PATH}`, () => HttpResponse.text('<html></html>')));
     const { api } = setup();

@@ -617,19 +617,24 @@ export const handlers = [
   }),
 
   // Frappe kayıt ucu (`/api/resource/<doctype>/<name>`). Yalnız `Örnek Kayıt` türü karşılanır.
-  // Öteki türler sonraki işleyiciye geçer. Kaydetme CSRF belirtecini ve kayıt sürümünü denetler.
+  // İzin başvuruları yukarıdaki kendi işleyicisindedir. Tür tanımı ucu gibi, öteki türler
+  // yetki reddi (403 `PermissionError`) alır. Kaydetme CSRF belirtecini ve kayıt sürümünü denetler.
   http.get('*/api/resource/:doctype/:name', ({ request, params }) => {
-    if (String(params.doctype) !== SAMPLE_COLLECTION_DOCTYPE) return undefined;
     const denied = guard(request, { write: false });
     if (denied) return denied;
+    if (String(params.doctype) !== SAMPLE_COLLECTION_DOCTYPE) {
+      return frappeError(403, 'PermissionError');
+    }
     const row = mockState.records.get(String(params.name));
     return row ? sampleRecordResponse(row) : frappeError(404, 'DoesNotExistError');
   }),
 
   http.put('*/api/resource/:doctype/:name', async ({ request, params }) => {
-    if (String(params.doctype) !== SAMPLE_COLLECTION_DOCTYPE) return undefined;
     const denied = guard(request, { write: true });
     if (denied) return denied;
+    if (String(params.doctype) !== SAMPLE_COLLECTION_DOCTYPE) {
+      return frappeError(403, 'PermissionError');
+    }
     const row = mockState.records.get(String(params.name));
     if (!row) return frappeError(404, 'DoesNotExistError');
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
