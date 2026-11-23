@@ -50,18 +50,46 @@ export interface ListRequest {
   limit_start: number;
   limit_page_length: number;
 }
+/** Frappe toplam sayı vermez. Sonraki sayfa yalnız `hasNextPage` ile bilinir. */
 export interface CollectionPage {
   data: CollectionRow[];
-  has_next_page: boolean;
-  total?: number;
+  hasNextPage: boolean;
 }
+/** Liste kaynağı. Üretimde `createApiSource` ortak `listDocuments` istemcisine bağlanır. */
 export interface CollectionSource {
-  kind: 'example' | 'api';
   list: (request: ListRequest, signal: AbortSignal) => Promise<unknown>;
 }
+/** `platform_core.api.collection.group_summary` isteği. Sayfa sınırı yoktur. */
+export interface GroupSummaryRequest {
+  doctype: string;
+  groupBy: string;
+  filters: ListRequest['filters'];
+  aggregate?: { op: 'sum' | 'avg'; field: string };
+  limit: number;
+}
+export interface GroupSummaryGroup {
+  value: Scalar;
+  count: number;
+  aggregate?: number | null;
+}
+export interface GroupSummary {
+  groups: GroupSummaryGroup[];
+  /** Süzgece uyan ve okunabilen bütün kayıtların sayısı. */
+  totalCount: number;
+  /** Grup sınırı yüzünden grup atlandıysa doğrudur. */
+  truncated: boolean;
+}
+/** Özet kaynağı. Tipli `group_summary` istemcisi `main` dalına gelince ona bağlanır. */
+export interface CollectionSummarySource {
+  groupSummary: (request: GroupSummaryRequest, signal: AbortSignal) => Promise<unknown>;
+}
+export type SummaryState =
+  | { status: 'off' | 'loading' | 'error' | 'unauthorized' }
+  | { status: 'ready'; summary: GroupSummary };
 export interface ViewProps {
   definition: CollectionDefinition;
   rows: CollectionRow[];
+  summary?: SummaryState;
 }
 export class CollectionError extends Error {
   constructor(

@@ -14,8 +14,6 @@ export function collectionVariables(
     '--collection-muted': token.colorTextSecondary,
     '--collection-primary': source.primary.color,
     '--collection-focus': mode === 'light' ? source.primary.light.text : source.primary.color,
-    '--collection-badge-text': mode === 'light' ? source.primary.light.text : source.primary.color,
-    '--collection-badge-bg': mode === 'light' ? source.primary.color : token.colorBgContainer,
     '--collection-selected': token.colorPrimaryBg,
     '--collection-border': token.colorBorderSecondary,
     '--collection-gap': source.cards.padding / 2 + 'px',

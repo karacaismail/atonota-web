@@ -33,6 +33,55 @@ function wrap(node: React.ReactNode, client: ModuleClient) {
 afterEach(cleanup);
 
 describe('explicit approval', () => {
+  it.each([
+    ['expired', 'Onay süresi doldu.'],
+    ['not_pending', 'Bu öneri artık onay beklemiyor.'],
+    ['digest_mismatch', 'Öneriyi doğrulayamadık. İncelemeyi kapatıp yeniden açın.'],
+    ['permission', 'Bu işlem için yetkiniz yok.'],
+    ['execution_failed', 'İşlem tamamlanamadı.'],
+    [null, 'Sunucu işlemi başlattı. İşlem tamamlanamadı.'],
+  ])('explains approval outcome %s', async (reason, message) => {
+    render(
+      wrap(<AiOperationsPage />, {
+        listProposals: vi.fn().mockResolvedValue({ proposals: [proposal], has_next_page: false }),
+        getProposal: vi.fn().mockResolvedValue(proposal),
+        approveProposal: vi.fn().mockResolvedValue({
+          executed: reason === null,
+          deny_reason: reason,
+          proposal:
+            reason === null ? { ...proposal, status: 'consumed', result: 'failed' } : proposal,
+        }),
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'İncele' }));
+    fireEvent.click(await screen.findByLabelText('Değişikliği okudum ve onaylıyorum.'));
+    fireEvent.click(screen.getByRole('button', { name: 'Onayla ve uygula' }));
+    expect(await screen.findByText(message)).toBeVisible();
+  });
+
+  it('explains why roles are missing from a shortened profile', async () => {
+    render(
+      wrap(<AccountPage />, {
+        getProfile: vi.fn().mockResolvedValue({
+          name: 'example-user',
+          fullName: 'Örnek Kişi',
+          roles: [],
+          truncated: true,
+        }),
+      }),
+    );
+    expect(await screen.findByText('Sunucu rol listesini kısalttı.')).toBeVisible();
+  });
+
+  it('shows a fallback when a leave list entry has no employee name', async () => {
+    render(
+      wrap(<LeavePage />, {
+        listLeaveApplications: vi.fn().mockResolvedValue([{ name: 'leave-1', status: 'Open' }]),
+      }),
+    );
+    expect(await screen.findByText('Bilgi verilmedi')).toBeVisible();
+  });
+
   it('does not offer a write for an invalid leave version', async () => {
     const leave = { name: 'leave-1', status: 'Open', docstatus: 0, modified: 'x'.repeat(41) };
     const approve = vi.fn();

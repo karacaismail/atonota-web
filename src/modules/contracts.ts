@@ -217,6 +217,7 @@ export function parseProfile(value: unknown) {
     name: text(source['name']),
     fullName: text(source['fullName']),
     roles: array(source['roles'], text),
+    truncated: source['truncated'] === true,
   };
 }
 export function displayValue(value: unknown): string {

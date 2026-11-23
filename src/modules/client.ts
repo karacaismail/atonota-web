@@ -5,8 +5,8 @@ import type { ModuleClient } from './runtime';
 export function createModuleClient(api: ApiClient): ModuleClient {
   return {
     getProfile: async (options) => {
-      const { user } = await api.getBootstrap(options);
-      return { name: user.name, fullName: user.full_name, roles: user.roles };
+      const { user, truncated } = await api.getBootstrap(options);
+      return { name: user.name, fullName: user.full_name, roles: user.roles, truncated };
     },
     listLeaveApplications: (query, options) =>
       api.listLeaveApplications(

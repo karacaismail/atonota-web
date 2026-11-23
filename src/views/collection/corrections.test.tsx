@@ -1,17 +1,30 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { CollectionView } from './CollectionView';
-import { exampleDefinition, exampleSource } from './example';
+import { mockServer } from '@/mocks/node';
+import { resetMockState } from '@/mocks/handlers';
+import { sampleDefinition as exampleDefinition } from './sample';
+import { LAZY_VIEW, sampleSource } from './test-support/api';
 import { displayCell } from './presentation';
 import { CollectionError } from './types';
 
+beforeAll(() => {
+  mockServer.listen({ onUnhandledFrame: 'error' });
+});
+afterEach(() => {
+  mockServer.resetHandlers();
+  resetMockState();
+});
+afterAll(() => {
+  mockServer.close();
+});
 describe('review corrections', () => {
   it('refetches a cached page after permission revocation instead of showing old data', async () => {
     let finish: ((value: unknown) => void) | undefined;
     const list = vi
       .fn()
-      .mockResolvedValueOnce({ data: [{ name: 'Old protected row' }], has_next_page: true })
+      .mockResolvedValueOnce({ data: [{ name: 'Old protected row' }], hasNextPage: true })
       .mockRejectedValueOnce(new CollectionError('unauthorized', 'Revoked'))
       .mockImplementationOnce(
         () =>
@@ -21,7 +34,7 @@ describe('review corrections', () => {
       );
     render(
       <MemoryRouter>
-        <CollectionView definition={exampleDefinition} source={{ kind: 'api', list }} />
+        <CollectionView definition={exampleDefinition} source={{ list }} />
       </MemoryRouter>,
     );
     await screen.findByText('Old protected row');
@@ -31,7 +44,7 @@ describe('review corrections', () => {
     expect(screen.queryByText('Old protected row')).not.toBeInTheDocument();
     await waitFor(() => expect(list).toHaveBeenCalledTimes(3));
     await act(async () => {
-      finish?.({ data: [{ name: 'New authorized row' }], has_next_page: false });
+      finish?.({ data: [{ name: 'New authorized row' }], hasNextPage: false });
     });
     await screen.findByText('New authorized row');
   });
@@ -56,7 +69,7 @@ describe('review corrections', () => {
     render(
       <MemoryRouter>
         <Link to="?page=2">İkinci sayfaya git</Link>
-        <CollectionView definition={exampleDefinition} source={{ kind: 'api', list }} />
+        <CollectionView definition={exampleDefinition} source={{ list }} />
       </MemoryRouter>,
     );
     await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
@@ -65,29 +78,29 @@ describe('review corrections', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Önceki sayfa' }));
     await waitFor(() => expect(list).toHaveBeenCalledTimes(3));
     await act(async () => {
-      late?.({ data: [{ name: 'Late protected row' }], has_next_page: false });
+      late?.({ data: [{ name: 'Late protected row' }], hasNextPage: false });
     });
     expect(screen.queryByText('Late protected row')).not.toBeInTheDocument();
     expect(screen.getByText('Kayıtlar yükleniyor.')).toBeInTheDocument();
     await act(async () => {
-      fresh?.({ data: [{ name: 'Fresh row' }], has_next_page: false });
+      fresh?.({ data: [{ name: 'Fresh row' }], hasNextPage: false });
     });
     await screen.findByText('Fresh row');
     expect(screen.queryByText('Late protected row')).not.toBeInTheDocument();
   });
 
   it('reuses a validated page when returning within the same collection scope', async () => {
-    const list = vi.fn(exampleSource.list);
+    const list = vi.fn(sampleSource().list);
     render(
       <MemoryRouter>
-        <CollectionView definition={exampleDefinition} source={{ kind: 'api', list }} />
+        <CollectionView definition={exampleDefinition} source={{ list }} />
       </MemoryRouter>,
     );
-    await screen.findByText('EXAMPLE-001');
+    await screen.findByText('ORNEK-0001');
     fireEvent.click(screen.getByRole('button', { name: 'Sonraki sayfa' }));
-    await screen.findByText('EXAMPLE-021');
+    await screen.findByText('ORNEK-0021');
     fireEvent.click(screen.getByRole('button', { name: 'Önceki sayfa' }));
-    await screen.findByText('EXAMPLE-001');
+    await screen.findByText('ORNEK-0001');
     expect(list).toHaveBeenCalledTimes(2);
   });
 
@@ -96,10 +109,10 @@ describe('review corrections', () => {
     async (view) => {
       render(
         <MemoryRouter initialEntries={['/?view=' + view]}>
-          <CollectionView definition={exampleDefinition} source={exampleSource} />
+          <CollectionView definition={exampleDefinition} source={sampleSource()} />
         </MemoryRouter>,
       );
-      await screen.findByText('EXAMPLE-001');
+      await screen.findByText('ORNEK-0001');
       expect(document.querySelector('[data-view="' + view + '"]')).not.toBeInTheDocument();
       expect(document.querySelector('[data-view="table"]')).toBeInTheDocument();
     },
@@ -109,7 +122,7 @@ describe('review corrections', () => {
       <MemoryRouter>
         <CollectionView
           definition={{ ...exampleDefinition, label: 'Örnek işler' }}
-          source={exampleSource}
+          source={sampleSource()}
         />
       </MemoryRouter>,
     );
@@ -119,10 +132,10 @@ describe('review corrections', () => {
     const list = vi
       .fn()
       .mockRejectedValueOnce(new Error('Unavailable'))
-      .mockResolvedValue({ data: [{ name: 'Recovered' }], has_next_page: false });
+      .mockResolvedValue({ data: [{ name: 'Recovered' }], hasNextPage: false });
     render(
       <MemoryRouter initialEntries={['/?page=2']}>
-        <CollectionView definition={exampleDefinition} source={{ kind: 'api', list }} />
+        <CollectionView definition={exampleDefinition} source={{ list }} />
       </MemoryRouter>,
     );
     await screen.findByText('Kayıtlar yüklenemedi.');
@@ -152,12 +165,12 @@ describe('review corrections', () => {
       <MemoryRouter>
         <CollectionView
           definition={exampleDefinition}
-          source={exampleSource}
+          source={sampleSource()}
           enableExperimentalCollectionViews
         />
       </MemoryRouter>,
     );
-    await screen.findByText('EXAMPLE-001');
+    await screen.findByText('ORNEK-0001');
     const combobox = screen.getByRole('combobox', { name: 'Görünüm' });
     fireEvent.mouseMove(combobox, { clientX: 104, clientY: 231 });
     fireEvent.mouseDown(combobox, { clientX: 104, clientY: 231 });
@@ -181,6 +194,10 @@ describe('review corrections', () => {
     expect(combobox).toHaveAttribute('aria-activedescendant', expect.stringMatching(/_1$/));
 
     fireEvent.keyDown(combobox, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13 });
-    await screen.findByText('Bu sayfadaki kayıtlar durumlarına göre gruplanır.');
+    await screen.findByText(
+      'Bu sayfadaki kayıtlar durumlarına göre gruplanır.',
+      undefined,
+      LAZY_VIEW,
+    );
   });
 });

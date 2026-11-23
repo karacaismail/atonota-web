@@ -29,7 +29,7 @@ export interface FormLayout {
 
 export interface BuildLayoutOptions extends ConditionContext {
   isPhoneViewport: boolean;
-  defaultTabLabel?: string | undefined;
+  defaultTabLabel: string;
 }
 
 export function isLayoutBreakFieldType(fieldtype: string): boolean {
@@ -40,7 +40,7 @@ export function buildFormLayout(
   fields: readonly DocField[],
   options: BuildLayoutOptions,
 ): FormLayout {
-  const defaultTabLabel = options.defaultTabLabel ?? 'Details';
+  const { defaultTabLabel } = options;
   let hasExplicitTabs = false;
 
   interface MutableTab {
@@ -156,6 +156,13 @@ export function buildFormLayout(
       continue;
     }
 
+    // Review 1 Finding 4: Evaluate field visibility before assigning it to a column so hidden fields
+    // never produce empty visible sections or inflate column counts.
+    const fieldState = evaluateFieldState(field, options);
+    if (!fieldState.visible) {
+      continue;
+    }
+
     const col = ensureColumn();
     col.fields.push(field);
   }
@@ -183,7 +190,8 @@ export function buildFormLayout(
         effectiveColumnCount: options.isPhoneViewport ? 1 : Math.max(1, nonEmptyColumns.length),
       });
     }
-    if (sections.length > 0 || hasExplicitTabs) {
+    // Review 1 Minor 3: Omit tabs that have zero visible sections.
+    if (sections.length > 0) {
       tabs.push({
         key: tab.key,
         label: tab.label,

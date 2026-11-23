@@ -142,7 +142,7 @@ export default function LeavePage() {
                     <li className="module-record" key={leave.name}>
                       <div>
                         <p>{leave.name}</p>
-                        <p>{leave.employee_name}</p>
+                        <p>{leave.employee_name ?? copy.notProvided}</p>
                         <p>{leave.status ? copy[leave.status] : copy.notProvided}</p>
                       </div>
                       <Button onClick={() => setSelected(leave.name)}>{copy.inspect}</Button>

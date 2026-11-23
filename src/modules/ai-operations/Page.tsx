@@ -49,14 +49,35 @@ function ProposalReview({
     </section>
   );
 }
+function approvalMessage({ executed, proposal, deny_reason }: ReturnType<typeof parseApproval>) {
+  if (proposal.result === 'unknown') return 'proposalUnknown';
+  if (executed && proposal.result === 'succeeded') return 'proposalSuccess';
+  if (executed && proposal.result === 'failed') return 'proposalRunFailed';
+
+  switch (deny_reason) {
+    case 'document_changed':
+      return 'documentChanged';
+    case 'expired':
+      return 'approvalExpired';
+    case 'not_pending':
+      return 'approvalNotPending';
+    case 'digest_mismatch':
+      return 'approvalChanged';
+    case 'permission':
+      return 'forbidden';
+    case 'execution_failed':
+      return 'approvalFailed';
+    default:
+      return 'proposalDenied';
+  }
+}
+
 function ProposalDecision({ proposal, changed }: { proposal: Proposal; changed: () => void }) {
   const env = useModule();
   const copy = useCopy();
   const action = useMutation();
   const [consent, setConsent] = useState(false);
-  const [outcome, setOutcome] = useState<
-    'proposalSuccess' | 'proposalDenied' | 'documentChanged' | 'proposalUnknown' | 'rejected'
-  >();
+  const [outcome, setOutcome] = useState<ReturnType<typeof approvalMessage> | 'rejected'>();
   const runnable = proposalCanRun(proposal);
   async function approve() {
     const method = env?.client?.approveProposal;
@@ -70,15 +91,7 @@ function ProposalDecision({ proposal, changed }: { proposal: Proposal; changed: 
       return response;
     });
     if (!result) return;
-    setOutcome(
-      result.deny_reason === 'document_changed'
-        ? 'documentChanged'
-        : result.proposal.result === 'unknown'
-          ? 'proposalUnknown'
-          : result.executed && result.proposal.result === 'succeeded'
-            ? 'proposalSuccess'
-            : 'proposalDenied',
-    );
+    setOutcome(approvalMessage(result));
     changed();
   }
   async function reject() {

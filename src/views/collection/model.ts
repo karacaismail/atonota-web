@@ -110,7 +110,7 @@ export function createDefinition(input: unknown, roles: ViewRoles = {}): Collect
 }
 export function parsePage(input: unknown): CollectionPage {
   const page = object(input);
-  if (!Array.isArray(page['data']) || typeof page['has_next_page'] !== 'boolean')
+  if (!Array.isArray(page['data']) || typeof page['hasNextPage'] !== 'boolean')
     throw new CollectionError('error', 'Liste yanıtı geçersiz.');
   const names = new Set<string>();
   const data = page['data'].map((value): CollectionRow => {
@@ -136,14 +136,7 @@ export function parsePage(input: unknown): CollectionPage {
     }
     return result;
   });
-  const result: CollectionPage = { data, has_next_page: page['has_next_page'] };
-  const total = page['total'];
-  if (total !== undefined) {
-    if (typeof total !== 'number' || !Number.isSafeInteger(total) || total < data.length)
-      throw new CollectionError('error', 'Kayıt sayısı geçersiz.');
-    result.total = total;
-  }
-  return result;
+  return { data, hasNextPage: page['hasNextPage'] };
 }
 export function cellText(row: CollectionRow, field: CollectionField): string {
   const value = row[field.fieldname];
