@@ -1,5 +1,4 @@
-import { XProvider } from '@ant-design/x';
-import { App as AntdApp, theme as antdThemeApi } from 'antd';
+import { App as AntdApp, ConfigProvider, theme as antdThemeApi } from 'antd';
 import trTR from 'antd/locale/tr_TR';
 import { useEffect, useMemo, type ReactNode } from 'react';
 
@@ -31,13 +30,13 @@ function ThemedProviders({ children }: { children: ReactNode }) {
   );
 
   return (
-    <XProvider theme={theme} locale={trTR}>
+    <ConfigProvider theme={theme} locale={trTR}>
       <AntdApp>
         <BodyTheme />
         {children}
         <FocusDimOverlay />
       </AntdApp>
-    </XProvider>
+    </ConfigProvider>
   );
 }
 
@@ -49,7 +48,7 @@ export interface AppProvidersProps {
 }
 
 /**
- * Uygulama kökü: tasarım CSS'i, tema modu, antd ConfigProvider (XProvider içinde),
+ * Uygulama kökü: tasarım CSS'i, tema modu, antd ConfigProvider,
  * odak modu motoru, dokunma alanı motoru ve odak perdesi.
  */
 export function AppProviders({ children, initialThemeChoice, engines = true }: AppProvidersProps) {

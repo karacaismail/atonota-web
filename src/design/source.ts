@@ -1,11 +1,9 @@
-/**
- * Tek karar kaynağı: `design/source/control-size-config.json`.
- * Bu dosya kaynağı olduğu gibi dışa açar. Değerler kodda ikinci kez yazılmaz.
- */
-import source from '@design-source/control-size-config.json';
+import type { runtimeDesignSource } from '../../vite/runtime-design-source';
 
-export type DesignSource = typeof source;
 export type SizeKey = 'sm' | 'md' | 'lg';
 export type ThemeMode = 'light' | 'dark';
+export type DesignSource = typeof runtimeDesignSource;
 
-export const designSource: DesignSource = source;
+declare const __RUNTIME_DESIGN_SOURCE__: DesignSource;
+
+export const designSource = __RUNTIME_DESIGN_SOURCE__;
