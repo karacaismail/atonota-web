@@ -65,7 +65,7 @@ function LeaveDecision({ leave, changed }: { leave: Leave; changed: () => void }
   }
   return (
     <div className="module-stack">
-      <h2>{leave.name}</h2>
+      <h2 className="module-identifier">{leave.name}</h2>
       <dl>
         <dt>{copy.employee}</dt>
         <dd>{leave.employee_name ?? copy.notProvided}</dd>
