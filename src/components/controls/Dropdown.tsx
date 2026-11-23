@@ -1,6 +1,6 @@
 import { CaretDown, Check } from '@phosphor-icons/react';
 import { ConfigProvider, Dropdown as AntDropdown, Space } from 'antd';
-import type { MenuProps } from 'antd';
+import type { DropdownProps as AntDropdownProps, MenuProps } from 'antd';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 
@@ -39,6 +39,43 @@ export interface SplitDropdownProps extends DropdownProps {
 }
 
 type MenuItems = NonNullable<MenuProps['items']>;
+
+type OverflowAdjust = Exclude<NonNullable<AntDropdownProps['autoAdjustOverflow']>, boolean>;
+// antd merges `shiftY` into the rc-trigger overflow options; its public type lists only the flips.
+const overflowAdjust = { adjustX: 1, adjustY: 1, shiftY: true } as OverflowAdjust;
+
+const tabbableSelector =
+  'a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]';
+
+/** A radio group is one Tab stop: the checked radio, or every radio when none is checked. */
+function isSkippedRadio(element: HTMLElement): boolean {
+  if (!(element instanceof HTMLInputElement) || element.type !== 'radio' || element.checked) {
+    return false;
+  }
+  const group = element.name
+    ? document.querySelectorAll<HTMLInputElement>(
+        `input[type="radio"][name="${CSS.escape(element.name)}"]`,
+      )
+    : [];
+  return Array.from(group).some((radio) => radio.checked);
+}
+
+/** The control before (-1) or after (1) `from` in the page's Tab order, outside the popup. */
+function tabNeighbour(from: HTMLElement, popup: HTMLElement, step: -1 | 1): HTMLElement | null {
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>(tabbableSelector)).filter(
+    (element) =>
+      element === from ||
+      (element.tabIndex >= 0 &&
+        !element.matches(':disabled') &&
+        !popup.contains(element) &&
+        !element.closest('[inert], [aria-hidden="true"]') &&
+        !(element instanceof HTMLInputElement && element.type === 'hidden') &&
+        !isSkippedRadio(element) &&
+        element.getClientRects().length > 0),
+  );
+  const index = candidates.indexOf(from);
+  return index < 0 ? null : (candidates[index + step] ?? null);
+}
 
 function ActionDropdown({
   label,
@@ -96,6 +133,14 @@ function ActionDropdown({
         event.stopPropagation();
         restoreFocus.current = true;
         close();
+      } else if (event.key === 'Tab' && popup && target instanceof Node && popup.contains(target)) {
+        // APG menu button: Tab closes the menu and moves on from the trigger.
+        const trigger = document.getElementById(triggerId);
+        const next = trigger && tabNeighbour(trigger, popup, event.shiftKey ? -1 : 1);
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+        (next ?? trigger)?.focus();
       }
     }
 
@@ -157,13 +202,18 @@ function ActionDropdown({
     <ConfigProvider
       theme={{
         components: {
-          Dropdown: { colorError: dangerColor.background, colorTextLightSolid: dangerColor.text },
+          Dropdown: {
+            colorError: dangerColor.background,
+            colorTextLightSolid: dangerColor.solidText,
+          },
         },
       }}
     >
       <AntDropdown
         open={open}
         align={{ offset: [0, 0] }}
+        // Flip first; if neither side fits (landscape phone), shift the panel into the viewport.
+        autoAdjustOverflow={overflowAdjust}
         placement={onAction ? 'bottomRight' : 'bottomLeft'}
         overlayClassName={`atonota-dropdown-popup atonota-control-popup atonota-dropdown-${style}`}
         transitionName="atonota-popup-motion"

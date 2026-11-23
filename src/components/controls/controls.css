@@ -313,3 +313,49 @@ a.atonota-link[data-size='large'] {
   left: calc(-1 * (var(--hit-l) + var(--ant-line-width)));
   z-index: -1;
 }
+
+/* Radio is the card style (source choice.C3, radio.style = card): a bordered 32 px row. */
+.atonota-radio.ant-radio-wrapper {
+  padding-inline: var(--space-sm);
+  margin-inline-end: var(--space-xs);
+  border: var(--ant-line-width) var(--ant-line-type) var(--ant-color-border);
+  border-radius: var(--radius);
+}
+
+.atonota-radio.ant-radio-wrapper-checked {
+  border-color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+}
+
+/* Switch is squared (source choice.switch.squared): track and handle use control radii. */
+:root .atonota-switch-squared .ant-switch {
+  border-radius: var(--radius);
+}
+
+:root .atonota-switch-squared .ant-switch .ant-switch-handle::before {
+  border-radius: var(--ant-border-radius-xs);
+}
+
+/* The unchecked track is a neutral tint: the state text uses the theme text color (4.5:1). */
+:root .atonota-switch .ant-switch:not(.ant-switch-checked) .ant-switch-inner-unchecked {
+  color: var(--ant-color-text);
+}
+
+/* antd writes these transitions without a curve (browser default). Use the shared tokens. */
+:root .atonota-switch .ant-switch,
+:root .atonota-switch .ant-switch-handle,
+:root .atonota-switch .ant-switch-handle::before,
+:root .atonota-switch .ant-switch-inner,
+:root .atonota-switch .ant-switch-inner > span,
+:root .atonota-radio .ant-radio-inner,
+:root .atonota-radio .ant-radio-inner::after,
+:root .atonota-radio.ant-radio-wrapper,
+:root .atonota-radio-button.ant-radio-button-wrapper,
+:root .atonota-radio-button.ant-radio-button-wrapper::before,
+:root .atonota-checkbox .ant-checkbox-inner,
+:root .atonota-tabs.ant-segmented,
+:root .atonota-tabs .ant-segmented-item,
+:root .atonota-tabs .ant-segmented-item::after {
+  transition-duration: var(--motion-duration-mid);
+  transition-timing-function: var(--motion-easing-standard);
+}

@@ -1,10 +1,8 @@
-import '@fontsource-variable/outfit';
-import '@fontsource/jetbrains-mono/400.css';
-
+/**
+ * Kontrol deneme sayfası. Yalnız e2e derlemesinde `/_demo/controls` yolunda açılır.
+ * Rota satırı `src/shell/routes.ts` içindedir.
+ */
 import { useState } from 'react';
-import { createRoot } from 'react-dom/client';
-
-import { AppProviders } from '@/app';
 
 import {
   Button,
@@ -39,11 +37,11 @@ const items: DropdownItem[] = [
   { key: 'delete', label: 'Sil', danger: true },
 ];
 
-export function ControlsDemo() {
+export default function ControlsDemoPage() {
   const [action, setAction] = useState('');
 
   return (
-    <main className="controls-demo">
+    <div className="controls-demo">
       <section className="controls-demo-row">
         {styles.map((style) => (
           <Dropdown
@@ -89,7 +87,12 @@ export function ControlsDemo() {
         </section>
       ))}
       <section className="controls-demo-row">
-        <Radio.Button data-testid="radio">Birinci</Radio.Button>
+        <Radio.Group aria-label="Görünüm" defaultValue="first" data-testid="radio-buttons">
+          <Radio.Button value="first" data-testid="radio">
+            Birinci
+          </Radio.Button>
+          <Radio.Button value="second">İkinci</Radio.Button>
+        </Radio.Group>
         <Switch aria-label="Etkin" data-testid="switch" />
         <Tabs options={['Gün', 'Ay']} data-testid="tabs" />
         <Tag data-testid="tag">Açık</Tag>
@@ -97,15 +100,20 @@ export function ControlsDemo() {
           Örnek kart
         </Card>
       </section>
-    </main>
-  );
-}
-
-const root = document.getElementById('root');
-if (root) {
-  createRoot(root).render(
-    <AppProviders>
-      <ControlsDemo />
-    </AppProviders>,
+      <section className="controls-demo-row">
+        <Radio.Group aria-label="Sıklık" defaultValue="week" data-testid="radio-cards">
+          <Radio value="week">Haftalık</Radio>
+          <Radio value="month">Aylık</Radio>
+        </Radio.Group>
+        <Checkbox.Group<string>
+          aria-label="Bildirimler"
+          defaultValue={['mail']}
+          options={[
+            { value: 'mail', label: 'E-posta' },
+            { value: 'sms', label: 'Kısa mesaj' },
+          ]}
+        />
+      </section>
+    </div>
   );
 }

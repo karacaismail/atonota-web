@@ -8,18 +8,19 @@ import {
 } from 'antd';
 import type {
   CheckboxProps,
+  CheckboxRef,
+  GetRef,
+  RadioGroupProps,
   RadioProps,
   SegmentedProps,
   SwitchProps,
   TagProps,
   ThemeConfig,
 } from 'antd';
-import type { CheckboxRef } from 'antd/es/checkbox';
-import type { RadioRef } from 'antd/es/radio';
 import { forwardRef } from 'react';
 import type { CSSProperties, ForwardedRef, ReactElement, ReactNode, RefAttributes } from 'react';
 
-import { designSource } from '@/design';
+import { designSource, primary } from '@/design';
 
 import './controls.css';
 
@@ -66,8 +67,18 @@ function classes(...names: (string | undefined | false)[]) {
   return names.filter(Boolean).join(' ');
 }
 
+/**
+ * antd's click wave runs a fixed 0.4 s box-shadow and 2 s fade outside the shared motion tokens.
+ * The source has no wave, so choice controls turn it off.
+ */
+const noWave = { disabled: true };
+
 function Themed({ name, children }: { name: ChoiceKey; children: ReactNode }) {
-  return <ConfigProvider theme={themes[name]}>{children}</ConfigProvider>;
+  return (
+    <ConfigProvider theme={themes[name]} wave={noWave}>
+      {children}
+    </ConfigProvider>
+  );
 }
 
 const CheckboxControl = forwardRef<CheckboxRef, CheckboxProps>(function Checkbox(
@@ -86,16 +97,27 @@ const CheckboxControl = forwardRef<CheckboxRef, CheckboxProps>(function Checkbox
   );
 });
 
-function CheckboxGroup(props: Parameters<typeof AntCheckbox.Group>[0]) {
+/** antd's own group props, generic over the option value type. */
+type CheckboxGroupProps<Value> = Parameters<typeof AntCheckbox.Group<Value>>[0];
+
+const CheckboxGroup = forwardRef(function CheckboxGroup<Value>(
+  props: CheckboxGroupProps<Value>,
+  ref: ForwardedRef<HTMLDivElement>,
+) {
   return (
     <Themed name="checkbox">
-      <AntCheckbox.Group {...props} />
+      <AntCheckbox.Group<Value> {...props} ref={ref} />
     </Themed>
   );
-}
+}) as <Value = unknown>(
+  props: CheckboxGroupProps<Value> & RefAttributes<HTMLDivElement>,
+) => ReactElement;
 
 export const Checkbox = Object.assign(CheckboxControl, { Group: CheckboxGroup });
 
+type RadioRef = GetRef<typeof AntRadio>;
+
+/** Radio is the card style (C3): a 32 px bordered row, see `.atonota-radio` in controls.css. */
 const RadioControl = forwardRef<RadioRef, RadioProps>(function Radio(
   { className, style, ...props },
   ref,
@@ -112,33 +134,63 @@ const RadioControl = forwardRef<RadioRef, RadioProps>(function Radio(
   );
 });
 
-const RadioButton = forwardRef<RadioRef, RadioProps>(function RadioButton(props, ref) {
+const RadioButton = forwardRef<RadioRef, RadioProps>(function RadioButton(
+  { className, ...props },
+  ref,
+) {
   return (
     <Themed name="radio">
-      <AntRadio.Button {...props} ref={ref} />
+      <AntRadio.Button
+        {...props}
+        ref={ref}
+        className={classes('atonota-radio-button', className)}
+      />
     </Themed>
   );
 });
 
-function RadioGroup(props: Parameters<typeof AntRadio.Group>[0]) {
+const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(function RadioGroup(props, ref) {
   return (
     <Themed name="radio">
-      <AntRadio.Group {...props} />
+      <AntRadio.Group {...props} ref={ref} />
     </Themed>
   );
-}
+});
 
 export const Radio = Object.assign(RadioControl, { Button: RadioButton, Group: RadioGroup });
 
 type SwitchRef = HTMLButtonElement;
 
-/** The 24 px track sits in the locked 28 px row (`choice.switch.height` / `trackHeight`). */
+/** Source `choice.switch.showText`: the track shows its state. Callers may pass their own text. */
+const switchText = choice.switch.showText
+  ? { checkedChildren: 'Açık', unCheckedChildren: 'Kapalı' }
+  : {};
+
+/**
+ * The checked track is the solid primary color in both themes, so its text uses the light
+ * primary text (black 85 %, source `primary.light`). The unchecked text is set in controls.css.
+ */
+const switchTheme: ThemeConfig = {
+  // Squared handle radius: the source example draws 3 px, equal to the source track padding.
+  token: { borderRadiusXS: choice.switch.padding },
+  components: { Switch: { colorTextLightSolid: primary.light.text } },
+};
+
+/**
+ * The 24 px track sits in the locked 28 px row (`choice.switch.height` / `trackHeight`).
+ * `choice.switch.squared`: the track uses the control radius (`.atonota-switch-squared`).
+ */
 export const Switch = forwardRef<SwitchRef, SwitchProps>(function Switch(props, ref) {
   return (
     <Themed name="switch">
-      <span className="atonota-switch" style={rowStyle(choice.switch.height)}>
-        <AntSwitch {...props} ref={ref} />
-      </span>
+      <ConfigProvider theme={switchTheme}>
+        <span
+          className={classes('atonota-switch', choice.switch.squared && 'atonota-switch-squared')}
+          style={rowStyle(choice.switch.height)}
+        >
+          <AntSwitch {...switchText} {...props} ref={ref} />
+        </span>
+      </ConfigProvider>
     </Themed>
   );
 });
