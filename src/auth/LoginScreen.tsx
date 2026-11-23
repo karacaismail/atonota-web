@@ -1,5 +1,6 @@
 import { Button, Typography } from 'antd';
 
+import type { SignedOutNotice } from './auth';
 import { AuthLayout } from './AuthLayout';
 import messages from './messages.json';
 
@@ -8,6 +9,8 @@ export interface LoginScreenProps {
   onSignIn: () => void;
   /** Düğmedeki marka adı. Verilmezse “Atonota” olur. */
   brandName?: string;
+  /** Verilirse açıklamanın altında kısa bir not görünür. Örnek: `idp_session_may_remain`. */
+  notice?: SignedOutNotice;
 }
 
 /**
@@ -15,7 +18,7 @@ export interface LoginScreenProps {
  * Yerleşim telefon önce kurulur: 320 px genişlikte kenar boşluğu vardır ve düğme tam genişliktedir.
  * Ölçüler AuthLayout içinde projenin CSS değişkenlerinden gelir.
  */
-export function LoginScreen({ onSignIn, brandName = messages.tr.brand }: LoginScreenProps) {
+export function LoginScreen({ onSignIn, brandName = messages.tr.brand, notice }: LoginScreenProps) {
   const text = messages.tr;
   return (
     <AuthLayout labelledBy="login-title">
@@ -23,6 +26,11 @@ export function LoginScreen({ onSignIn, brandName = messages.tr.brand }: LoginSc
         {text.login_title}
       </Typography.Title>
       <Typography.Paragraph style={{ margin: 0 }}>{text.login_body}</Typography.Paragraph>
+      {notice ? (
+        <Typography.Paragraph role="status" type="secondary" style={{ margin: 0 }}>
+          {text[notice]}
+        </Typography.Paragraph>
+      ) : null}
       <Button type="primary" block onClick={onSignIn} style={{ width: '100%' }}>
         {text.login_button.replace('{brand}', brandName)}
       </Button>

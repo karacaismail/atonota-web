@@ -35,7 +35,11 @@ export function AuthGate({ session, children, brandName }: AuthGateProps) {
       return <>{typeof children === 'function' ? children(state.user) : children}</>;
     case 'signed_out':
       return (
-        <LoginScreen onSignIn={() => session.auth.signIn()} {...(brandName ? { brandName } : {})} />
+        <LoginScreen
+          onSignIn={() => session.auth.signIn()}
+          {...(brandName ? { brandName } : {})}
+          {...(state.notice ? { notice: state.notice } : {})}
+        />
       );
     case 'error':
       return (

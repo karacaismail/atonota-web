@@ -6,7 +6,8 @@
     "login_body": "Sign in to open the panel.",
     "login_button": "Sign in with {brand}",
     "retry": "Try again",
-    "brand": "Atonota"
+    "brand": "Atonota",
+    "idp_session_may_remain": "You signed out of the panel. Your identity session may still be open."
   },
   "tr": {
     "checking": "Oturum denetleniyor.",
@@ -15,6 +16,7 @@
     "login_body": "Paneli açmak için oturum açın.",
     "login_button": "{brand} ile oturum aç",
     "retry": "Yeniden dene",
-    "brand": "Atonota"
+    "brand": "Atonota",
+    "idp_session_may_remain": "Panelden çıktınız. Kimlik oturumunuz açık kalmış olabilir."
   }
 }

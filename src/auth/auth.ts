@@ -9,16 +9,22 @@ import type { ApiConfig } from '@/api/config';
 import type { CsrfStore } from '@/api/csrf';
 import { ApiError } from '@/api/errors';
 
+/**
+ * Giriş ekranındaki kısa not.
+ * `idp_session_may_remain`: panel oturumu kapandı, Keycloak oturumu açık kalmış olabilir.
+ */
+export type SignedOutNotice = 'idp_session_may_remain';
+
 export type AuthState =
   | { status: 'checking' }
   | { status: 'signed_in'; user: string }
-  | { status: 'signed_out' }
+  | { status: 'signed_out'; notice?: SignedOutNotice }
   | { status: 'redirecting' }
   | { status: 'error'; error: ApiError };
 
 export interface AuthDeps {
   api: Pick<ApiClient, 'getLoggedUser' | 'logout'>;
-  config: Pick<ApiConfig, 'siteUrl'>;
+  config: Pick<ApiConfig, 'siteUrl' | 'keycloakUrl'>;
   csrf: CsrfStore;
   /** Tarayıcıyı verilen adrese götürür. Örnek: `(url) => window.location.assign(url)`. */
   navigate: (url: string) => void;
@@ -48,18 +54,22 @@ const LOGOUT_PATH_SUFFIX = '/protocol/openid-connect/logout';
 
 /**
  * Keycloak çıkış adresini denetler (GV-3).
- * Adres tam bir `http` ya da `https` adresi olmalıdır. Yolu `/protocol/openid-connect/logout` ile biter.
- * Adreste kullanıcı adı ya da parola bulunmaz.
+ * Adresin kökeni `keycloakUrl` kökeniyle aynı olmalıdır. Böylece başka bir alan adına gidilmez.
+ * `http` adresi yalnız Keycloak kökü de `http` ise geçer. Köken aynı olunca bu kendiliğinden sağlanır.
+ * Yol `/protocol/openid-connect/logout` ile biter. Adreste kullanıcı adı ya da parola bulunmaz.
  */
-export function isSafeLogoutUrl(value: string): boolean {
+export function isSafeLogoutUrl(value: string, keycloakUrl: string): boolean {
   let url: URL;
+  let base: URL;
   try {
     url = new URL(value);
+    base = new URL(keycloakUrl);
   } catch {
     return false;
   }
   return (
     (url.protocol === 'https:' || url.protocol === 'http:') &&
+    url.origin === base.origin &&
     url.username === '' &&
     url.password === '' &&
     url.pathname.endsWith(LOGOUT_PATH_SUFFIX)
@@ -70,6 +80,7 @@ function sameState(a: AuthState, b: AuthState): boolean {
   if (a.status !== b.status) return false;
   if (a.status === 'signed_in' && b.status === 'signed_in') return a.user === b.user;
   if (a.status === 'error' && b.status === 'error') return a.error === b.error;
+  if (a.status === 'signed_out' && b.status === 'signed_out') return a.notice === b.notice;
   return true;
 }
 
@@ -126,6 +137,7 @@ export function createAuth({ api, config, csrf, navigate, currentPath }: AuthDep
      * Frappe oturumunu kapatır. Sonra Keycloak çıkış sayfasına gider.
      * İstek başarısız olursa oturum açık kalır ve işlev `ApiError` ile reddedilir.
      * Sunucunun verdiği adres denetimden geçmezse panelin giriş ekranı açılır.
+     * Ekran o zaman Keycloak oturumunun açık kalmış olabileceğini söyler (K-3).
      */
     async signOut(): Promise<void> {
       let target: { logout_url: string };
@@ -136,8 +148,8 @@ export function createAuth({ api, config, csrf, navigate, currentPath }: AuthDep
       }
       // Frappe oturumu kapandı. Bellekteki CSRF belirteci de silinir.
       csrf.clear();
-      if (!isSafeLogoutUrl(target.logout_url)) {
-        setState({ status: 'signed_out' });
+      if (!isSafeLogoutUrl(target.logout_url, config.keycloakUrl)) {
+        setState({ status: 'signed_out', notice: 'idp_session_may_remain' });
         return;
       }
       setState({ status: 'redirecting' });

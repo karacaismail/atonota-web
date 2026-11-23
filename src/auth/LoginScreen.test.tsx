@@ -21,4 +21,16 @@ describe('LoginScreen', () => {
     expect(heading.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(button).toHaveStyle({ width: '100%' });
   });
+
+  it('not verilmezse not satırı çizilmez', () => {
+    render(<LoginScreen onSignIn={vi.fn()} />);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('kimlik oturumu açık kalmış olabilirse kısa bir not gösterir (K-3)', () => {
+    render(<LoginScreen onSignIn={vi.fn()} notice="idp_session_may_remain" />);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Panelden çıktınız. Kimlik oturumunuz açık kalmış olabilir.',
+    );
+  });
 });
