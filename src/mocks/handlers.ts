@@ -611,8 +611,10 @@ export const handlers = [
   // Sahte sunucu adresi kaydeder ve tarayıcıyı dönüş yoluna geri gönderir. Bağ kurulmaz.
   http.get('*/api/method/platform_core.api.auth.start_link', ({ request }) => {
     const url = new URL(request.url);
-    const redirectTo = url.searchParams.get('redirect_to') ?? '/account';
-    if (!REDIRECT_PATTERN.test(redirectTo)) return frappeError(400, 'InvalidRedirect');
+    const redirectTo = url.searchParams.get('redirect_to');
+    if (redirectTo === null || !REDIRECT_PATTERN.test(redirectTo)) {
+      return frappeError(400, 'InvalidRedirect');
+    }
     try {
       globalThis.sessionStorage?.setItem(MOCK_START_LINK_KEY, request.url);
     } catch {

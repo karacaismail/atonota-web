@@ -15,6 +15,9 @@ import linkedMessages from './messages.json';
 import type { LinkedAccountsClient } from '../runtime';
 import { ResourceView, Section } from '../shared';
 
+/** Bağlamadan sonra dönülecek yol: hesap sayfası. Değer yalnız bu sayfanın parçasındadır. */
+const ACCOUNT_PATH = '/account';
+
 /**
  * Bölümün metinleri. Katalog yalnız hesap sayfasının parçasına girer (ilk yük bütçesi).
  * Ortak hata metinleri modül kataloğundan gelir.
@@ -69,7 +72,7 @@ function ProviderRow({
   const linkRef = useRef<HTMLAnchorElement>(null);
   const wasConfirming = useRef(false);
   const name = provider.display_name;
-  const href = env ? startLinkUrl(env.tenant, provider.alias) : undefined;
+  const href = env ? startLinkUrl(env.tenant, provider.alias, ACCOUNT_PATH) : undefined;
 
   useEffect(() => {
     // Onay açılınca odak "Vazgeç" düğmesine gider.

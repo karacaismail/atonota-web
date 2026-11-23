@@ -68,21 +68,27 @@ export const isLinkedAccounts: Guard<LinkedAccounts> = (value): value is LinkedA
 
 const METHOD = '/api/method/platform_core.api.auth.';
 
-/** Bağlamadan sonra dönülecek yol: hesap sayfası. Sabit yoldur; dışarıdan değer alınmaz (GV-3). */
-export const LINK_RETURN_PATH = '/account';
+/** Bağlamadan sonra dönülecek yol kuralı: küçük harfli, aynı kökte basit bir yol (GV-3). */
+const RETURN_PATH_PATTERN = /^\/[a-z0-9-]+(?:\/[a-z0-9-]+)*$/;
 
 /**
  * Hesap bağlama adresini kurar (G-160). Tarayıcı bu adrese sayfa geçişiyle gider.
  * Sunucu oturumu denetler ve Keycloak'ın bağlama akışını başlatır. Tarayıcı belirteç tutmaz.
- * Platform adı kurala uymazsa adres kurulmaz ve `undefined` döner.
+ * Dönüş yolunu çağıran sayfa verir. Örnek: `/account`.
+ * Platform adı ya da dönüş yolu kurala uymazsa adres kurulmaz ve `undefined` döner.
  */
-export function startLinkUrl(siteUrl: string, provider: string): string | undefined {
-  if (!isProviderAlias(provider)) return undefined;
+export function startLinkUrl(
+  siteUrl: string,
+  provider: string,
+  returnPath: string,
+): string | undefined {
+  if (!isProviderAlias(provider) || !RETURN_PATH_PATTERN.test(returnPath)) return undefined;
   const url = new URL(`${siteUrl}${METHOD}start_link`);
   url.searchParams.set('provider', provider);
-  url.searchParams.set('redirect_to', LINK_RETURN_PATH);
+  url.searchParams.set('redirect_to', returnPath);
   return url.toString();
 }
+
 export function createLoginClient(api: Pick<ApiClient, 'frappeDocument'>) {
   async function call<T>(
     method: 'GET' | 'POST',

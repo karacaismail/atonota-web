@@ -74,13 +74,19 @@ describe('startLoginUrl', () => {
 
 describe('startLinkUrl', () => {
   it('bağlama adresini platform adı ve hesap sayfası dönüşüyle kurar', () => {
-    expect(startLinkUrl(SITE, 'facebook')).toBe(
+    expect(startLinkUrl(SITE, 'facebook', '/account')).toBe(
       `${SITE}/api/method/platform_core.api.auth.start_link?provider=facebook&redirect_to=%2Faccount`,
     );
   });
 
   it('platform adı kurala uymuyorsa adres kurulmaz', () => {
-    expect(startLinkUrl(SITE, 'Face Book')).toBeUndefined();
+    expect(startLinkUrl(SITE, 'Face Book', '/account')).toBeUndefined();
+  });
+
+  it('dönüş yolu kurala uymuyorsa adres kurulmaz', () => {
+    for (const bad of ['//kotu.example.test', 'account', '/Account', '/a?b=1', '/../x']) {
+      expect(startLinkUrl(SITE, 'facebook', bad)).toBeUndefined();
+    }
   });
 });
 
