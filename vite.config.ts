@@ -53,7 +53,6 @@ export default defineConfig(({ mode }) => ({
             { name: 'antd-x', test: /node_modules\/@ant-design\/x\// },
             { name: 'antd', test: /node_modules\/(antd|@ant-design|rc-[^/]+|@rc-component)\// },
             { name: 'icons', test: /node_modules\/@phosphor-icons\// },
-            { name: 'auth', test: /node_modules\/oidc-client-ts\// },
           ],
         },
       },
