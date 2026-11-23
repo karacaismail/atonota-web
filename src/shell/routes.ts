@@ -15,7 +15,7 @@
  * Kurallar:
  * - Yükleyici, varsayılan dışa aktarımı bileşen olan bir modül döndürür.
  * - Sayfa modülü bu dosyayı içe aktarmaz. Adresler `paths.ts` dosyasından gelir.
- * - Parametresiz yollar (":" içermeyen) sidebar menüsünde görünür.
+ * - Parametresiz yollar (":" içermeyen) sidebar menüsünde görünür. `/_demo/` yolları görünmez.
  * - Yollar tekildir. `routes.test.ts` biçimi ve tekilliği denetler.
  * - Bu dosyanın sahibi `shell` işidir. Öteki işler yalnız kendi satırını ekler.
  */
@@ -112,7 +112,8 @@ export const lazyRoutes: RouteEntry[] = [
   { path: '/ajanlar/:id', label: 'AI ajanı', icon: Robot, load: () => import('./pages/AgentPage') },
   ...moduleRoutes,
   ...(shellFeatures.aiStudio ? [aiStudioRoute] : []),
-  // Kabuğun deneme sayfası. Yalnız e2e derlemesinde vardır; menüde görünmez (`nav.ts`).
+  // Deneme sayfaları yalnız e2e derlemesinde vardır. Koşul derleme zamanında sabittir.
+  // Menüde görünmezler (`menuEntries`, `nav.ts`).
   ...(isDemoEnabled(import.meta.env.MODE)
     ? [
         {
@@ -120,6 +121,12 @@ export const lazyRoutes: RouteEntry[] = [
           label: 'Kabuk denemesi',
           icon: Flask,
           load: () => import('./pages/DemoPage'),
+        },
+        {
+          path: '/_demo/controls',
+          label: 'Kontrol denemesi',
+          icon: SquaresFour,
+          load: () => import('@/components/controls/demo/ControlsDemoPage'),
         },
       ]
     : []),
@@ -168,7 +175,7 @@ export function toRouteObjects(entries: RouteEntry[]): RouteObject[] {
   return entries.map((e) => ({ path: e.path, Component: lazy(e.load) }));
 }
 
-/** Menüde görünen kayıtlar: parametresiz yollar. */
+/** Menüde görünen kayıtlar: parametresiz yollar. Deneme sayfaları (`/_demo/`) menüde görünmez. */
 export function menuEntries(entries: RouteEntry[]): RouteEntry[] {
-  return entries.filter((e) => !e.path.includes(':'));
+  return entries.filter((e) => !e.path.includes(':') && !e.path.startsWith('/_demo/'));
 }

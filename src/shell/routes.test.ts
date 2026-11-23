@@ -46,6 +46,12 @@ describe('routeRegistry', () => {
     expect(menu.map((m) => m.label)).toContain('Ana sayfa');
   });
 
+  it('menü deneme sayfalarını göstermez', () => {
+    const demo = { ...routeRegistry[0]!, path: '/_demo/controls', label: 'Kontrol denemesi' };
+    const menu = menuEntries([...routeRegistry, demo]);
+    expect(menu.map((m) => m.path)).not.toContain('/_demo/controls');
+  });
+
   it('liste rotası kabuğun kendi sayfasını değil CollectionRoute bağlantısını yükler', async () => {
     const list = routeRegistry.find((r) => r.path === '/:module/:doctype');
     expect(list).toBeDefined();

@@ -1,0 +1,373 @@
+.atonota-button.ant-btn-sm {
+  font-weight: var(--font-weight-sm);
+}
+
+.atonota-button.ant-btn-lg {
+  font-weight: var(--font-weight-lg);
+}
+
+.atonota-button:active,
+.atonota-button[aria-expanded='true'],
+.atonota-split-dropdown[data-open] .atonota-button,
+.atonota-button.ant-btn-compact-item,
+.ant-input-affix-wrapper .atonota-button {
+  box-shadow: none;
+}
+
+.atonota-dropdown-trigger[aria-expanded='true'],
+.atonota-split-dropdown[data-open] > .atonota-button {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.atonota-control-popup {
+  max-inline-size: calc(100vw - 2 * var(--radius));
+  overflow: hidden;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-dropdown);
+  transform-origin: top left;
+}
+
+.atonota-control-popup:is(
+  .ant-dropdown-placement-bottomRight,
+  .ant-select-dropdown-placement-bottomRight
+) {
+  transform-origin: top right;
+}
+
+.atonota-control-popup:is(.ant-dropdown-placement-topLeft, .ant-select-dropdown-placement-topLeft) {
+  transform-origin: bottom left;
+}
+
+.atonota-control-popup:is(
+  .ant-dropdown-placement-topRight,
+  .ant-select-dropdown-placement-topRight
+) {
+  transform-origin: bottom right;
+}
+
+.atonota-dropdown-popup.ant-dropdown-placement-bottomLeft {
+  border-start-start-radius: 0;
+}
+
+.atonota-dropdown-popup.ant-dropdown-placement-bottomRight {
+  border-start-end-radius: 0;
+}
+
+.atonota-dropdown-popup.ant-dropdown-placement-topLeft {
+  border-end-start-radius: 0;
+}
+
+.atonota-dropdown-popup.ant-dropdown-placement-topRight {
+  border-end-end-radius: 0;
+}
+
+.atonota-popup-motion-appear-active,
+.atonota-popup-motion-enter-active {
+  animation: atonota-dropdown-in var(--motion-duration-dropdown) var(--motion-easing-dropdown) both;
+}
+
+.atonota-popup-motion-leave-active {
+  pointer-events: none;
+  animation: atonota-dropdown-out var(--motion-duration-dropdown) var(--motion-easing-dropdown) both;
+}
+
+@keyframes atonota-dropdown-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atonota-control-popup {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.atonota-dropdown-popup .ant-dropdown-menu,
+.atonota-select-popup.ant-select-dropdown {
+  padding: 0;
+}
+
+.atonota-dropdown-popup {
+  max-block-size: calc(100dvh - 2 * var(--radius));
+  overflow: auto;
+}
+
+.atonota-dropdown-popup .ant-dropdown-menu {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.atonota-dropdown-popup .ant-dropdown-menu-item,
+.atonota-select-popup .ant-select-item-option {
+  border-radius: 0;
+}
+
+.atonota-dropdown-popup .ant-dropdown-menu-item {
+  min-block-size: var(--btn-h-md);
+  white-space: normal;
+}
+
+.atonota-dropdown-shortcut .ant-dropdown-menu-item,
+.atonota-dropdown-searchable .ant-dropdown-menu-item {
+  min-block-size: var(--btn-h-sm);
+}
+
+.atonota-dropdown-described .ant-dropdown-menu-item {
+  min-block-size: var(--btn-h-lg);
+}
+
+.atonota-dropdown-popup .ant-dropdown-menu-item .ant-space {
+  flex-wrap: wrap;
+  column-gap: var(--radius) !important;
+}
+
+.atonota-dropdown-popup
+  .ant-dropdown-menu-item-danger:not(.ant-dropdown-menu-item-disabled):is(:hover, :focus-visible) {
+  color: var(--danger-text);
+  /* Foundation decision 13: colorError is darkened until white text reaches 4.5:1. */
+  background: var(--ant-color-error);
+}
+
+.atonota-dropdown-popup .ant-dropdown-menu-item-danger :is(kbd, small) {
+  color: inherit;
+}
+
+html[data-focus-mode='keyboard'] .atonota-input.ant-input-affix-wrapper:has(input:focus-visible),
+html[data-focus-mode='keyboard']
+  .atonota-select.ant-select:has(input:focus-visible)
+  .ant-select-selector {
+  box-shadow:
+    var(--shadow-input),
+    inset 0 calc(-1 * var(--focus-indicator-size)) 0 0 var(--focus-indicator-color) !important;
+}
+
+.atonota-input.ant-input-affix-wrapper,
+.atonota-number.ant-input-number,
+.atonota-select.ant-select .ant-select-selector {
+  /* Replace the Ant variant shadow, including its focus and validation states. */
+  box-shadow: var(--shadow-input) !important;
+}
+
+.atonota-input.ant-input-affix-wrapper,
+.atonota-number.ant-input-number,
+.atonota-select.ant-select {
+  max-inline-size: 100%;
+}
+
+/* The popup side follows the positioning engine's collision checks. */
+.atonota-select.ant-select-open:not([data-popup-above]) .ant-select-selector {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.atonota-select.ant-select-open[data-popup-above] .ant-select-selector {
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+}
+
+.atonota-select-popup:is(
+  .ant-select-dropdown-placement-bottomLeft,
+  .ant-select-dropdown-placement-bottomRight
+) {
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+}
+
+.atonota-select-popup:is(
+  .ant-select-dropdown-placement-topLeft,
+  .ant-select-dropdown-placement-topRight
+) {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.atonota-card.ant-card {
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-card);
+}
+
+.atonota-button.ant-btn:focus-visible,
+.atonota-dropdown-popup .ant-dropdown-menu-item:focus-visible {
+  outline: none;
+}
+
+html[data-focus-mode='keyboard'] .atonota-button.ant-btn:focus-visible::before,
+html[data-focus-mode='keyboard']
+  .atonota-dropdown-popup
+  .ant-dropdown-menu-item:focus-visible::before,
+html[data-focus-mode='keyboard'] .atonota-number.ant-input-number:has(input:focus-visible)::before {
+  content: '';
+  position: absolute;
+  inset-inline: var(--radius);
+  inset-block-end: 0;
+  block-size: var(--focus-indicator-size);
+  background: var(--focus-indicator-color);
+  pointer-events: none;
+}
+
+html[data-focus-mode='keyboard'] .atonota-button.ant-btn:focus-visible {
+  box-shadow: var(--shadow-button);
+}
+
+html[data-focus-mode='keyboard']
+  .atonota-split-dropdown[data-open]
+  .atonota-button.ant-btn:focus-visible,
+html[data-focus-mode='keyboard'] .atonota-button.ant-btn[aria-expanded='true']:focus-visible,
+html[data-focus-mode='keyboard'] .atonota-button.ant-btn-compact-item:focus-visible {
+  box-shadow: none;
+}
+
+html[data-focus-mode='keyboard'] .atonota-dropdown-popup .ant-dropdown-menu-item:focus-visible,
+html[data-focus-mode='keyboard'] .atonota-number input:focus-visible {
+  box-shadow: none;
+}
+
+a.atonota-link {
+  font-size: var(--btn-fs-md);
+}
+
+a.atonota-link[data-size='small'] {
+  font-size: var(--btn-fs-sm);
+}
+
+a.atonota-link[data-size='large'] {
+  font-size: var(--btn-fs-lg);
+}
+
+@media (forced-colors: active) {
+  html[data-focus-mode='keyboard'] .atonota-button.ant-btn:focus-visible,
+  html[data-focus-mode='keyboard'] .atonota-dropdown-popup .ant-dropdown-menu-item:focus-visible,
+  html[data-focus-mode='keyboard'] .atonota-number input:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 0;
+    box-shadow: none;
+  }
+
+  html[data-focus-mode='keyboard'] .atonota-input.ant-input-affix-wrapper:has(input:focus-visible),
+  html[data-focus-mode='keyboard']
+    .atonota-select.ant-select:has(input:focus-visible)
+    .ant-select-selector {
+    box-shadow: none !important;
+  }
+
+  html[data-focus-mode='keyboard'] .atonota-button.ant-btn:focus-visible::before,
+  html[data-focus-mode='keyboard']
+    .atonota-dropdown-popup
+    .ant-dropdown-menu-item:focus-visible::before,
+  html[data-focus-mode='keyboard']
+    .atonota-number.ant-input-number:has(input:focus-visible)::before {
+    content: none;
+  }
+}
+
+.atonota-number.ant-input-number {
+  font-size: var(--input-fs-md);
+  block-size: var(--input-h-md);
+}
+
+.atonota-number.ant-input-number .ant-input-number-input-wrap,
+.atonota-number.ant-input-number .ant-input-number-input {
+  block-size: 100%;
+}
+
+.atonota-number.ant-input-number-sm {
+  font-size: var(--input-fs-sm);
+  block-size: var(--input-h-sm);
+}
+
+.atonota-number.ant-input-number-lg {
+  font-size: var(--input-fs-lg);
+  block-size: var(--input-h-lg);
+}
+
+/* Keep the expanded area behind editable text and embedded controls. */
+.atonota-input.hit,
+.atonota-number.hit,
+.atonota-select.hit .ant-select-selector {
+  isolation: isolate;
+}
+
+.atonota-input.hit::after,
+.atonota-number.hit::after {
+  z-index: -1;
+}
+
+/* The selector handles pointer activation. Use the engine's bounds on that surface. */
+.atonota-select.hit::after {
+  content: none;
+}
+
+.atonota-select.hit .ant-select-selector::after {
+  content: '';
+  position: absolute;
+  top: calc(-1 * (var(--hit-t) + var(--ant-line-width)));
+  right: calc(-1 * (var(--hit-r) + var(--ant-line-width)));
+  bottom: calc(-1 * (var(--hit-b) + var(--ant-line-width)));
+  left: calc(-1 * (var(--hit-l) + var(--ant-line-width)));
+  z-index: -1;
+}
+
+/* Radio is the card style (source choice.C3, radio.style = card): a bordered 32 px row. */
+.atonota-radio.ant-radio-wrapper {
+  padding-inline: var(--space-sm);
+  margin-inline-end: var(--space-xs);
+  border: var(--ant-line-width) var(--ant-line-type) var(--ant-color-border);
+  border-radius: var(--radius);
+}
+
+.atonota-radio.ant-radio-wrapper-checked {
+  border-color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+}
+
+/* Switch is squared (source choice.switch.squared): track and handle use control radii. */
+:root .atonota-switch-squared .ant-switch {
+  border-radius: var(--radius);
+}
+
+:root .atonota-switch-squared .ant-switch .ant-switch-handle::before {
+  border-radius: var(--ant-border-radius-xs);
+}
+
+/* The unchecked track is a neutral tint: the state text uses the theme text color (4.5:1). */
+:root .atonota-switch .ant-switch:not(.ant-switch-checked) .ant-switch-inner-unchecked {
+  color: var(--ant-color-text);
+}
+
+/* Keep hover feedback without letting the unchecked track wash out the state text. */
+:root[data-theme='dark']
+  .atonota-switch
+  .ant-switch:hover:not(.ant-switch-checked, .ant-switch-disabled) {
+  background-color: color-mix(
+    in srgb,
+    var(--ant-color-text-quaternary) 80%,
+    var(--ant-color-text-tertiary)
+  );
+}
+
+/* antd writes these transitions without a curve (browser default). Use the shared tokens. */
+:root .atonota-switch .ant-switch,
+:root .atonota-switch .ant-switch-handle,
+:root .atonota-switch .ant-switch-handle::before,
+:root .atonota-switch .ant-switch-inner,
+:root .atonota-switch .ant-switch-inner > span,
+:root .atonota-radio .ant-radio-inner,
+:root .atonota-radio .ant-radio-inner::after,
+:root .atonota-radio.ant-radio-wrapper,
+:root .atonota-radio-button.ant-radio-button-wrapper,
+:root .atonota-radio-button.ant-radio-button-wrapper::before,
+:root .atonota-checkbox .ant-checkbox-inner,
+:root .atonota-checkbox .ant-checkbox-inner::after,
+:root .atonota-tabs.ant-segmented,
+:root .atonota-tabs .ant-segmented-item,
+:root .atonota-tabs .ant-segmented-item::after {
+  transition-duration: var(--motion-duration-mid);
+  transition-timing-function: var(--motion-easing-standard);
+}
