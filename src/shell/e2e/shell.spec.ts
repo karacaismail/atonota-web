@@ -384,6 +384,10 @@ test.describe('kayan hover zemini (G1–G3)', () => {
     await page.getByRole('button', { name: 'Stok', exact: true }).focus();
     await page.keyboard.press('Escape');
     await expect(glide(page)).toHaveAttribute('data-on', 'true');
-    await expect.poll(() => glideCenterY(page)).toBeCloseTo(await centerY(page, 'Stok'), 0);
+    // Hedef konum her adımda yeniden ölçülür. Yük altında yerleşim ilk ölçümden sonra kayabilir
+    // (WebKit, 7 px). Sınır aynıdır: zemin merkezi öğe merkezinden 0.5 px'ten az sapar.
+    await expect
+      .poll(async () => Math.abs((await glideCenterY(page)) - (await centerY(page, 'Stok'))))
+      .toBeLessThan(0.5);
   });
 });
