@@ -1,0 +1,94 @@
+.module-page {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--module-padding);
+  color: var(--module-text);
+  font-family: var(--font-ui);
+  font-size: var(--module-font);
+}
+.module-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--module-gap);
+  min-width: 0;
+}
+.module-page h1,
+.module-page h2,
+.module-page p,
+.module-page dl,
+.module-page dd {
+  margin: 0;
+}
+.module-page h1 {
+  font-size: var(--module-heading);
+}
+.module-page h2 {
+  font-size: var(--btn-fs-lg);
+}
+.module-context,
+.module-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--module-gap);
+  align-items: center;
+}
+.module-context dt {
+  color: var(--module-muted);
+}
+.module-context dd,
+.module-page p {
+  overflow-wrap: break-word;
+}
+.module-records {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--module-gap);
+  padding: 0;
+  margin: 0;
+}
+.module-record {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--module-gap);
+  align-items: center;
+  min-width: 0;
+}
+.module-record > div {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.module-review {
+  background: var(--module-surface);
+  padding: var(--module-padding);
+  border-radius: var(--card-radius);
+}
+.module-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+.module-table {
+  border-collapse: collapse;
+  min-width: 100%;
+  width: 100%;
+}
+.module-table th,
+.module-table td {
+  padding: var(--module-padding);
+  text-align: start;
+  vertical-align: top;
+  min-width: var(--table-col-min-text);
+  border-bottom: thin solid var(--module-line);
+  word-break: normal;
+  overflow-wrap: normal;
+}
+.module-value {
+  white-space: pre-wrap;
+  font-family: var(--font-code);
+}
+.module-form {
+  min-width: 0;
+  max-width: 100%;
+}
