@@ -1,7 +1,8 @@
 /**
  * Rota kaydı. Uygulamanın bütün sayfa rotaları buradadır.
  *
- * KURAL: Her iş kendi sayfası için bu dosyaya tek bir tembel satır ekler.
+ * KURAL: Her iş kendi sayfası için `lazyRoutes` listesine yalnız kendi satırını ekler.
+ * Başka işin satırı değiştirilmez. Koleksiyon yolları (`collectionRoutes`) kabuğundur.
  * Satırın biçimi sabittir. Dört alan vardır, başka alan eklenmez:
  *
  *   {
@@ -31,7 +32,28 @@ export interface RouteEntry {
   load: () => Promise<{ default: ComponentType }>;
 }
 
-export const routeRegistry: RouteEntry[] = [
+/**
+ * Özellik ayarları. Kapalı ayarın satırı rota listesine girmez.
+ * Kapalı satırın adresi koleksiyon sayfasına da düşmez. Bkz. `reservedFirstSegments`.
+ */
+export const shellFeatures = {
+  /** AI Studio `main` dalına girince `ai-studio` işi bunu açar ve yükleyiciyi bağlar. */
+  aiStudio: false,
+};
+
+/** AI Studio satırı. Ayar kapalıyken listede yoktur. */
+export const aiStudioRoute: RouteEntry = {
+  path: '/panel/ai',
+  label: 'AI Studio',
+  icon: Sparkle,
+  load: () => import('./pages/AiStudioPendingPage'),
+};
+
+/**
+ * Tembel rota listesi. Her iş buraya yalnız kendi satırını ekler.
+ * Bu satırlar koleksiyon yollarından önce eklenir ve onlardan önce eşleşir.
+ */
+export const lazyRoutes: RouteEntry[] = [
   { path: '/', label: 'Ana sayfa', icon: House, load: () => import('./pages/HomePage') },
   {
     path: '/asistan',
@@ -40,6 +62,15 @@ export const routeRegistry: RouteEntry[] = [
     load: () => import('./pages/AssistantPage'),
   },
   { path: '/ajanlar/:id', label: 'AI ajanı', icon: Robot, load: () => import('./pages/AgentPage') },
+  ...(shellFeatures.aiStudio ? [aiStudioRoute] : []),
+];
+
+/**
+ * Koleksiyon yolları. Bu satırların sahibi `shell` işidir. Öteki işler buraya satır eklemez.
+ * Liste rotası `views-collection` işinin `CollectionView` bileşenini çizer.
+ * Kayıt rotası `views-record` işinin bileşeni gelince ona bağlanacak.
+ */
+export const collectionRoutes: RouteEntry[] = [
   {
     path: '/:module/:doctype',
     label: 'Kayıtlar',
@@ -53,6 +84,20 @@ export const routeRegistry: RouteEntry[] = [
     load: () => import('./pages/RecordPage'),
   },
 ];
+
+/** Bütün rotalar, eşleşme sırasıyla. */
+export const routeRegistry: RouteEntry[] = [...lazyRoutes, ...collectionRoutes];
+
+/**
+ * Bu ilk adres parçaları hiçbir zaman koleksiyon ya da kayıt sayfasına düşmez.
+ * `_demo` örnek sayfalar içindir. `panel` uygulama sayfaları içindir.
+ * Bu öneklerin sayfaları yalnız `lazyRoutes` içindeki kendi satırıyla açılır.
+ */
+export const reservedFirstSegments: readonly string[] = ['_demo', 'panel'];
+
+export function isReservedSegment(segment: string | undefined): boolean {
+  return segment !== undefined && reservedFirstSegments.includes(segment);
+}
 
 /**
  * Kayıtları router kayıtlarına çevirir. Sayfa `React.lazy` ile tembel yüklenir.

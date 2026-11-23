@@ -7,7 +7,9 @@ import { useCallback, useRef, useState } from 'react';
  * G2: Listeye dışarıdan girilince zemin hareketsiz yerleşir. Sonra kayar.
  * G3: Listeden çıkınca zemin yerinde solar. Klavye odağı da zemini taşır.
  */
-const ITEM = '.shell-list > li > .shell-item';
+/** Ana menü öğeleri. Flyout paneli kendi seçicisini verir. */
+export const MAIN_GLIDE_ITEM = '.shell-list > li > .shell-item';
+export const FLY_GLIDE_ITEM = '.shell-fly-list > li > .shell-item';
 
 export interface GlideState {
   on: boolean;
@@ -17,7 +19,7 @@ export interface GlideState {
   height: number;
 }
 
-export function useGlide() {
+export function useGlide(itemSelector: string = MAIN_GLIDE_ITEM) {
   const hostRef = useRef<HTMLElement>(null);
   const [state, setState] = useState<GlideState>({ on: false, jump: true, top: 0, height: 0 });
 
@@ -32,7 +34,7 @@ export function useGlide() {
   const off = useCallback(() => setState((s) => (s.on ? { ...s, on: false } : s)), []);
 
   const itemFrom = (target: EventTarget | null): HTMLElement | null => {
-    const el = (target as HTMLElement | null)?.closest<HTMLElement>(ITEM);
+    const el = (target as HTMLElement | null)?.closest<HTMLElement>(itemSelector);
     return el && hostRef.current?.contains(el) ? el : null;
   };
 

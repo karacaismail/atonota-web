@@ -1,34 +1,10 @@
-import { Suspense } from 'react';
-import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
-import { AppShell } from './layout/AppShell';
-import NotFoundPage from './pages/NotFoundPage';
-import { routeRegistry, toRouteObjects } from './routes';
+import { collectionRoutes, lazyRoutes } from './routes';
+import { buildShellRoutes } from './shellRoutes';
 import type { ShellViewData } from './view-data';
 import { ViewDataProvider } from './view-data';
 import './shell.css';
-
-function ShellLayout() {
-  return (
-    <AppShell>
-      <Suspense fallback={<div className="shell-page" aria-busy="true" />}>
-        <Outlet />
-      </Suspense>
-    </AppShell>
-  );
-}
-
-const shellRouteObjects = [
-  {
-    element: <ShellLayout />,
-    errorElement: (
-      <AppShell>
-        <NotFoundPage />
-      </AppShell>
-    ),
-    children: [...toRouteObjects(routeRegistry), { path: '*', element: <NotFoundPage /> }],
-  },
-];
 
 let router: ReturnType<typeof createBrowserRouter> | undefined;
 
@@ -38,7 +14,7 @@ let router: ReturnType<typeof createBrowserRouter> | undefined;
  * Router modül düzeyinde bir kez kurulur.
  */
 export function ShellApp({ viewData = null }: { viewData?: ShellViewData | null }) {
-  router ??= createBrowserRouter(shellRouteObjects);
+  router ??= createBrowserRouter(buildShellRoutes(lazyRoutes, collectionRoutes));
   return (
     <ViewDataProvider value={viewData}>
       <RouterProvider router={router} />

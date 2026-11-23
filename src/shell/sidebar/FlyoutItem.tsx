@@ -8,6 +8,8 @@ import { usePresence } from '../layout/usePresence';
 import type { AgentStatus } from '../sampleData';
 import { shellTokens } from '../tokens';
 import { flyoutPosition } from './flyoutPosition';
+import { Glide } from './Glide';
+import { FLY_GLIDE_ITEM, useGlide } from './useGlide';
 
 export type OpenedBy = 'hover' | 'focus' | 'press' | 'key';
 
@@ -76,6 +78,7 @@ export function FlyoutItem(p: FlyoutItemProps) {
   const presence = usePresence(open, reduced ? 0 : shellTokens.flyout.duration);
   const [pos, setPos] = useState<{ left: number; top: number; caret: number } | null>(null);
   const descId = `${flyId}-d`;
+  const { hostRef: glideRef, state: glideState, hostProps: glideProps } = useGlide(FLY_GLIDE_ITEM);
 
   const returnFocus = () => {
     suppressFocusOpen.current = true;
@@ -290,11 +293,19 @@ export function FlyoutItem(p: FlyoutItemProps) {
           </div>
           {content.body}
           {content.items.length > 0 && (
-            <ul className="shell-fly-list">
-              {content.items.map((it) => (
-                <li key={it.key}>{it.render({ 'data-fly-item': '' })}</li>
-              ))}
-            </ul>
+            // G1: flyout panelinin de kayan zemini vardır (kaynak: .sb-fly .glide).
+            <div
+              ref={glideRef as React.RefObject<HTMLDivElement>}
+              className="shell-glide-host"
+              {...glideProps}
+            >
+              <Glide state={glideState} />
+              <ul className="shell-fly-list">
+                {content.items.map((it) => (
+                  <li key={it.key}>{it.render({ 'data-fly-item': '' })}</li>
+                ))}
+              </ul>
+            </div>
           )}
           {content.ai && (
             <button

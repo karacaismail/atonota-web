@@ -14,6 +14,7 @@ import type { FlyoutContent, OpenedBy } from './FlyoutItem';
 import { FlyoutItem } from './FlyoutItem';
 import { RailToggle } from './RailToggle';
 import { SidebarFooter } from './SidebarFooter';
+import { Glide } from './Glide';
 import { useGlide } from './useGlide';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
@@ -289,18 +290,7 @@ export function Sidebar({
           onKeyDown={onNavKeyDown}
           {...glideProps}
         >
-          <span
-            className="shell-glide"
-            aria-hidden="true"
-            data-on={glideState.on ? 'true' : 'false'}
-            data-jump={glideState.jump ? 'true' : 'false'}
-            style={
-              {
-                '--shell-glide-y': `${glideState.top}px`,
-                '--shell-glide-h': `${glideState.height}px`,
-              } as React.CSSProperties
-            }
-          />
+          <Glide state={glideState} />
           {rail && (
             <ul className="shell-list">
               <FlyoutItem

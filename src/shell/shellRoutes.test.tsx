@@ -10,7 +10,7 @@ vi.mock('./pages/reloadPage', () => ({ reloadPage: vi.fn() }));
 import { reloadPage } from './pages/reloadPage';
 import type { RouteEntry } from './routes';
 import { aiStudioRoute, collectionRoutes, lazyRoutes, shellFeatures } from './routes';
-import { buildShellRoutes } from './ShellApp';
+import { buildShellRoutes } from './shellRoutes';
 
 function page(text: string) {
   return () => Promise.resolve({ default: () => <p>{text}</p> });

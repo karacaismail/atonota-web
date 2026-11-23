@@ -56,7 +56,12 @@ describe('shell.css', () => {
  */
 describe('kayan zemin hareketi', () => {
   const decl = (name: string) =>
-    new RegExp(`${name}:\\s*([^;]+);`).exec(css)?.[1]?.trim().replace(/\s+/g, '');
+    new RegExp(`${name}:\\s*([^;]+);`)
+      .exec(css)?.[1]
+      ?.trim()
+      .replace(/\s+/g, '')
+      // Biçimlendirici `.2` değerini `0.2` yazar. İkisi aynı sayıdır.
+      .replace(/(?<![\d.])0\./g, '.');
 
   it('adlı değerler kaynak örnekle aynıdır', () => {
     expect(decl('--shell-glide-dur')).toBe('200ms');

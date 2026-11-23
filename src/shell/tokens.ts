@@ -26,6 +26,19 @@ function str(text: string, pattern: RegExp, name: string): string {
   return m[1];
 }
 
+/** Kaynak alanı zorunludur. Alan yoksa sabit yedek yerine hata verir. */
+export function required<T>(value: T | undefined | null, name: string): T {
+  if (value === undefined || value === null) {
+    throw new Error(`Kaynak dosyada değer bulunamadı: ${name}`);
+  }
+  return value;
+}
+
+const described = required(
+  config.dropdown.styles.find((x) => x.key === 'described'),
+  'dropdown.styles described',
+);
+
 function aiItem(pattern: RegExp): string | undefined {
   for (const it of config.aiMotion.items) {
     const m = pattern.exec(it);
@@ -111,10 +124,10 @@ export const shellTokens = {
   fontMd: config.sizes.md.button.fontSize,
   fontLg: config.sizes.lg.button.fontSize,
   /** Rozet yüksekliği: Pill/Tag en küçük boy (kaynak: choice.tagHeights). */
-  tagHeight: config.choice.tagHeights[0] ?? config.typography.min + 8,
+  tagHeight: required(config.choice.tagHeights[0], 'choice.tagHeights[0]'),
   /** Açıklamalı dropdown ikon kutusu (kaynak: dropdown.styles described). */
-  ddBox: config.dropdown.styles.find((x) => x.key === 'described')?.contentHeight ?? 32,
-  ddRow: config.dropdown.styles.find((x) => x.key === 'described')?.itemHeight ?? 48,
+  ddBox: required(described.contentHeight, 'dropdown.styles described.contentHeight'),
+  ddRow: required(described.itemHeight, 'dropdown.styles described.itemHeight'),
   motion: {
     /** Durum nabzı (kaynak: aiMotion, çalışan ajan 1.4 s). */
     pulse: secondsToMs(aiItem(/ajan[^:]*:\s*([\d.]+)\s*s/i), 'aiMotion ajan'),

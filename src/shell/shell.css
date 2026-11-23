@@ -53,8 +53,12 @@
   --shell-stat-min: 200px;
   --shell-form-max: 560px;
 
-  /* Hareket. G1: kayan zemin 200 ms. İskelet ve dönme kaynak örnek sayfadan. */
+  /* Hareket. G1: kayan zemin kaynak örnek sayfadan: kayma .2s, solma .15s ease.
+     İskelet ve dönme de kaynak örnek sayfadan. */
   --shell-glide-dur: 200ms;
+  --shell-glide-ease: cubic-bezier(0.2, 0, 0, 1);
+  --shell-glide-fade-dur: 150ms;
+  --shell-glide-fade-ease: ease;
   --shell-skel-dur: 1200ms;
   --shell-spin-dur: 900ms;
   --shell-instant: 0s;
@@ -1429,9 +1433,9 @@
   pointer-events: none;
   transform: translateY(var(--shell-glide-y));
   transition:
-    transform var(--shell-glide-dur) var(--shell-ease),
-    height var(--shell-glide-dur) var(--shell-ease),
-    opacity var(--shell-glide-dur) var(--shell-ease);
+    transform var(--shell-glide-dur) var(--shell-glide-ease),
+    height var(--shell-glide-dur) var(--shell-glide-ease),
+    opacity var(--shell-glide-fade-dur) var(--shell-glide-fade-ease);
 }
 
 .shell-glide[data-on='true'] {
@@ -1440,15 +1444,17 @@
 
 /* G2: dışarıdan girişte konum hareketsiz değişir. Yalnız görünürlük solar. */
 .shell-glide[data-jump='true'] {
-  transition: opacity var(--shell-glide-dur) var(--shell-ease);
+  transition: opacity var(--shell-glide-fade-dur) var(--shell-glide-fade-ease);
 }
 
-/* Öğeler zeminin üstündedir. Hover zemini artık kayan katmandır. */
-.shell-glide-host :where(.shell-list > li > .shell-item) {
+/* Öğeler zeminin üstündedir. Hover zemini artık kayan katmandır.
+   Flyout paneli de kendi zeminini taşır (kaynak: .sb-fly .glide). */
+.shell-glide-host :where(.shell-list > li > .shell-item, .shell-fly-list > li > .shell-item) {
   z-index: 1;
 }
 
-.shell-glide-host .shell-list > li > .shell-item:hover:not([data-raised='true']) {
+.shell-glide-host .shell-list > li > .shell-item:hover:not([data-raised='true']),
+.shell-glide-host .shell-fly-list > li > .shell-item:hover {
   background: transparent;
 }
 

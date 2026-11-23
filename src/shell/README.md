@@ -66,7 +66,7 @@ Telefonda başlık sayfayla birlikte kayar. Telefon ekranı kısadır. Sabit ba�
 
 Rota kaydı `routes.ts` dosyasındadır. Adres yardımcıları `paths.ts` dosyasındadır.
 
-Her iş kendi sayfası için `routes.ts` dosyasına tek bir satır ekler. Satırın dört alanı vardır:
+Her iş kendi sayfası için `lazyRoutes` listesine yalnız kendi satırını ekler. Başka işin satırı değiştirilmez. Satırın dört alanı vardır:
 
 1. `path`: react-router yolu.
 2. `label`: menü etiketi.
@@ -74,6 +74,18 @@ Her iş kendi sayfası için `routes.ts` dosyasına tek bir satır ekler. Satır
 4. `load`: tembel yükleyici. Örnek: `() => import('@/modules/satis/TeklifPage')`.
 
 Kuralın tamamı dosyanın başındaki yorumdadır. `routes.test.ts` biçimi denetler.
+
+`ShellApp` rotaları şu sırayla ekler:
+
+1. `lazyRoutes` satırları.
+2. Koleksiyon yolları (`collectionRoutes`). Bu yolların sahibi kabuktur.
+3. Bilinmeyen adres için "Sayfa bulunamadı".
+
+Bazı ilk adres parçaları ayrılmıştır: `_demo` ve `panel`. Bu adresler koleksiyon ya da kayıt sayfasına hiçbir zaman düşmez. Örneğin `/_demo/tablo` adresinin satırı yoksa "Sayfa bulunamadı" görünür.
+
+AI Studio satırı `/panel/ai` adresidir. Satır `shellFeatures.aiStudio` ayarının arkasındadır. Ayar kapalıdır. AI Studio `main` dalına girince `ai-studio` işi yükleyiciyi bağlar ve ayarı açar.
+
+Sayfa dosyası yüklenemezse "Sayfa yüklenemedi" görünür. Örneğin ağ kopmuş ya da yeni sürüm yayımlanmış olabilir. "Yeniden dene" düğmesi sayfayı yeniden yükler. Kabuk bu sırada yerinde kalır.
 
 Sayfalar `React.lazy` ile yüklenir. Kabuk hemen çizilir. Sayfa gelene kadar yalnız içerik alanı bekler.
 
@@ -122,15 +134,9 @@ Bileşenler yalnız `useFocusDim` kancasını ve `shellTokens` nesnesini kullan�
 
 Birim testleri `npm test` ile koşar.
 
-Tarayıcı testleri kabuk deneme sayfasında koşar. Komut şudur:
+Tarayıcı testleri `src/shell/e2e/` klasöründedir. Testler kabuk deneme sayfasında koşar. Deneme sayfası derlenmiş çıktıdır. Geliştirme sunucusu tembel sayfada sayfayı yeniden yüklüyordu. Bu da testleri kararsız yapıyordu.
 
-```bash
-npx playwright test -c src/shell/e2e/playwright.config.mjs
-```
-
-Kabuk testleri derlenmiş deneme sayfasında koşar. Geliştirme sunucusu tembel sayfada sayfayı yeniden yüklüyordu. Bu da testleri kararsız yapıyordu.
-
-Testler `src/shell/e2e/` altında kalır. Kök Playwright ayarı bu klasörü de okuyacak. O zamana kadar kabuk ayarı kullanılır.
+Kabuğun ayrı Playwright ayarı kaldırıldı. Testleri tek test kapısı koşacak. Kapıyı `foundation` işi kuracak. Kök ayar bu klasörü okumalı ve deneme sayfasını sunmalı.
 
 Matris kök ayarla aynıdır: Chromium ve WebKit, iPhone 13 profili. Firefox koşulmaz.
 
