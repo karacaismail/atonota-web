@@ -168,6 +168,10 @@ for (const style of ['İşlemler', 'shortcut', 'described', 'selectable', 'searc
     await expect(copy).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('action')).toHaveText('copy');
+    // The same Enter must not reach the refocused trigger and open the menu again.
+    await expect(menu).toBeHidden();
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
     await page.keyboard.press('Enter');
     await expect(menu).toBeVisible();
@@ -400,10 +404,14 @@ test('switch is squared and shows its state text', async ({ page }) => {
   const control = page.getByRole('switch', { name: 'Etkin' });
   await expect(control).toHaveCSS('border-radius', '5px');
   await expect(control.locator('.ant-switch-handle')).toHaveCSS('border-radius', '0px');
-  const handle = await control
-    .locator('.ant-switch-handle')
-    .evaluate((element) => getComputedStyle(element, '::before').borderRadius);
-  expect(handle).toBe('3px');
+  // WebKit can answer an empty pseudo-element style before its first style pass; wait for it.
+  await expect
+    .poll(() =>
+      control
+        .locator('.ant-switch-handle')
+        .evaluate((element) => getComputedStyle(element, '::before').borderRadius),
+    )
+    .toBe('3px');
   await expect(control).toHaveAttribute('aria-checked', 'false');
   await expect(control.locator('.ant-switch-inner-unchecked')).toHaveText('Kapalı');
   await expect(control.locator('.ant-switch-inner-unchecked')).toBeVisible();

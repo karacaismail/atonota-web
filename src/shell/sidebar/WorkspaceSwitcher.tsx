@@ -2,7 +2,7 @@ import { CaretUpDown } from '@phosphor-icons/react';
 import type { MenuProps } from 'antd';
 import { Dropdown } from 'antd';
 import type { KeyboardEvent } from 'react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 
 import { useFocusDim } from '../focus-dim';
 import { t } from '../messages';
@@ -95,6 +95,21 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
     };
     handle = requestAnimationFrame(tryFocus);
     return () => cancelAnimationFrame(handle);
+  }, [open, menuId]);
+
+  // Kapanış hareketi sürerken liste ekran okuyucuya ve klavyeye kapalıdır.
+  // Hareket karelere bağlıdır; yavaş cihazda saniyelerce sürebilir. Anlamsal durum beklemez.
+  // Açılır katman kapanırken içeriğini dondurur. Bu yüzden nitelikler burada yazılır.
+  useLayoutEffect(() => {
+    const surface = document.getElementById(`${menuId}-surface`);
+    if (!surface) return;
+    if (open) {
+      surface.removeAttribute('aria-hidden');
+      surface.removeAttribute('inert');
+    } else {
+      surface.setAttribute('aria-hidden', 'true');
+      surface.setAttribute('inert', '');
+    }
   }, [open, menuId]);
 
   // Liste fareyle açıldıysa odak menüde değildir (K-1).
@@ -199,6 +214,7 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
       }}
       popupRender={(node) => (
         <div
+          id={`${menuId}-surface`}
           onKeyDownCapture={(event) => {
             // Escape listeyi kapatır ve odağı hemen düğmeye verir.
             if (event.key === 'Escape') {

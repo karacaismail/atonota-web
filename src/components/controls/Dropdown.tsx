@@ -68,12 +68,30 @@ function ActionDropdown({
     if (!open) return;
     const frame = requestAnimationFrame(() => {
       const popup = document.getElementById(`${popupId}-surface`);
+      // On a slow device the person can already be inside the popup before this frame runs, for
+      // example after typing in the search box and pressing an arrow. Opening focus must not
+      // take that focus back.
+      if (!popup || popup.contains(document.activeElement)) return;
       popup
-        ?.querySelector<HTMLElement>(style === 'searchable' ? 'input' : menuItemSelector)
+        .querySelector<HTMLElement>(style === 'searchable' ? 'input' : menuItemSelector)
         ?.focus();
     });
     return () => cancelAnimationFrame(frame);
   }, [open, popupId, style]);
+
+  // A closed menu leaves the accessibility tree and the tab order at once, while its motion runs.
+  // The popup freezes its content during the leave motion, so the attributes are written here.
+  useLayoutEffect(() => {
+    const surface = document.getElementById(`${popupId}-surface`);
+    if (!surface) return;
+    if (open) {
+      surface.removeAttribute('aria-hidden');
+      surface.removeAttribute('inert');
+    } else {
+      surface.setAttribute('aria-hidden', 'true');
+      surface.setAttribute('inert', '');
+    }
+  }, [open, popupId]);
 
   useLayoutEffect(() => {
     if (!open && restoreFocus.current) {
@@ -192,19 +210,17 @@ function ActionDropdown({
           items: menuItems,
           selectable: style === 'selectable',
           selectedKeys: selectedKey === undefined ? [] : [selectedKey],
-          onClick: ({ key }) => {
+          onClick: ({ key, domEvent }) => {
+            // Focus returns to the trigger before the key's default action runs. Without this,
+            // the same Enter would press the trigger and open the menu again.
+            if (domEvent.type === 'keydown') domEvent.preventDefault();
             restoreFocus.current = true;
             close();
             onSelect(key);
           },
         }}
         popupRender={(menu) => (
-          <div
-            id={`${popupId}-surface`}
-            onKeyDown={handlePopupKey}
-            aria-hidden={!open}
-            {...(!open ? { inert: '' } : {})}
-          >
+          <div id={`${popupId}-surface`} onKeyDown={handlePopupKey}>
             {style === 'searchable' && (
               <Input
                 aria-label={searchLabel}
