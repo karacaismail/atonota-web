@@ -46,26 +46,27 @@ export interface FrappeRecordAdapterConfig {
   getCsrfToken?: (() => string | null | undefined) | undefined;
 }
 
+const HTML_ENTITY_MAP: Readonly<Record<string, string>> = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&#x27;': "'",
+  '&nbsp;': ' ',
+};
+
 /**
- * Strips HTML markup from Frappe server messages using a pure character scanner (GV-2: no innerHTML).
+ * Strips actual HTML markup tags without eating mathematical '<' comparisons,
+ * then decodes standard HTML entities safely (GV-2, Review 1 Minor 1).
  */
 export function stripHtmlTagsSafe(input: string): string {
-  let out = '';
-  let insideTag = false;
-  for (const ch of input) {
-    if (ch === '<') {
-      insideTag = true;
-      continue;
-    }
-    if (ch === '>') {
-      insideTag = false;
-      continue;
-    }
-    if (!insideTag) {
-      out += ch;
-    }
-  }
-  return out.replace(/\s+/g, ' ').trim();
+  const withoutTags = input.replace(/<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s+[^<>]*)?>/g, ' ');
+  const decoded = withoutTags.replace(
+    /&(?:amp|lt|gt|quot|nbsp|#39|#x27);/gi,
+    (entity) => HTML_ENTITY_MAP[entity.toLowerCase()] ?? entity,
+  );
+  return decoded.replace(/\s+/g, ' ').trim();
 }
 
 function readMetaCsrfToken(): string | null {
@@ -166,34 +167,70 @@ function createTimedSignal(
   };
 }
 
+interface JsonHttpResult {
+  notModified: boolean;
+  etag: string | undefined;
+  body: unknown;
+}
+
 export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): RecordDataAdapter {
   const baseUrl = (config?.baseUrl ?? '').replace(/\/$/, '');
   const locale: RecordLocale = config?.locale ?? 'tr';
   const timeoutMs = config?.timeoutMs ?? 15_000;
   const fetchFn: typeof fetch = config?.fetchFn ?? ((input, init) => fetch(input, init));
   const resolveCsrf = config?.getCsrfToken ?? readMetaCsrfToken;
+  const metaCache = new Map<string, { etag: string | undefined; meta: DocTypeMeta }>();
 
-  async function verifySessionOnAmbiguous403(): Promise<'session_expired' | 'unauthorized'> {
+  /**
+   * SZ-8 & Review 1 Finding 3: Only HTTP 200 with a real non-Guest username confirms an active
+   * session; every other outcome (401, 403 Guest, timeout) is treated as session_expired.
+   */
+  async function verifySessionOnAmbiguous403(
+    externalSignal?: AbortSignal,
+  ): Promise<'session_expired' | 'unauthorized'> {
+    const { signal, cleanup } = createTimedSignal(externalSignal, timeoutMs);
     try {
       const probeResponse = await fetchFn(`${baseUrl}/api/method/frappe.auth.get_logged_user`, {
         method: 'GET',
         credentials: 'same-origin',
         cache: 'no-store',
         headers: { Accept: 'application/json' },
+        signal,
       });
-      if (probeResponse.status === 401) {
+      cleanup();
+      if (probeResponse.status !== 200) {
         return 'session_expired';
       }
-      return 'unauthorized';
+      const ct = probeResponse.headers.get('Content-Type') ?? '';
+      if (!ct.toLowerCase().includes('application/json')) {
+        return 'session_expired';
+      }
+      const raw: unknown = await probeResponse.json();
+      if (
+        typeof raw === 'object' &&
+        raw !== null &&
+        typeof (raw as Record<string, unknown>)['message'] === 'string'
+      ) {
+        const user = String((raw as Record<string, unknown>)['message']).trim();
+        if (user.length > 0 && user !== 'Guest') {
+          return 'unauthorized';
+        }
+      }
+      return 'session_expired';
     } catch {
-      return 'unauthorized';
+      cleanup();
+      return 'session_expired';
     }
   }
 
-  async function requestJson(
+  async function requestJsonWithMeta(
     path: string,
-    init: RequestInit & { isWrite?: boolean | undefined; externalSignal?: AbortSignal | undefined },
-  ): Promise<unknown> {
+    init: RequestInit & {
+      isWrite?: boolean | undefined;
+      allow304?: boolean | undefined;
+      externalSignal?: AbortSignal | undefined;
+    },
+  ): Promise<JsonHttpResult> {
     const headers = new Headers(init.headers);
     headers.set('Accept', 'application/json');
 
@@ -227,6 +264,15 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
     }
     cleanup();
 
+    const etag = response.headers.get('ETag') ?? undefined;
+    if (init.allow304 && response.status === 304) {
+      return {
+        notModified: true,
+        etag,
+        body: undefined,
+      };
+    }
+
     const contentType = response.headers.get('Content-Type') ?? '';
     const isJson = contentType.toLowerCase().includes('application/json');
     let parsedBody: Record<string, unknown> = {};
@@ -254,7 +300,11 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
     }
 
     if (response.ok) {
-      return parsedBody;
+      return {
+        notModified: false,
+        etag,
+        body: parsedBody,
+      };
     }
 
     const excType = extractExcType(parsedBody);
@@ -281,7 +331,7 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
           message: formatRecordMessage(locale, 'unauthorizedPermissionDescription'),
         });
       }
-      const disambiguated = await verifySessionOnAmbiguous403();
+      const disambiguated = await verifySessionOnAmbiguous403(init.externalSignal);
       throw new RecordApiError({
         code: disambiguated,
         status: 403,
@@ -339,6 +389,8 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
 
   return {
     async getDocTypeMeta(params: GetDocTypeMetaParams): Promise<DocTypeMeta> {
+      const cacheKey = `${params.doctype}::${params.language ?? ''}`;
+      const cached = metaCache.get(cacheKey);
       const search = new URLSearchParams({
         doctype: params.doctype,
         surface: 'web',
@@ -346,20 +398,46 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
       if (params.language) {
         search.set('_lang', params.language);
       }
+
       const headers: Record<string, string> = {};
-      if (params.etag) {
+      const effectiveEtag = params.etag ?? cached?.etag;
+      if (effectiveEtag && cached) {
+        headers['If-None-Match'] = effectiveEtag;
+      } else if (params.etag) {
         headers['If-None-Match'] = params.etag;
       }
-      const raw = await requestJson(
+
+      const result = await requestJsonWithMeta(
         `/api/method/platform_core.api.meta.get_doctype?${search.toString()}`,
         {
           method: 'GET',
           headers,
+          allow304: true,
           externalSignal: params.signal,
         },
       );
+
+      if (result.notModified) {
+        if (cached) {
+          return cached.meta;
+        }
+        // If caller passed an uncached ETag and received 304, re-fetch unconditionally without If-None-Match.
+        const freshFallback = await requestJsonWithMeta(
+          `/api/method/platform_core.api.meta.get_doctype?${search.toString()}`,
+          {
+            method: 'GET',
+            externalSignal: params.signal,
+          },
+        );
+        const validatedFallback = validateDocTypeMeta(freshFallback.body);
+        metaCache.set(cacheKey, { etag: freshFallback.etag, meta: validatedFallback });
+        return validatedFallback;
+      }
+
       try {
-        return validateDocTypeMeta(raw);
+        const validated = validateDocTypeMeta(result.body);
+        metaCache.set(cacheKey, { etag: result.etag, meta: validated });
+        return validated;
       } catch (err) {
         if (err instanceof SchemaValidationError) {
           throw new RecordApiError({
@@ -374,12 +452,12 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
     async getRecord(params: GetRecordParams): Promise<RecordDocument> {
       const encodedDoctype = encodeURIComponent(params.doctype);
       const encodedName = encodeURIComponent(params.name);
-      const raw = await requestJson(`/api/resource/${encodedDoctype}/${encodedName}`, {
+      const result = await requestJsonWithMeta(`/api/resource/${encodedDoctype}/${encodedName}`, {
         method: 'GET',
         externalSignal: params.signal,
       });
       try {
-        return validateRecordEnvelope(raw);
+        return validateRecordEnvelope(result.body);
       } catch (err) {
         if (err instanceof SchemaValidationError) {
           throw new RecordApiError({
@@ -405,14 +483,14 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
           ...params.data,
           modified: params.modified,
         };
-        const raw = await requestJson(`/api/resource/${encodedDoctype}/${encodedName}`, {
+        const result = await requestJsonWithMeta(`/api/resource/${encodedDoctype}/${encodedName}`, {
           method: 'PUT',
           isWrite: true,
           body: JSON.stringify(payload),
           externalSignal: params.signal,
         });
         try {
-          return validateRecordEnvelope(raw);
+          return validateRecordEnvelope(result.body);
         } catch {
           throw new RecordApiError({
             code: 'invalid_response',
@@ -421,14 +499,14 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
         }
       }
 
-      const raw = await requestJson(`/api/resource/${encodedDoctype}`, {
+      const result = await requestJsonWithMeta(`/api/resource/${encodedDoctype}`, {
         method: 'POST',
         isWrite: true,
         body: JSON.stringify(params.data),
         externalSignal: params.signal,
       });
       try {
-        return validateRecordEnvelope(raw);
+        return validateRecordEnvelope(result.body);
       } catch {
         throw new RecordApiError({
           code: 'invalid_response',
@@ -453,7 +531,7 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
         search.set('filters', JSON.stringify(params.filters));
       }
 
-      const raw = await requestJson(
+      const result = await requestJsonWithMeta(
         `/api/method/frappe.desk.search.search_link?${search.toString()}`,
         {
           method: 'GET',
@@ -461,7 +539,7 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
         },
       );
       try {
-        return validateLinkSearchResponse(raw);
+        return validateLinkSearchResponse(result.body);
       } catch {
         throw new RecordApiError({
           code: 'invalid_response',
@@ -474,7 +552,7 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
       const encodedDoctype = encodeURIComponent(params.doctype);
       const encodedName = encodeURIComponent(params.name);
       const encodedAction = encodeURIComponent(params.action);
-      const raw = await requestJson(
+      const result = await requestJsonWithMeta(
         `/api/v2/document/${encodedDoctype}/${encodedName}/method/${encodedAction}/`,
         {
           method: 'POST',
@@ -483,6 +561,7 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
           externalSignal: params.signal,
         },
       );
+      const raw = result.body;
       if (typeof raw === 'object' && raw !== null && ('data' in raw || 'message' in raw)) {
         try {
           return validateRecordEnvelope(raw);
