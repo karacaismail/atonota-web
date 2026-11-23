@@ -8,7 +8,7 @@ import { SAMPLE_CSRF_TOKEN, SAMPLE_KEYCLOAK_URL, SAMPLE_USER } from '@/mocks/fix
 import { mockState, resetMockState } from '@/mocks/handlers';
 import { mockServer } from '@/mocks/node';
 
-import { createAuth, isSafeRedirect } from './auth';
+import { createAuth, isSafeLogoutUrl, isSafeRedirect } from './auth';
 
 const config: ApiConfig = {
   siteUrl: 'https://kiraci.example.test',
@@ -53,6 +53,29 @@ describe('isSafeRedirect', () => {
       expect(isSafeRedirect(path)).toBe(false);
     },
   );
+});
+
+describe('isSafeLogoutUrl', () => {
+  const path = '/realms/platform/protocol/openid-connect/logout';
+
+  it('adres Keycloak kökeniyle aynıysa geçer', () => {
+    expect(isSafeLogoutUrl(`${SAMPLE_KEYCLOAK_URL}${path}?client_id=a`, SAMPLE_KEYCLOAK_URL)).toBe(
+      true,
+    );
+  });
+
+  it('başka kökenli adres geçmez', () => {
+    expect(isSafeLogoutUrl(`https://baska.example.test${path}`, SAMPLE_KEYCLOAK_URL)).toBe(false);
+  });
+
+  it('http adresi yalnız Keycloak kökü de http ise geçer', () => {
+    expect(isSafeLogoutUrl(`http://kimlik.example.test${path}`, SAMPLE_KEYCLOAK_URL)).toBe(false);
+    expect(isSafeLogoutUrl(`http://localhost:8080${path}`, 'http://localhost:8080')).toBe(true);
+  });
+
+  it('Keycloak kökü bozuksa hiçbir adres geçmez', () => {
+    expect(isSafeLogoutUrl(`${SAMPLE_KEYCLOAK_URL}${path}`, 'kimlik')).toBe(false);
+  });
 });
 
 describe('createAuth', () => {
@@ -126,6 +149,76 @@ describe('createAuth', () => {
       expect.stringMatching(/^https:\/\/kimlik\.example\.test\/realms\/platform\//),
     );
     expect(auth.getState()).toEqual({ status: 'redirecting' });
+  });
+
+  it('çıkış isteği başarısız olursa oturum açık kalır ve hata döner', async () => {
+    mockServer.use(
+      http.post('*/api/method/platform_core.api.auth.logout', () =>
+        HttpResponse.json({ exc_type: 'Exception' }, { status: 500 }),
+      ),
+    );
+    const { auth, csrf, navigate } = setup();
+    await auth.check();
+
+    await expect(auth.signOut()).rejects.toMatchObject({ kind: 'unknown' });
+
+    expect(auth.getState()).toEqual({ status: 'signed_in', user: SAMPLE_USER });
+    expect(csrf.get()).toBe(SAMPLE_CSRF_TOKEN);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('çıkışta ağ hatası olursa oturum açık kalır', async () => {
+    mockServer.use(
+      http.post('*/api/method/platform_core.api.auth.logout', () => HttpResponse.error()),
+    );
+    const { auth, navigate } = setup();
+    await auth.check();
+
+    await expect(auth.signOut()).rejects.toMatchObject({ kind: 'network' });
+    expect(auth.getState()).toEqual({ status: 'signed_in', user: SAMPLE_USER });
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'https://kimlik.example.test/realms/platform/protocol/openid-connect/logout',
+    'https://kimlik.example.test/auth/realms/x/protocol/openid-connect/logout?client_id=a',
+  ])('geçerli çıkış adresine gider: %s', async (logoutUrl) => {
+    mockServer.use(
+      http.post('*/api/method/platform_core.api.auth.logout', () =>
+        HttpResponse.json({ message: { logout_url: logoutUrl } }),
+      ),
+    );
+    const { auth, navigate } = setup();
+    await auth.check();
+    await auth.signOut();
+    expect(navigate).toHaveBeenCalledWith(logoutUrl);
+  });
+
+  it.each([
+    'https://baska.example.test/realms/platform/protocol/openid-connect/logout',
+    'https://kimlik.example.test:8443/realms/platform/protocol/openid-connect/logout',
+    'http://kimlik.example.test/realms/platform/protocol/openid-connect/logout',
+    'javascript:alert(1)',
+    'ftp://kimlik.example.test/realms/platform/protocol/openid-connect/logout',
+    'https://kimlik.example.test/realms/platform/protocol/openid-connect/logout/ek',
+    'https://kimlik.example.test/realms/platform/protocol/openid-connect/auth',
+    'https://kisi:parola@kimlik.example.test/realms/platform/protocol/openid-connect/logout',
+    '/goreli/protocol/openid-connect/logout',
+  ])('denetimden geçmeyen çıkış adresinde panelin giriş sayfasına döner: %s', async (logoutUrl) => {
+    mockServer.use(
+      http.post('*/api/method/platform_core.api.auth.logout', () =>
+        HttpResponse.json({ message: { logout_url: logoutUrl } }),
+      ),
+    );
+    const { auth, csrf, navigate } = setup();
+    await auth.check();
+
+    await auth.signOut();
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(csrf.get()).toBeUndefined();
+    // Keycloak oturumu açık kalmış olabilir. Giriş ekranı bunu bir notla söyler (K-3).
+    expect(auth.getState()).toEqual({ status: 'signed_out', notice: 'idp_session_may_remain' });
   });
 
   it('oturum kullanım sırasında bitince belirteci siler ve bir kez girişe yönlendirir', async () => {

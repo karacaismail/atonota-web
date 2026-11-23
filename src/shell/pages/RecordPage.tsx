@@ -1,4 +1,5 @@
-import { Form, Input, InputNumber } from 'antd';
+import { Minus, Plus } from '@phosphor-icons/react';
+import { Button, Form, Input, InputNumber, Space } from 'antd';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -125,13 +126,28 @@ function RecordForm({ row, index, total, crumbs, onGo, onViewChange }: RecordFor
             />
           </Form.Item>
           <Form.Item label="Tutar" htmlFor="rec-amount">
-            <InputNumber<number>
-              id="rec-amount"
-              className="shell-wide"
-              value={draft.amount}
-              min={0}
-              onChange={(v) => setDraft({ ...draft, amount: v ?? 0 })}
-            />
+            {/* antd'nin kendi okları İngilizce adlıdır ve küçüktür. Türkçe adlı düğmeler kullanılır (K4). */}
+            <Space.Compact block>
+              <InputNumber<number>
+                id="rec-amount"
+                className="shell-wide"
+                value={draft.amount}
+                min={0}
+                controls={false}
+                onChange={(v) => setDraft({ ...draft, amount: v ?? 0 })}
+              />
+              <Button
+                aria-label={t.pages.decrease}
+                icon={<Minus aria-hidden="true" />}
+                disabled={draft.amount <= 0}
+                onClick={() => setDraft({ ...draft, amount: Math.max(0, draft.amount - 1) })}
+              />
+              <Button
+                aria-label={t.pages.increase}
+                icon={<Plus aria-hidden="true" />}
+                onClick={() => setDraft({ ...draft, amount: draft.amount + 1 })}
+              />
+            </Space.Compact>
           </Form.Item>
         </Form>
       </div>

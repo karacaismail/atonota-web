@@ -80,6 +80,12 @@ export interface ShellViewData {
   account?: ShellAccount;
   /** Menü grupları. Yoksa menüde yalnız rota kaydındaki sayfalar görünür. */
   navigation?: ShellNavigationData;
+  /**
+   * Oturumu kapatır. Başarılı olursa tarayıcı Keycloak çıkış sayfasına gider.
+   * İstek başarısız olursa işlev reddedilir ve oturum açık kalır.
+   * Yoksa kabuk çıkış düğmesini çizmez (deneme sayfaları).
+   */
+  signOut?: () => Promise<void>;
   /** Modül sayfalarının ortamı. Kabuk bunu `ModuleProvider` ile verir. */
   modules?: ModuleEnvironment;
 }

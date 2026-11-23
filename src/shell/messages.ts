@@ -43,6 +43,9 @@ export const t = {
       `${formatNumber(used)} / ${formatNumber(total)} kullanıldı`,
     creditRing: (percent: number) => `Kredinin yüzde ${percent} kısmı kullanıldı`,
     user: 'Kullanıcı',
+    signOut: 'Oturumu kapat',
+    signingOut: 'Oturum kapatılıyor.',
+    signOutError: 'Oturum kapatılamadı. Oturumunuz açık. Biraz sonra yeniden deneyin.',
   },
   header: {
     crumbs: 'Konum',
@@ -82,6 +85,8 @@ export const t = {
     linkAfter: 'size yol gösterir.',
   },
   pages: {
+    increase: 'Artır',
+    decrease: 'Azalt',
     home: 'Ana sayfa',
     /** Liste sayfasının genel başlığı. Türün adı bilinmezse kullanılır. */
     records: 'Kayıtlar',

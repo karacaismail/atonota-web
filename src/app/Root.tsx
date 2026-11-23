@@ -56,8 +56,12 @@ function SignedIn({
     [session, user, dataMode],
   );
   const viewData = useMemo(
-    () => ({ ...base, account: { user, ...(fullName ? { fullName } : {}) } }),
-    [base, user, fullName],
+    () => ({
+      ...base,
+      account: { user, ...(fullName ? { fullName } : {}) },
+      signOut: () => session.auth.signOut(),
+    }),
+    [base, user, fullName, session],
   );
   return <AppContent viewData={viewData} />;
 }

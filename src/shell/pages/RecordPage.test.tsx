@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
@@ -38,5 +38,17 @@ describe('RecordPage', () => {
   it('kayıt bağlantısı yoksa örnek kaydı arar', () => {
     mount(null, '/hr/leave-application/HR-LAP-2026-00001');
     expect(screen.queryByText(/canlı/)).not.toBeInTheDocument();
+  });
+
+  it('tutar alanının okları Türkçe adlıdır ve değeri değiştirir (K4)', () => {
+    mount(null, '/satis/teklif/TEK-0003');
+    expect(screen.queryByLabelText('Increase Value')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Decrease Value')).not.toBeInTheDocument();
+    const amount = screen.getByLabelText<HTMLInputElement>('Tutar');
+    const before = Number(amount.value.replace(/\D/g, ''));
+    fireEvent.click(screen.getByRole('button', { name: 'Artır' }));
+    expect(Number(amount.value.replace(/\D/g, ''))).toBe(before + 1);
+    fireEvent.click(screen.getByRole('button', { name: 'Azalt' }));
+    expect(Number(amount.value.replace(/\D/g, ''))).toBe(before);
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -38,6 +38,20 @@ afterEach(() => {
 afterAll(() => mockServer.close());
 
 describe('AuthGate', () => {
+  it('çıkış adresi denetimden geçmezse giriş ekranı kimlik oturumu notunu gösterir', async () => {
+    // Ayarda Keycloak kökü verilmedi. Sahte sunucunun çıkış adresi başka kökendedir.
+    const { session, navigate } = setup();
+    expect(await screen.findByText('Panel içeriği')).toBeInTheDocument();
+
+    await act(() => session.auth.signOut());
+
+    expect(await screen.findByRole('heading', { name: 'Oturum açın' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Panelden çıktınız. Kimlik oturumunuz açık kalmış olabilir.',
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('önce oturumu denetler, sonra paneli gösterir', async () => {
     setup();
     expect(screen.getByRole('status')).toHaveTextContent('Oturum denetleniyor.');
@@ -106,8 +120,8 @@ describe('AuthGate', () => {
     const usesProjectSpacing = (element: HTMLElement | null) =>
       element?.style.paddingInline === 'var(--space-md)' &&
       element.style.maxWidth === 'var(--form-max-width)';
-    expect(usesProjectSpacing(screen.getByRole('status').closest('section'))).toBe(true);
-    expect(usesProjectSpacing((await screen.findByRole('alert')).closest('section'))).toBe(true);
+    expect(usesProjectSpacing(screen.getByRole('status').closest('main'))).toBe(true);
+    expect(usesProjectSpacing((await screen.findByRole('alert')).closest('main'))).toBe(true);
   });
 
   it('oturumdaki kullanıcıyı alt bileşene verir', async () => {

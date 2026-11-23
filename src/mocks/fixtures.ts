@@ -33,6 +33,10 @@ export const sampleLogoutUrl: LogoutUrl = {
   logout_url: `${SAMPLE_KEYCLOAK_URL}/realms/platform/protocol/openid-connect/logout?client_id=site-tenant1`,
 };
 
+/** Başka kökenli çıkış adresi. Panel bu adrese gitmez. Senaryo `cikis-yabanci-adres` bunu verir. */
+export const FOREIGN_LOGOUT_URL =
+  'https://baska.example.test/realms/platform/protocol/openid-connect/logout?client_id=site-tenant1';
+
 export const sampleBootstrap: Bootstrap = {
   formatting: {
     currency: 'TRY',

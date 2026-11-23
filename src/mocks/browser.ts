@@ -4,10 +4,13 @@ import { setupWorker } from 'msw/browser';
 
 import { SAMPLE_CSRF_TOKEN } from './fixtures';
 import { handlers } from './handlers';
+import { applyMockScenario, readMockScenario } from './scenarios';
 import { isMockedApiRequest } from './start';
 
 /** Sahte sunucuyu başlatır. Dönen CSRF değeri örnektir ve yalnız sahte sunucuda geçerlidir. */
 export async function startMockWorker(): Promise<{ csrfToken: string }> {
+  // Tarayıcı testi bir senaryo seçtiyse sahte sunucu ona göre yanıt verir.
+  applyMockScenario(readMockScenario());
   const worker = setupWorker(...handlers);
   await worker.start({
     quiet: true,
