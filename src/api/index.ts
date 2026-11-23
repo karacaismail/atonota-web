@@ -53,3 +53,4 @@ export type {
   FilterOperator,
   FilterScalar,
 } from './frappe-v2';
+export type { GroupSummary, GroupSummaryFilters, GroupSummaryQuery } from './group-summary';
