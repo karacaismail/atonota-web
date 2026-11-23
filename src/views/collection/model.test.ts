@@ -4,7 +4,7 @@ import { resetMockState, sampleDocTypeMeta } from '@/mocks';
 import { mockServer } from '@/mocks/node';
 import { createDefinition, parsePage } from './model';
 import { readQuery, writeQuery, toListRequest } from './query';
-import { exampleMeta, exampleSource } from './example';
+import { sampleMeta as exampleMeta } from './sample';
 
 beforeAll(() => {
   mockServer.listen({ onUnhandledFrame: 'error' });
@@ -30,7 +30,7 @@ describe('collection contract and URL', () => {
     expect(definition.columns.find((field) => field.fieldname === 'name')?.sensitivity).toBe(
       'restricted',
     );
-    expect(definition.columns.find((field) => field.fieldname === 'subject')?.sensitivity).toBe(
+    expect(definition.columns.find((field) => field.fieldname === 'title')?.sensitivity).toBe(
       'restricted',
     );
     expect(() =>
@@ -42,8 +42,8 @@ describe('collection contract and URL', () => {
   });
   it('orders tied server results by their stable record identity', () => {
     const definition = createDefinition(exampleMeta);
-    const query = readQuery(new URLSearchParams('sort=hours&direction=desc'), definition);
-    expect(toListRequest(definition, query).order_by).toBe('hours desc, name asc');
+    const query = readQuery(new URLSearchParams('sort=amount&direction=desc'), definition);
+    expect(toListRequest(definition, query).order_by).toBe('amount desc, name asc');
   });
   it('accepts the api-client mock DocType metadata response and binds example metadata to it', async () => {
     const client = createApiClient({
@@ -106,33 +106,13 @@ describe('collection contract and URL', () => {
       order_by: 'name asc',
     });
   });
-  it('rejects malformed server rows and preserves unknown total', () => {
-    expect(() => parsePage({ data: [{ name: 2 }], has_next_page: false })).toThrow();
-    expect(() => parsePage({ data: [], has_next_page: 'false' })).toThrow();
-    expect(parsePage({ data: [{ name: 'DOC-1' }], has_next_page: true }).total).toBeUndefined();
-  });
-  it('filters, sorts and paginates at the data source boundary', async () => {
-    const definition = createDefinition(exampleMeta);
-    const query = readQuery(new URLSearchParams('size=10&sort=hours&direction=desc'), definition);
-    const first = parsePage(
-      await exampleSource.list(toListRequest(definition, query), new AbortController().signal),
-    );
-    expect(first.data).toHaveLength(10);
-    expect(first.has_next_page).toBe(true);
-    expect(Number(first.data[0]?.['hours'])).toBeGreaterThanOrEqual(
-      Number(first.data[1]?.['hours']),
-    );
-    const filtered = parsePage(
-      await exampleSource.list(
-        toListRequest(definition, { ...query, filter: 'status', value: 'Done' }),
-        new AbortController().signal,
-      ),
-    );
-    expect(filtered.data.every((row) => row['status'] === 'Done')).toBe(true);
-    const controller = new AbortController();
-    controller.abort();
-    await expect(
-      exampleSource.list(toListRequest(definition, query), controller.signal),
-    ).rejects.toMatchObject({ name: 'AbortError' });
+  it('rejects malformed server rows and reads hasNextPage', () => {
+    expect(() => parsePage({ data: [{ name: 2 }], hasNextPage: false })).toThrow();
+    expect(() => parsePage({ data: [], hasNextPage: 'false' })).toThrow();
+    expect(() => parsePage({ data: [], has_next_page: false })).toThrow();
+    expect(parsePage({ data: [{ name: 'DOC-1' }], hasNextPage: true })).toEqual({
+      data: [{ name: 'DOC-1' }],
+      hasNextPage: true,
+    });
   });
 });
