@@ -178,3 +178,35 @@ test.describe('çalışma alanı menüsü: fareyle açılınca Tab (inceleme 2, 
     expect(await focusAfter(page, button)).toBe('after');
   });
 });
+
+test.describe('çalışma alanı menüsü: fareyle seçim (inceleme 1, K-3)', () => {
+  test('fareyle seçimden sonra odak gövdeye düşmez', async ({ page }) => {
+    const button = await switcher(page);
+    await button.click();
+    await expect(menu(page)).toBeVisible();
+    const before = await focusAfter(page, button);
+    // Tarayıcı tıklanan öğeye odak verdi mi? Chromium verir, WebKit vermeyebilir.
+    await page.evaluate(() => {
+      const store = window as unknown as { __focusInMenu: boolean };
+      store.__focusInMenu = false;
+      document.addEventListener('focusin', (event) => {
+        if ((event.target as Element | null)?.closest('.ant-dropdown')) store.__focusInMenu = true;
+      });
+    });
+
+    await menu(page).getByRole('menuitem').nth(1).click();
+
+    await expect(menu(page)).toBeHidden();
+    await expect(button).toContainText('Örnek Şirket B');
+    const focusWasInMenu = await page.evaluate(
+      () => (window as unknown as { __focusInMenu: boolean }).__focusInMenu,
+    );
+    if (focusWasInMenu) {
+      // Odak listedeydi. Liste kapanınca odak tetik düğmesine döner.
+      await expect(button).toBeFocused();
+    } else {
+      // Odak listede değildi. Seçim odağa dokunmaz.
+      expect(await focusAfter(page, button)).toBe(before);
+    }
+  });
+});
