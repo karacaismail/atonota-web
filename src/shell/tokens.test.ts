@@ -1,7 +1,7 @@
 import config from '@design-source/control-size-config.json';
 import { describe, expect, it } from 'vitest';
 
-import { shellTokens } from './tokens';
+import { required, shellTokens } from './tokens';
 
 describe('shellTokens', () => {
   it('sidebar ölçülerini kaynak dosyadan alır', () => {
@@ -58,5 +58,20 @@ describe('shellTokens', () => {
     expect(shellTokens.header.dataStates.map((v) => v.value)).toEqual(
       config.header.dataStates.map((v) => v.value),
     );
+  });
+});
+
+describe('required', () => {
+  it('kaynak alanı yoksa hata verir, sabit yedek kullanmaz', () => {
+    expect(() => required(undefined, 'dropdown.styles described')).toThrow(
+      'Kaynak dosyada değer bulunamadı: dropdown.styles described',
+    );
+    expect(required(0, 'sıfır')).toBe(0);
+  });
+
+  it('rozet ve dropdown ölçüleri kaynaktan gelir', () => {
+    const described = config.dropdown.styles.find((x) => x.key === 'described');
+    expect(shellTokens.ddRow).toBe(described?.itemHeight);
+    expect(shellTokens.ddBox).toBe(described?.contentHeight);
   });
 });

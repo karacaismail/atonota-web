@@ -49,3 +49,33 @@ describe('shell.css', () => {
     }
   });
 });
+
+/**
+ * İnceleme 2, Küçük 1: kayan zeminin eğrisi ve solma süresi kaynak örnekten gelir.
+ * Kaynak: `.glide{transition:transform .2s cubic-bezier(.2,0,0,1), ..., opacity .15s ease}`.
+ */
+describe('kayan zemin hareketi', () => {
+  const decl = (name: string) =>
+    new RegExp(`${name}:\\s*([^;]+);`).exec(css)?.[1]?.trim().replace(/\s+/g, '');
+
+  it('adlı değerler kaynak örnekle aynıdır', () => {
+    expect(decl('--shell-glide-dur')).toBe('200ms');
+    expect(decl('--shell-glide-ease')).toBe('cubic-bezier(.2,0,0,1)');
+    expect(decl('--shell-glide-fade-dur')).toBe('150ms');
+    expect(decl('--shell-glide-fade-ease')).toBe('ease');
+  });
+
+  it('zemin geçişi rail eğrisini kullanmaz', () => {
+    const rules = [...css.matchAll(/\.shell-glide(?:\[[^\]]+\])?\s*\{([^}]*)\}/g)].map((m) => m[1]);
+    const transitions = rules.filter((r) => r?.includes('transition'));
+    expect(transitions.length).toBeGreaterThan(0);
+    for (const r of transitions) {
+      expect(r).not.toContain('--shell-ease');
+      expect(r).toContain('opacity var(--shell-glide-fade-dur) var(--shell-glide-fade-ease)');
+    }
+  });
+
+  it('flyout listesinin de kayan zemini vardır', () => {
+    expect(css).toMatch(/\.shell-fly-list\s*>\s*li\s*>\s*\.shell-item/);
+  });
+});

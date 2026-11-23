@@ -229,6 +229,26 @@ test.describe('kayan hover zemini (G1–G3)', () => {
     await expect(glide(page)).toHaveAttribute('data-on', 'false');
   });
 
+  test('G1: flyout panelinde zemin öğeler arasında kayar', async ({ page }) => {
+    test.skip(isCompact(page), 'telefonda hover yok');
+    await page.goto('/satis/teklif');
+    await page.getByRole('button', { name: 'Satış', exact: true }).hover();
+    const fly = page.getByRole('group', { name: 'Satış' });
+    const flyGlide = fly.locator('.shell-glide');
+    const first = fly.getByRole('link').nth(0);
+    const second = fly.getByRole('link').nth(1);
+    await first.hover();
+    await expect(flyGlide).toHaveAttribute('data-on', 'true');
+    await second.hover();
+    const target = await second.boundingBox();
+    await expect
+      .poll(async () => {
+        const b = await flyGlide.boundingBox();
+        return b ? b.y + b.height / 2 : -1;
+      })
+      .toBeCloseTo(target ? target.y + target.height / 2 : 0, 0);
+  });
+
   test('G3: klavye odağı zemini taşır', async ({ page }) => {
     test.skip(isCompact(page), 'geniş ekran');
     await page.goto('/satis/teklif');

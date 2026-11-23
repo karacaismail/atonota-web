@@ -121,4 +121,16 @@ describe('Sidebar', () => {
     const fly = await screen.findByRole('group', { name: /Teklif ajanı/ });
     expect(fly).toHaveTextContent('Çalışıyor');
   });
+
+  it('G1: flyout panelinde de kayan zemin vardır ve odakla taşınır', async () => {
+    const { user } = setup();
+    const parent = screen.getByRole('button', { name: 'Satış' });
+    act(() => parent.focus());
+    const fly = await screen.findByRole('group', { name: 'Satış' });
+    const glide = fly.querySelector('.shell-glide');
+    expect(glide).not.toBeNull();
+    expect(glide).toHaveAttribute('data-on', 'false');
+    await user.keyboard('{ArrowRight}');
+    expect(glide).toHaveAttribute('data-on', 'true');
+  });
 });
