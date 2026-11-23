@@ -1,11 +1,8 @@
 /**
- * Tarayıcı testlerinde korunan alan adı. AtonotA Login ve ortam sunucuları bu alandadır.
- * Örnek: `api.login.atonota.net` ve `api.login.alpha.atonota.net`.
+ * Tarayıcı testlerinde korunan alan adı. Kural sahte sunucuyla ortaktır: `src/mocks/real-server.ts`.
  */
-export const GUARDED_DOMAIN = 'atonota.net';
-
-/** Adres korunan alan adındaysa `true` döner. Benzer adlar (`notatonota.net`) korunmaz. */
-export function isGuardedUrl(url: URL): boolean {
-  const host = url.hostname.toLowerCase();
-  return host === GUARDED_DOMAIN || host.endsWith(`.${GUARDED_DOMAIN}`);
-}
+export {
+  GUARDED_DOMAIN,
+  isGuardedUrl,
+  parseRealServerLogLine,
+} from '../../src/mocks/real-server';

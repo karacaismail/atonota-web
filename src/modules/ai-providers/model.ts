@@ -21,6 +21,17 @@ export interface ConnectionDraft {
   values: Record<string, string>;
 }
 
+/** Form değerlerinden sağlayıcının sır alanlarını çıkarır. Öteki değerler kalır. */
+export function withoutSecrets(
+  values: Record<string, string>,
+  provider: ProviderDefinition,
+): Record<string, string> {
+  const secrets = new Set(
+    provider.fields.filter((field) => field.kind === 'secret').map((field) => field.name),
+  );
+  return Object.fromEntries(Object.entries(values).filter(([name]) => !secrets.has(name)));
+}
+
 /**
  * Formu sözleşmedeki `ConnectionInput` biçimine çevirir.
  * - Yalnız sağlayıcı tanımındaki alanlar gider.

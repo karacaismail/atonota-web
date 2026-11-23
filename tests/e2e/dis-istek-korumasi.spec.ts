@@ -23,6 +23,43 @@ test.describe('gerçek sunucu koruması', () => {
     }, ENV_PROBE);
   });
 
+  /**
+   * Panel incelemesi 2, K-1: uygulama sayfasında sahte sunucunun servis işçisi istekleri yönetir.
+   * WebKit'te Playwright, işçinin ağa geçirdiği isteği görmez. Bu yüzden sahte sunucu
+   * `atonota.net` isteğini işçide keser ve tarayıcı günlüğüne yazar. Fixture bu kaydı okur.
+   */
+  test('uygulama sayfasında servis işçisinden geçen fetch gerçek sunucuya gitmez ve testi düşürür', async ({
+    page,
+  }) => {
+    test.fail(true, 'Sahte sunucu isteği keser. Ortak fixture kaydı okur ve testi düşürür.');
+    await page.goto('/');
+    await page.waitForFunction(() => navigator.serviceWorker?.controller != null);
+    await page.evaluate(async (url) => {
+      await fetch(url, { mode: 'no-cors' }).catch(() => undefined);
+    }, ENV_PROBE);
+  });
+
+  test('uygulama sayfasında servis işçisi gerçek sunucu isteğini ağ hatasına düşürür', async ({
+    page,
+    gercekSunucuIstekleri,
+  }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => navigator.serviceWorker?.controller != null);
+    const outcome = await page.evaluate(async (url) => {
+      try {
+        const response = await fetch(url);
+        return `yanıt ${response.status}`;
+      } catch {
+        return 'ağ hatası';
+      }
+    }, ENV_PROBE);
+    // İstek ağa çıkmaz. Sayfa yanıt değil, ağ hatası alır.
+    expect(outcome).toBe('ağ hatası');
+    // Fixture kesilen isteği kaydeder. Test kaydı kendisi okur. Böylece test düşmez.
+    await expect.poll(() => gercekSunucuIstekleri.peek()).toEqual([`GET ${ENV_PROBE}`]);
+    gercekSunucuIstekleri.take();
+  });
+
   test('testin kendi yönlendirmesi önce gelir ve test geçer', async ({ page }) => {
     await page.route(`${new URL(LOGIN_PROBE).origin}/**`, (route) =>
       route.fulfill({

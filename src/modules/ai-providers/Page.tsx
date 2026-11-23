@@ -22,6 +22,7 @@ import {
   joinConnections,
   saveFailureKey,
   statusKey,
+  withoutSecrets,
   type RowStatus,
 } from './model';
 import './ai-providers.css';
@@ -311,6 +312,9 @@ function ConnectionForm({ catalog, listing, onSaved, onUncertain }: FormProps) {
       } else {
         const key = saveFailureKey(error);
         setFailure(isSaveCopyKey(key) ? p[key] : copy[key]);
+        // Sonuç belirsizse kayıt yazılmış olabilir. Sır formda kalmaz.
+        // Sır alanı zorunludur. Yönetici sırrı yeniden yazmadan ikinci kayıt isteği gitmez.
+        if (key === 'saveUncertain') setValues((current) => withoutSecrets(current, provider));
         if (key === 'saveUncertain' || key === 'saveConflict') onUncertain();
       }
     } finally {
@@ -416,7 +420,7 @@ function ConnectionForm({ catalog, listing, onSaved, onUncertain }: FormProps) {
 }
 
 /** Kaydedilen bağlantının özeti. Sır burada yoktur. "Bağlantıyı dene" ayrı adımdır. */
-function SavedPanel({
+export function SavedPanel({
   label,
   state,
   onCheck,

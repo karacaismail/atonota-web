@@ -5,6 +5,7 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { isGuardedUrl } from '../../tests/setup/dis-istek';
+import { importsPlaywrightDirectly, importsSharedFixture } from '../../tests/setup/fixture-kurali';
 
 const ROOT = join(import.meta.dirname, '..', '..');
 
@@ -25,17 +26,12 @@ describe('tarayıcı testi gerçek sunucu koruması', () => {
   });
 
   it('hiçbir tarayıcı testi test değerini doğrudan @playwright/test paketinden almaz', () => {
-    const direct = specs.filter((file) =>
-      /^import\s+(?!type\b)[^;]*from\s+'@playwright\/test';/m.test(readFileSync(file, 'utf8')),
-    );
+    const direct = specs.filter((file) => importsPlaywrightDirectly(readFileSync(file, 'utf8')));
     expect(direct.map((file) => relative(ROOT, file))).toEqual([]);
   });
 
   it('her tarayıcı testi ortak fixture dosyasını içe aktarır', () => {
-    const missing = specs.filter(
-      (file) =>
-        !/from\s+'[./]+(?:tests\/)?setup\/playwright-fixtures'/.test(readFileSync(file, 'utf8')),
-    );
+    const missing = specs.filter((file) => !importsSharedFixture(readFileSync(file, 'utf8')));
     expect(missing.map((file) => relative(ROOT, file))).toEqual([]);
   });
 
@@ -50,5 +46,36 @@ describe('tarayıcı testi gerçek sunucu koruması', () => {
     expect(isGuardedUrl(new URL('http://127.0.0.1:4173/panel'))).toBe(false);
     expect(isGuardedUrl(new URL('https://notatonota.net/'))).toBe(false);
     expect(isGuardedUrl(new URL('https://atonota.net.example.test/'))).toBe(false);
+  });
+});
+
+/** Panel incelemesi 2, K-3: arama iki tırnak türünü tanır. Noktalı virgül isteğe bağlıdır. */
+describe('doğrudan @playwright/test içe aktarma araması', () => {
+  it.each([
+    ["import { test, expect } from '@playwright/test';"],
+    ['import { test, expect } from "@playwright/test";'],
+    ["import { test } from '@playwright/test'"],
+    ['import { test } from "@playwright/test"'],
+    ["import {\n  expect,\n  test,\n} from '@playwright/test'"],
+    ["import base, { type Page } from '@playwright/test'"],
+    ["const { test } = require('@playwright/test');"],
+    ['const { test } = require("@playwright/test")'],
+  ])('yakalar: %s', (source) => {
+    expect(importsPlaywrightDirectly(source)).toBe(true);
+  });
+
+  it.each([
+    ["import type { Page } from '@playwright/test';"],
+    ['import type { Page } from "@playwright/test"'],
+    ["import { expect, test } from '../../../tests/setup/playwright-fixtures';"],
+  ])('yakalamaz: %s', (source) => {
+    expect(importsPlaywrightDirectly(source)).toBe(false);
+  });
+
+  it.each([
+    ["import { test } from '../../../tests/setup/playwright-fixtures';"],
+    ['import { test } from "../setup/playwright-fixtures"'],
+  ])('ortak fixture içe aktarmasını tanır: %s', (source) => {
+    expect(importsSharedFixture(source)).toBe(true);
   });
 });

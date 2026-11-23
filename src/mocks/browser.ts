@@ -4,6 +4,7 @@ import { setupWorker } from 'msw/browser';
 
 import { SAMPLE_CSRF_TOKEN } from './fixtures';
 import { handlers } from './handlers';
+import { isGuardedUrl, realServerLogLine } from './real-server';
 import { applyMockScenario, readMockScenario } from './scenarios';
 import { isMockedApiRequest } from './start';
 
@@ -19,10 +20,19 @@ export async function startMockWorker(): Promise<{ csrfToken: string }> {
      * çıkmaz. Sayfa ve statik dosya istekleri işçiden olduğu gibi geçer. Hazır "error" kuralı
      * sayfa yenilemesini de hataya düşürüyordu: işçi sayfayı denetlerken sayfa isteği kuralı
      * karşılamıyor, ekranda yalnız bir JSON hata metni kalıyordu.
+     *
+     * `atonota.net` isteği ağa geçmez. İşçi isteği ağ hatasına düşürür ve günlüğe yazar.
+     * WebKit'te Playwright işçinin geçirdiği isteği görmez. Tarayıcı testleri bu kaydı okur:
+     * `tests/setup/playwright-fixtures.ts`.
      */
     onUnhandledFrame({ frame, defaults }) {
       if (frame.protocol !== 'http') return;
       const { request } = frame.data as { request: Request };
+      if (isGuardedUrl(new URL(request.url))) {
+        console.error(realServerLogLine(request.method, request.url));
+        // MSW, fırlatılan yanıtı istemciye verir. `Response.error()` ağ hatasıdır.
+        throw Response.error();
+      }
       if (!isMockedApiRequest(request.url)) return;
       defaults.error();
       throw new Error(

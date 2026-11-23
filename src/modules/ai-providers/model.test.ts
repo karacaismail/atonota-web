@@ -10,6 +10,7 @@ import {
   joinConnections,
   saveFailureKey,
   statusKey,
+  withoutSecrets,
 } from './model';
 
 const field = (
@@ -180,5 +181,17 @@ describe('joinConnections', () => {
       { name: 'H1', label: 'Ana hesap' },
     ]);
     expect(accountsFor('gemini', accounts, providers)).toEqual([]);
+  });
+});
+
+describe('withoutSecrets', () => {
+  it('removes only the secret values of the provider', () => {
+    const provider = {
+      id: 'p',
+      fields: [field('api_key', 'secret', 'account'), field('base_url', 'url', 'api')],
+    } as unknown as ProviderDefinition;
+    expect(withoutSecrets({ api_key: 'k', base_url: 'https://x.example.test' }, provider)).toEqual({
+      base_url: 'https://x.example.test',
+    });
   });
 });

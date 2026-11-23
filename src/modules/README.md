@@ -32,6 +32,8 @@ Sayfa `/administration/ai-providers` adresindedir. Sayfa Yönetim bölümünün 
 - "API ekle" formu sunucu kataloğundan çizilir. Kodda sağlayıcı listesi yoktur.
 - Sunucu kataloğu 403 dönerse "API ekle" düğmesi görünmez. Rol denetimini sunucu yapar.
 - Sır alanı maskelidir. Kaydettikten sonra sır ekranda ve durumda tutulmaz.
+- Kayıt sonucu belirsiz kalabilir. Örneğin istek zaman aşımına uğrar. Bu durumda sayfa sır alanını temizler. Öteki alanlar formda kalır. Sır alanı zorunludur. Bu yüzden yönetici sırrı yeniden yazmadan ikinci kayıt isteği gitmez.
+- Sunucu 409 yanıtı verirse kayıt yapılmamıştır. Bu durumda sır formda kalır. Yönetici biraz bekleyip yeniden kaydedebilir.
 - "Kaydet" ve "Bağlantıyı dene" ayrı adımlardır. Deneme sırasında düğme bekler.
 - Denemede 429 yanıtı "Çok sık denendi" iletisiyle görünür. Kayıtta aynı yanıt "Çok sık kaydedildi" iletisiyle görünür.
 - Kayıt yanıtı bazen gelmez. Örneğin zaman aşımında ya da 5xx yanıtında yanıt gelmez. Sunucu kaydı yazmış olabilir. Bu durumda ekran "İşlem sonucu bilinmiyor" der ve listeyi yeniden okur. Ekran "yeniden deneyin" demez, çünkü her kayıt yeni bir bağlantı açar.

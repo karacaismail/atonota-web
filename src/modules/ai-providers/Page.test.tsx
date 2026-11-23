@@ -4,7 +4,7 @@ import { ApiError } from '@/api/errors';
 import type { ConnectionCheck } from '@/api';
 import { sampleProviderCatalog } from '@/mocks/fixtures';
 import { ModuleProvider, type AiProviderClient, type ModuleClient } from '../runtime';
-import ProvidersPage from './Page';
+import ProvidersPage, { SavedPanel } from './Page';
 
 const listing = {
   apis: [
@@ -246,6 +246,36 @@ describe('AI providers page', () => {
     expect(await screen.findByText('Birincil', { selector: '.ai-provider-name' })).toBeVisible();
   });
 
+  // API ekle incelemesi 2, K-1: belirsiz sonuçta sır formda kalmaz. İkinci kayıt isteği gitmez.
+  it.each([
+    ['503', new ApiError({ kind: 'unavailable', status: 503 })],
+    ['timeout', new ApiError({ kind: 'timeout', status: 0 })],
+    ['network error', new ApiError({ kind: 'network', status: 0 })],
+  ])('clears the secret after an unknown outcome (%s) and does not send it again', async (_n, error) => {
+    const save = vi.fn().mockRejectedValue(error);
+    renderPage(client({ saveProviderConnection: save }));
+    await fillAnthropic('gizli-anahtar');
+    fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+    await screen.findByText(/^İşlem sonucu bilinmiyor\./);
+    await waitFor(() => expect(screen.getByLabelText(/^API anahtarı/)).toHaveValue(''));
+    // Sır olmayan alanlar kalır. Yönetici yalnız sırrı yeniden yazar.
+    expect(screen.getByLabelText(/^Bağlantı adı/)).toHaveValue('Birincil');
+    // antd yükleme simgesi kapanış hareketinde bir süre kalır. Ad "loading Kaydet" olabilir.
+    fireEvent.click(screen.getByRole('button', { name: /Kaydet$/ }));
+    expect(await screen.findByLabelText(/^API anahtarı/)).toHaveAttribute('aria-invalid', 'true');
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).not.toContain('gizli-anahtar');
+  });
+
+  it('keeps the secret after a conflict, because nothing was saved', async () => {
+    const conflict = new ApiError({ kind: 'conflict', status: 409 });
+    renderPage(client({ saveProviderConnection: vi.fn().mockRejectedValue(conflict) }));
+    await fillAnthropic('k');
+    fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+    await screen.findByRole('alert');
+    expect(screen.getByLabelText(/^API anahtarı/)).toHaveValue('k');
+  });
+
   it('uses save wording for the rate limit', async () => {
     const busy = new ApiError({ kind: 'rate_limited', status: 429, code: 'gateway_busy' });
     renderPage(client({ saveProviderConnection: vi.fn().mockRejectedValue(busy) }));
@@ -316,5 +346,34 @@ describe('AI providers page', () => {
     expect(screen.queryByLabelText(/^Hesap adı/)).toBeNull();
     expect(screen.queryByLabelText(/^Kurum kimliği/)).toBeNull();
     expect(screen.getByText('Var olan hesapta hesap alanları değişmez.')).toBeVisible();
+  });
+});
+
+// API ekle incelemesi 2, K-2: deneme ucu yoksa odak kayıt paneline gider.
+describe('SavedPanel focus', () => {
+  function renderPanel(canCheck: boolean) {
+    return render(
+      <ModuleProvider
+        value={{ tenant: 'example-site', user: 'example-user', mode: 'example', client: {} }}
+      >
+        <SavedPanel label="Birincil" state={undefined} onCheck={vi.fn()} canCheck={canCheck} />
+      </ModuleProvider>,
+    );
+  }
+
+  it('moves focus to the panel itself when the check is not offered', async () => {
+    renderPanel(false);
+    expect(screen.queryByRole('button', { name: 'Bağlantıyı dene' })).toBeNull();
+    const message = screen.getByText('Bağlantı kaydedildi. Bağlantı henüz denenmedi.');
+    const panel = message.closest<HTMLElement>('[tabindex="-1"]');
+    expect(panel).not.toBeNull();
+    await waitFor(() => expect(panel).toHaveFocus());
+  });
+
+  it('moves focus to "Check connection" when the check is offered', async () => {
+    renderPanel(true);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Bağlantıyı dene' })).toHaveFocus(),
+    );
   });
 });
