@@ -424,40 +424,53 @@ for (const scheme of ['light', 'dark'] as const) {
       const text = control.locator(`.ant-switch-inner-${state}`);
       await expect(text).toBeVisible();
       await expect(control).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      const ratio = await control.evaluate((element, which) => {
-        const text = element.querySelector(`.ant-switch-inner-${which}`);
-        if (!text) return 0;
-        const parse = (value: string): number[] => (value.match(/[\d.]+/g) ?? []).map(Number);
-        // First opaque background behind the switch; the canvas is white when none is set.
-        let page = [255, 255, 255];
-        for (let node = element.parentElement; node; node = node.parentElement) {
-          const [r = 0, g = 0, b = 0, a = 1] = parse(getComputedStyle(node).backgroundColor);
-          if (a === 1) {
-            page = [r, g, b];
-            break;
+      for (const interaction of ['rest', 'hover'] as const) {
+        if (interaction === 'hover') await control.hover();
+        else await page.mouse.move(0, 0);
+        const ratio = await control.evaluate((element, which) => {
+          const text = element.querySelector(`.ant-switch-inner-${which}`);
+          if (!text) return 0;
+          const parse = (value: string): number[] => {
+            const srgb = value.startsWith('color(srgb ');
+            const channels = (
+              value.slice(srgb ? 'color(srgb '.length : value.indexOf('(') + 1).match(/[\d.]+/g) ??
+              []
+            ).map(Number);
+            return srgb
+              ? channels.map((channel, i) => (i < 3 ? channel * 255 : channel))
+              : channels;
+          };
+          // First opaque background behind the switch; the canvas is white when none is set.
+          let page = [255, 255, 255];
+          for (let node = element.parentElement; node; node = node.parentElement) {
+            const [r = 0, g = 0, b = 0, a = 1] = parse(getComputedStyle(node).backgroundColor);
+            if (a === 1) {
+              page = [r, g, b];
+              break;
+            }
           }
-        }
-        const flatten = (value: string, base: number[]) => {
-          const [r = 0, g = 0, b = 0, a = 1] = parse(value);
-          return [r, g, b].map((c, i) => c * a + (base[i] ?? 255) * (1 - a));
-        };
-        const track = flatten(getComputedStyle(element).backgroundColor, page.slice(0, 3));
-        const ink = flatten(getComputedStyle(text).color, track);
-        const luminance = (rgb: number[]) => {
-          const [r = 0, g = 0, b = 0] = rgb.map((part) => {
-            const c = part / 255;
-            return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-          });
-          return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-        };
-        const [high = 0, low = 0] = [luminance(ink), luminance(track)].sort((x, y) => y - x);
-        return (high + 0.05) / (low + 0.05);
-      }, state);
-      const colors = await text.evaluate((element) => {
-        const track = element.closest('.ant-switch');
-        return `${getComputedStyle(element).color} on ${track ? getComputedStyle(track).backgroundColor : ''}`;
-      });
-      expect(ratio, `${scheme} ${state}: ${colors}`).toBeGreaterThanOrEqual(4.5);
+          const flatten = (value: string, base: number[]) => {
+            const [r = 0, g = 0, b = 0, a = 1] = parse(value);
+            return [r, g, b].map((c, i) => c * a + (base[i] ?? 255) * (1 - a));
+          };
+          const track = flatten(getComputedStyle(element).backgroundColor, page.slice(0, 3));
+          const ink = flatten(getComputedStyle(text).color, track);
+          const luminance = (rgb: number[]) => {
+            const [r = 0, g = 0, b = 0] = rgb.map((part) => {
+              const c = part / 255;
+              return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+            });
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          };
+          const [high = 0, low = 0] = [luminance(ink), luminance(track)].sort((x, y) => y - x);
+          return (high + 0.05) / (low + 0.05);
+        }, state);
+        const colors = await text.evaluate((element) => {
+          const track = element.closest('.ant-switch');
+          return `${getComputedStyle(element).color} on ${track ? getComputedStyle(track).backgroundColor : ''}`;
+        });
+        expect(ratio, `${scheme} ${state} ${interaction}: ${colors}`).toBeGreaterThanOrEqual(4.5);
+      }
     }
   });
 }
@@ -508,6 +521,25 @@ test('choice transitions use the shared easing and duration in both directions',
   }
 });
 
+test('checkbox mark uses the shared transition in both directions', async ({ page }) => {
+  const checkbox = page.getByRole('checkbox', { name: 'Seç', exact: true });
+  const mark = page.locator('.atonota-checkbox', { has: checkbox }).locator('.ant-checkbox-inner');
+  for (const checked of [true, false]) {
+    await checkbox.setChecked(checked);
+    const transition = await mark.evaluate((element) => {
+      const style = getComputedStyle(element, '::after');
+      return {
+        easings: style.transitionTimingFunction.split(/,\s*(?![^()]*\))/),
+        durations: style.transitionDuration.split(', '),
+      };
+    });
+    for (const easing of transition.easings) expect(easing).toBe(standardEasing);
+    for (const duration of transition.durations) {
+      expect(sharedDurations).toContain(parseFloat(duration) * 1000);
+    }
+  }
+});
+
 test('choice transitions stop when reduced motion is on', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const control = page.getByRole('switch', { name: 'Etkin' });
@@ -527,6 +559,7 @@ test('choice transitions stop when reduced motion is on', async ({ page }) => {
 
 test('Tab and Shift+Tab close the menu and move to the next or previous control', async ({
   page,
+  browserName,
 }) => {
   const first = page.getByRole('button', { name: 'İşlemler', exact: true });
   const second = page.getByRole('button', { name: 'shortcut', exact: true });
@@ -535,15 +568,49 @@ test('Tab and Shift+Tab close the menu and move to the next or previous control'
   await first.focus();
   await page.keyboard.press('Enter');
   await expect(menu.getByRole('menuitem', { name: /^Düzenle/ })).toBeFocused();
-  await page.keyboard.press('Tab');
+  // WebKit uses Option+Tab to include buttons in its native tab order.
+  await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
   await expect(menu).toBeHidden();
   await expect(second).toBeFocused();
   await expect(first).toHaveAttribute('aria-expanded', 'false');
 
   await page.keyboard.press('Enter');
   await expect(menu.getByRole('menuitem', { name: /^Düzenle/ })).toBeFocused();
-  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press(browserName === 'webkit' ? 'Alt+Shift+Tab' : 'Shift+Tab');
   await expect(menu).toBeHidden();
   await expect(first).toBeFocused();
   await expect(second).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('Tab from the menu follows the native order past a hidden control', async ({
+  page,
+  browserName,
+}) => {
+  const first = page.getByRole('button', { name: 'İşlemler', exact: true });
+  const second = page.getByRole('button', { name: 'shortcut', exact: true });
+  await first.evaluate((trigger) => {
+    const hidden = document.createElement('button');
+    hidden.style.visibility = 'hidden';
+    trigger.after(hidden);
+  });
+
+  await first.focus();
+  await page.keyboard.press('Enter');
+  const item = page.getByRole('menuitem', { name: /^Düzenle/ });
+  await expect(item).toBeFocused();
+  await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
+  await expect(item).toBeHidden();
+  await expect(second).toBeFocused();
+});
+
+test('unmodified Tab from the popup enables keyboard focus mode', async ({ page }) => {
+  const trigger = page.getByRole('button', { name: 'İşlemler', exact: true });
+  const html = page.locator('html');
+  await trigger.click();
+  const item = page.getByRole('menuitem', { name: /^Düzenle/ });
+  await expect(item).toBeFocused();
+  await expect(html).not.toHaveAttribute('data-focus-mode', 'keyboard');
+  await page.keyboard.press('Tab');
+  await expect(item).toBeHidden();
+  await expect(html).toHaveAttribute('data-focus-mode', 'keyboard');
 });

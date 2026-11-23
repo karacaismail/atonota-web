@@ -341,6 +341,17 @@ a.atonota-link[data-size='large'] {
   color: var(--ant-color-text);
 }
 
+/* Keep hover feedback without letting the unchecked track wash out the state text. */
+:root[data-theme='dark']
+  .atonota-switch
+  .ant-switch:hover:not(.ant-switch-checked, .ant-switch-disabled) {
+  background-color: color-mix(
+    in srgb,
+    var(--ant-color-text-quaternary) 80%,
+    var(--ant-color-text-tertiary)
+  );
+}
+
 /* antd writes these transitions without a curve (browser default). Use the shared tokens. */
 :root .atonota-switch .ant-switch,
 :root .atonota-switch .ant-switch-handle,
@@ -353,6 +364,7 @@ a.atonota-link[data-size='large'] {
 :root .atonota-radio-button.ant-radio-button-wrapper,
 :root .atonota-radio-button.ant-radio-button-wrapper::before,
 :root .atonota-checkbox .ant-checkbox-inner,
+:root .atonota-checkbox .ant-checkbox-inner::after,
 :root .atonota-tabs.ant-segmented,
 :root .atonota-tabs .ant-segmented-item,
 :root .atonota-tabs .ant-segmented-item::after {
