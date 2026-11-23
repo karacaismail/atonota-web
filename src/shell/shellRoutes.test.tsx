@@ -105,19 +105,19 @@ describe('buildShellRoutes: rota sırası', () => {
 });
 
 describe('AI Studio satırı', () => {
-  it('ayar kapalıdır ve satır listede yoktur', () => {
-    expect(shellFeatures.aiStudio).toBe(false);
+  it('ayar açıktır ve satır listededir', () => {
+    expect(shellFeatures.aiStudio).toBe(true);
     expect(aiStudioRoute.path).toBe('/panel/ai');
-    expect(lazyRoutes.map((r) => r.path)).not.toContain('/panel/ai');
+    expect(lazyRoutes.map((r) => r.path)).toContain('/panel/ai');
   });
 
-  it('ayar kapalıyken /panel/ai koleksiyon sayfasına düşmez', async () => {
-    mount('/panel/ai', lazyRoutes, collection);
+  it('satırı olmayan /panel/ adresi koleksiyon sayfasına düşmez', async () => {
+    mount('/panel/baska', lazyRoutes, collection);
     expect(await screen.findByRole('heading', { name: 'Sayfa bulunamadı' })).toBeInTheDocument();
     expect(listSpy).not.toHaveBeenCalled();
   });
 
-  it('ayar açılınca satır /panel/ai sayfasını açar', async () => {
+  it('satır /panel/ai sayfasını açar', async () => {
     mount('/panel/ai', [{ ...aiStudioRoute, load: page('AI Studio') }], collection);
     expect(await screen.findByText('AI Studio')).toBeInTheDocument();
     expect(listSpy).not.toHaveBeenCalled();

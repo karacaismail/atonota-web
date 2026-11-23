@@ -32,6 +32,7 @@ const session = createPlatformSession({
 createRoot(root).render(
   <StrictMode>
     {mocks.active ? <SampleDataNotice /> : null}
-    <Root session={session} />
+    {/* Sahte sunucu açıkken modüller "Örnek veri" kipindedir. Örnek veri canlı gibi gösterilmez. */}
+    <Root session={session} dataMode={mocks.active ? 'example' : 'live'} />
   </StrictMode>,
 );

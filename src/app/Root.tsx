@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { AuthGate, type PlatformSession } from '@/auth';
+import type { ModuleEnvironment } from '@/modules';
 import { createShellModuleEnvironment } from '@/shell/view-data/modules';
 
 import { AppContent } from './App';
@@ -15,10 +16,23 @@ export interface RootProps {
   engines?: boolean;
   /** Oturum açıkken çizilecek içerik. Varsayılan kabuktur. */
   children?: ReactNode;
+  /**
+   * Modül sayfalarının veri kipi. Sahte sunucu açıkken `example` verilir; sayfa "Örnek veri" yazar.
+   * Örnek veri canlı veri gibi gösterilmez. Varsayılan `live` olur.
+   */
+  dataMode?: ModuleEnvironment['mode'];
 }
 
 /** Oturum açıkken kabuğun veri bağlantısını kurar: koleksiyon kaynağı ve modül ortamı. */
-function SignedIn({ session, user }: { session: PlatformSession; user: string }) {
+function SignedIn({
+  session,
+  user,
+  dataMode,
+}: {
+  session: PlatformSession;
+  user: string;
+  dataMode: ModuleEnvironment['mode'];
+}) {
   const [fullName, setFullName] = useState<string | undefined>(undefined);
   useEffect(() => {
     const ctrl = new AbortController();
@@ -36,9 +50,10 @@ function SignedIn({ session, user }: { session: PlatformSession; user: string })
         tenant: session.config.siteUrl,
         user,
         locale: 'tr',
+        mode: dataMode,
       }),
     }),
-    [session, user],
+    [session, user, dataMode],
   );
   const viewData = useMemo(
     () => ({ ...base, account: { user, ...(fullName ? { fullName } : {}) } }),
@@ -53,11 +68,17 @@ function SignedIn({ session, user }: { session: PlatformSession; user: string })
  * ekranları da açık ve koyu temanın tokenlarını kullanır.
  * Oturum açılınca kabuk, oturumdaki kullanıcıyla ve ortak API istemcisiyle bağlanır.
  */
-export function Root({ session, initialThemeChoice, engines = true, children }: RootProps) {
+export function Root({
+  session,
+  initialThemeChoice,
+  engines = true,
+  children,
+  dataMode = 'live',
+}: RootProps) {
   return (
     <AppProviders {...(initialThemeChoice ? { initialThemeChoice } : {})} engines={engines}>
       <AuthGate session={session}>
-        {(user) => children ?? <SignedIn session={session} user={user} />}
+        {(user) => children ?? <SignedIn session={session} user={user} dataMode={dataMode} />}
       </AuthGate>
     </AppProviders>
   );

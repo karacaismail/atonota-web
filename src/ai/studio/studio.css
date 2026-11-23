@@ -137,7 +137,8 @@
   margin-left: var(--ai-gap-xs);
   vertical-align: text-bottom;
   background: var(--color-primary);
-  animation: ai-caret var(--ai-dur-caret) steps(1) infinite;
+  animation: /* motion-gate: allow sahip=ai-studio neden=imleç yanıp sönmesi kesik adım ister, token yok */ ai-caret
+    var(--ai-dur-caret) steps(1) infinite;
 }
 
 @keyframes ai-caret {

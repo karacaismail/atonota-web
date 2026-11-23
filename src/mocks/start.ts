@@ -17,6 +17,15 @@ export function mocksEnabled(env: MockEnv): boolean {
 
 export type MockStartResult = { active: false } | { active: true; csrfToken: string };
 
+/**
+ * Sahte sunucunun sahiplendiği istekler: yolu `/api/` ile başlayanlar.
+ * Sayfa, parça ve yazı tipi istekleri sahte sunucuya ait değildir; olduğu gibi geçer.
+ * Karşılığı olmayan `/api/` isteği hata alır ve ağa çıkmaz.
+ */
+export function isMockedApiRequest(url: string): boolean {
+  return new URL(url).pathname.startsWith('/api/');
+}
+
 /** API isteklerinden önce çağrılır. İşçi hazır olmadan istek gönderilmez. */
 export async function startApiMocks(): Promise<MockStartResult> {
   // Koşul doğrudan `import.meta.env` ile yazılır. Derleme onu sabite çevirir.

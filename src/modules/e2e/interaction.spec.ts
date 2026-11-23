@@ -19,6 +19,9 @@ test('access form keeps its draft when resized and its branded dropdown opens', 
   });
   expect((await new AxeBuilder({ page }).include('.module-page').analyze()).violations).toEqual([]);
   await select.press('Escape');
+  // The dropdown closes with the project's motion (500 ms). While it leaves it still sits at its
+  // old absolute position, so the viewport is resized only after it is hidden.
+  await expect(page.locator('.ant-select-dropdown')).toBeHidden();
   const field = page.getByLabel('Kayıt', { exact: true });
   await field.focus();
   await page.setViewportSize({ width: 844, height: 390 });
@@ -51,5 +54,6 @@ test('keyboard focus remains visible without a surrounding ring', async ({ page 
   expect(styles.shadow).toMatch(/0px -[1-9][\d.]*px 0px 0px inset/);
   await button.hover();
   await button.click();
-  await expect(page.locator('html')).toHaveAttribute('data-focus-mode', 'pointer');
+  // A pointer press only turns the visual mode off: the engine removes the attribute.
+  await expect(page.locator('html')).not.toHaveAttribute('data-focus-mode', /./);
 });

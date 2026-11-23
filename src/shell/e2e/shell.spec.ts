@@ -77,9 +77,9 @@ test.describe('klavye ile flyout', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Ana sayfa' })).toBeVisible();
     // WebKit, Safari gibi Tab ile bağlantı ve düğmeleri atlar. Bu yüzden
     // menünün kendi aşağı ok gezinmesi kullanılır. Bu yol her motorda aynıdır.
-    // Modül bağlantıları "Asistan" ile "Satış" arasındadır. Son modül bağlantısı
-    // "Satış" düğmesinden hemen öncedir.
-    await page.getByRole('link', { name: 'Yapay zekâ işlemleri' }).focus();
+    // Rota bağlantıları "Ana sayfa" ile "Satış" arasındadır. Rota listesinin son
+    // parametresiz satırı "AI Studio" bağlantısıdır. "Satış" düğmesi ondan hemen sonradır.
+    await page.getByRole('link', { name: 'AI Studio' }).focus();
     await page.keyboard.press('ArrowDown');
     const next = page.getByRole('button', { name: 'Satış', exact: true });
     await expect(next).toBeFocused();
@@ -110,8 +110,10 @@ test.describe('telefon kabuğu', () => {
     await page.getByRole('link', { name: 'Siparişler' }).click();
     await expect(page).toHaveURL(/\/satis\/siparis$/);
     await expect(drawer).toBeHidden();
-    // Deneme sayfasında her liste aynı örnek tanımı gösterir.
-    await expect(page.getByRole('heading', { level: 1, name: 'Örnek işler' })).toBeAttached();
+    // Liste rotası tanımı sunucudan ister. Menüdeki örnek gruplar sahte sunucuda kayıtlı değildir.
+    // Sahte sunucu yetki reddi verir. Sayfa tanım hatasını ve yeniden deneme düğmesini gösterir.
+    await expect(page.getByRole('alert')).toContainText('Liste tanımı alınamadı');
+    await expect(page.getByRole('button', { name: 'Yeniden dene' })).toBeVisible();
   });
 
   test('Escape çekmeceyi kapatır ve odak menü düğmesine döner', async ({ page }) => {
@@ -164,9 +166,17 @@ test.describe('yön değişimi', () => {
 
 test.describe('header ve sayfalar', () => {
   test('liste rotası views-collection görünümünü çizer', async ({ page }) => {
+    // Uygulama girişi liste rotasını ortak API istemcisine bağlar. Adres parçası DocType adına
+    // çevrilir: `örnek-kayıt` -> `Örnek Kayıt`. Sahte sunucu yalnız bu türü verir.
+    await page.goto(`/ornek/${encodeURIComponent('örnek-kayıt')}`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Kayıtlar' })).toBeAttached();
+    await expect(page.getByText('ORNEK-0001').first()).toBeVisible();
+    await expect(page.getByText('TEK-0001')).toHaveCount(0);
+  });
+
+  test('sahte sunucuda olmayan liste tanım hatasını gösterir', async ({ page }) => {
     await page.goto('/satis/teklif');
-    await expect(page.getByRole('heading', { level: 1, name: 'Örnek işler' })).toBeAttached();
-    await expect(page.getByText('EXAMPLE-001').first()).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('Liste tanımı alınamadı');
     await expect(page.getByText('TEK-0001')).toHaveCount(0);
   });
 

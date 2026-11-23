@@ -97,7 +97,7 @@ Modül sayfası `ModuleProvider` içinde açılır. Ortamı uygulama girişi `vi
 
 Bazı ilk adres parçaları ayrılmıştır: `_demo` ve `panel`. Bu adresler koleksiyon ya da kayıt sayfasına hiçbir zaman düşmez. Örneğin `/_demo/tablo` adresinin satırı yoksa "Sayfa bulunamadı" görünür.
 
-AI Studio satırı `/panel/ai` adresidir. Satır `shellFeatures.aiStudio` ayarının arkasındadır. Ayar kapalıdır. AI Studio `main` dalına girince `ai-studio` işi yükleyiciyi bağlar ve ayarı açar.
+AI Studio satırı `/panel/ai` adresidir. Satır `shellFeatures.aiStudio` ayarının arkasındadır. Ayar açıktır. Yükleyici `src/ai/studio/AiStudioPage.tsx` dosyasını tembel yükler.
 
 Sayfa dosyası yüklenemezse "Sayfa yüklenemedi" görünür. Örneğin ağ kopmuş ya da yeni sürüm yayımlanmış olabilir. "Yeniden dene" düğmesi sayfayı yeniden yükler. Kabuk bu sırada yerinde kalır.
 

@@ -51,16 +51,16 @@ export interface RouteEntry {
  * Kapalı satırın adresi koleksiyon sayfasına da düşmez. Bkz. `reservedFirstSegments`.
  */
 export const shellFeatures = {
-  /** AI Studio `main` dalına girince `ai-studio` işi bunu açar ve yükleyiciyi bağlar. */
-  aiStudio: false,
+  /** AI Studio bu dalda. Yükleyici `src/ai/studio/AiStudioPage.tsx` dosyasına bağlıdır. */
+  aiStudio: true,
 };
 
-/** AI Studio satırı. Ayar kapalıyken listede yoktur. */
+/** AI Studio satırı. Ayar kapalı olursa listede yoktur. */
 export const aiStudioRoute: RouteEntry = {
   path: '/panel/ai',
   label: 'AI Studio',
   icon: Sparkle,
-  load: () => import('./pages/AiStudioPendingPage'),
+  load: () => import('@/ai/studio/AiStudioPage'),
 };
 
 /**

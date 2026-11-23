@@ -83,7 +83,6 @@ export const t = {
     loadError: 'Sayfa yüklenemedi',
     loadErrorText: 'Bağlantı kopmuş ya da uygulama güncellenmiş olabilir. Yeniden deneyin.',
     aiStudio: 'AI Studio',
-    aiStudioPending: 'AI Studio henüz bağlı değil.',
     assistant: 'Asistan',
     assistantText:
       'Sorunuz alındı. Asistan yanıtı bu sürümde yok. Yanıt yüzeyi sonraki işte gelecek.',
