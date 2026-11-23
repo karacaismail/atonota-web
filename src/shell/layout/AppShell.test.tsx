@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ant-design/x', () => import('../testing/antdXMock'));
 
+import type { ShellViewData } from '../view-data';
+import { ViewDataProvider } from '../view-data';
 import { AppShell } from './AppShell';
 
 const original = window.matchMedia;
@@ -28,17 +30,43 @@ afterEach(() => {
   localStorage.clear();
 });
 
-function renderShell() {
+function renderShell(viewData: ShellViewData | null = null) {
   render(
     <MemoryRouter>
-      <AppShell>
-        <p>İçerik</p>
-      </AppShell>
+      <ViewDataProvider value={viewData}>
+        <AppShell>
+          <p>İçerik</p>
+        </AppShell>
+      </ViewDataProvider>
     </MemoryRouter>,
   );
 }
 
 describe('AppShell', () => {
+  it('menüde örnek grup, uydurma sayı ve örnek ajan yoktur (Ö2)', () => {
+    mockCompact(false);
+    renderShell();
+    expect(screen.getByRole('link', { name: 'Ana sayfa' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Satış' })).not.toBeInTheDocument();
+    expect(screen.queryByText('12')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'AI ajanları' })).not.toBeInTheDocument();
+  });
+
+  it('sunucunun sidebar verisinden liste grubu çizer (Ö2)', async () => {
+    mockCompact(false);
+    const loadSidebars = vi.fn().mockResolvedValue([
+      {
+        id: 'Satış',
+        label: 'Satış',
+        module: 'selling',
+        links: [{ label: 'Teklifler', doctype: 'Quotation' }],
+      },
+    ]);
+    renderShell({ navigation: { loadSidebars } });
+    expect(await screen.findByRole('button', { name: 'Satış' })).toBeInTheDocument();
+    expect(loadSidebars).toHaveBeenCalledWith(expect.any(AbortSignal));
+  });
+
   it('geniş ekranda sidebar görünür, menü düğmesi yoktur', () => {
     mockCompact(false);
     renderShell();

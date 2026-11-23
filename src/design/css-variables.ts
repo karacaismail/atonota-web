@@ -123,6 +123,7 @@ export function rootVariables(): Record<string, string> {
     '--z-dim-source': String(layer.dimSource),
     '--content-max-width': px(layout.contentMaxWidth),
     '--form-max-width': px(layout.formMaxWidth),
+    '--topbar-height': px(layout.topbarHeight),
     '--sidebar-width': px(layout.sidebarWidth),
     '--sidebar-rail-width': px(layout.sidebarRailWidth),
     '--card-padding': px(layout.cardPadding),
@@ -210,8 +211,11 @@ function primaryButtonCss(): string {
  * Odak göstergesi. Çevreleyen halka yasaktır. Gösterge alt kenarda tek çizgidir.
  * Görünür odak modu yalnız klavyeyle açılır: `html[data-focus-mode="keyboard"]`.
  */
-/** Metin bağlantısı seçicisi. Düğme, menü ve sekme görünümlü bağlantılar dışarıdadır (türetilmiş karar 3). */
-const TEXT_LINK = 'a:not(.ant-btn):not(.ant-menu-item):not(.ant-tabs-tab)';
+/**
+ * Metin bağlantısı seçicisi. Düğme, menü ve sekme görünümlü bağlantılar dışarıdadır (türetilmiş karar 3).
+ * Kendi menü bileşeni olan işler bağlantıya `data-nav-link` özelliğini verir (örnek: kabuk menüsü).
+ */
+const TEXT_LINK = 'a:not(.ant-btn):not(.ant-menu-item):not(.ant-tabs-tab):not([data-nav-link])';
 
 function focusCss(): string {
   const on = 'html[data-focus-mode="keyboard"]';
@@ -223,8 +227,9 @@ function focusCss(): string {
     '/* antd düğme kuralı 0 px solid bırakır; stil de kapatılır (hesaplanmış outline-style: none). */',
     '.ant-btn.ant-btn:not(:disabled):focus-visible, .ant-btn.ant-btn:focus-visible { outline: none; }',
     `${on} :focus-visible { box-shadow: ${bar}; }`,
-    '/* Odaklı bağlantı: seçici metin bağlantısı kuralından daha özgüldür; kalınlık ve renk ezilmez. */',
-    `${on} a:focus-visible, ${on} ${TEXT_LINK}:focus-visible { box-shadow: none; text-decoration: underline; text-decoration-thickness: var(--focus-indicator-size); text-underline-offset: 0.2em; text-decoration-color: var(--focus-indicator-color); }`,
+    '/* Odaklı metin bağlantısı: seçici metin bağlantısı kuralından daha özgüldür; kalınlık ve renk ezilmez. Menü bağlantısı (data-nav-link) kendi tek göstergesini taşır. */',
+    `${on} ${TEXT_LINK}:focus-visible { box-shadow: none; text-decoration: underline; text-decoration-thickness: var(--focus-indicator-size); text-underline-offset: 0.2em; text-decoration-color: var(--focus-indicator-color); }`,
+    `${on} [data-nav-link]:focus-visible { box-shadow: none; }`,
     `${on} .ant-btn:focus-visible { box-shadow: var(--shadow-button), ${bar}; }`,
     `${on} .ant-input:focus-visible, ${on} .ant-input-affix-wrapper:focus-within { box-shadow: var(--shadow-input), ${bar}; }`,
     `${on} .ant-input-affix-wrapper > .ant-input:focus-visible { box-shadow: none; }`,

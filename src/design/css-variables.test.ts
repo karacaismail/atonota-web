@@ -39,7 +39,7 @@ describe('CSS değişkenleri', () => {
 
   it('odaklı bağlantı kuralı metin bağlantısı kuralından daha özgüldür', () => {
     const css = buildDesignCss();
-    const link = 'a:not(.ant-btn):not(.ant-menu-item):not(.ant-tabs-tab)';
+    const link = 'a:not(.ant-btn):not(.ant-menu-item):not(.ant-tabs-tab):not([data-nav-link])';
     const rest = css.split('\n').find((line) => line.includes('text-underline-offset: 0.15em'));
     expect(rest?.startsWith(`${link} {`)).toBe(true);
     const focus = css.split('\n').find((line) => line.includes('text-decoration-thickness'));
@@ -95,6 +95,23 @@ describe('CSS değişkenleri', () => {
     expect(hover).toContain('color: var(--danger-text)');
     expect(active).toContain('background: var(--danger-bg-active)');
     expect(active).toContain('color: var(--danger-text)');
+  });
+
+  it('menü görünümlü bağlantılar (data-nav-link) altı çizili metin bağlantısı sayılmaz (K1)', () => {
+    const css = buildDesignCss();
+    const rest = css.split('\n').find((line) => line.includes('text-underline-offset: 0.15em'));
+    expect(rest).toContain(':not([data-nav-link])');
+    // Odaklı bağlantı kuralı yalnız metin bağlantısına uygulanır. Menü bağlantısının kendi tek
+    // göstergesi vardır; çıplak `a:focus-visible` ikinci bir gösterge eklerdi.
+    const focus = css.split('\n').find((line) => line.includes('text-decoration-thickness'));
+    expect(focus).not.toMatch(/keyboard"\] a:focus-visible/);
+  });
+
+  it('üst çubuk yüksekliği orta buton yüksekliği ile iki küçük boşluktan türer (Ö6)', () => {
+    const vars = rootVariables();
+    expect(vars['--topbar-height']).toBe(
+      `${designSource.sizes.md.button.height + 2 * Number.parseInt(String(vars['--space-xxs']), 10)}px`,
+    );
   });
 
   it('dar form sütunu değişkeni orta buton yüksekliğinin 10 katıdır', () => {

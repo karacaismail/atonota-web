@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { sampleDocTypeMeta as sampleMeta } from '@/mocks/fixtures';
+
 import { createShellViewData, doctypeFromSlug, loadShellAccount } from './view-data';
 
 describe('doctypeFromSlug', () => {
@@ -45,6 +47,24 @@ describe('createShellViewData', () => {
     expect(page).toEqual({ data: [{ name: 'A' }], hasNextPage: true });
   });
 
+  it('liste başlığı DocType adını gösterir, "Kayıtlar" yazmaz', async () => {
+    const getDocType = vi.fn().mockResolvedValue({ status: 'fresh', meta: sampleMeta });
+    const data = createShellViewData({ listDocuments: vi.fn(), getDocType } as never);
+    const definition = await data.collection?.loadDefinition(
+      { module: 'ornek', doctype: encodeURIComponent('örnek-kayıt') },
+      new AbortController().signal,
+    );
+    expect(definition?.label).toBe('Örnek Kayıt');
+  });
+
+  it('tanım gelmeden de sayfa başlığını adresten verir', () => {
+    const data = createShellViewData({ listDocuments: vi.fn(), getDocType: vi.fn() } as never);
+    expect(data.collection?.title?.({ module: 'satis', doctype: 'teklif' })).toBe('Teklif');
+    expect(data.collection?.title?.({ module: 'm', doctype: 'sales-invoice' })).toBe(
+      'Sales Invoice',
+    );
+  });
+
   it('tanımı sunucunun DocType bilgisinden kurar', async () => {
     const getDocType = vi.fn().mockResolvedValue({ status: 'not_modified' });
     const data = createShellViewData({ listDocuments: vi.fn(), getDocType } as never);
@@ -55,6 +75,61 @@ describe('createShellViewData', () => {
       ),
     ).rejects.toThrow();
     expect(getDocType).toHaveBeenCalledWith('User', undefined, expect.objectContaining({}));
+  });
+});
+
+describe('menü verisi (navigation)', () => {
+  const sidebar = (name: string, data: Record<string, unknown>) => ({ name, data });
+
+  it('açılış verisindeki sidebar satırlarından yalnız DocType bağlantılarını alır', async () => {
+    const getBootstrap = vi.fn().mockResolvedValue({
+      sidebars: [
+        sidebar('Satış', {
+          label: 'Satış',
+          module: 'Selling',
+          items: [
+            { label: 'Teklifler', link_type: 'DocType', link_to: 'Quotation' },
+            { label: 'Rapor', link_type: 'Report', link_to: 'Sales Register' },
+            { label: 'Gizli', link_type: 'DocType', link_to: 'Customer', hidden: 1 },
+            { label: null, link_type: 'DocType', link_to: 'Sales Order' },
+            // Adresten geri çevrilemeyen ad menüye girmez: tıklanınca başka türe giderdi.
+            { label: 'Fiyat', link_type: 'DocType', link_to: 'Item-Price' },
+            { label: 'Ayraç', type: 'Section Break' },
+          ],
+        }),
+        sidebar('Boş', { label: 'Boş', items: [{ link_type: 'Workspace', link_to: 'Boş' }] }),
+      ],
+    });
+    const data = createShellViewData({
+      listDocuments: vi.fn(),
+      getDocType: vi.fn(),
+      getBootstrap,
+    } as never);
+    const signal = new AbortController().signal;
+    await expect(data.navigation?.loadSidebars(signal)).resolves.toEqual([
+      {
+        id: 'Satış',
+        label: 'Satış',
+        module: 'selling',
+        links: [
+          { label: 'Teklifler', doctype: 'Quotation' },
+          { label: 'Sales Order', doctype: 'Sales Order' },
+        ],
+      },
+    ]);
+    expect(getBootstrap).toHaveBeenCalledWith({ signal });
+  });
+
+  it('sahte sunucunun açılış verisinde sidebar yoksa menüye grup eklemez', async () => {
+    const getBootstrap = vi.fn().mockResolvedValue({ sidebars: [] });
+    const data = createShellViewData({ getBootstrap } as never);
+    await expect(data.navigation?.loadSidebars(new AbortController().signal)).resolves.toEqual([]);
+  });
+
+  it('istek başarısızsa uydurma grup göstermez', async () => {
+    const getBootstrap = vi.fn().mockRejectedValue(new Error('ağ'));
+    const data = createShellViewData({ getBootstrap } as never);
+    await expect(data.navigation?.loadSidebars(new AbortController().signal)).resolves.toEqual([]);
   });
 });
 

@@ -192,6 +192,11 @@
   min-width: 0;
 }
 
+/* Ö6: yapışkan üst çubuk odaklanan öğeyi örtmez. Belge kayar; kaydırma payı çubuğun token yüksekliğidir. */
+html:has(.shell[data-layout='compact']) {
+  scroll-padding-top: var(--topbar-height);
+}
+
 .shell-topbar {
   position: sticky;
   top: 0;
@@ -199,7 +204,8 @@
   display: flex;
   align-items: center;
   gap: var(--shell-space-md);
-  min-height: var(--shell-hd-btn-h);
+  /* Yükseklik kaydırma payıyla aynı tokendır: orta buton ve iki küçük boşluk. */
+  min-height: var(--topbar-height);
   padding: var(--shell-space-xs) var(--shell-gutter);
   padding-left: max(var(--shell-gutter), env(safe-area-inset-left));
   padding-right: max(var(--shell-gutter), env(safe-area-inset-right));
@@ -1047,7 +1053,19 @@
 }
 
 .shell-hd-crumbs a {
+  position: relative;
   color: var(--shell-tx2);
+}
+
+/* K5: görünen kutu metin satırı kadar kalır. Dokunma alanı en az dokunma tokenı kadardır. */
+.shell-hd-crumbs a::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, var(--hit-min-target));
+  height: max(100%, var(--hit-min-target));
+  transform: translate(-50%, -50%);
 }
 
 .shell-hd-crumbs [aria-current] {

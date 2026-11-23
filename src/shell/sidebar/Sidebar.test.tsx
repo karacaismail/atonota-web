@@ -6,11 +6,15 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@ant-design/x', () => import('../testing/antdXMock'));
 
 import { FocusDimProvider } from '../focus-dim';
-import { shellNav } from '../nav';
-import { sampleAgents } from '../sampleData';
+import { routeNav } from '../nav';
+import type { Agent } from '../sampleData';
+import { sampleAgents, sampleNav } from '../sampleData';
 import { Sidebar } from './Sidebar';
 
-function setup(variant: 'solid' | 'rail' = 'solid') {
+/** Deneme menüsü: rota bağlantıları ve örnek gruplar. Canlı menü örnek grup göstermez. */
+const demoNav = [...routeNav, ...sampleNav];
+
+function setup(variant: 'solid' | 'rail' = 'solid', agents: Agent[] = sampleAgents) {
   const onVariantChange = vi.fn();
   const user = userEvent.setup();
   render(
@@ -19,8 +23,8 @@ function setup(variant: 'solid' | 'rail' = 'solid') {
         <Sidebar
           variant={variant}
           onVariantChange={onVariantChange}
-          nav={shellNav}
-          agents={sampleAgents}
+          nav={demoNav}
+          agents={agents}
         />
       </FocusDimProvider>
     </MemoryRouter>,
@@ -132,5 +136,11 @@ describe('Sidebar', () => {
     expect(glide).toHaveAttribute('data-on', 'false');
     await user.keyboard('{ArrowRight}');
     expect(glide).toHaveAttribute('data-on', 'true');
+  });
+
+  it('ajan verisi yoksa ajan bölümünü göstermez (uydurma ajan yok)', () => {
+    setup('solid', []);
+    expect(screen.queryByRole('heading', { name: 'AI ajanları' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /ajanı/ })).not.toBeInTheDocument();
   });
 });

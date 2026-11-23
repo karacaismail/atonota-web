@@ -4,7 +4,15 @@ import { describe, expect, it } from 'vitest';
 import { buildAntdTheme } from './antd-theme';
 import { blendOver, contrastRatio, darkenToContrast } from './color';
 import { designSource } from './source';
-import { danger, primary } from './tokens';
+import { danger, primary, textDescription } from './tokens';
+
+/** `rgba(r,g,b,a)` -> blendOver için renk ve opaklık. */
+function parseRgba(value: string): [string, number] {
+  const m = /rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/.exec(value);
+  if (!m) throw new Error(`rgba bekleniyordu: ${value}`);
+  const hex = [m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('');
+  return [`#${hex}`, Number(m[4])];
+}
 
 const derived = designSource.derived.antdTheme;
 
@@ -32,6 +40,29 @@ describe('buildAntdTheme', () => {
         expect(built?.[key], `${name}.${key}`).toBe(value);
       }
     }
+  });
+
+  it.each(['light', 'dark'] as const)(
+    '%s temada açıklama metni (colorTextDescription) her zeminde en az 4.5:1 verir (Ö5)',
+    (mode) => {
+      const { token } = buildAntdTheme(mode);
+      const value = String(token?.colorTextDescription);
+      expect(value).toBe(textDescription[mode].color);
+      for (const surface of textDescription[mode].surfaces) {
+        expect(
+          contrastRatio(blendOver(...parseRgba(value), surface), surface),
+          `${mode} ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
+
+  it('açıklama metni antd varsayılanından başlar ve yalnız gerektiği kadar koyulaşır (Ö5)', () => {
+    // antd varsayılanı açık temada siyah %45, koyu temada beyaz %45'tir; ikisi de 4.5:1 vermez.
+    expect(textDescription.light.opacity).toBeGreaterThan(0.45);
+    expect(textDescription.dark.opacity).toBeGreaterThan(0.45);
+    expect(textDescription.light.surfaces).toContain(antdThemeApi.getDesignToken().colorBgLayout);
+    expect(textDescription.dark.surfaces).toContain(designSource.darkPalette.layout);
   });
 
   it('açık tema bağlantı rengi beyaz üzerinde en az 4.5:1 kontrast verir', () => {

@@ -5,7 +5,10 @@ export type {
   RecordAddress,
   ShellAccount,
   ShellCollectionData,
+  ShellNavigationData,
   ShellRecordData,
+  ShellSidebar,
+  ShellSidebarLink,
   ShellViewData,
 } from './context';
 export { createShellModuleEnvironment } from './modules';
