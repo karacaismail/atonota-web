@@ -4,29 +4,91 @@
  * yolları ziyaret eder ve aktarılan baytları (sıkıştırılmış, CDP `encodedDataLength`) yazar.
  * Dış istekler (kimlik sunucusu gibi) kesilir; yalnız yerel paket ölçülür.
  *
- * Kullanım: node scripts/initial-load.mjs [--out dist] [--port 4381] [--width 360] [yol ...]
- * Önce `npm run build` (ya da `VITE_API_MOCKS=on npm run build:e2e`) çalıştırılmış olmalıdır.
+ * Kullanım: node scripts/initial-load.mjs [--build] [--out dist] [--port 4381] [--width 360] [yol ...]
+ * - `--build`: önce üretim derlemesini alır (`vite build`, sahte sunucu kapalı).
+ * - `--build` yoksa `dist/` hazır olmalıdır. Klasörde `mockServiceWorker.js` varsa bu bir e2e
+ *   derlemesidir; betik ölçmeden durur. Böylece `npm run test:e2e` sonrası yanlış paket ölçülmez.
+ *
+ * Önizleme sunucusu `vite` ikilisini doğrudan Node ile başlatır (`npx` ara süreci yoktur). Betik
+ * biterken sunucuya SIGTERM gönderir, çıkışını bekler, gerekirse SIGKILL yollar. Böylece port boş kalır.
  */
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { chromium } from '@playwright/test';
 
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const require = createRequire(import.meta.url);
+// Vite paketi `bin/vite.js` yolunu dışa açmaz; ikili paketin `bin` alanından bulunur.
+const vitePkgPath = require.resolve('vite/package.json', { paths: [root] });
+const viteBinField = require(vitePkgPath).bin;
+const viteBin = join(
+  dirname(vitePkgPath),
+  typeof viteBinField === 'string' ? viteBinField : viteBinField.vite,
+);
+
 const args = process.argv.slice(2);
+function flag(name) {
+  const i = args.indexOf(`--${name}`);
+  if (i === -1) return false;
+  args.splice(i, 1);
+  return true;
+}
 function option(name, fallback) {
   const i = args.indexOf(`--${name}`);
   if (i === -1) return fallback;
   const [value] = args.splice(i, 2).slice(1);
   return value ?? fallback;
 }
+const shouldBuild = flag('build');
 const outDir = option('out', 'dist');
 const port = Number(option('port', '4381'));
 const width = Number(option('width', '360'));
 const paths = args.length ? args : ['/'];
 const base = `http://127.0.0.1:${port}`;
+const outPath = resolve(root, outDir);
+
+/** `vite` komutunu doğrudan Node ile koşar; çıkış kodu 0 değilse hata fırlatır. */
+function runVite(viteArgs, env = {}) {
+  return new Promise((done, fail) => {
+    const child = spawn(process.execPath, [viteBin, ...viteArgs], {
+      cwd: root,
+      stdio: 'inherit',
+      env: { ...process.env, ...env },
+    });
+    child.on('error', fail);
+    child.on('exit', (code) =>
+      code === 0 ? done() : fail(new Error(`vite ${viteArgs[0]} başarısız: çıkış kodu ${code}`)),
+    );
+  });
+}
+
+if (shouldBuild) {
+  // Üretim derlemesi: sahte sunucu kapalı, NODE_ENV production.
+  const env = { NODE_ENV: 'production', VITE_API_MOCKS: '' };
+  await runVite(['build', '--outDir', outDir], env);
+}
+
+if (!existsSync(join(outPath, 'index.html'))) {
+  console.error(
+    `Üretim derlemesi yok: ${outPath}. Önce \`npm run build\` ya da \`--build\` kullanın.`,
+  );
+  process.exit(2);
+}
+if (existsSync(join(outPath, 'mockServiceWorker.js'))) {
+  console.error(
+    `${outPath} bir e2e derlemesidir (mockServiceWorker.js var). İlk yük yalnız üretim derlemesinde ölçülür. \`npm run build\` ya da \`--build\` kullanın.`,
+  );
+  process.exit(2);
+}
 
 const preview = spawn(
-  'npx',
+  process.execPath,
   [
-    'vite',
+    viteBin,
     'preview',
     '--outDir',
     outDir,
@@ -36,11 +98,36 @@ const preview = spawn(
     '--host',
     '127.0.0.1',
   ],
-  { stdio: 'ignore' },
+  { cwd: root, stdio: 'ignore' },
 );
+let previewExited = false;
+preview.on('exit', () => {
+  previewExited = true;
+});
+
+/** Önizleme sunucusunu kesin kapatır: SIGTERM, 3 s bekleme, gerekirse SIGKILL. */
+function stopPreview() {
+  if (previewExited) return Promise.resolve();
+  return new Promise((done) => {
+    const timer = setTimeout(() => {
+      if (!previewExited) preview.kill('SIGKILL');
+    }, 3000);
+    preview.once('exit', () => {
+      clearTimeout(timer);
+      done();
+    });
+    preview.kill('SIGTERM');
+  });
+}
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    void stopPreview().then(() => process.exit(130));
+  });
+}
 
 async function waitForServer() {
   for (let i = 0; i < 100; i += 1) {
+    if (previewExited) throw new Error(`Önizleme sunucusu açılamadı (port ${port} dolu olabilir).`);
     try {
       if ((await fetch(`${base}/`)).ok) return;
     } catch {
@@ -93,6 +180,7 @@ async function measure(browser, path) {
   await context.close();
 }
 
+let exitCode = 0;
 try {
   await waitForServer();
   const browser = await chromium.launch();
@@ -101,6 +189,10 @@ try {
   } finally {
     await browser.close();
   }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  exitCode = 1;
 } finally {
-  preview.kill();
+  await stopPreview();
 }
+process.exit(exitCode);
