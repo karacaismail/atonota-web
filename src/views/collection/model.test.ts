@@ -1,13 +1,27 @@
-import { describe, expect, it } from 'vitest';
-import metaV2 from './fixtures/meta-v2.json';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { createApiClient, createCsrfStore, readApiConfig } from '@/api';
+import { resetMockState, sampleDocTypeMeta } from '@/mocks';
+import { mockServer } from '@/mocks/node';
 import { createDefinition, parsePage } from './model';
 import { readQuery, writeQuery, toListRequest } from './query';
 import { exampleMeta, exampleSource } from './example';
+
+beforeAll(() => {
+  mockServer.listen({ onUnhandledFrame: 'error' });
+});
+afterEach(() => {
+  mockServer.resetHandlers();
+  resetMockState();
+});
+afterAll(() => {
+  mockServer.close();
+});
+
 describe('collection contract and URL', () => {
   it('preserves validated record and field sensitivity without hiding authorized fields', () => {
     const meta = structuredClone(exampleMeta);
     meta.schema.sensitivity = 'restricted';
-    meta.schema.fields = meta.schema.fields.map((field) => ({
+    meta.schema.fields = meta.schema.fields.map((field): (typeof meta.schema.fields)[number] => ({
       ...field,
       sensitivity: 'restricted',
     }));
@@ -31,11 +45,24 @@ describe('collection contract and URL', () => {
     const query = readQuery(new URLSearchParams('sort=hours&direction=desc'), definition);
     expect(toListRequest(definition, query).order_by).toBe('hours desc, name asc');
   });
-  it('accepts the actual backend catalog v2 fixture and keeps its readable title', () => {
-    const definition = createDefinition(metaV2);
+  it('accepts the api-client mock DocType metadata response and binds example metadata to it', async () => {
+    const client = createApiClient({
+      config: readApiConfig({}, 'https://kiraci.example.test'),
+      csrf: createCsrfStore(),
+    });
+    const result = await client.getDocType(sampleDocTypeMeta.schema.name);
+    expect(result.status).toBe('fresh');
+    if (result.status !== 'fresh') throw new Error('Expected fresh DocType metadata');
+    const definition = createDefinition(result.meta, { label: 'Örnek kayıtlar' });
+    expect(definition.doctype).toBe(sampleDocTypeMeta.schema.name);
+    expect(definition.label).toBe('Örnek kayıtlar');
     expect(definition.titleField).toBe('title');
-    expect(definition.columns.map((field) => field.fieldname)).toContain('title');
-    expect(() => createDefinition({ ...metaV2, catalog_version: 99 })).toThrow();
+    expect(definition.columns.map((field) => field.fieldname)).toEqual(['name', 'title']);
+    expect(() => createDefinition({ ...result.meta, catalog_version: 99 })).toThrow();
+
+    expect(exampleMeta.catalog_version).toBe(sampleDocTypeMeta.catalog_version);
+    expect(exampleMeta.meta_hash).toBe(sampleDocTypeMeta.meta_hash);
+    expect(exampleMeta.perm_version).toBe(sampleDocTypeMeta.perm_version);
   });
   it('keeps only readable list fields and rejects truncated metadata', () => {
     const meta = structuredClone(exampleMeta);
