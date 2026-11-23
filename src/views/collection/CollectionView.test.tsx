@@ -64,6 +64,24 @@ describe('collection UI', () => {
     await screen.findByText('Başlık alanında "Example" değeri aranıyor.');
     expect(screen.queryByText('Etkin süzgeç yok.')).not.toBeInTheDocument();
   });
+  it('kayıt adresi verilince ad hücresi kayda giden bağlantı olur', async () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <CollectionView
+          definition={exampleDefinition}
+          source={sampleSource()}
+          recordHref={(name) => `/ornek/kayit/${encodeURIComponent(name)}`}
+        />
+      </MemoryRouter>,
+    );
+    const link = await screen.findByRole('link', { name: 'ORNEK-0001' });
+    expect(link).toHaveAttribute('href', '/ornek/kayit/ORNEK-0001');
+  });
+  it('kayıt adresi verilmezse ad hücresi düz metindir', async () => {
+    mount();
+    await screen.findByText('ORNEK-0001');
+    expect(screen.queryByRole('link', { name: 'ORNEK-0001' })).not.toBeInTheDocument();
+  });
   it('clears selection when the data source identity changes', async () => {
     const mounted = mount();
     await screen.findByText('ORNEK-0001');

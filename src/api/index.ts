@@ -4,6 +4,8 @@ export type {
   ApiClient,
   ApiClientDeps,
   DocTypeResult,
+  DocumentRequest,
+  DocumentResponse,
   JsonRpcRequest,
   RequestOptions,
 } from './client';

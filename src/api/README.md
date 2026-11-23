@@ -85,6 +85,22 @@ Gruplu sayım ve toplam için `groupSummary` işlevini kullanın.
 
 Frappe sürümü değişince biçimi yeniden doğrulayın.
 
+## Karar: kayıt görünümü için `frappeDocument`
+
+Kayıt görünümü Frappe'nin standart kayıt uçlarını kullanır. Örnekler `/api/resource/<tür>/<ad>` okuma ve kaydetme uçlarıdır. Bu uçlar OpenAPI sözleşmelerimizde yoktur.
+
+Kayıt görünümü kendi `fetch` katmanını kurmaz. İstekleri `frappeDocument(request)` işlevi gönderir. Bu işlev ortak istemcinin parçasıdır. Bu karar güvenlik bulgusu B3 ve inceleme 2 Ö3 için alındı.
+
+İşlev şu ortak kuralları uygular:
+
+1. Adres oturumun site kökünden kurulur (`VITE_SITE_URL`).
+2. Çerez ayarı ortak ayardır.
+3. Yazan istek CSRF belirtecini ortak depodan alır. Sayfadaki `meta` öğesi her istekte okunmaz.
+4. Oturum bitince ortak oturum işi bir kez çalışır. Örneğin kullanıcı giriş sayfasına döner.
+5. Yol yalnız `/api/resource/`, `/api/method/` ya da `/api/v2/` ile başlar. Başka kök, sorgu ve `..` reddedilir.
+
+Hata yanıtında işlev ortak hata türünü ve ham gövdeyi döner. Kayıt görünümü ham gövdeden yalnız temizlenmiş iletiyi gösterir (SZ-8).
+
 ## Grup özeti
 
 İmza `groupSummary(doctype, query, options?)` biçimindedir.

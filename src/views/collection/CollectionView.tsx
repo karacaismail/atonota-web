@@ -78,6 +78,11 @@ export interface CollectionViewProps {
    * Tipli `group_summary` istemcisi `main` dalına gelene kadar ana uygulamada açılmaz.
    */
   enableExperimentalCollectionViews?: boolean;
+  /**
+   * Kaydın adresini verir. Verilirse tablodaki kayıt adı kayda giden bağlantı olur.
+   * Adres sözleşmesi kabuğundur; görünüm adres üretmez.
+   */
+  recordHref?: ((name: string) => string) | undefined;
 }
 export function CollectionView({
   definition,
@@ -85,6 +90,7 @@ export function CollectionView({
   mode = 'dark',
   summarySource,
   enableExperimentalCollectionViews = false,
+  recordHref,
 }: CollectionViewProps) {
   const [params, setParams] = useSearchParams();
   const requestedQuery = useMemo(() => readQuery(params, definition), [params, definition]);
@@ -313,6 +319,7 @@ export function CollectionView({
                   <TableView
                     definition={definition}
                     rows={page.data}
+                    recordHref={recordHref}
                     selected={selected}
                     onSelect={(names) => {
                       setSelection({ key: scope, names, source, definition });

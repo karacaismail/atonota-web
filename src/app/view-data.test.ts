@@ -1,4 +1,13 @@
+import { render, screen } from '@testing-library/react';
+import { createElement, Suspense } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('./RecordRoute', () => ({
+  default: (props: { api: unknown; doctype: string; name: string }) =>
+    createElement('p', null, `${props.doctype}|${props.name}|${String(props.api === recordApi)}`),
+}));
+
+const recordApi = { listDocuments: vi.fn(), getDocType: vi.fn(), frappeDocument: vi.fn() };
 
 import { createShellViewData, doctypeFromSlug, loadShellAccount } from './view-data';
 
@@ -14,6 +23,20 @@ describe('createShellViewData', () => {
   it('kayıt rotasını kayıt görünümüne bağlar', () => {
     const data = createShellViewData({ listDocuments: vi.fn(), getDocType: vi.fn() } as never);
     expect(data.record?.Component).toBeDefined();
+  });
+
+  it('kayıt rotasına oturumun ortak API istemcisini verir (inceleme 2, Ö3)', async () => {
+    const data = createShellViewData(recordApi as never);
+    const Record = data.record?.Component;
+    if (!Record) throw new Error('kayıt bağlantısı yok');
+    render(
+      createElement(
+        Suspense,
+        { fallback: null },
+        createElement(Record, { module: 'ornek', doctype: 'örnek-kayıt', name: 'ORNEK-0001' }),
+      ),
+    );
+    expect(await screen.findByText('örnek-kayıt|ORNEK-0001|true')).toBeInTheDocument();
   });
 
   it('liste isteğini API v2 sorgusuna çevirir', async () => {

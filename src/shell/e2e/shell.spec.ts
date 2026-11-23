@@ -15,13 +15,24 @@ async function overflowX(page: Page) {
 /** Sahte sunucunun tanıdığı liste: tablo gerçekten çizilir. `/satis/teklif` hata ekranını açar. */
 const LIST = `/ornek/${encodeURIComponent('örnek-kayıt')}`;
 
-const PAGES = ['/', '/satis/teklif', LIST, '/asistan', '/satis/teklif/TEK-0003'];
+/** Sahte sunucunun tanıdığı kayıt: kayıt formu gerçekten çizilir. `/satis/teklif/TEK-0003` hata verir. */
+const RECORD = `${LIST}/ORNEK-0003`;
+
+/** Kabuk deneme sayfası. Kayıt bağlantısı yoktur; kayıt adresi kabuğun örnek formunu çizer. */
+const harness = (path: string) => `/src/shell/harness/?yol=${encodeURIComponent(path)}`;
+
+const PAGES = ['/', '/satis/teklif', LIST, '/asistan', '/satis/teklif/TEK-0003', RECORD];
 
 test.describe('yatay taşma', () => {
   for (const url of PAGES) {
     test(`taşma yok: ${url}`, async ({ page }) => {
       await page.goto(url);
       await expect(page.locator('.shell')).toBeVisible();
+      if (url === RECORD) {
+        await expect(page.getByRole('textbox', { name: /Örnek başlık/ })).toHaveValue(
+          'Örnek veri 3',
+        );
+      }
       await page.waitForTimeout(400);
       expect(await overflowX(page)).toBeLessThanOrEqual(0);
     });
@@ -183,8 +194,10 @@ test.describe('header ve sayfalar', () => {
     await expect(page.getByText('TEK-0001')).toHaveCount(0);
   });
 
-  test('formda değişiklik kaydedilmemiş durumunu gösterir', async ({ page }) => {
-    await page.goto('/satis/teklif/TEK-0003');
+  test('deneme sayfasında örnek formda değişiklik kaydedilmemiş durumunu gösterir', async ({
+    page,
+  }) => {
+    await page.goto(harness('/satis/teklif/TEK-0003'));
     await expect(page.getByText('3 / 24')).toBeVisible();
     await page.getByLabel('Başlık').fill('Yeni başlık');
     await expect(page.getByText('1 değişiklik kaydedilmedi')).toBeVisible();
@@ -192,9 +205,61 @@ test.describe('header ve sayfalar', () => {
     await expect(page.getByText('1 değişiklik kaydedilmedi')).toBeHidden();
   });
 
-  for (const url of ['/satis/teklif', LIST]) {
+  test('kayıt rotası kaydı sahte sunucudan çizer', async ({ page }) => {
+    // Kayıt `Örnek Kayıt` türündendir. Değer sahte sunucunun kaydıdır; örnek formda yoktur.
+    await page.goto(RECORD);
+    await expect(page.getByRole('textbox', { name: /Örnek başlık/ })).toHaveValue('Örnek veri 3');
+    await expect(page.getByText('3 / 24')).toHaveCount(0);
+    await expect(page.getByText('Erişim izni yok')).toHaveCount(0);
+  });
+
+  test('listede kayıt satırına basınca kayıt sayfası açılır', async ({ page }) => {
+    await page.goto(LIST);
+    const row = page.getByRole('row', { name: /ORNEK-0003/ });
+    await row.getByRole('link', { name: 'ORNEK-0003' }).click();
+    await expect.poll(() => new URL(page.url()).pathname).toBe(RECORD);
+    await expect(page.getByRole('textbox', { name: /Örnek başlık/ })).toHaveValue('Örnek veri 3');
+  });
+
+  test('kayıt kaydedilince CSRF hatası çıkmaz; değişiklik sahte sunucuya yazılır', async ({
+    page,
+  }) => {
+    // Sahte sunucu sayfanın içinde çalışır; durumu sayfa yeniden yüklenince sıfırlanır.
+    // Bu yüzden kayda listeden girilir ve uygulama içinde geri ve ileri gidilir.
+    await page.goto(LIST);
+    await page
+      .getByRole('row', { name: /ORNEK-0003/ })
+      .getByRole('link', { name: 'ORNEK-0003' })
+      .click();
+    const title = page.getByRole('textbox', { name: /Örnek başlık/ });
+    await expect(title).toHaveValue('Örnek veri 3');
+    await title.fill('Kaydedilen başlık');
+    await expect(page.getByText('1 kaydedilmemiş değişiklik')).toBeVisible();
+    await page.getByRole('button', { name: 'Kaydet' }).click();
+    // Sahte sunucu CSRF belirteci eksikse 400 `CSRFTokenError` verir. O zaman uyarı çıkar ve
+    // değişiklik kaydedilmemiş kalır.
+    await expect(page.getByText('1 kaydedilmemiş değişiklik')).toHaveCount(0);
+    await expect(page.getByText('Güncel')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Kaydedilen başlık' })).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    // Kayıt yeniden açılınca değer sahte sunucudan okunur.
+    await page.goBack();
+    await expect(page.getByText('ORNEK-0001').first()).toBeVisible();
+    await page.goForward();
+    await expect(page.getByRole('textbox', { name: /Örnek başlık/ })).toHaveValue(
+      'Kaydedilen başlık',
+    );
+  });
+
+  for (const url of ['/satis/teklif', LIST, RECORD]) {
     test(`metin boyutu kaynak alt sınırın altına inmez: ${url}`, async ({ page }) => {
       await page.goto(url);
+      // Kayıt adresinde ölçüm kayıt formu sahte sunucudan gelince yapılır.
+      if (url === RECORD) {
+        await expect(page.getByRole('textbox', { name: /Örnek başlık/ })).toHaveValue(
+          'Örnek veri 3',
+        );
+      }
       await page.waitForTimeout(400);
       const min = await page.evaluate(() => {
         let m = Infinity;
@@ -213,6 +278,31 @@ test.describe('header ve sayfalar', () => {
       expect(min).toBeGreaterThanOrEqual(12);
     });
   }
+});
+
+test.describe('komut kutusu önerileri', () => {
+  test('öneri etiketi bileşen stili gelmeden de token boyutundadır (WebKit 9.38 px)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    if (isCompact(page)) await page.getByRole('button', { name: 'Menüyü aç' }).click();
+    await expect(page.locator('.shell-chips .ant-prompts-label').first()).toBeVisible();
+    const result = await page.evaluate(() => {
+      // Ant Design X stili sayfaya geç eklenir. O ana kadar `h6` öğesinin varsayılan boyutu
+      // geçerlidir. Bileşenin kendi stili kaldırılınca o ilk an ölçülür.
+      for (const style of document.querySelectorAll('style')) {
+        if (style.textContent?.includes('.ant-prompts')) style.remove();
+      }
+      const label = document.querySelector('.shell-chips .ant-prompts-label');
+      const root = getComputedStyle(document.documentElement);
+      return {
+        size: label ? getComputedStyle(label).fontSize : '',
+        token: root.getPropertyValue('--font-default').trim(),
+      };
+    });
+    expect(result.token).toBe('14px');
+    expect(result.size).toBe(result.token);
+  });
 });
 
 test.describe('kayan hover zemini (G1–G3)', () => {

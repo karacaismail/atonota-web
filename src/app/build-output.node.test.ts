@@ -77,6 +77,17 @@ describe('üretim derlemesi (vite build)', () => {
     }
   });
 
+  it('koleksiyon ve kayıt kaynağı zinciri ilk yükte değildir (orkestratör eki: ilk yük paketi)', () => {
+    // Bu metinler yalnız koleksiyon modelinde ve kayıt bağdaştırıcısında geçer.
+    const markers = ['Kayıt tanımı desteklenmiyor.', 'Alan adı yineleniyor.', 'RecordApiError'];
+    for (const name of initialAssets(outDir).filter((file) => file.endsWith('.js'))) {
+      const text = readFileSync(join(outDir, name), 'utf8');
+      for (const marker of markers) {
+        expect(text.includes(marker), `${name}: ilk yükte "${marker}"`).toBe(false);
+      }
+    }
+  });
+
   it('paket rotalara ve kitaplıklara göre parçalıdır; kabuk, yönlendirici ve ikonlar ilk yükte değildir', () => {
     const js = assetFiles(outDir, '.js');
     const initial = initialAssets(outDir).filter((p) => p.endsWith('.js'));

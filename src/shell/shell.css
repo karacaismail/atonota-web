@@ -775,6 +775,16 @@
   gap: var(--shell-space-sm);
 }
 
+/* Ant Design X etiketi `h6` öğesiyle çizer. Bileşenin kendi stili sayfaya geç eklenir.
+   O ana kadar tarayıcının `h6` boyutu (0.67em, 9.38 px) geçerli kalırdı. Bu kural kabuk
+   stiliyle birlikte baştan yüklenir. Değerler bileşen stiliyle aynıdır ve tokendan gelir. */
+.shell-chips :is(.ant-prompts-label) {
+  margin: 0;
+  padding: 0;
+  font-size: var(--font-default);
+  font-weight: var(--font-weight-md);
+}
+
 .shell-chips :is(.ant-prompts-item) {
   flex: 1 1 0;
   justify-content: center;

@@ -51,6 +51,8 @@ export const mockState: {
   signedIn: boolean;
   proposals: Map<string, ReturnType<typeof sampleProposal>>;
   leaves: Map<string, (typeof sampleLeaves)[number]>;
+  /** `Örnek Kayıt` türünün kayıtları. Liste, kayıt okuma ve kaydetme aynı veriyi kullanır. */
+  records: Map<string, CollectionRow>;
   installations: { installation_id: string; scope: 'mobile' | 'pwa'; revoked: boolean }[];
   /** Doluysa model geçidi bu hatayı verir. Testler hata ekranını böyle sınar. */
   gatewayFailure: GatewayFailure | undefined;
@@ -59,14 +61,20 @@ export const mockState: {
   signedIn: true,
   proposals: new Map<string, ReturnType<typeof sampleProposal>>(),
   leaves: new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }])),
+  records: sampleRecords(),
   installations: sampleInstallations.map((item) => ({ ...item })),
 };
+
+function sampleRecords(): Map<string, CollectionRow> {
+  return new Map(sampleCollection.map((row) => [row.name, { ...row }]));
+}
 
 export function resetMockState(): void {
   mockState.signedIn = true;
   mockState.gatewayFailure = undefined;
   mockState.proposals.clear();
   mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
+  mockState.records = sampleRecords();
   mockState.installations = sampleInstallations.map((item) => ({ ...item }));
 }
 
@@ -265,6 +273,12 @@ const LEAVE_FIELDS = new Set([
 ]);
 
 const REDIRECT_PATTERN = /^\/(?!\/)[A-Za-z0-9\-._~/?#@!$&()*+,;=%:[\]]*$/;
+
+function sampleRecordResponse(row: CollectionRow) {
+  return HttpResponse.json({
+    data: { doctype: SAMPLE_COLLECTION_DOCTYPE, docstatus: 0, ...row } as JsonBodyType,
+  });
+}
 
 function frappeError(status: number, excType: string, extra: Record<string, unknown> = {}) {
   return HttpResponse.json({ exc_type: excType, ...extra }, { status });
@@ -586,7 +600,7 @@ export const handlers = [
     }
     const start = Number(url.searchParams.get('start') ?? 0);
     const limit = Number(url.searchParams.get('limit') ?? 20);
-    const rows = sampleCollection
+    const rows = [...mockState.records.values()]
       .filter((row) => collectionMatches(row, filters))
       .sort(collectionOrder(url.searchParams.get('order_by')));
     const page = rows
@@ -600,6 +614,36 @@ export const handlers = [
       data: page as JsonBodyType,
       has_next_page: rows.length > start + limit,
     });
+  }),
+
+  // Frappe kayıt ucu (`/api/resource/<doctype>/<name>`). Yalnız `Örnek Kayıt` türü karşılanır.
+  // Öteki türler sonraki işleyiciye geçer. Kaydetme CSRF belirtecini ve kayıt sürümünü denetler.
+  http.get('*/api/resource/:doctype/:name', ({ request, params }) => {
+    if (String(params.doctype) !== SAMPLE_COLLECTION_DOCTYPE) return undefined;
+    const denied = guard(request, { write: false });
+    if (denied) return denied;
+    const row = mockState.records.get(String(params.name));
+    return row ? sampleRecordResponse(row) : frappeError(404, 'DoesNotExistError');
+  }),
+
+  http.put('*/api/resource/:doctype/:name', async ({ request, params }) => {
+    if (String(params.doctype) !== SAMPLE_COLLECTION_DOCTYPE) return undefined;
+    const denied = guard(request, { write: true });
+    if (denied) return denied;
+    const row = mockState.records.get(String(params.name));
+    if (!row) return frappeError(404, 'DoesNotExistError');
+    const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!body || body.modified !== row.modified) return frappeError(417, 'TimestampMismatchError');
+    if (body.title !== undefined && (typeof body.title !== 'string' || !body.title.trim())) {
+      return frappeError(417, 'MandatoryError');
+    }
+    const next: CollectionRow = {
+      ...row,
+      ...(typeof body.title === 'string' ? { title: body.title } : {}),
+      modified: nextVersion(),
+    };
+    mockState.records.set(next.name, next);
+    return sampleRecordResponse(next);
   }),
 
   http.get(
@@ -637,7 +681,9 @@ export const handlers = [
         return frappeError(400, 'InvalidSummaryQuery');
       }
 
-      const rows = sampleCollection.filter((row) => filters.every((matches) => matches(row)));
+      const rows = [...mockState.records.values()].filter((row) =>
+        filters.every((matches) => matches(row)),
+      );
       const groups = new Map<CollectionRow[keyof CollectionRow], { count: number; sum: number }>();
       for (const row of rows.sort(collectionOrder(`${groupBy} asc`))) {
         const value = row[groupBy];

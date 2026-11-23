@@ -204,18 +204,60 @@ function pagingError(
 
 export type McpResult = { status: 'accepted' } | { status: 'ok'; response: JsonRpcResponse };
 
+/**
+ * Frappe'nin standart kayıt uçlarına giden istek (kayıt görünümü).
+ * Bu uçlar OpenAPI sözleşmelerimizde yoktur. İstek yine ortak istemciden geçer:
+ * site kökü, çerez ayarı, CSRF deposu, zaman aşımı ve oturum süresi işi aynıdır (SZ-5).
+ */
+export interface DocumentRequest {
+  method: 'GET' | 'POST' | 'PUT';
+  /**
+   * Site köküne göre yol. `/api/resource/`, `/api/method/` ya da `/api/v2/` ile başlar.
+   * Yol parçaları çağıran tarafından kodlanır. Sorgu `query` alanıyla verilir.
+   */
+  path: string;
+  query?: Record<string, string>;
+  /** JSON olarak gönderilir. */
+  body?: unknown;
+  /** Verilirse `If-None-Match` başlığı olur. Sunucu 304 dönebilir. */
+  etag?: string | undefined;
+  signal?: AbortSignal | undefined;
+}
+
+/**
+ * Başarılı yanıt gövdesi ham JSON'dur. Doğrulama çağıran tarafındır.
+ * Hata yanıtında ortak hata türü ve ham gövde döner. Oturum denetimi ve
+ * oturum süresi işi (girişe dönüş) bu noktada yapılmış olur.
+ * Ham gövde ekrana olduğu gibi konmaz; kayıt görünümü yalnız temizlenmiş iletiyi gösterir (SZ-8).
+ */
+export type DocumentResponse =
+  | { ok: true; status: number; etag: string | undefined; body: unknown }
+  | { ok: false; error: ApiError; body: unknown };
+
+/** İzinli kayıt yolu. Kök, sorgu, parça ve `..` yasaktır. */
+const DOCUMENT_PATH = /^\/api\/(?:resource|method|v2)\/[^?#\\]+$/;
+
+function isDocumentPath(path: string): boolean {
+  return DOCUMENT_PATH.test(path) && !path.includes('//') && !path.split('/').includes('..');
+}
+
 export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDeps) {
   let sessionExpiredNotified = false;
 
+  /** Her isteğin ortak başlıkları. Belirteç başlığı yok, CSRF belirteci her yazmada depodan okunur. */
+  function prepare(request: Request): Request {
+    request.headers.delete('Authorization');
+    request.headers.set('Accept', 'application/json');
+    if (!SAFE_METHODS.has(request.method)) {
+      const token = csrf.get();
+      if (token) request.headers.set('X-Frappe-CSRF-Token', token);
+    }
+    return request;
+  }
+
   const headerMiddleware: Middleware = {
     onRequest({ request }) {
-      request.headers.delete('Authorization');
-      request.headers.set('Accept', 'application/json');
-      if (!SAFE_METHODS.has(request.method)) {
-        const token = csrf.get();
-        if (token) request.headers.set('X-Frappe-CSRF-Token', token);
-      }
-      return request;
+      return prepare(request);
     },
     onResponse({ response }) {
       // Başarılı yanıt JSON olmalıdır (SZ-5). Aksi hâlde yanıt okunmaz.
@@ -699,6 +741,59 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
         totalCount: summary.total_count,
         truncated: summary.truncated,
       };
+    },
+
+    /**
+     * Frappe'nin standart kayıt uçlarına istek gönderir (`/api/resource`, `/api/method`, `/api/v2`).
+     * Kayıt görünümü bu yöntemi kullanır. Kendi `fetch` katmanı kurmaz (SZ-5, güvenlik bulgusu B3).
+     * İzinli yol dışındaki adrese istek gönderilmez ve `invalid_request` hatası döner.
+     */
+    async frappeDocument(request: DocumentRequest): Promise<DocumentResponse> {
+      if (!isDocumentPath(request.path)) {
+        throw new ApiError({ kind: 'invalid_request', status: 0, code: 'path' });
+      }
+      const url = new URL(`${config.siteUrl}${request.path}`);
+      for (const [key, value] of Object.entries(request.query ?? {})) {
+        url.searchParams.set(key, value);
+      }
+      const headers = new Headers();
+      if (request.body !== undefined) headers.set('Content-Type', 'application/json');
+      if (request.etag) headers.set('If-None-Match', request.etag);
+      const outgoing = prepare(
+        new Request(url, {
+          method: request.method,
+          headers,
+          credentials: config.credentials,
+          ...(request.body === undefined ? {} : { body: JSON.stringify(request.body) }),
+          ...(request.signal ? { signal: request.signal } : {}),
+        }),
+      );
+      const response = await timedFetch(config.timeoutMs)(outgoing);
+      const etag = response.headers.get('ETag') ?? undefined;
+      if (response.status === 304) return { ok: true, status: 304, etag, body: undefined };
+      if (response.ok) {
+        if (!isJsonResponse(response)) {
+          throw new ApiError({ kind: 'invalid_response', status: response.status });
+        }
+        const body: unknown = await settle(response.json(), request.signal);
+        sessionExpiredNotified = false;
+        return { ok: true, status: response.status, etag, body };
+      }
+      let body: unknown;
+      if (isJsonResponse(response)) {
+        try {
+          body = await response.json();
+        } catch (error) {
+          // Kullanıcı iptali olduğu gibi iletilir. Bozuk hata gövdesi yok sayılır.
+          if (request.signal?.aborted) throw error;
+        }
+      }
+      try {
+        return await fail(response, body);
+      } catch (error) {
+        if (error instanceof ApiError) return { ok: false, error, body };
+        throw error;
+      }
     },
 
     /** Model geçidinden yanıt ister. Model anahtarı sunucudadır (AX-2). */

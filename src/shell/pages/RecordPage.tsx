@@ -24,7 +24,16 @@ export default function RecordPage() {
   // bağlantı yokken (deneme sayfaları) gösterilir.
   const Live = useViewData()?.record?.Component;
 
-  if (Live) return <Live module={module} doctype={doctype} name={name} />;
+  // Sayfa çerçevesini kabuk çizer. Kayıt bileşeni yalnız içeriği verir.
+  if (Live) {
+    return (
+      <div className="shell-page">
+        <div className="shell-body">
+          <Live module={module} doctype={doctype} name={name} />
+        </div>
+      </div>
+    );
+  }
 
   if (!row) {
     return (

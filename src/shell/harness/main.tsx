@@ -65,6 +65,14 @@ const harnessViewData = {
   },
 };
 
+// Deneme sayfası kabuğu istenen adreste açar. Örnek: `?yol=/satis/teklif/TEK-0003`.
+// Bu sayfada kayıt bağlantısı yoktur. Kayıt adresi kabuğun örnek formunu çizer.
+// Yalnız aynı kökteki yol kabul edilir.
+const startPath = new URLSearchParams(window.location.search).get('yol');
+if (startPath?.startsWith('/') && !startPath.startsWith('//')) {
+  window.history.replaceState(null, '', startPath);
+}
+
 const container = document.getElementById('root');
 if (!container) throw new Error('Kök öğe bulunamadı: #root');
 

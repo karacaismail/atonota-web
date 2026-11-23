@@ -18,7 +18,7 @@ import {
   useState,
 } from 'react';
 
-import { createFrappeRecordAdapter, RecordApiError } from './adapter';
+import { RecordApiError } from './adapter';
 import { CatalogField } from './catalog';
 import { CATALOG_VERSION } from './catalogRegistry';
 import { buildFormLayout, isLayoutBreakFieldType, type LayoutSection } from './layout';
@@ -179,7 +179,11 @@ export interface RecordViewProps {
   doctype: string;
   name?: string | undefined;
   createMode?: boolean | undefined;
-  adapter?: RecordDataAdapter | undefined;
+  /**
+   * Kayıt verisinin kaynağı. Uygulama girişi oturumun ortak API istemcisiyle kurar
+   * (`createFrappeRecordAdapter({ api })`). Varsayılan bağdaştırıcı yoktur (SZ-5).
+   */
+  adapter: RecordDataAdapter;
   locale?: RecordLocale | undefined;
   themeMode?: RecordThemeMode | undefined;
   formatting?: SiteFormatting | undefined;
@@ -301,7 +305,7 @@ function RecordViewBody(props: RecordViewBodyProps) {
     doctype,
     name,
     createMode = false,
-    adapter: externalAdapter,
+    adapter,
     locale = 'tr',
     formatting,
     breadcrumbs,
@@ -311,9 +315,6 @@ function RecordViewBody(props: RecordViewBodyProps) {
     onSignIn,
     isPhoneViewport,
   } = props;
-
-  const defaultAdapter = useMemo(() => createFrappeRecordAdapter({ locale }), [locale]);
-  const adapter = externalAdapter ?? defaultAdapter;
 
   const [screenState, setScreenState] = useState<RecordScreenState>(() =>
     !name && !createMode ? { status: 'empty', reason: 'no_record' } : { status: 'loading' },

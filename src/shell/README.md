@@ -131,7 +131,9 @@ Kabuk API istemcisi kurmaz. Veri bağlantısını uygulama girişi verir. Örnek
 
 Bağlantı verilmezse liste sayfası "Veri kaynağı bağlı değil" yazar.
 
-Kayıt rotası için de aynı kural geçerlidir. `views-record` işinin `RecordView` bileşeni `main` dalına girince kayıt rotası ona bağlanacak. O zamana kadar `pages/RecordPage.tsx` geçici örnek formu gösterir.
+Kayıt rotası için de aynı kural geçerlidir. Uygulama girişi kayıt rotasını `views-record` işinin `RecordView` bileşenine bağlar. Kayıt istekleri oturumun ortak API istemcisinden geçer. Sayfa çerçevesini (`shell-page`, `shell-body`) kabuk çizer. Kayıt bileşeni yalnız içeriği verir. Kayıt bağlantısı yoksa `pages/RecordPage.tsx` örnek formu gösterir. Bu yalnız deneme sayfasında olur.
+
+Liste tablosunda kayıt adı kayda giden bağlantıdır. Adresi kabuk verir: `routes.record(module, doctype, name)`.
 
 ## Geçici bağlantılar
 
@@ -154,4 +156,4 @@ Kabuğun ayrı Playwright ayarı kaldırıldı. Testleri tek test kapısı koşa
 
 Matris kök ayarla aynıdır: Chromium ve WebKit, iPhone 13 profili. Firefox koşulmaz.
 
-Deneme sayfası `harness/` klasöründedir. Tema geçicidir. `?tema=acik` adresi açık temayı açar.
+Deneme sayfası `harness/` klasöründedir. Tema geçicidir. `?tema=acik` adresi açık temayı açar. `?yol=/satis/teklif/TEK-0003` adresi kabuğu bu yolda açar. Deneme sayfasında kayıt bağlantısı yoktur. Bu yüzden kayıt adresi örnek formu çizer. Örnek form testi bu yolu kullanır.

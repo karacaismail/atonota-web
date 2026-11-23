@@ -42,6 +42,20 @@ describe('CollectionRoute', () => {
     );
   });
 
+  it('kayıt adını aynı modül ve türün kayıt adresine bağlar', async () => {
+    mount(
+      {
+        collection: {
+          loadDefinition: () => Promise.resolve(sampleDefinition),
+          source: sampleSource,
+        },
+      },
+      `/ornek/${encodeURIComponent('örnek-kayıt')}`,
+    );
+    const link = await screen.findByRole('link', { name: 'ORNEK-0001' });
+    expect(link).toHaveAttribute('href', `/ornek/${encodeURIComponent('örnek-kayıt')}/ORNEK-0001`);
+  });
+
   it('kabuk kendi örnek tablosunu çizmez', async () => {
     mount({
       collection: {

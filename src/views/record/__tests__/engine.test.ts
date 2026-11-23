@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { createApiClient, createCsrfStore, readApiConfig } from '@/api';
 
 import { createFrappeRecordAdapter, type RecordApiError, stripHtmlTagsSafe } from '../adapter';
 import { evaluateFieldState } from '../conditions';
@@ -500,12 +502,42 @@ describe('translation catalog parity (IC-1, IC-3)', () => {
 });
 
 describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 & Minor 1, 5)', () => {
+  const SITE = 'https://kiraci.example.test';
+
+  /**
+   * Bağdaştırıcı ortak API istemcisini kullanır (inceleme 2, Ö3 ve B3).
+   * İstemci gerçek `createApiClient` ile kurulur. Yalnız ağ (`fetch`) taklit edilir.
+   */
+  function setup(csrfToken = 'csrf-test-token') {
+    const fetchMock = vi.fn<(request: Request) => Promise<Response>>();
+    vi.stubGlobal('fetch', fetchMock);
+    const onSessionExpired = vi.fn();
+    const csrf = createCsrfStore(csrfToken);
+    const api = createApiClient({
+      config: { ...readApiConfig({ VITE_SITE_URL: SITE }, SITE), timeoutMs: 1_000 },
+      csrf,
+      onSessionExpired,
+    });
+    const adapter = createFrappeRecordAdapter({ api });
+    const requestAt = (index: number): Request => {
+      const request = fetchMock.mock.calls[index]?.[0];
+      if (!(request instanceof Request)) throw new Error(`istek yok: ${index}`);
+      return request;
+    };
+    return { fetchMock, adapter, csrf, onSessionExpired, requestAt };
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.head.querySelectorAll('meta[name="csrf-token"]').forEach((meta) => meta.remove());
+  });
+
   it('preserves "<" comparisons and decodes HTML entities when stripping HTML tags (Review 1 Minor 1)', () => {
     expect(stripHtmlTagsSafe('Tutar: a < b &amp; <b>önemli</b>')).toBe('Tutar: a < b & önemli');
   });
 
   it('handles HTTP 304 Not Modified on getDocTypeMeta with ETag cache instead of throwing server_error (Review 1 Finding 2)', async () => {
-    const fetchMock = vi.fn<typeof fetch>();
+    const { fetchMock, adapter, requestAt } = setup();
 
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify(SAMPLE_META_ENVELOPE), {
@@ -526,8 +558,6 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
       }),
     );
 
-    const adapter = createFrappeRecordAdapter({ fetchFn: fetchMock });
-
     const firstMeta = await adapter.getDocTypeMeta({ doctype: 'Leave Application' });
     expect(firstMeta.schema.name).toBe('Leave Application');
 
@@ -536,10 +566,11 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
       etag: '"etag-v1"',
     });
     expect(cachedMeta.schema.name).toBe('Leave Application');
+    expect(requestAt(1).headers.get('If-None-Match')).toBe('"etag-v1"');
   });
 
   it('treats 403 Guest or Guest message on get_logged_user session probe as session_expired (Review 1 Finding 3)', async () => {
-    const fetchMock = vi.fn<typeof fetch>();
+    const { fetchMock, adapter, onSessionExpired } = setup();
 
     // Ambiguous 403 from record endpoint
     fetchMock.mockResolvedValueOnce(
@@ -556,13 +587,13 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
       }),
     );
 
-    const adapter = createFrappeRecordAdapter({ fetchFn: fetchMock });
-
     await expect(
       adapter.getRecord({ doctype: 'Leave Application', name: 'HR-LAP-TEST-01' }),
     ).rejects.toMatchObject({
       code: 'session_expired',
     } satisfies Partial<RecordApiError>);
+    // Oturum bitince ortak oturum işi (girişe dönüş) çalışır.
+    expect(onSessionExpired).toHaveBeenCalledTimes(1);
 
     // Case 2: 200 with real non-Guest user means session IS active -> real permission denial ('unauthorized')
     fetchMock.mockResolvedValueOnce(
@@ -586,7 +617,7 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
   });
 
   it('sends modified and X-Frappe-CSRF-Token on record update and translates TimestampMismatchError, 429, and runDocAction', async () => {
-    const fetchMock = vi.fn<typeof fetch>();
+    const { fetchMock, adapter, requestAt } = setup();
 
     fetchMock.mockResolvedValueOnce(
       new Response(
@@ -598,11 +629,6 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
       ),
     );
 
-    const adapter = createFrappeRecordAdapter({
-      fetchFn: fetchMock,
-      getCsrfToken: () => 'csrf-test-token',
-    });
-
     await adapter.saveRecord({
       doctype: 'Leave Application',
       name: 'HR-LAP-TEST-01',
@@ -610,11 +636,14 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
       data: { description: 'Güncel açıklama' },
     });
 
-    const [requestUrl, requestInit] = fetchMock.mock.calls[0] ?? [];
-    expect(requestUrl).toBe('/api/resource/Leave%20Application/HR-LAP-TEST-01');
-    expect(requestInit?.method).toBe('PUT');
-    const headers = new Headers(requestInit?.headers);
-    expect(headers.get('X-Frappe-CSRF-Token')).toBe('csrf-test-token');
+    const request = requestAt(0);
+    expect(request.url).toBe(`${SITE}/api/resource/Leave%20Application/HR-LAP-TEST-01`);
+    expect(request.method).toBe('PUT');
+    expect(request.headers.get('X-Frappe-CSRF-Token')).toBe('csrf-test-token');
+    expect(await request.json()).toEqual({
+      description: 'Güncel açıklama',
+      modified: '2026-11-22 09:00:00.000001',
+    });
 
     // 417 TimestampMismatchError
     fetchMock.mockResolvedValueOnce(
@@ -638,6 +667,7 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
+      message: 'Belge başka bir oturumda güncellendi',
     } satisfies Partial<RecordApiError>);
 
     // 429 RateLimitExceededError
@@ -668,5 +698,69 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
       modified: '2026-11-22 10:00:00',
     });
     expect(updated?.modified).toBe('2026-11-22 11:00:00');
+    expect(requestAt(3).headers.get('X-Frappe-CSRF-Token')).toBe('csrf-test-token');
+  });
+
+  it('CSRF belirtecini sayfadaki meta öğesinden değil ortak depodan alır (inceleme 2, B3)', async () => {
+    const { fetchMock, adapter, csrf, requestAt } = setup('ilk-belirtec');
+    const meta = document.createElement('meta');
+    meta.name = 'csrf-token';
+    meta.content = 'eski-sayfa-belirteci';
+    document.head.append(meta);
+    const saved = () =>
+      new Response(JSON.stringify({ data: { name: 'ORNEK-0001', modified: '2026-11-23' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    fetchMock.mockResolvedValueOnce(saved()).mockResolvedValueOnce(saved());
+    const save = () =>
+      adapter.saveRecord({
+        doctype: 'Örnek Kayıt',
+        name: 'ORNEK-0001',
+        modified: '2026-11-23 09:00:00',
+        data: { title: 'Yeni' },
+      });
+
+    await save();
+    // Çıkışta ortak depo belirteci siler. Sayfadaki eski belirteç yine de gönderilmez.
+    csrf.clear();
+    await save();
+
+    expect(requestAt(0).headers.get('X-Frappe-CSRF-Token')).toBe('ilk-belirtec');
+    expect(requestAt(1).headers.has('X-Frappe-CSRF-Token')).toBe(false);
+  });
+
+  it('ağ hatasını ve geçersiz yanıtı kayıt hata koduna çevirir', async () => {
+    const { fetchMock, adapter } = setup();
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await expect(adapter.getRecord({ doctype: 'User', name: 'x' })).rejects.toMatchObject({
+      code: 'network',
+    } satisfies Partial<RecordApiError>);
+
+    fetchMock.mockResolvedValueOnce(
+      new Response('<html></html>', { status: 200, headers: { 'Content-Type': 'text/html' } }),
+    );
+    await expect(adapter.getRecord({ doctype: 'User', name: 'x' })).rejects.toMatchObject({
+      code: 'invalid_response',
+    } satisfies Partial<RecordApiError>);
+  });
+
+  it('doğrulama hatasında sunucunun temizlenmiş iletisini verir', async () => {
+    const { fetchMock, adapter } = setup();
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          exc_type: 'MandatoryError',
+          _server_messages: JSON.stringify([JSON.stringify({ message: '<b>Başlık</b> zorunlu' })]),
+        }),
+        { status: 417, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    await expect(
+      adapter.saveRecord({ doctype: 'Örnek Kayıt', data: { title: '' } }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Başlık zorunlu',
+    } satisfies Partial<RecordApiError>);
   });
 });

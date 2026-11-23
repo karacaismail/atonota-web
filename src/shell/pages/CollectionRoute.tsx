@@ -8,6 +8,7 @@ import { CollectionView } from '@/views/collection';
 
 import { isDarkColor } from '../focus-dim/isDarkColor';
 import { t } from '../messages';
+import { routes } from '../paths';
 import { useViewData } from '../view-data';
 
 type Loaded =
@@ -90,6 +91,7 @@ export default function CollectionRoute() {
           definition={current.definition}
           source={data.source}
           mode={isDarkColor(token.colorBgLayout) ? 'dark' : 'light'}
+          recordHref={(name) => routes.record(module, doctype, name)}
         />
       </div>
     </div>

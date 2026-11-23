@@ -33,8 +33,13 @@ Tek karar kaynağı `design/source/control-size-config.json` dosyasıdır. Bu kl
 | Dokunma | `--hit-expand` (0.12), `--hit-min-target` (24) | `hitArea` |
 | Odak | `--focus-indicator-color`, `--focus-indicator-size` (2 px) | türetilmiş karar |
 | Perde | `--focus-dim-color`, `--focus-dim-transparent`, `--focus-dim-blur` | `focusDim` |
-| Hareket eğrisi | `--motion-easing-standard`, `--motion-easing-dropdown`, `--motion-easing-owl-pop` | `focusDim.easing`, `dropdown.animation` |
-| Hareket süresi | `--motion-duration-fast/mid/slow` (100/200/300), `-dropdown` (500), `-focus-dim` (320), `-flyout` (180), `-rail` (520), `-owl-pop` (420) | `motion.ts` |
+| Hareket eğrisi | `--motion-easing-standard` (genel S eğrisi), `--motion-easing-dropdown`, `--motion-easing-owl-pop`, `--motion-easing-glide` (kayan hover zemini), `--motion-easing-linear` (dönen simge ve `visibility` gibi anahtar geçişler) | `focusDim.easing`, `dropdown.animation`, `owlAssist.badge.animation`, kaynak örnek sayfadaki `.glide` ve `.spin` kuralları |
+| Hareket süresi | `--motion-duration-fast` (100), `--motion-duration-mid` (200), `--motion-duration-slow` (300), `--motion-duration-dropdown` (500), `--motion-duration-focus-dim` (320), `--motion-duration-flyout` (180), `--motion-duration-rail` (520), `--motion-duration-owl-pop` (420), `--motion-duration-glide` (200), `--motion-duration-glide-fade` (150), `--motion-duration-skeleton` (1200), `--motion-duration-spin` (900) | `motion.ts`; kabuk süreleri kaynak örnek sayfadaki `.glide`, `.skel` ve `.spin` kurallarından |
+| Anında geçiş | `--motion-duration-instant` (0). Yalnız `visibility` gibi anahtar özelliklerde kullanılır. Hareket süresi değildir; hareket süreleri pozitiftir. | `motion.ts` (`instantMs`) |
+
+**Solma eğrisi kararı.** Kayan hover zemininin solması kaynak örnek sayfada `.15s ease` idi. `ease` sözcüğü genel hareket sözleşmesinde yoktur ve hareket kapısı onu reddeder. Bu yüzden solma, süresini kaynaktan alır (`--motion-duration-glide-fade`, 150 ms). Eğrisi genel S eğrisidir (`--motion-easing-standard`). Karar `src/shell/shell.css` içindeki `--shell-glide-fade-ease` değişkenindedir.
+
+Kabuk süreleri (`glide`, `glideFade`, `skeleton`, `spin`) `motion.ts` içinde sayı olarak yazılıdır. Kaynak JSON dosyasında bu süreler yoktur; yalnız örnek sayfanın CSS kurallarında vardır. Değerler o kurallarla aynıdır.
 
 Dropdown açılış hareketi için `@keyframes atonota-dropdown-in` tanımlıdır. Süre `--motion-duration-dropdown`, eğri `--motion-easing-dropdown` olur.
 

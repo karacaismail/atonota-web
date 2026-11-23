@@ -373,3 +373,108 @@ describe('API istemcisi', () => {
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   });
 });
+
+describe('kayıt uçları (frappeDocument)', () => {
+  const RECORD_PATH = `/api/resource/${encodeURIComponent('Örnek Kayıt')}/ORNEK-0001`;
+
+  it('site kökünü, çerez ayarını ve CSRF deposundaki güncel belirteci kullanır', async () => {
+    const seen: { url?: string; csrf?: string | null; auth?: boolean; type?: string | null } = {};
+    mockServer.use(
+      http.put(`${SITE}${RECORD_PATH}`, async ({ request }) => {
+        seen.url = request.url;
+        seen.csrf = request.headers.get('X-Frappe-CSRF-Token');
+        seen.auth = request.headers.has('Authorization');
+        seen.type = request.headers.get('Content-Type');
+        const body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ data: { name: 'ORNEK-0001', ...body } });
+      }),
+    );
+    const { api, csrf } = setup();
+    // Belirteç sonradan yenilenir. İstek eski değeri değil depodaki güncel değeri taşır.
+    csrf.set('yenilenmis-belirtec');
+
+    const result = await api.frappeDocument({
+      method: 'PUT',
+      path: RECORD_PATH,
+      body: { title: 'Yeni başlık' },
+    });
+
+    expect(seen).toEqual({
+      url: `${SITE}${RECORD_PATH}`,
+      csrf: 'yenilenmis-belirtec',
+      auth: false,
+      type: 'application/json',
+    });
+    expect(result).toEqual({
+      ok: true,
+      status: 200,
+      etag: undefined,
+      body: { data: { name: 'ORNEK-0001', title: 'Yeni başlık' } },
+    });
+  });
+
+  it('okuyan istekte CSRF başlığı göndermez, sorgu ve ETag ekler, 304 yanıtını gövdesiz döner', async () => {
+    const seen: { csrf?: string | null; match?: string | null; doctype?: string | null } = {};
+    mockServer.use(
+      http.get(`${SITE}/api/method/platform_core.api.meta.get_doctype`, ({ request }) => {
+        seen.csrf = request.headers.get('X-Frappe-CSRF-Token');
+        seen.match = request.headers.get('If-None-Match');
+        seen.doctype = new URL(request.url).searchParams.get('doctype');
+        return new HttpResponse(null, { status: 304, headers: { ETag: '"e1"' } });
+      }),
+    );
+    const { api } = setup();
+
+    const result = await api.frappeDocument({
+      method: 'GET',
+      path: '/api/method/platform_core.api.meta.get_doctype',
+      query: { doctype: 'Örnek Kayıt' },
+      etag: '"e1"',
+    });
+
+    expect(seen).toEqual({ csrf: null, match: '"e1"', doctype: 'Örnek Kayıt' });
+    expect(result).toEqual({ ok: true, status: 304, etag: '"e1"', body: undefined });
+  });
+
+  it('hata yanıtında ortak hatayı ve gövdeyi döner; oturum bitince oturum işini bir kez çağırır', async () => {
+    mockState.signedIn = false;
+    const { api, onSessionExpired } = setup();
+
+    const first = await api.frappeDocument({ method: 'GET', path: RECORD_PATH });
+    const second = await api.frappeDocument({ method: 'GET', path: RECORD_PATH });
+
+    expect(first.ok).toBe(false);
+    if (first.ok) throw new Error('beklenmeyen başarı');
+    expect(first.error).toBeInstanceOf(ApiError);
+    expect(first.error.kind).toBe('session_expired');
+    expect(first.body).toMatchObject({ exc_type: 'SessionExpired' });
+    expect(second.ok).toBe(false);
+    expect(onSessionExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it('başarılı yanıt JSON değilse geçersiz yanıt hatası verir', async () => {
+    mockServer.use(http.get(`${SITE}${RECORD_PATH}`, () => HttpResponse.text('<html></html>')));
+    const { api } = setup();
+    await expect(api.frappeDocument({ method: 'GET', path: RECORD_PATH })).rejects.toMatchObject({
+      kind: 'invalid_response',
+    });
+  });
+
+  it.each([
+    'https://baska.example.test/api/resource/User/x',
+    '//baska.example.test/api/resource/User/x',
+    '/files/rapor.pdf',
+    '/api/resource/../method/x',
+    '/api/resource/User/x?baska=1',
+  ])('izinli kayıt yolu dışındaki adrese istek göndermez: %s', async (path) => {
+    const seen: string[] = [];
+    mockServer.events.on('request:start', ({ request }) => seen.push(request.url));
+    const { api } = setup();
+    await expect(api.frappeDocument({ method: 'GET', path })).rejects.toMatchObject({
+      kind: 'invalid_request',
+      code: 'path',
+    });
+    expect(seen).toEqual([]);
+    mockServer.events.removeAllListeners();
+  });
+});

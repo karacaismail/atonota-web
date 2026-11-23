@@ -74,8 +74,22 @@ async function openDemo(page: Page) {
 }
 
 /** Dokunma profilinde (`hover: none`) üzerine gelme durumu yoktur; renk değişimi beklenmez. */
+/**
+ * Dokunmatik profilde (`hover: none`, örneğin `iphone-13`) üzerine gelme durumu yoktur.
+ * O profilde üzerine gelme zemininin ya da yazısının değişmesi beklenmez.
+ * Kontrast ölçümü yine yapılır. Masaüstü profillerinde renk değişimi zorunludur.
+ * Daraltma test adında "dokunmatikte renk değişimi beklenmez" diye yazılıdır.
+ * Koşu raporuna da not düşülür (inceleme 2, K1).
+ */
 async function canHover(page: Page): Promise<boolean> {
-  return page.evaluate(() => window.matchMedia('(hover: hover)').matches);
+  const hoverable = await page.evaluate(() => window.matchMedia('(hover: hover)').matches);
+  if (!hoverable) {
+    test.info().annotations.push({
+      type: 'daraltma',
+      description: 'Dokunmatik profil: üzerine gelme renk değişimi beklenmedi. Kontrast ölçüldü.',
+    });
+  }
+  return hoverable;
 }
 
 test.describe('odak göstergesi: üç durak', () => {
@@ -220,7 +234,9 @@ async function switchToDark(page: Page) {
  */
 test.describe('tehlikeli birincil düğme', () => {
   for (const theme of ['açık', 'koyu'] as const) {
-    test(`${theme} temada kırmızı zemin, beyaz metin ve en az 4.5:1`, async ({ page }) => {
+    test(`${theme} temada kırmızı zemin, beyaz metin ve en az 4.5:1 (dokunmatikte renk değişimi beklenmez)`, async ({
+      page,
+    }) => {
       await openDemo(page);
       if (theme === 'koyu') await switchToDark(page);
       const btn = page.getByTestId('btn-danger-primary');
@@ -276,7 +292,9 @@ test.describe('tehlike düğmesi türleri: kenarlıklı, metin ve bağlantı', (
     { name: 'kart içinde metin', id: 'btn-card-danger-text' },
   ] as const;
   for (const theme of ['açık', 'koyu'] as const) {
-    test(`${theme} temada yazı her türde ve durumda en az 4.5:1`, async ({ page }) => {
+    test(`${theme} temada yazı her türde ve durumda en az 4.5:1 (dokunmatikte renk değişimi beklenmez)`, async ({
+      page,
+    }) => {
       await openDemo(page);
       if (theme === 'koyu') await switchToDark(page);
       const channels = (rgb: string) => (rgb.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
@@ -336,7 +354,9 @@ test.describe('koyu birincil düğme kontrastı', () => {
     await switchToDark(page);
   });
 
-  test('sayfa zemininde normal, üzerine gelme ve basılı durumlar en az 4.5:1', async ({ page }) => {
+  test('sayfa zemininde normal, üzerine gelme ve basılı durumlar en az 4.5:1 (dokunmatikte renk değişimi beklenmez)', async ({
+    page,
+  }) => {
     const btn = page.getByTestId('btn-md');
     const bgOf = () => btn.evaluate((el) => getComputedStyle(el).backgroundColor);
     const restBg = await bgOf();

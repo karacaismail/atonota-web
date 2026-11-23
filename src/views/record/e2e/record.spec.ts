@@ -163,8 +163,16 @@ test.describe('odak kuralları', () => {
         await new Promise<void>((resolve) => {
           requestAnimationFrame(() => resolve());
         });
+        // Yalnız biten hareketler beklenir. Sonsuz döngülü hareketin (yükleme simgesi gibi)
+        // `finished` sözü hiç dolmaz; onu beklemek testi zaman aşımına düşürür (inceleme 2, Ö4).
         await Promise.all(
-          document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+          document
+            .getAnimations()
+            .filter((animation) => {
+              const end = animation.effect?.getComputedTiming().endTime;
+              return typeof end === 'number' && Number.isFinite(end);
+            })
+            .map((animation) => animation.finished.catch(() => undefined)),
         );
         const root = document.querySelector('.rv-root');
         const active = document.activeElement;

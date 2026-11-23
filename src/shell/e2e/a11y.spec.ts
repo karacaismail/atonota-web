@@ -4,16 +4,27 @@ import { expect, test } from '@playwright/test';
 /** Sahte sunucunun tanıdığı liste: tablo gerçekten çizilir. `/satis/teklif` hata ekranını açar. */
 const LIST = `/ornek/${encodeURIComponent('örnek-kayıt')}`;
 
-for (const url of ['/', '/satis/teklif', LIST, '/satis/teklif/TEK-0003']) {
+/** Sahte sunucunun tanıdığı kayıt: axe kayıt formunu denetler. */
+const RECORD = `${LIST}/ORNEK-0003`;
+
+for (const url of ['/', '/satis/teklif', LIST, '/satis/teklif/TEK-0003', RECORD]) {
   test(`axe: ${url}`, async ({ page }, testInfo) => {
     await page.goto(url);
     await expect(page.locator('.shell')).toBeVisible();
+    // Kayıt adresinde axe kayıt formunu denetler. Form sahte sunucudan gelince ölçülür.
+    if (url === RECORD) {
+      await expect(page.getByRole('textbox', { name: /Örnek başlık/ })).toHaveValue('Örnek veri 3');
+    }
     await page.waitForTimeout(400);
     // Açılıştaki renk geçişleri bitmeden axe karışmış renkleri ölçer ve kontrast bildirir.
     // Yük altında (WebKit masaüstü) 400 ms yetmiyordu. Bütün hareketlerin bitmesi beklenir.
     await page.evaluate(async () => {
+      // Sonsuz döngülü hareketin `finished` sözü dolmaz. Yalnız biten hareketler beklenir.
       await Promise.all(
-        document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+        document
+          .getAnimations()
+          .filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().endTime))
+          .map((animation) => animation.finished.catch(() => undefined)),
       );
     });
     // Koyu birincil düğme düzeltmesi (`b339770`) bu dalda. Dışlama kalktı; düğmeler de denetlenir.

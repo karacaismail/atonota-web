@@ -28,6 +28,13 @@ describe('RecordPage', () => {
     expect(screen.getByText('canlı hr leave-application HR-LAP-2026-00001')).toBeInTheDocument();
   });
 
+  it('canlı kaydı kabuğun sayfa çerçevesi içinde çizer', () => {
+    // Kayıt bileşeni yalnız içeriği verir. Sayfa çerçevesi kabuğundur (inceleme 2, K3).
+    mount({ record: { Component: LiveRecord } }, '/hr/leave-application/HR-LAP-2026-00001');
+    const text = screen.getByText('canlı hr leave-application HR-LAP-2026-00001');
+    expect(text.closest('.shell-page > .shell-body')).not.toBeNull();
+  });
+
   it('kayıt bağlantısı yoksa örnek kaydı arar', () => {
     mount(null, '/hr/leave-application/HR-LAP-2026-00001');
     expect(screen.queryByText(/canlı/)).not.toBeInTheDocument();

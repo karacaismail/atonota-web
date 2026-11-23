@@ -1,3 +1,5 @@
+import { type ApiClient, ApiError, type DocumentRequest, type DocumentResponse } from '@/api';
+
 import { formatRecordMessage } from './messages';
 import {
   SchemaValidationError,
@@ -38,12 +40,14 @@ export class RecordApiError extends Error {
   }
 }
 
+/**
+ * Kayıt bağdaştırıcısının ayarı. İstekler oturumun ortak API istemcisinden geçer (SZ-5).
+ * Site kökü, çerez ayarı, CSRF deposu, zaman aşımı ve oturum süresi işi istemcidedir.
+ * Bağdaştırıcı kendi `fetch` katmanını kurmaz. Sayfadaki `meta` öğesini okumaz (güvenlik bulgusu B3).
+ */
 export interface FrappeRecordAdapterConfig {
-  baseUrl?: string | undefined;
+  api: Pick<ApiClient, 'frappeDocument'>;
   locale?: RecordLocale | undefined;
-  timeoutMs?: number | undefined;
-  fetchFn?: typeof fetch | undefined;
-  getCsrfToken?: (() => string | null | undefined) | undefined;
 }
 
 const HTML_ENTITY_MAP: Readonly<Record<string, string>> = {
@@ -67,17 +71,6 @@ export function stripHtmlTagsSafe(input: string): string {
     (entity) => HTML_ENTITY_MAP[entity.toLowerCase()] ?? entity,
   );
   return decoded.replace(/\s+/g, ' ').trim();
-}
-
-function readMetaCsrfToken(): string | null {
-  if (typeof document === 'undefined') {
-    return null;
-  }
-  const meta =
-    document.querySelector('meta[name="csrf-token"]') ??
-    document.querySelector('meta[name="frappe-csrf-token"]');
-  const content = meta?.getAttribute('content');
-  return content && content.trim().length > 0 ? content.trim() : null;
 }
 
 function extractSafeServerMessage(body: Record<string, unknown>): string | undefined {
@@ -144,291 +137,133 @@ function extractExcType(body: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
-function createTimedSignal(
-  externalSignal: AbortSignal | undefined,
-  timeoutMs: number,
-): { signal: AbortSignal; cleanup: () => void } {
-  const controller = new AbortController();
-  const onAbort = () => controller.abort();
-  if (externalSignal) {
-    if (externalSignal.aborted) {
-      controller.abort();
-    } else {
-      externalSignal.addEventListener('abort', onAbort, { once: true });
-    }
-  }
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return {
-    signal: controller.signal,
-    cleanup: () => {
-      clearTimeout(timer);
-      externalSignal?.removeEventListener('abort', onAbort);
-    },
-  };
-}
-
 interface JsonHttpResult {
   notModified: boolean;
   etag: string | undefined;
   body: unknown;
 }
 
-export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): RecordDataAdapter {
-  const baseUrl = (config?.baseUrl ?? '').replace(/\/$/, '');
-  const locale: RecordLocale = config?.locale ?? 'tr';
-  const timeoutMs = config?.timeoutMs ?? 15_000;
-  const fetchFn: typeof fetch = config?.fetchFn ?? ((input, init) => fetch(input, init));
-  const resolveCsrf = config?.getCsrfToken ?? readMetaCsrfToken;
-  const metaCache = new Map<string, { etag: string | undefined; meta: DocTypeMeta }>();
+const VALIDATION_TYPES = new Set([
+  'ValidationError',
+  'MandatoryError',
+  'LinkValidationError',
+  'UniqueValidationError',
+]);
 
-  /**
-   * SZ-8 & Review 1 Finding 3: Only HTTP 200 with a real non-Guest username confirms an active
-   * session; every other outcome (401, 403 Guest, timeout) is treated as session_expired.
-   */
-  async function verifySessionOnAmbiguous403(
-    externalSignal?: AbortSignal,
-  ): Promise<'session_expired' | 'unauthorized'> {
-    const { signal, cleanup } = createTimedSignal(externalSignal, timeoutMs);
-    try {
-      const probeResponse = await fetchFn(`${baseUrl}/api/method/frappe.auth.get_logged_user`, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        headers: { Accept: 'application/json' },
-        signal,
-      });
-      cleanup();
-      if (probeResponse.status !== 200) {
-        return 'session_expired';
+function asRecord(body: unknown): Record<string, unknown> {
+  return typeof body === 'object' && body !== null && !Array.isArray(body)
+    ? (body as Record<string, unknown>)
+    : {};
+}
+
+/** Ortak hata türünü kayıt görünümünün hata koduna çevirir. Sunucu iletisi temizlenerek gösterilir. */
+function toRecordError(error: ApiError, rawBody: unknown, locale: RecordLocale): RecordApiError {
+  const body = asRecord(rawBody);
+  const excType = extractExcType(body);
+  const safeMsg = extractSafeServerMessage(body);
+  const status = error.status === 0 ? undefined : error.status;
+  const make = (code: RecordErrorCode, message: string) =>
+    new RecordApiError({ code, status, message });
+  switch (error.kind) {
+    case 'session_expired':
+      return make('session_expired', formatRecordMessage(locale, 'unauthorizedSessionDescription'));
+    case 'forbidden':
+      return make('unauthorized', formatRecordMessage(locale, 'unauthorizedPermissionDescription'));
+    case 'not_found':
+      return make('not_found', formatRecordMessage(locale, 'emptyNotFoundDescription'));
+    case 'conflict':
+      return make('conflict', safeMsg ?? formatRecordMessage(locale, 'conflictDescription'));
+    case 'rate_limited':
+      return make('rate_limited', formatRecordMessage(locale, 'rateLimitedError'));
+    case 'network':
+    case 'timeout':
+      return make('network', formatRecordMessage(locale, 'networkError'));
+    case 'invalid_response':
+      return make('invalid_response', formatRecordMessage(locale, 'invalidServerResponse'));
+    case 'invalid_request':
+      if (error.status === 417 || (excType !== undefined && VALIDATION_TYPES.has(excType))) {
+        return make('validation', safeMsg ?? formatRecordMessage(locale, 'validationServerError'));
       }
-      const ct = probeResponse.headers.get('Content-Type') ?? '';
-      if (!ct.toLowerCase().includes('application/json')) {
-        return 'session_expired';
-      }
-      const raw: unknown = await probeResponse.json();
-      if (
-        typeof raw === 'object' &&
-        raw !== null &&
-        typeof (raw as Record<string, unknown>)['message'] === 'string'
-      ) {
-        const user = String((raw as Record<string, unknown>)['message']).trim();
-        if (user.length > 0 && user !== 'Guest') {
-          return 'unauthorized';
-        }
-      }
-      return 'session_expired';
-    } catch {
-      cleanup();
-      return 'session_expired';
-    }
+      return make('server_error', formatRecordMessage(locale, 'errorDefaultDescription'));
+    default:
+      return make('server_error', formatRecordMessage(locale, 'errorDefaultDescription'));
   }
+}
+
+export function createFrappeRecordAdapter(config: FrappeRecordAdapterConfig): RecordDataAdapter {
+  const { api } = config;
+  const locale: RecordLocale = config.locale ?? 'tr';
+  const metaCache = new Map<string, { etag: string | undefined; meta: DocTypeMeta }>();
 
   async function requestJsonWithMeta(
     path: string,
-    init: RequestInit & {
-      isWrite?: boolean | undefined;
+    init: {
+      method?: DocumentRequest['method'];
+      query?: Record<string, string>;
+      body?: unknown;
+      etag?: string | undefined;
       allow304?: boolean | undefined;
       externalSignal?: AbortSignal | undefined;
     },
   ): Promise<JsonHttpResult> {
-    const headers = new Headers(init.headers);
-    headers.set('Accept', 'application/json');
-
-    if (init.isWrite) {
-      headers.set('Content-Type', 'application/json');
-      const csrfToken = resolveCsrf();
-      if (csrfToken) {
-        headers.set('X-Frappe-CSRF-Token', csrfToken);
-      }
-    }
-
-    const { signal, cleanup } = createTimedSignal(init.externalSignal, timeoutMs);
-    let response: Response;
+    let result: DocumentResponse;
     try {
-      response = await fetchFn(`${baseUrl}${path}`, {
+      result = await api.frappeDocument({
         method: init.method ?? 'GET',
-        headers,
-        body: init.body ?? null,
-        credentials: 'same-origin',
-        signal,
+        path,
+        ...(init.query ? { query: init.query } : {}),
+        ...(init.body === undefined ? {} : { body: init.body }),
+        etag: init.etag,
+        signal: init.externalSignal,
       });
     } catch (err) {
-      cleanup();
-      if (init.externalSignal?.aborted) {
-        throw err;
-      }
-      throw new RecordApiError({
-        code: 'network',
-        message: formatRecordMessage(locale, 'networkError'),
-      });
+      // Kullanıcı iptali olduğu gibi iletilir. Ekran iptali hata saymaz.
+      if (init.externalSignal?.aborted || !(err instanceof ApiError)) throw err;
+      throw toRecordError(err, undefined, locale);
     }
-    cleanup();
-
-    const etag = response.headers.get('ETag') ?? undefined;
-    if (init.allow304 && response.status === 304) {
-      return {
-        notModified: true,
-        etag,
-        body: undefined,
-      };
-    }
-
-    const contentType = response.headers.get('Content-Type') ?? '';
-    const isJson = contentType.toLowerCase().includes('application/json');
-    let parsedBody: Record<string, unknown> = {};
-    if (isJson) {
-      try {
-        const raw: unknown = await response.json();
-        if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) {
-          parsedBody = raw as Record<string, unknown>;
-        }
-      } catch {
-        if (response.ok) {
-          throw new RecordApiError({
-            code: 'invalid_response',
-            status: response.status,
-            message: formatRecordMessage(locale, 'invalidServerResponse'),
-          });
-        }
-      }
-    } else if (response.ok) {
+    if (!result.ok) throw toRecordError(result.error, result.body, locale);
+    if (result.status === 304) {
+      if (init.allow304) return { notModified: true, etag: result.etag, body: undefined };
       throw new RecordApiError({
         code: 'invalid_response',
-        status: response.status,
+        status: 304,
         message: formatRecordMessage(locale, 'invalidServerResponse'),
       });
     }
-
-    if (response.ok) {
-      return {
-        notModified: false,
-        etag,
-        body: parsedBody,
-      };
-    }
-
-    const excType = extractExcType(parsedBody);
-    const safeMsg = extractSafeServerMessage(parsedBody);
-
-    if (
-      response.status === 401 ||
-      excType === 'SessionExpired' ||
-      excType === 'AuthenticationError' ||
-      parsedBody['session_expired'] === 1
-    ) {
-      throw new RecordApiError({
-        code: 'session_expired',
-        status: response.status,
-        message: formatRecordMessage(locale, 'unauthorizedSessionDescription'),
-      });
-    }
-
-    if (response.status === 403) {
-      if (excType === 'PermissionError') {
-        throw new RecordApiError({
-          code: 'unauthorized',
-          status: 403,
-          message: formatRecordMessage(locale, 'unauthorizedPermissionDescription'),
-        });
-      }
-      const disambiguated = await verifySessionOnAmbiguous403(init.externalSignal);
-      throw new RecordApiError({
-        code: disambiguated,
-        status: 403,
-        message:
-          disambiguated === 'session_expired'
-            ? formatRecordMessage(locale, 'unauthorizedSessionDescription')
-            : formatRecordMessage(locale, 'unauthorizedPermissionDescription'),
-      });
-    }
-
-    if (response.status === 404 || excType === 'DoesNotExistError') {
-      throw new RecordApiError({
-        code: 'not_found',
-        status: response.status,
-        message: formatRecordMessage(locale, 'emptyNotFoundDescription'),
-      });
-    }
-
-    if (response.status === 409 || excType === 'TimestampMismatchError') {
-      throw new RecordApiError({
-        code: 'conflict',
-        status: response.status,
-        message: safeMsg ?? formatRecordMessage(locale, 'conflictDescription'),
-      });
-    }
-
-    if (response.status === 429 || excType === 'RateLimitExceededError') {
-      throw new RecordApiError({
-        code: 'rate_limited',
-        status: response.status,
-        message: formatRecordMessage(locale, 'rateLimitedError'),
-      });
-    }
-
-    if (
-      response.status === 417 ||
-      excType === 'ValidationError' ||
-      excType === 'MandatoryError' ||
-      excType === 'LinkValidationError' ||
-      excType === 'UniqueValidationError'
-    ) {
-      throw new RecordApiError({
-        code: 'validation',
-        status: response.status,
-        message: safeMsg ?? formatRecordMessage(locale, 'validationServerError'),
-      });
-    }
-
-    throw new RecordApiError({
-      code: 'server_error',
-      status: response.status,
-      message: formatRecordMessage(locale, 'errorDefaultDescription'),
-    });
+    return { notModified: false, etag: result.etag, body: result.body };
   }
 
   return {
     async getDocTypeMeta(params: GetDocTypeMetaParams): Promise<DocTypeMeta> {
       const cacheKey = `${params.doctype}::${params.language ?? ''}`;
       const cached = metaCache.get(cacheKey);
-      const search = new URLSearchParams({
-        doctype: params.doctype,
-        surface: 'web',
-      });
+      const query: Record<string, string> = { doctype: params.doctype, surface: 'web' };
       if (params.language) {
-        search.set('_lang', params.language);
+        query['_lang'] = params.language;
       }
+      const metaPath = '/api/method/platform_core.api.meta.get_doctype';
 
-      const headers: Record<string, string> = {};
       const effectiveEtag = params.etag ?? cached?.etag;
-      if (effectiveEtag && cached) {
-        headers['If-None-Match'] = effectiveEtag;
-      } else if (params.etag) {
-        headers['If-None-Match'] = params.etag;
-      }
+      const etag = effectiveEtag && cached ? effectiveEtag : params.etag;
 
-      const result = await requestJsonWithMeta(
-        `/api/method/platform_core.api.meta.get_doctype?${search.toString()}`,
-        {
-          method: 'GET',
-          headers,
-          allow304: true,
-          externalSignal: params.signal,
-        },
-      );
+      const result = await requestJsonWithMeta(metaPath, {
+        method: 'GET',
+        query,
+        etag,
+        allow304: true,
+        externalSignal: params.signal,
+      });
 
       if (result.notModified) {
         if (cached) {
           return cached.meta;
         }
         // If caller passed an uncached ETag and received 304, re-fetch unconditionally without If-None-Match.
-        const freshFallback = await requestJsonWithMeta(
-          `/api/method/platform_core.api.meta.get_doctype?${search.toString()}`,
-          {
-            method: 'GET',
-            externalSignal: params.signal,
-          },
-        );
+        const freshFallback = await requestJsonWithMeta(metaPath, {
+          method: 'GET',
+          query,
+          externalSignal: params.signal,
+        });
         const validatedFallback = validateDocTypeMeta(freshFallback.body);
         metaCache.set(cacheKey, { etag: freshFallback.etag, meta: validatedFallback });
         return validatedFallback;
@@ -485,8 +320,7 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
         };
         const result = await requestJsonWithMeta(`/api/resource/${encodedDoctype}/${encodedName}`, {
           method: 'PUT',
-          isWrite: true,
-          body: JSON.stringify(payload),
+          body: payload,
           externalSignal: params.signal,
         });
         try {
@@ -501,8 +335,7 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
 
       const result = await requestJsonWithMeta(`/api/resource/${encodedDoctype}`, {
         method: 'POST',
-        isWrite: true,
-        body: JSON.stringify(params.data),
+        body: params.data,
         externalSignal: params.signal,
       });
       try {
@@ -516,28 +349,26 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
     },
 
     async searchLink(params: LinkSearchParams): Promise<readonly LinkOption[]> {
-      const search = new URLSearchParams({
+      const query: Record<string, string> = {
         doctype: params.doctype,
         txt: params.txt,
         page_length: String(params.pageLength ?? 10),
-      });
+      };
       if (params.referenceDoctype) {
-        search.set('reference_doctype', params.referenceDoctype);
+        query['reference_doctype'] = params.referenceDoctype;
       }
       if (params.linkFieldname) {
-        search.set('link_fieldname', params.linkFieldname);
+        query['link_fieldname'] = params.linkFieldname;
       }
       if (params.filters) {
-        search.set('filters', JSON.stringify(params.filters));
+        query['filters'] = JSON.stringify(params.filters);
       }
 
-      const result = await requestJsonWithMeta(
-        `/api/method/frappe.desk.search.search_link?${search.toString()}`,
-        {
-          method: 'GET',
-          externalSignal: params.signal,
-        },
-      );
+      const result = await requestJsonWithMeta('/api/method/frappe.desk.search.search_link', {
+        method: 'GET',
+        query,
+        externalSignal: params.signal,
+      });
       try {
         return validateLinkSearchResponse(result.body);
       } catch {
@@ -556,8 +387,7 @@ export function createFrappeRecordAdapter(config?: FrappeRecordAdapterConfig): R
         `/api/v2/document/${encodedDoctype}/${encodedName}/method/${encodedAction}/`,
         {
           method: 'POST',
-          isWrite: true,
-          body: JSON.stringify({ modified: params.modified }),
+          body: { modified: params.modified },
           externalSignal: params.signal,
         },
       );

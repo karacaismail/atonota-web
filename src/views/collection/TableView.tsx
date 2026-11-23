@@ -1,4 +1,5 @@
 import { Checkbox } from 'antd';
+import { Link } from 'react-router-dom';
 import { displayCell } from './presentation';
 import { isNumeric } from './model';
 import type { ViewProps } from './types';
@@ -7,7 +8,13 @@ export function TableView({
   rows,
   selected,
   onSelect,
-}: ViewProps & { selected: string[]; onSelect: (names: string[]) => void }) {
+  recordHref,
+}: ViewProps & {
+  selected: string[];
+  onSelect: (names: string[]) => void;
+  /** Verilirse kayıt adı (`name` sütunu) kayda giden bağlantı olur. */
+  recordHref?: ((name: string) => string) | undefined;
+}) {
   return (
     <div
       className="collection-scroll"
@@ -66,7 +73,13 @@ export function TableView({
                   key={field.fieldname}
                   className={isNumeric(field) ? 'collection-number' : 'collection-text'}
                 >
-                  {displayCell(row, field)}
+                  {recordHref && field.fieldname === 'name' ? (
+                    <Link className="collection-record-link" to={recordHref(row.name)}>
+                      {displayCell(row, field)}
+                    </Link>
+                  ) : (
+                    displayCell(row, field)
+                  )}
                 </td>
               ))}
             </tr>
