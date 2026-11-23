@@ -109,57 +109,161 @@ test.describe('odak göstergesi: üç durak', () => {
   });
 });
 
+/**
+ * Düğmenin kontrastını tarayıcıda ölçer. Zemin, düğmenin altındaki ilk saydam olmayan atanın
+ * (kart, pencere ya da sayfa) hesaplanmış arka planıdır; yarı saydam katmanlar sırayla bindirilir.
+ */
+async function measureContrast(btn: Locator): Promise<number> {
+  return btn.evaluate((el) => {
+    const parse = (c: string) => {
+      const m = c.match(/[\d.]+/g) ?? [];
+      return { r: +m[0]!, g: +m[1]!, b: +m[2]!, a: m[3] === undefined ? 1 : +m[3] };
+    };
+    type Rgba = ReturnType<typeof parse>;
+    const blend = (f: Rgba, b: Rgba): Rgba => ({
+      r: f.a * f.r + (1 - f.a) * b.r,
+      g: f.a * f.g + (1 - f.a) * b.g,
+      b: f.a * f.b + (1 - f.a) * b.b,
+      a: 1,
+    });
+    const lum = (c: Rgba) => {
+      const ch = (v: number) => {
+        const x = v / 255;
+        return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+      };
+      return 0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b);
+    };
+    // Atalardan aşağı doğru: en alttaki saydam olmayan zeminden başlayıp katmanları bindir.
+    const layers: Rgba[] = [];
+    for (let node = el.parentElement; node; node = node.parentElement) {
+      const c = parse(getComputedStyle(node).backgroundColor);
+      if (c.a > 0) layers.unshift(c);
+      if (c.a >= 1) break;
+    }
+    let surface: Rgba = parse(getComputedStyle(document.body).backgroundColor);
+    if (surface.a < 1) surface = { r: 255, g: 255, b: 255, a: 1 };
+    for (const layer of layers) surface = blend(layer, surface);
+    const bg = blend(parse(getComputedStyle(el).backgroundColor), surface);
+    const fg = blend(parse(getComputedStyle(el).color), bg);
+    const [l1, l2] = [lum(fg), lum(bg)].sort((a, b) => b - a);
+    return Math.round(((l1! + 0.05) / (l2! + 0.05)) * 100) / 100;
+  });
+}
+
+async function switchToDark(page: Page) {
+  await page.getByRole('radiogroup', { name: 'Tema' }).getByText('Koyu', { exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+}
+
 test.describe('koyu birincil düğme kontrastı', () => {
-  test('normal, üzerine gelme ve basılı durumlar en az 4.5:1', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await page.goto(DEMO);
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.getByRole('radiogroup', { name: 'Tema' }).getByText('Koyu', { exact: true }).click();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await switchToDark(page);
+  });
+
+  test('sayfa zemininde normal, üzerine gelme ve basılı durumlar en az 4.5:1', async ({ page }) => {
     const btn = page.getByTestId('btn-md');
-    const measure = () =>
-      btn.evaluate((el) => {
-        const parse = (c: string) => {
-          const m = c.match(/[\d.]+/g) ?? [];
-          return { r: +m[0]!, g: +m[1]!, b: +m[2]!, a: m[3] === undefined ? 1 : +m[3] };
-        };
-        const blend = (f: ReturnType<typeof parse>, b: ReturnType<typeof parse>) => ({
-          r: f.a * f.r + (1 - f.a) * b.r,
-          g: f.a * f.g + (1 - f.a) * b.g,
-          b: f.a * f.b + (1 - f.a) * b.b,
-          a: 1,
-        });
-        const lum = (c: { r: number; g: number; b: number }) => {
-          const ch = (v: number) => {
-            const x = v / 255;
-            return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
-          };
-          return 0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b);
-        };
-        const page = parse(getComputedStyle(document.body).backgroundColor);
-        const bg = blend(parse(getComputedStyle(el).backgroundColor), page);
-        const fg = blend(parse(getComputedStyle(el).color), bg);
-        const [l1, l2] = [lum(fg), lum(bg)].sort((a, b) => b - a);
-        return Math.round(((l1! + 0.05) / (l2! + 0.05)) * 100) / 100;
-      });
     const bgOf = () => btn.evaluate((el) => getComputedStyle(el).backgroundColor);
-    const rest = await measure();
     const restBg = await bgOf();
-    expect(rest, 'normal').toBeGreaterThanOrEqual(4.5);
+    // Zemin düz renktir: saydamlık yok.
+    expect(restBg, 'zemin saydam değil').toMatch(/^rgb\(/);
+    expect(await measureContrast(btn), 'normal').toBeGreaterThanOrEqual(4.5);
     await btn.hover();
     await expect.poll(bgOf, { message: 'üzerine gelme zemini değişir' }).not.toBe(restBg);
     const hoverBg = await bgOf();
-    await expect.poll(measure, { message: 'üzerine gelme' }).toBeGreaterThanOrEqual(4.5);
+    await expect
+      .poll(() => measureContrast(btn), { message: 'üzerine gelme' })
+      .toBeGreaterThanOrEqual(4.5);
     const box = (await btn.boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
     await expect.poll(bgOf, { message: 'basılı zemin değişir' }).not.toBe(hoverBg);
-    await expect.poll(measure, { message: 'basılı' }).toBeGreaterThanOrEqual(4.5);
+    await expect
+      .poll(() => measureContrast(btn), { message: 'basılı' })
+      .toBeGreaterThanOrEqual(4.5);
     await page.mouse.up();
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2aa'])
       .include('.ant-btn-primary')
       .analyze();
     expect(results.violations).toEqual([]);
+  });
+
+  test('klavyeyle basılı (Space) durum en az 4.5:1', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'WebKit klavyeyle basılıyken :active uygulamaz');
+    const btn = page.getByTestId('btn-md');
+    await openKeyboardMode(page);
+    await btn.focus();
+    await expect(btn).toBeFocused();
+    const restBg = await btn.evaluate((el) => getComputedStyle(el).backgroundColor);
+    await page.keyboard.down('Space');
+    try {
+      await expect
+        .poll(() => btn.evaluate((el) => getComputedStyle(el).backgroundColor), {
+          message: 'klavyeyle basılı zemin değişir',
+        })
+        .not.toBe(restBg);
+      await expect
+        .poll(() => btn.evaluate((el) => getComputedStyle(el).color), {
+          message: 'metin %100 olur',
+        })
+        .toBe(PRIMARY_RGB);
+      expect(await measureContrast(btn), 'klavyeyle basılı').toBeGreaterThanOrEqual(4.5);
+    } finally {
+      await page.keyboard.up('Space');
+    }
+  });
+
+  test('kart (panel zemini) içindeki birincil düğme en az 4.5:1', async ({ page }) => {
+    const card = page.getByTestId('demo-card');
+    await card.scrollIntoViewIfNeeded();
+    const btn = page.getByTestId('btn-card-primary');
+    const cardBg = await card.evaluate((el) => getComputedStyle(el).backgroundColor);
+    const pageBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    expect(cardBg, 'kart zemini sayfa zemininden farklı').not.toBe(pageBg);
+    expect(await measureContrast(btn), 'normal').toBeGreaterThanOrEqual(4.5);
+    await btn.hover();
+    await expect
+      .poll(() => measureContrast(btn), { message: 'üzerine gelme' })
+      .toBeGreaterThanOrEqual(4.5);
+    const box = (await btn.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await expect
+      .poll(() => measureContrast(btn), { message: 'basılı' })
+      .toBeGreaterThanOrEqual(4.5);
+    await page.mouse.up();
+  });
+
+  test('pencere (yükseltilmiş zemin) içindeki birincil düğme en az 4.5:1', async ({ page }) => {
+    await page.getByTestId('modal-open').click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    const btn = page.getByTestId('btn-modal-primary');
+    await expect(btn).toBeVisible();
+    const modalBg = await dialog
+      .locator('.ant-modal-content')
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    const pageBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    expect(modalBg, 'pencere zemini sayfa zemininden farklı').not.toBe(pageBg);
+    expect(await measureContrast(btn), 'normal').toBeGreaterThanOrEqual(4.5);
+    await btn.hover();
+    await expect
+      .poll(() => measureContrast(btn), { message: 'üzerine gelme' })
+      .toBeGreaterThanOrEqual(4.5);
+    const box = (await btn.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await expect
+      .poll(() => measureContrast(btn), { message: 'basılı' })
+      .toBeGreaterThanOrEqual(4.5);
+    await page.mouse.up();
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .include('.ant-modal')
+      .analyze();
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([]);
   });
 });
 

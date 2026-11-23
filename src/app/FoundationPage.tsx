@@ -1,4 +1,4 @@
-import { Button, Flex, Input, Select, Space, Table, Typography } from 'antd';
+import { Button, Card, Flex, Input, Modal, Select, Space, Table, Typography } from 'antd';
 import { useState } from 'react';
 
 import { FOCUS_DIM_SOURCE_CLASS, useFocusDim } from '@/engines/focus-dim';
@@ -62,6 +62,47 @@ function FocusDimDemo() {
     >
       {open ? 'Perdeyi kapat' : 'Perdeyi aç'}
     </Button>
+  );
+}
+
+/**
+ * Kart ve pencere içindeki birincil düğme. Koyu temada kart panel zemininde (#1F1F23), pencere
+ * yükseltilmiş zeminde (#2A2A30) çizilir. Birincil düğme zemini düz renk olduğundan kontrast her
+ * zeminde aynıdır; tarayıcı testi bunu ölçer.
+ */
+function SurfaceButtonsDemo() {
+  const [open, setOpen] = useState(false);
+  return (
+    <section aria-labelledby="surfaces-title">
+      <Typography.Title level={2} id="surfaces-title">
+        Kart ve pencere
+      </Typography.Title>
+      <Card title="Örnek kart" data-testid="demo-card">
+        <Flex gap="middle" wrap align="center">
+          <Typography.Text>Kart içindeki birincil düğme panel zemininde durur.</Typography.Text>
+          <Button type="primary" data-testid="btn-card-primary">
+            Kaydet
+          </Button>
+          <Button data-testid="modal-open" onClick={() => setOpen(true)}>
+            Pencereyi aç
+          </Button>
+        </Flex>
+      </Card>
+      <Modal
+        title="Kaydı sil"
+        open={open}
+        onOk={() => setOpen(false)}
+        onCancel={() => setOpen(false)}
+        okText="Tamam"
+        cancelText="Vazgeç"
+        okButtonProps={{ 'data-testid': 'btn-modal-primary' }}
+        data-testid="demo-modal"
+      >
+        <Typography.Paragraph>
+          Bu kayıt silinecek. Devam etmek istiyor musunuz?
+        </Typography.Paragraph>
+      </Modal>
+    </section>
   );
 }
 
@@ -132,6 +173,8 @@ export default function FoundationPage() {
             </Typography.Paragraph>
           </Flex>
         </section>
+
+        <SurfaceButtonsDemo />
 
         <section aria-labelledby="table-title" data-testid="wide-table">
           <Typography.Title level={2} id="table-title">

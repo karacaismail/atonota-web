@@ -166,14 +166,15 @@ function controlFixCss(): string {
   ].join('\n');
 }
 
-/** Birincil buton metni ve koyu tema zemini (kaynak: primary.light / primary.dark). */
+/** Birincil buton metni ve koyu tema zemini (kaynak: primary.light / primary.dark; koyu zemin düz renktir). */
 function primaryButtonCss(): string {
   return [
     '.ant-btn-primary:not(:disabled):not(.ant-btn-disabled) { color: var(--primary-text); }',
     '.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover { color: var(--primary-text-hover); }',
     '[data-theme="dark"] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled) { background: var(--primary-bg); color: var(--primary-text); }',
     '[data-theme="dark"] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover { background: var(--primary-bg-hover); color: var(--primary-text-hover); }',
-    '[data-theme="dark"] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):active { background: var(--primary-bg-active); }',
+    '/* Basılı: klavyeyle (Space) basılınca üzerine gelme yoktur; metin yine %100 olur (AA). */',
+    '[data-theme="dark"] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):active { background: var(--primary-bg-active); color: var(--primary-text-hover); }',
   ].join('\n');
 }
 

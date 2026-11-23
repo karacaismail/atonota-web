@@ -29,23 +29,33 @@ export const typography = {
 } as const;
 
 /**
- * Koyu temada birincil butonun oturduğu sayfa zeminleri: yerleşim ve panel.
- * Yükseltilmiş zeminde (#2A2A30) %14 teal zemin üzerinde %100 metin bile 4.21:1 kalır;
- * bu zemin hesaba katılmaz ve orada birincil buton kullanılmaz.
+ * Koyu temada birincil düğme zemini saydam değildir (türetilmiş karar 1).
+ * Kaynak karar zemini #00aacc %14 (hover %22, basılı %28) olarak yarı saydam verir. Yarı saydam
+ * zeminde kontrast alttaki yüzeye bağlı kalır; antd pencere ve çekmeceyi yükseltilmiş zeminde
+ * (#2A2A30) çizer ve orada 4.5:1 sağlanmaz. WCAG 2.2 AA önce gelir. Bu yüzden kaynaktaki ton,
+ * yerleşim zemini (#17171A) üzerine bindirilir ve düz renk olarak kullanılır. Böylece kontrast
+ * yerleşim, panel ve yükseltilmiş zeminde aynıdır.
  */
-const DARK_SURFACES = [s.darkPalette.layout, s.darkPalette.panel] as const;
+const DARK_PRIMARY_BG = blendOver(s.primary.color, s.primary.dark.background, s.darkPalette.layout);
+const DARK_PRIMARY_BG_HOVER = blendOver(
+  s.primary.color,
+  s.primary.dark.hoverBackground,
+  s.darkPalette.layout,
+);
 
+/** Dinlenme metni: düz zemin üzerinde 4.5:1 veren en küçük opaklık (kaynak %85'ten başlar). */
 const DARK_TEXT_OPACITY = minAlphaForContrast({
   text: s.primary.dark.text,
   startAlpha: s.primary.dark.opacity,
-  background: s.primary.color,
-  backgroundAlpha: s.primary.dark.background,
-  surfaces: DARK_SURFACES,
+  background: DARK_PRIMARY_BG,
+  backgroundAlpha: 1,
+  surfaces: [DARK_PRIMARY_BG],
 });
 
 /**
- * Basılı durum zemini. Kaynak %28 der; %100 metinle bile 4.09:1 kalır.
- * Yerleşim zemininde 4.5:1 veren en büyük opaklığa (≤ kaynak) programatik iner.
+ * Basılı durum zemini (türetilmiş karar 6). Kaynak %28 der; %100 metinle bile 4.09:1 kalır.
+ * Yerleşim zeminine bindirilmiş tonun %100 metinle 4.5:1 verdiği en büyük opaklığa (≤ kaynak) iner.
+ * Basılı durumda metin fare ve klavyede %100 olur; CSS basılı kuralı rengi de verir.
  */
 function maxBackgroundAlphaForContrast(startAlpha: number, surface: string): number {
   let alpha = Math.round(startAlpha * 100);
@@ -57,6 +67,7 @@ function maxBackgroundAlphaForContrast(startAlpha: number, surface: string): num
   return alpha / 100;
 }
 const DARK_ACTIVE_BG_ALPHA = maxBackgroundAlphaForContrast(s.primary.dark.activeBackground, s.darkPalette.layout);
+const DARK_PRIMARY_BG_ACTIVE = blendOver(s.primary.color, DARK_ACTIVE_BG_ALPHA, s.darkPalette.layout);
 
 export const primary = {
   color: s.primary.color,
@@ -68,19 +79,19 @@ export const primary = {
     textHover: hexToRgba(s.primary.light.text, s.primary.light.hoverOpacity),
   },
   /**
-   * Koyu tema: zemin birincil %14, hover %22, basılı %28. Hover metni %100.
-   * Dinlenme metni kaynakta %85'tir. Bu değer AA kontrastını (4.5:1) vermez.
-   * Orkestratör kararı: WCAG 2.2 AA önce gelir. Dinlenme opaklığı, kontrastı
-   * sağlayan en küçük değere programatik olarak çıkarılır (textOpacity).
+   * Koyu tema: zemin kaynaktaki tonun (%14, hover %22, basılı ≤ %28) yerleşim zeminine bindirilmiş
+   * düz rengidir. Dinlenme metni kaynakta %85'tir; AA (4.5:1) için gereken en küçük değere çıkar.
+   * Hover ve basılı metin %100'dür (klavyeyle basılı durum dahil).
    */
   dark: {
     textOpacity: DARK_TEXT_OPACITY,
     text: hexToRgba(s.primary.dark.text, DARK_TEXT_OPACITY),
     textHover: hexToRgba(s.primary.dark.text, s.primary.dark.hoverOpacity),
-    background: hexToRgba(s.primary.color, s.primary.dark.background),
-    backgroundHover: hexToRgba(s.primary.color, s.primary.dark.hoverBackground),
+    textActiveOpacity: s.primary.dark.hoverOpacity,
+    background: DARK_PRIMARY_BG,
+    backgroundHover: DARK_PRIMARY_BG_HOVER,
     backgroundActiveOpacity: DARK_ACTIVE_BG_ALPHA,
-    backgroundActive: hexToRgba(s.primary.color, DARK_ACTIVE_BG_ALPHA),
+    backgroundActive: DARK_PRIMARY_BG_ACTIVE,
   },
 } as const;
 

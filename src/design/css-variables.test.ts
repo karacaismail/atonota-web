@@ -29,7 +29,26 @@ describe('CSS değişkenleri', () => {
     const vars = darkVariables();
     expect(vars['--shadow-input']).toBe(designSource.derived.shadowCssDark.input);
     expect(vars['--focus-dim-color']).toBe('rgba(50,58,70,0.66)');
-    expect(vars['--primary-bg']).toBe('rgba(0,170,204,0.14)');
+    // Koyu birincil düğme zemini saydam değildir (türetilmiş karar 1).
+    expect(vars['--primary-bg']).toMatch(/^#[0-9a-f]{6}$/);
+    expect(vars['--primary-bg-hover']).toMatch(/^#[0-9a-f]{6}$/);
+    expect(vars['--primary-bg-active']).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it('koyu basılı düğme kuralı metni de %100 yapar (klavyeyle basılı durum)', () => {
+    const css = buildDesignCss();
+    const active = css
+      .split('\n')
+      .find((line) => line.includes('[data-theme="dark"] .ant-btn-primary') && line.includes(':active'));
+    expect(active).toBeDefined();
+    expect(active).toContain('background: var(--primary-bg-active)');
+    expect(active).toContain('color: var(--primary-text-hover)');
+  });
+
+  it('dar form sütunu değişkeni orta buton yüksekliğinin 10 katıdır', () => {
+    const vars = rootVariables();
+    expect(vars['--form-max-width']).toBe(`${designSource.sizes.md.button.height * 10}px`);
+    expect(vars['--form-max-width']).toBe('420px');
   });
 
   it('kaynaktaki dokunma alanı CSS’ini aynen içerir', () => {

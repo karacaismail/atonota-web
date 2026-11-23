@@ -42,18 +42,47 @@ describe('buildAntdTheme', () => {
     expect(buildAntdTheme('dark').token?.colorLink).toBe(designSource.primary.color);
   });
 
-  it('koyu birincil buton metni AA kontrastını verir; zemin %14 ve hover %100 kaynakla aynı kalır', () => {
-    const { textOpacity } = primary.dark;
-    expect(textOpacity).toBeGreaterThanOrEqual(designSource.primary.dark.opacity);
-    expect(textOpacity).toBe(0.95);
-    for (const surface of [designSource.darkPalette.layout, designSource.darkPalette.panel]) {
-      const bg = blendOver(designSource.primary.color, designSource.primary.dark.background, surface);
-      expect(contrastRatio(blendOver(designSource.primary.dark.text, textOpacity, bg), bg)).toBeGreaterThanOrEqual(4.5);
-    }
-    expect(primary.dark.background).toBe('rgba(0,170,204,0.14)');
-    expect(primary.dark.backgroundHover).toBe('rgba(0,170,204,0.22)');
-    expect(primary.dark.textHover).toBe('rgba(0,170,204,1)');
+  it('koyu birincil düğme zemini saydam değildir ve kaynak tondan türetilir', () => {
+    const { dark } = primary;
+    const layout = designSource.darkPalette.layout;
+    // Saydam olmayan renk: zemin ne olursa olsun kontrast aynı kalır.
+    expect(dark.background).toMatch(/^#[0-9a-f]{6}$/);
+    expect(dark.backgroundHover).toMatch(/^#[0-9a-f]{6}$/);
+    expect(dark.backgroundActive).toMatch(/^#[0-9a-f]{6}$/);
+    // Türetme: kaynaktaki koyu tema tonu (%14, %22 ve basılı) yerleşim zemini üzerine bindirilir.
+    expect(dark.background).toBe(blendOver(designSource.primary.color, designSource.primary.dark.background, layout));
+    expect(dark.backgroundHover).toBe(
+      blendOver(designSource.primary.color, designSource.primary.dark.hoverBackground, layout),
+    );
+    expect(dark.backgroundActive).toBe(blendOver(designSource.primary.color, dark.backgroundActiveOpacity, layout));
+    expect(dark.backgroundActiveOpacity).toBeLessThanOrEqual(designSource.primary.dark.activeBackground);
+    expect(dark.textHover).toBe('rgba(0,170,204,1)');
+    expect(dark.textOpacity).toBeGreaterThanOrEqual(designSource.primary.dark.opacity);
     expect(buildAntdTheme('dark').components?.Button?.primaryColor).toBe(primary.dark.text);
+  });
+
+  it('koyu birincil düğme her durumda ve her zeminde en az 4.5:1 verir', () => {
+    const { dark } = primary;
+    const text = designSource.primary.dark.text;
+    const states = [
+      { name: 'normal', bg: dark.background, textAlpha: dark.textOpacity },
+      { name: 'üzerine gelme', bg: dark.backgroundHover, textAlpha: 1 },
+      { name: 'basılı (fare)', bg: dark.backgroundActive, textAlpha: 1 },
+      // Klavyeyle basılı: üzerine gelme yoktur; metin yine %100 olur (CSS basılı kuralı rengi de verir).
+      { name: 'basılı (klavye)', bg: dark.backgroundActive, textAlpha: dark.textActiveOpacity },
+    ];
+    const surfaces = [
+      designSource.darkPalette.layout,
+      designSource.darkPalette.panel,
+      designSource.darkPalette.elevated,
+    ];
+    for (const state of states) {
+      for (const surface of surfaces) {
+        const bg = blendOver(state.bg, 1, surface);
+        const ratio = contrastRatio(blendOver(text, state.textAlpha, bg), bg);
+        expect(ratio, `${state.name} / ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
   });
 
   it('yer tutucu rengi her iki temada en az 4.5:1 verir', () => {
