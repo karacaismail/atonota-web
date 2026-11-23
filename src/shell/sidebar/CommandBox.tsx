@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { t } from '../messages';
-import { routes } from '../routes';
+import { routes } from '../paths';
 import { samplePrompts } from '../sampleData';
 
 type Mode = 'ask' | 'do' | 'search';

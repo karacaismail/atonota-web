@@ -6,7 +6,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { FocusDimProvider } from '../focus-dim';
 import { isDarkColor } from '../focus-dim/isDarkColor';
 import { t } from '../messages';
-import { sampleAgents, sampleNav, sampleWorkspaces } from '../sampleData';
+import { shellNav } from '../nav';
+import { sampleAgents, sampleWorkspaces } from '../sampleData';
 import type { SidebarVariant } from '../sidebar/Sidebar';
 import { Sidebar } from '../sidebar/Sidebar';
 import { shellCssVars } from '../tokens';
@@ -180,7 +181,7 @@ export function AppShell({ children }: AppShellProps) {
           <Sidebar
             variant={variant}
             onVariantChange={changeVariant}
-            nav={sampleNav}
+            nav={shellNav}
             agents={sampleAgents}
             compact={isDrawer}
             onNavigate={isDrawer ? closeDrawer : undefined}

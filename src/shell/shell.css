@@ -1,14 +1,72 @@
 /*
  * Uygulama kabuğu stilleri.
- * Bütün değerler `--shell-*` değişkenlerinden gelir. Değişkenler
- * `tokens.ts` ve antd tema tokenlarından üretilir. Burada sabit renk,
- * ölçü ya da süre yazılmaz. Yalnız yerleşim oranları ve katman sırası yazılır.
+ * Bütün değerler `--shell-*` değişkenlerinden gelir. Kaynaklı değişkenler
+ * `tokens.ts` ve antd tema tokenlarından üretilir. Kaynakta karşılığı olmayan
+ * değerler aşağıdaki adlı değer bölümündedir. Bölüm dışında sabit renk,
+ * ölçü ya da süre yazılmaz. `shellCss.node.test.ts` bunu denetler.
  */
+
+/* @adli-degerler:basla */
+/*
+ * Adlı değerler. Kaynak dosyada karşılığı olmayan ölçü ve süreler buradadır.
+ * Kaynakta karşılığı olan değerler `tokens.ts` ile gelir. Örnek: satır kutusu.
+ * GEÇİCİ: `foundation` boşluk ve hareket tokenlarını `src/design/` içine
+ * koyunca bu değerler oraya taşınır ve bu bölüm silinir.
+ */
+.shell,
+.shell-dd {
+  /* Boşluk ölçeği. Değerler kaynak örnek sayfadaki (engine) boşluklardır. */
+  --shell-space-2xs: 2px;
+  --shell-space-xs: 4px;
+  --shell-space-sm: 6px;
+  --shell-space-md: 8px;
+  --shell-space-ml: 10px;
+  --shell-space-lg: 12px;
+  --shell-space-xl: 16px;
+  --shell-space-2xl: 24px;
+  --shell-hd-pad-b: 14px;
+  --shell-gutter: var(--shell-space-xl);
+  --shell-pad: var(--shell-space-lg);
+
+  /* Çizgi ve işaret ölçüleri. */
+  --shell-hairline: 1px;
+  --shell-focus-line: 2px;
+  --shell-focus-offset: 3px;
+  --shell-dot: 8px;
+  --shell-caret: 12px;
+  --shell-logo: 30px;
+  --shell-avatar: 32px;
+  --shell-skel-w: 32px;
+  --shell-skel-h: 10px;
+  --shell-lh-tight: 18px;
+  --shell-lh-dense: 16px;
+
+  /* Yerleşim eşikleri. İçerik okunur kalsın diye seçildi. */
+  --shell-drawer-gap: 32px;
+  --shell-hd-main-basis: 240px;
+  --shell-err-basis: 160px;
+  --shell-find-basis: 320px;
+  --shell-saved-basis: 180px;
+  --shell-saved-min: 140px;
+  --shell-search-basis: 120px;
+  --shell-kb-col: 240px;
+  --shell-stat-min: 200px;
+  --shell-form-max: 560px;
+
+  /* Hareket. G1: kayan zemin kaynak örnek sayfadan: kayma .2s, solma .15s ease.
+     İskelet ve dönme de kaynak örnek sayfadan. */
+  --shell-glide-dur: 200ms;
+  --shell-glide-ease: cubic-bezier(0.2, 0, 0, 1);
+  --shell-glide-fade-dur: 150ms;
+  --shell-glide-fade-ease: ease;
+  --shell-skel-dur: 1200ms;
+  --shell-spin-dur: 900ms;
+  --shell-instant: 0s;
+}
+/* @adli-degerler:bitir */
 
 /* ---------- Temel ---------- */
 .shell {
-  --shell-gutter: 16px;
-  --shell-pad: 12px;
   --shell-z-dim: 1000;
   --shell-z-raised: 1001;
   --shell-z-fly: 1002;
@@ -26,9 +84,9 @@
 
 .shell-vh {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
+  width: var(--shell-hairline);
+  height: var(--shell-hairline);
+  margin: calc(-1 * var(--shell-hairline));
   padding: 0;
   overflow: hidden;
   clip: rect(0 0 0 0);
@@ -62,8 +120,8 @@
   position: absolute;
   left: var(--shell-item-px);
   right: var(--shell-item-px);
-  bottom: 3px;
-  height: 2px;
+  bottom: var(--shell-focus-offset);
+  height: var(--shell-focus-line);
   background: var(--shell-pri);
   opacity: 0;
   pointer-events: none;
@@ -85,7 +143,7 @@
   .shell-iconbtn:focus-visible,
   .shell-fly-ai:focus-visible,
   .shell-kb-card:focus-visible {
-    outline: 2px solid CanvasText;
+    outline: var(--shell-focus-line) solid CanvasText;
   }
 }
 
@@ -139,9 +197,9 @@
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--shell-space-md);
   min-height: var(--shell-hd-btn-h);
-  padding: 4px var(--shell-gutter);
+  padding: var(--shell-space-xs) var(--shell-gutter);
   padding-left: max(var(--shell-gutter), env(safe-area-inset-left));
   padding-right: max(var(--shell-gutter), env(safe-area-inset-right));
   background: var(--shell-bg-c);
@@ -168,7 +226,7 @@
   height: var(--shell-hd-btn-h);
   border-radius: var(--shell-radius);
   color: var(--shell-tx);
-  font-size: 20px;
+  font-size: var(--shell-item-icon);
   cursor: pointer;
 }
 
@@ -177,8 +235,8 @@
 }
 
 .shell-iconbtn::after {
-  left: 10px;
-  right: 10px;
+  left: var(--shell-space-ml);
+  right: var(--shell-space-ml);
 }
 
 .shell-backdrop {
@@ -190,7 +248,7 @@
   visibility: hidden;
   transition:
     opacity var(--shell-dim-dur) var(--shell-dim-ease),
-    visibility 0s linear var(--shell-dim-dur);
+    visibility var(--shell-instant) linear var(--shell-dim-dur);
 }
 
 .shell-backdrop[data-open='true'] {
@@ -198,7 +256,7 @@
   visibility: visible;
   transition:
     opacity var(--shell-dim-dur) var(--shell-dim-ease),
-    visibility 0s;
+    visibility var(--shell-instant);
 }
 
 .shell[data-layout='compact'] .shell-aside {
@@ -206,13 +264,13 @@
   inset-block: 0;
   left: 0;
   z-index: var(--shell-z-raised);
-  width: min(var(--shell-sb-w), calc(100vw - 32px));
+  width: min(var(--shell-sb-w), calc(100vw - var(--shell-drawer-gap)));
   padding-left: env(safe-area-inset-left);
   transform: translateX(-100%);
   visibility: hidden;
   transition:
     transform var(--shell-rail-dur) var(--shell-ease),
-    visibility 0s linear var(--shell-rail-dur);
+    visibility var(--shell-instant) linear var(--shell-rail-dur);
 }
 
 .shell[data-layout='compact'] .shell-aside[data-open='true'] {
@@ -220,7 +278,7 @@
   visibility: visible;
   transition:
     transform var(--shell-rail-dur) var(--shell-ease),
-    visibility 0s;
+    visibility var(--shell-instant);
 }
 
 .shell-drawer-close {
@@ -240,12 +298,12 @@
 .shell-sb {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--shell-space-ml);
   height: 100%;
   min-width: 0;
   padding: var(--shell-pad);
   background: var(--shell-bg);
-  box-shadow: inset -1px 0 0 var(--shell-bd);
+  box-shadow: inset calc(-1 * var(--shell-hairline)) 0 0 var(--shell-bd);
   overflow: hidden;
 }
 
@@ -260,30 +318,30 @@
 }
 
 .shell-sb[data-compact='true'] .shell-sb-top {
-  padding-right: calc(var(--shell-hd-btn-h) + 4px);
+  padding-right: calc(var(--shell-hd-btn-h) + var(--shell-space-xs));
 }
 
 .shell-sb[data-variant='rail'] {
-  padding-inline: 10px;
+  padding-inline: var(--shell-space-ml);
 }
 
 .shell-sb-top {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--shell-space-xs);
   min-width: 0;
 }
 
 .shell-sb[data-variant='rail'] .shell-sb-top {
   flex-direction: column;
-  gap: 8px;
+  gap: var(--shell-space-md);
 }
 
 .shell-sb-scroll {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--shell-space-lg);
   min-height: 0;
   margin-inline: calc(-1 * var(--shell-pad));
   padding-inline: var(--shell-pad);
@@ -292,23 +350,23 @@
 }
 
 .shell-sb[data-variant='rail'] .shell-sb-scroll {
-  margin-inline: -10px;
-  padding-inline: 10px;
+  margin-inline: calc(-1 * var(--shell-space-ml));
+  padding-inline: var(--shell-space-ml);
 }
 
 .shell-sec {
-  margin: 4px 0 0;
+  margin: var(--shell-space-xs) 0 0;
   padding: 0 var(--shell-item-px);
   color: var(--shell-tx2);
   font-size: var(--shell-fs-min);
   font-weight: 600;
-  line-height: 20px;
+  line-height: calc(var(--shell-fs-min) + var(--shell-lh-add));
 }
 
 .shell-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--shell-space-2xs);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -316,7 +374,7 @@
 
 .shell-list + .shell-sec,
 .shell-list + .shell-list {
-  margin-top: 8px;
+  margin-top: var(--shell-space-md);
 }
 
 .shell-item {
@@ -333,7 +391,7 @@
   color: var(--shell-tx2);
   font-size: var(--shell-item-fs);
   font-weight: var(--shell-item-fw);
-  line-height: calc(var(--shell-item-fs) + 8px);
+  line-height: calc(var(--shell-item-fs) + var(--shell-lh-add));
   cursor: pointer;
   transition:
     background-color var(--shell-fly-dur) var(--shell-ease),
@@ -363,8 +421,8 @@
 .shell-sb > .shell-sb-scroll .shell-list > li > .shell-item[data-active='true']::before {
   content: '';
   position: absolute;
-  top: 8px;
-  bottom: 8px;
+  top: var(--shell-space-md);
+  bottom: var(--shell-space-md);
   left: calc(-1 * var(--shell-pad));
   width: var(--shell-indicator);
   background: var(--shell-pri);
@@ -372,7 +430,7 @@
 
 .shell-sb[data-variant='rail'] .shell-list > li > .shell-item[aria-current='page']::before,
 .shell-sb[data-variant='rail'] .shell-list > li > .shell-item[data-active='true']::before {
-  left: -10px;
+  left: calc(-1 * var(--shell-space-ml));
 }
 
 .shell-ic {
@@ -395,7 +453,7 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
-  line-height: 18px;
+  line-height: var(--shell-lh-tight);
 }
 
 .shell-lb2 > span {
@@ -412,16 +470,16 @@
 
 .shell-badge {
   flex: none;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 10px;
+  min-width: var(--shell-tag-h);
+  height: var(--shell-tag-h);
+  padding: 0 var(--shell-space-sm);
+  border-radius: var(--shell-radius);
   background: var(--shell-bg-e);
   color: var(--shell-tx2);
   font-size: var(--shell-fs-min);
   font-variant-numeric: tabular-nums;
   font-weight: 500;
-  line-height: 20px;
+  line-height: var(--shell-tag-h);
   text-align: center;
 }
 
@@ -494,11 +552,11 @@
 /* Ajan durum noktası */
 .shell-st {
   position: absolute;
-  right: -3px;
-  bottom: -3px;
-  width: 8px;
-  height: 8px;
-  border: 2px solid var(--shell-bg);
+  right: calc(-1 * var(--shell-focus-offset));
+  bottom: calc(-1 * var(--shell-focus-offset));
+  width: var(--shell-dot);
+  height: var(--shell-dot);
+  border: var(--shell-focus-line) solid var(--shell-bg);
   border-radius: 50%;
   background: var(--shell-tx3);
 }
@@ -514,19 +572,19 @@
 .shell-agent-b {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 0 6px;
+  gap: var(--shell-space-xs);
+  padding: 0 var(--shell-space-sm);
 }
 
 .shell-agent-b p {
   margin: 0;
-  line-height: 22px;
+  line-height: calc(var(--shell-fs) + var(--shell-lh-add));
 }
 
 .shell-agent-st {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--shell-space-md);
   font-weight: 500;
 }
 
@@ -543,10 +601,10 @@
   display: flex;
   flex: 1 1 auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--shell-space-ml);
   min-width: 0;
   height: var(--shell-hd-btn-h);
-  padding: 0 6px;
+  padding: 0 var(--shell-space-sm);
   border-radius: var(--shell-radius);
   color: var(--shell-tx);
   cursor: pointer;
@@ -569,8 +627,8 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: var(--shell-logo);
+  height: var(--shell-logo);
   border-radius: var(--shell-radius);
   background: var(--shell-pri);
   color: var(--shell-bg);
@@ -581,7 +639,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  line-height: 18px;
+  line-height: var(--shell-lh-tight);
 }
 
 .shell-ws-t b {
@@ -609,8 +667,8 @@
 .shell-dd-desc {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 32px;
+  gap: var(--shell-space-ml);
+  min-height: var(--shell-dd-box);
 }
 
 .shell-dd-box {
@@ -618,8 +676,8 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--shell-dd-box);
+  height: var(--shell-dd-box);
   border-radius: var(--shell-radius);
   background: var(--shell-bg-e);
   font-weight: 600;
@@ -628,7 +686,7 @@
 .shell-dd-t {
   display: flex;
   flex-direction: column;
-  line-height: 16px;
+  line-height: var(--shell-lh-dense);
 }
 
 .shell-dd-t small {
@@ -653,8 +711,8 @@
 }
 
 .shell-tg::after {
-  left: 8px;
-  right: 8px;
+  left: var(--shell-space-md);
+  right: var(--shell-space-md);
 }
 
 .shell-tg:hover {
@@ -681,7 +739,7 @@
 }
 
 .shell-tg[data-rail='true'] .shell-tg-div {
-  transform: translateX(-3px);
+  transform: translateX(calc(-1 * var(--shell-focus-offset)));
 }
 
 .shell-tg[data-rail='true'] .shell-tg-chev {
@@ -692,17 +750,17 @@
 .shell-cmd {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--shell-space-md);
 }
 
 .shell-cmd-box {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px;
+  gap: var(--shell-space-md);
+  padding: var(--shell-space-md);
   border-radius: var(--shell-radius);
   background: var(--shell-bg-c);
-  box-shadow: inset 0 0 0 1px var(--shell-pri);
+  box-shadow: inset 0 0 0 var(--shell-hairline) var(--shell-pri);
 }
 
 .shell-sender {
@@ -713,22 +771,22 @@
 
 .shell-chips :is(.ant-prompts-list) {
   flex-wrap: nowrap;
-  gap: 6px;
+  gap: var(--shell-space-sm);
 }
 
 .shell-chips :is(.ant-prompts-item) {
   flex: 1 1 0;
   justify-content: center;
   min-width: 0;
-  padding: 4px 8px;
+  padding: var(--shell-space-xs) var(--shell-space-md);
 }
 
 /* ---------- Alt kart (B1) ---------- */
 .shell-foot {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
+  gap: var(--shell-space-md);
+  padding: var(--shell-space-ml);
   border-radius: var(--shell-radius);
   background: var(--shell-foot);
   color: var(--shell-foot-tx);
@@ -736,7 +794,7 @@
 
 .shell-foot[data-rail='true'] {
   align-items: center;
-  padding: 8px 4px;
+  padding: var(--shell-space-md) var(--shell-space-xs);
 }
 
 .shell-foot .shell-ws-t b {
@@ -751,7 +809,7 @@
 .shell-ring {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--shell-space-ml);
 }
 
 .shell-ring-track {
@@ -766,9 +824,9 @@
 .shell-user {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding-top: 8px;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, currentColor 10%, transparent);
+  gap: var(--shell-space-ml);
+  padding-top: var(--shell-space-md);
+  box-shadow: inset 0 var(--shell-hairline) 0 color-mix(in srgb, currentColor 10%, transparent);
 }
 
 .shell-av {
@@ -776,8 +834,8 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--shell-avatar);
+  height: var(--shell-avatar);
   border-radius: 50%;
   background: color-mix(in srgb, var(--shell-pri) 25%, transparent);
   color: inherit;
@@ -795,10 +853,10 @@
   z-index: var(--shell-z-fly);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--shell-space-md);
   width: var(--shell-fly-w);
-  max-height: calc(100dvh - 16px);
-  padding: 8px;
+  max-height: calc(100dvh - var(--shell-space-xl));
+  padding: var(--shell-space-md);
   overflow: auto;
   border-radius: var(--shell-radius);
   background: var(--shell-bg-el);
@@ -846,7 +904,7 @@
   position: static;
   width: auto;
   max-height: none;
-  margin: 2px 0 4px;
+  margin: var(--shell-space-2xs) 0 var(--shell-space-xs);
   overflow: visible;
   background: var(--shell-bg-c);
   box-shadow: none;
@@ -854,10 +912,10 @@
 
 .shell-fly-caret {
   position: absolute;
-  left: -6px;
-  width: 12px;
-  height: 12px;
-  margin-top: -6px;
+  left: calc(-1 * var(--shell-caret) / 2);
+  width: var(--shell-caret);
+  height: var(--shell-caret);
+  margin-top: calc(-1 * var(--shell-caret) / 2);
   background: inherit;
   transform: rotate(45deg);
 }
@@ -865,10 +923,10 @@
 .shell-fly-h {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 6px 8px;
+  gap: var(--shell-space-ml);
+  padding: var(--shell-space-xs) var(--shell-space-sm) var(--shell-space-md);
   font-weight: 500;
-  box-shadow: inset 0 -1px 0 var(--shell-bd);
+  box-shadow: inset 0 calc(-1 * var(--shell-hairline)) 0 var(--shell-bd);
 }
 
 .shell-fly-h .shell-ic {
@@ -882,7 +940,7 @@
 .shell-fly-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--shell-space-2xs);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -894,13 +952,13 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--shell-space-ml);
   min-height: var(--shell-item-h);
-  padding: 6px 10px;
+  padding: var(--shell-space-sm) var(--shell-space-ml);
   border-radius: var(--shell-radius);
   background: color-mix(in srgb, var(--shell-pri) 10%, transparent);
   color: var(--shell-tx);
-  line-height: 22px;
+  line-height: calc(var(--shell-fs) + var(--shell-lh-add));
   cursor: pointer;
 }
 
@@ -955,8 +1013,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 24px 14px;
+  gap: var(--shell-space-ml);
+  padding: var(--shell-space-xl) var(--shell-space-2xl) var(--shell-hd-pad-b);
   background: var(--shell-bg-c);
   transition: box-shadow var(--shell-dim-dur) var(--shell-dim-ease);
 }
@@ -972,18 +1030,18 @@
 .shell-hd-crumbs ol {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--shell-space-sm);
   margin: 0;
   padding: 0;
   color: var(--shell-tx2);
   font-size: var(--shell-fs-min);
-  line-height: 20px;
+  line-height: calc(var(--shell-fs-min) + var(--shell-lh-add));
   list-style: none;
 }
 
 .shell-hd-crumbs li + li::before {
   content: '/';
-  margin-right: 6px;
+  margin-right: var(--shell-space-sm);
   color: var(--shell-tx3);
 }
 
@@ -1000,15 +1058,15 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px 16px;
+  gap: var(--shell-space-lg) var(--shell-space-xl);
   min-width: 0;
 }
 
 .shell-hd-main {
   display: flex;
-  flex: 1 1 240px;
+  flex: 1 1 var(--shell-hd-main-basis);
   flex-direction: column;
-  gap: 2px;
+  gap: var(--shell-space-2xs);
   min-width: 0;
 }
 
@@ -1016,7 +1074,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
+  gap: var(--shell-space-xs) var(--shell-space-ml);
   min-width: 0;
 }
 
@@ -1035,9 +1093,9 @@
 .shell-hd-count {
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 11px;
+  height: calc(var(--shell-fs-min) + var(--shell-lh-add));
+  padding: 0 var(--shell-space-md);
+  border-radius: var(--shell-radius);
   background: var(--shell-bg-e);
   color: var(--shell-tx2);
   font-size: var(--shell-fs-min);
@@ -1047,11 +1105,11 @@
 
 .shell-skel {
   display: inline-block;
-  width: 32px;
-  height: 10px;
-  border-radius: 4px;
+  width: var(--shell-skel-w);
+  height: var(--shell-skel-h);
+  border-radius: var(--shell-radius);
   background: var(--shell-ghost);
-  animation: shell-skel var(--shell-rail-dur) var(--shell-ease) infinite alternate;
+  animation: shell-skel var(--shell-skel-dur) var(--shell-ease) infinite alternate;
 }
 
 @keyframes shell-skel {
@@ -1067,11 +1125,11 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--shell-space-sm);
   margin: 0;
   color: var(--shell-tx2);
   font-size: var(--shell-fs-min);
-  line-height: 20px;
+  line-height: calc(var(--shell-fs-min) + var(--shell-lh-add));
 }
 
 /* Renk yalnız işarette. Metin okunur renkte kalır. */
@@ -1089,14 +1147,14 @@
 
 .shell-pulse,
 .shell-dot {
-  width: 8px;
-  height: 8px;
+  width: var(--shell-dot);
+  height: var(--shell-dot);
   border-radius: 50%;
   background: currentColor;
 }
 
 .shell-pulse {
-  animation: shell-pulse calc(var(--shell-rail-dur) * 3) var(--shell-ease) infinite;
+  animation: shell-pulse var(--shell-pulse-dur) var(--shell-ease) infinite;
 }
 
 @keyframes shell-pulse {
@@ -1106,7 +1164,7 @@
 }
 
 .shell-spin {
-  animation: shell-spin calc(var(--shell-rail-dur) * 2) linear infinite;
+  animation: shell-spin var(--shell-spin-dur) linear infinite;
 }
 
 @keyframes shell-spin {
@@ -1120,24 +1178,24 @@
   flex: none;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--shell-space-md);
 }
 
 .shell-hd-err {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: var(--shell-space-md);
+  padding: var(--shell-space-sm) var(--shell-space-ml);
   border-radius: var(--shell-radius);
   background: var(--shell-err-bg);
   color: var(--shell-err);
   font-size: var(--shell-fs);
-  line-height: 22px;
+  line-height: calc(var(--shell-fs) + var(--shell-lh-add));
 }
 
 .shell-hd-err > span {
-  flex: 1 1 160px;
+  flex: 1 1 var(--shell-err-basis);
   color: var(--shell-tx);
 }
 
@@ -1145,25 +1203,25 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--shell-space-md);
   min-width: 0;
 }
 
 .shell-hd-find {
   display: flex;
-  flex: 1 1 320px;
+  flex: 1 1 var(--shell-find-basis);
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--shell-space-md);
   min-width: 0;
 }
 
 .shell-hd-saved {
-  flex: 0 1 180px;
-  min-width: 140px;
+  flex: 0 1 var(--shell-saved-basis);
+  min-width: var(--shell-saved-min);
 }
 
 .shell-hd-search {
-  flex: 1 1 120px;
+  flex: 1 1 var(--shell-search-basis);
   min-width: 0;
 }
 
@@ -1171,10 +1229,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  margin-left: 6px;
-  border-radius: 9px;
+  min-width: var(--shell-tag-h);
+  height: var(--shell-tag-h);
+  margin-left: var(--shell-space-sm);
+  border-radius: var(--shell-radius);
   background: var(--shell-pri);
   color: var(--shell-bg);
   font-size: var(--shell-fs-min);
@@ -1191,15 +1249,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  font-size: 18px;
+  min-width: var(--shell-tag-h);
+  font-size: var(--shell-item-icon);
 }
 
 .shell-hd-pager {
   display: inline-flex;
   flex: 1 1 auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--shell-space-md);
   color: var(--shell-tx2);
   font-variant-numeric: tabular-nums;
 }
@@ -1209,7 +1267,7 @@
   flex-basis: 100%;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--shell-space-sm);
 }
 
 .shell-hd-chip {
@@ -1219,7 +1277,7 @@
 /* Dar kapsayıcı: kenar boşluğu telefona iner. */
 @container (max-width: 599px) {
   .shell-hd {
-    padding: 12px var(--shell-gutter);
+    padding: var(--shell-space-lg) var(--shell-gutter);
   }
 
   .shell-body {
@@ -1235,9 +1293,9 @@
 .shell-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--shell-space-lg);
   min-width: 0;
-  padding: 16px 24px 24px;
+  padding: var(--shell-space-xl) var(--shell-space-2xl) var(--shell-space-2xl);
 }
 
 .shell-table {
@@ -1256,12 +1314,12 @@
 
 .shell-kanban {
   display: grid;
-  grid-auto-columns: minmax(240px, 1fr);
+  grid-auto-columns: minmax(var(--shell-kb-col), 1fr);
   grid-auto-flow: column;
-  gap: 12px;
+  gap: var(--shell-space-lg);
   max-width: 100%;
   margin: 0;
-  padding: 0 0 8px;
+  padding: 0 0 var(--shell-space-md);
   overflow-x: auto;
   list-style: none;
 }
@@ -1269,8 +1327,8 @@
 .shell-kb-col {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
+  gap: var(--shell-space-md);
+  padding: var(--shell-space-ml);
   border-radius: var(--shell-radius);
   background: var(--shell-bg-e);
 }
@@ -1280,7 +1338,7 @@
   color: var(--shell-tx2);
   font-size: var(--shell-fs-min);
   font-weight: 600;
-  line-height: 20px;
+  line-height: calc(var(--shell-fs-min) + var(--shell-lh-add));
 }
 
 .shell-kb-card {
@@ -1289,8 +1347,8 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px;
+  gap: var(--shell-space-2xs);
+  padding: var(--shell-space-ml);
   border-radius: var(--shell-radius);
   background: var(--shell-bg-c);
   box-shadow: var(--shell-shadow);
@@ -1304,8 +1362,8 @@
 
 .shell-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--shell-stat-min), 1fr));
+  gap: var(--shell-space-lg);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1314,8 +1372,8 @@
 .shell-stat {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
+  gap: var(--shell-space-2xs);
+  padding: var(--shell-space-ml) var(--shell-space-lg);
   border-radius: var(--shell-radius);
   background: var(--shell-bg-c);
   box-shadow: var(--shell-shadow);
@@ -1327,12 +1385,12 @@
 }
 
 .shell-stat b {
-  font-size: 18px;
-  line-height: 26px;
+  font-size: var(--shell-fs-lg);
+  line-height: calc(var(--shell-fs-lg) + var(--shell-lh-add));
 }
 
 .shell-form {
-  max-width: 560px;
+  max-width: var(--shell-form-max);
 }
 
 .shell-wide {
@@ -1341,7 +1399,7 @@
 
 .shell-quote {
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--shell-space-ml) var(--shell-space-lg);
   border-radius: var(--shell-radius);
   background: var(--shell-bg-e);
 }
@@ -1355,5 +1413,65 @@
   .shell-fly {
     animation: none !important; /* Kullanıcı tercihi bütün hareketi durdurur. */
     transition: none !important; /* Kullanıcı tercihi bütün hareketi durdurur. */
+  }
+}
+
+/* ---------- Kayan hover zemini (G1–G3) ---------- */
+.shell-glide-host {
+  position: relative;
+}
+
+.shell-glide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--shell-glide-h);
+  border-radius: var(--shell-radius);
+  background: var(--shell-ghost);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(var(--shell-glide-y));
+  transition:
+    transform var(--shell-glide-dur) var(--shell-glide-ease),
+    height var(--shell-glide-dur) var(--shell-glide-ease),
+    opacity var(--shell-glide-fade-dur) var(--shell-glide-fade-ease);
+}
+
+.shell-glide[data-on='true'] {
+  opacity: 1;
+}
+
+/* G2: dışarıdan girişte konum hareketsiz değişir. Yalnız görünürlük solar. */
+.shell-glide[data-jump='true'] {
+  transition: opacity var(--shell-glide-fade-dur) var(--shell-glide-fade-ease);
+}
+
+/* Öğeler zeminin üstündedir. Hover zemini artık kayan katmandır.
+   Flyout paneli de kendi zeminini taşır (kaynak: .sb-fly .glide). */
+.shell-glide-host :where(.shell-list > li > .shell-item, .shell-fly-list > li > .shell-item) {
+  z-index: 1;
+}
+
+.shell-glide-host .shell-list > li > .shell-item:hover:not([data-raised='true']),
+.shell-glide-host .shell-fly-list > li > .shell-item:hover {
+  background: transparent;
+}
+
+/* Kaydırma bölgeleri: odakta alt kenarda düz çizgi. Bölgelerin köşesi yoktur. */
+.shell-table,
+.shell-kanban {
+  outline: none;
+}
+
+.shell-table:focus-visible,
+.shell-kanban:focus-visible {
+  box-shadow: inset 0 calc(-1 * var(--shell-focus-line)) 0 var(--shell-pri);
+}
+
+@media (forced-colors: active) {
+  .shell-table:focus-visible,
+  .shell-kanban:focus-visible {
+    outline: var(--shell-focus-line) solid CanvasText;
   }
 }

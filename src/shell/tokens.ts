@@ -26,6 +26,32 @@ function str(text: string, pattern: RegExp, name: string): string {
   return m[1];
 }
 
+/** Kaynak alanı zorunludur. Alan yoksa sabit yedek yerine hata verir. */
+export function required<T>(value: T | undefined | null, name: string): T {
+  if (value === undefined || value === null) {
+    throw new Error(`Kaynak dosyada değer bulunamadı: ${name}`);
+  }
+  return value;
+}
+
+const described = required(
+  config.dropdown.styles.find((x) => x.key === 'described'),
+  'dropdown.styles described',
+);
+
+function aiItem(pattern: RegExp): string | undefined {
+  for (const it of config.aiMotion.items) {
+    const m = pattern.exec(it);
+    if (m?.[1]) return m[1];
+  }
+  return undefined;
+}
+
+function secondsToMs(v: string | undefined, name: string): number {
+  if (!v) throw new Error(`Kaynak dosyada değer bulunamadı: ${name}`);
+  return Math.round(Number(v) * 1000);
+}
+
 const sb = config.sidebar;
 const fly = sb.flyout;
 
@@ -93,6 +119,21 @@ export const shellTokens = {
     })),
   },
   radius: config.radius.default,
+  /** Satır kutusu = metin + 8 (kaynak: typography.lineHeightRule). */
+  lineHeightAdd: num(config.typography.lineHeightRule, /\+\s*(\d+)/, 'typography.lineHeightRule'),
+  fontMd: config.sizes.md.button.fontSize,
+  fontLg: config.sizes.lg.button.fontSize,
+  /** Rozet yüksekliği: Pill/Tag en küçük boy (kaynak: choice.tagHeights). */
+  tagHeight: required(config.choice.tagHeights[0], 'choice.tagHeights[0]'),
+  /** Açıklamalı dropdown ikon kutusu (kaynak: dropdown.styles described). */
+  ddBox: required(described.contentHeight, 'dropdown.styles described.contentHeight'),
+  ddRow: required(described.itemHeight, 'dropdown.styles described.itemHeight'),
+  motion: {
+    /** Durum nabzı (kaynak: aiMotion, çalışan ajan 1.4 s). */
+    pulse: secondsToMs(aiItem(/ajan[^:]*:\s*([\d.]+)\s*s/i), 'aiMotion ajan'),
+    /** Kredi halkası dolumu (kaynak: aiMotion, 1.2 s). */
+    ring: secondsToMs(aiItem(/halkası:[^\d]*([\d.]+)\s*s/i), 'aiMotion halka'),
+  },
   typography: config.typography,
   primary: config.primary.color,
   darkPalette: config.darkPalette,
@@ -134,6 +175,14 @@ export function shellCssVars(): Record<`--${string}`, string> {
     '--shell-hd-btn-h': `${t.header.buttonHeight}px`,
     '--shell-fs-min': `${t.typography.min}px`,
     '--shell-fs': `${t.typography.default}px`,
+    '--shell-fs-md': `${t.fontMd}px`,
+    '--shell-fs-lg': `${t.fontLg}px`,
+    '--shell-lh-add': `${t.lineHeightAdd}px`,
+    '--shell-tag-h': `${t.tagHeight}px`,
+    '--shell-dd-box': `${t.ddBox}px`,
+    '--shell-dd-row': `${t.ddRow}px`,
+    '--shell-pulse-dur': `${t.motion.pulse}ms`,
+    '--shell-ring-dur': `${t.motion.ring}ms`,
   };
 }
 

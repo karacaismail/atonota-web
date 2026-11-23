@@ -44,6 +44,14 @@ Klavye kuralları şunlardır:
 - Sol ok ya da Escape paneli kapatır. Odak üst öğeye döner.
 - Üst öğede Escape paneli kapatır. Odak üst öğede kalır.
 
+## Kayan hover zemini (G1–G3)
+
+Fare menü öğesinin üzerine gelince açık renkli bir zemin belirir. Zemin öğeden öğeye kayar. Süre 200 ms'dir.
+
+- Fare menüye dışarıdan girerse zemin hareketsiz yerleşir.
+- Fare menüden çıkarsa zemin yerinde solar.
+- Klavye odağı da zemini taşır.
+
 ## Sayfa başlığı
 
 Varsayılan çeşit "Araç çubuklu" çeşittir. Kurallar HD1–HD6 ve VT1–VT3 maddeleridir.
@@ -56,14 +64,74 @@ Telefonda başlık sayfayla birlikte kayar. Telefon ekranı kısadır. Sabit ba�
 
 ## Rotalar
 
-Rota sözleşmesi `routes.ts` dosyasındadır. Örnekler şunlardır:
+Rota kaydı `routes.ts` dosyasındadır. Adres yardımcıları `paths.ts` dosyasındadır.
+
+Her iş kendi sayfası için `lazyRoutes` listesine yalnız kendi satırını ekler. Başka işin satırı değiştirilmez. Satırın dört alanı vardır:
+
+1. `path`: react-router yolu.
+2. `label`: menü etiketi.
+3. `icon`: Phosphor ikonu.
+4. `load`: tembel yükleyici. Örnek: `() => import('@/modules/satis/TeklifPage')`.
+
+Kuralın tamamı dosyanın başındaki yorumdadır. `routes.test.ts` biçimi denetler.
+
+`ShellApp` rotaları şu sırayla ekler:
+
+1. `lazyRoutes` satırları.
+2. Koleksiyon yolları (`collectionRoutes`). Bu yolların sahibi kabuktur.
+3. Bilinmeyen adres için "Sayfa bulunamadı".
+
+Modül sayfaları `src/modules/registry.ts` dosyasındaki `moduleRegistrations` listesinden gelir. Kabuk her kaydı `lazyRoutes` listesine bir satır olarak ekler. Menü etiketi kaydın Türkçe adıdır. Modüller menüde "Asistan" bağlantısından sonra görünür. Sayfa dosyası yalnız sayfa açılınca istenir.
+
+Modül sayfası `ModuleProvider` içinde açılır. Ortamı uygulama girişi `viewData.modules` alanıyla verir. Ortamı `createShellModuleEnvironment` kurar. Bu işlev istemciyi `createModuleClient` ile ortak API istemcisinden yapar. Örnek:
+
+```tsx
+<ShellApp
+  viewData={{
+    modules: createShellModuleEnvironment({ api: session.api, tenant, user }),
+  }}
+/>
+```
+
+`user` değeri Frappe kullanıcı kimliğidir. Bu değer açılış verisindeki `user.name` alanıdır. Ortam verilmezse modül sayfası "Modül bağlantısı kurulmadı" yazar.
+
+Bazı ilk adres parçaları ayrılmıştır: `_demo` ve `panel`. Bu adresler koleksiyon ya da kayıt sayfasına hiçbir zaman düşmez. Örneğin `/_demo/tablo` adresinin satırı yoksa "Sayfa bulunamadı" görünür.
+
+AI Studio satırı `/panel/ai` adresidir. Satır `shellFeatures.aiStudio` ayarının arkasındadır. Ayar kapalıdır. AI Studio `main` dalına girince `ai-studio` işi yükleyiciyi bağlar ve ayarı açar.
+
+Sayfa dosyası yüklenemezse "Sayfa yüklenemedi" görünür. Örneğin ağ kopmuş ya da yeni sürüm yayımlanmış olabilir. "Yeniden dene" düğmesi sayfayı yeniden yükler. Kabuk bu sırada yerinde kalır.
+
+Sayfalar `React.lazy` ile yüklenir. Kabuk hemen çizilir. Sayfa gelene kadar yalnız içerik alanı bekler.
+
+Adres örnekleri şunlardır:
 
 - `/` ana sayfadır.
 - `/satis/teklif` bir koleksiyon sayfasıdır.
 - `/satis/teklif?gorunum=kanban` aynı sayfanın Kanban görünümüdür.
 - `/satis/teklif/TEK-0003` tek kayıt sayfasıdır.
 
-Örnek sayfalarda veri durumu adresle seçilebilir. Örneğin `?durum=hata` hata durumunu gösterir. Değerler şunlardır: `canli`, `yukleniyor`, `bos` ve `hata`.
+## Görünümler ve veri bağlantısı
+
+Koleksiyonu yalnız `views-collection` işinin `CollectionView` bileşeni çizer. Kabuk kendi tablosunu çizmez.
+
+Liste rotası `/:module/:doctype` adresidir. Bu rota `pages/CollectionRoute.tsx` dosyasını tembel yükler. Dosya önce liste tanımını getirir. Sonra `CollectionView` bileşenini çizer.
+
+Kabuk API istemcisi kurmaz. Veri bağlantısını uygulama girişi verir. Örnek:
+
+```tsx
+<ShellApp
+  viewData={{
+    collection: {
+      loadDefinition: ({ module, doctype }, signal) => /* API ile tanımı getir */,
+      source: apiCollectionSource,
+    },
+  }}
+/>
+```
+
+Bağlantı verilmezse liste sayfası "Veri kaynağı bağlı değil" yazar.
+
+Kayıt rotası için de aynı kural geçerlidir. `views-record` işinin `RecordView` bileşeni `main` dalına girince kayıt rotası ona bağlanacak. O zamana kadar `pages/RecordPage.tsx` geçici örnek formu gösterir.
 
 ## Geçici bağlantılar
 
@@ -72,17 +140,17 @@ Rota sözleşmesi `routes.ts` dosyasındadır. Örnekler şunlardır:
 1. **Tokenlar.** `tokens.ts` değerleri kaynak dosyadan okur. `src/design/` dışa aktarımı gelince `tokens.ts` oradan okuyacak.
 2. **Odak perdesi.** `focus-dim/` klasörü D1–D5 kararını uygular. `src/engines/focus-dim/` gelince `useFocusDim` o motoru çağıracak.
 
+3. **Adlı değerler.** `shell.css` dosyasının başında adlı değer bölümü vardır. Kaynakta karşılığı olmayan boşluk, ölçü ve süreler oradadır. `foundation` boşluk ve hareket tokenlarını koyunca bölüm oraya taşınır. Bölüm dışında sabit değer yazılmaz. `shellCss.node.test.ts` bunu denetler.
+
 Bileşenler yalnız `useFocusDim` kancasını ve `shellTokens` nesnesini kullanır. Bu yüzden geçişte bileşen kodu değişmez.
 
 ## Denemeler
 
 Birim testleri `npm test` ile koşar.
 
-Tarayıcı testleri kabuk deneme sayfasında koşar. Komut şudur:
+Tarayıcı testleri `src/shell/e2e/` klasöründedir. Testler kabuk deneme sayfasında koşar. Deneme sayfası derlenmiş çıktıdır. Geliştirme sunucusu tembel sayfada sayfayı yeniden yüklüyordu. Bu da testleri kararsız yapıyordu.
 
-```bash
-npx playwright test -c src/shell/e2e/playwright.config.mjs
-```
+Kabuğun ayrı Playwright ayarı kaldırıldı. Testleri tek test kapısı koşacak. Kapıyı `foundation` işi kuracak. Kök ayar bu klasörü okumalı ve deneme sayfasını sunmalı.
 
 Matris kök ayarla aynıdır: Chromium ve WebKit, iPhone 13 profili. Firefox koşulmaz.
 

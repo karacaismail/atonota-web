@@ -50,6 +50,8 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
         'aria-label': t.workspace.menu,
       }}
       overlayClassName="shell-dd shell-dd-described"
+      // Liste kabuğun içinde açılır. Böylece kabuk değişkenlerini görür.
+      getPopupContainer={(node) => node.closest<HTMLElement>('.shell') ?? document.body}
       placement="bottomLeft"
     >
       <button
