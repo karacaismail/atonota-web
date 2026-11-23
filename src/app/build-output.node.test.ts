@@ -12,6 +12,11 @@ const DEMO_PAGE_MARKER = 'Arayüz temeli hazır';
 /** MSW kitaplığının paketteki izleri: kayıt çağrısı, günlük öneki ve işçi dosya adı. */
 const MSW_MARKERS = ['setupWorker', '[MSW]', 'mockServiceWorker'];
 
+const DEV_ENV = {
+  VITE_DEV_BACKEND: 'https://build-test-backend.example.test',
+  VITE_DEV_SITE_NAME: 'build-test-tenant.example.test',
+};
+
 /**
  * Tembel parçalar: kabuk (`App.tsx` içinde `import()`; parça adı `shell-` ya da `ShellApp-` olur),
  * yönlendirici ve ikon kitaplığı. Hiçbiri index.html'nin hemen yüklediği listede olamaz.
@@ -27,7 +32,10 @@ let outDir = '';
 async function buildProduction(): Promise<string> {
   const dir = mkdtempSync(join(tmpdir(), 'atonota-uretim-'));
   const saved = { mocks: process.env.VITE_API_MOCKS, nodeEnv: process.env.NODE_ENV };
+  const savedBackend = process.env.VITE_DEV_BACKEND;
+  const savedSiteName = process.env.VITE_DEV_SITE_NAME;
   delete process.env.VITE_API_MOCKS;
+  Object.assign(process.env, DEV_ENV);
   // Vitest NODE_ENV değerini `test` yapar. Gerçek üretim derlemesi `production` kullanır.
   process.env.NODE_ENV = 'production';
   try {
@@ -37,6 +45,10 @@ async function buildProduction(): Promise<string> {
       build: { outDir: dir, emptyOutDir: true },
     });
   } finally {
+    if (savedBackend === undefined) delete process.env.VITE_DEV_BACKEND;
+    else process.env.VITE_DEV_BACKEND = savedBackend;
+    if (savedSiteName === undefined) delete process.env.VITE_DEV_SITE_NAME;
+    else process.env.VITE_DEV_SITE_NAME = savedSiteName;
     if (saved.mocks === undefined) delete process.env.VITE_API_MOCKS;
     else process.env.VITE_API_MOCKS = saved.mocks;
     process.env.NODE_ENV = saved.nodeEnv;
@@ -64,6 +76,15 @@ afterAll(() => {
 });
 
 describe('üretim derlemesi (vite build)', () => {
+  it('geliştirme sunucusu ayarlarını içermez', () => {
+    for (const name of assetFiles(outDir, '.js')) {
+      const contents = readFileSync(join(outDir, 'assets', name), 'utf8');
+      for (const [key, value] of Object.entries(DEV_ENV)) {
+        expect(contents.includes(value), `${name}: ${key}`).toBe(false);
+      }
+    }
+  });
+
   it('deneme sayfasını ve sahte sunucuyu içermez', () => {
     expect(existsSync(join(outDir, 'mockServiceWorker.js'))).toBe(false);
     for (const name of assetFiles(outDir, '.js')) {

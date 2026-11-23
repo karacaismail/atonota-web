@@ -20,7 +20,13 @@ const mocks = await startApiMocks();
 
 // Oturum bir kez kurulur. Tarayıcı erişim belirteci tutmaz (bkz. src/auth/README.md).
 const session = createPlatformSession({
-  env: import.meta.env,
+  env: {
+    VITE_SITE_URL: import.meta.env.VITE_SITE_URL ?? '',
+    VITE_KEYCLOAK_URL: import.meta.env.VITE_KEYCLOAK_URL ?? '',
+    VITE_KEYCLOAK_REALM: import.meta.env.VITE_KEYCLOAK_REALM ?? '',
+    VITE_AI_ROUTE: import.meta.env.VITE_AI_ROUTE ?? '',
+    VITE_CSRF_META_NAME: import.meta.env.VITE_CSRF_META_NAME ?? '',
+  },
   origin: window.location.origin,
   document,
   navigate: (url) => window.location.assign(url),
