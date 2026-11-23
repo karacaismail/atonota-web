@@ -53,15 +53,16 @@
   --shell-stat-min: 200px;
   --shell-form-max: 560px;
 
-  /* Hareket. G1: kayan zemin kaynak örnek sayfadan: kayma .2s, solma .15s ease.
-     İskelet ve dönme de kaynak örnek sayfadan. */
-  --shell-glide-dur: 200ms;
-  --shell-glide-ease: cubic-bezier(0.2, 0, 0, 1);
-  --shell-glide-fade-dur: 150ms;
-  --shell-glide-fade-ease: ease;
-  --shell-skel-dur: 1200ms;
-  --shell-spin-dur: 900ms;
-  --shell-instant: 0s;
+  /* Hareket. Süre ve eğriler merkezi tokenlardır (src/design/motion.ts). Değerler kaynak örnek
+     sayfanın `.glide`, iskelet ve dönme kurallarından gelir. Solma eğrisi genel S eğrisidir;
+     kaynaktaki anahtar sözcük eğrisi merkezi eğriyle değiştirildi. */
+  --shell-glide-dur: var(--motion-duration-glide);
+  --shell-glide-ease: var(--motion-easing-glide);
+  --shell-glide-fade-dur: var(--motion-duration-glide-fade);
+  --shell-glide-fade-ease: var(--motion-easing-standard);
+  --shell-skel-dur: var(--motion-duration-skeleton);
+  --shell-spin-dur: var(--motion-duration-spin);
+  --shell-instant: var(--motion-duration-instant);
 }
 /* @adli-degerler:bitir */
 
@@ -248,7 +249,7 @@
   visibility: hidden;
   transition:
     opacity var(--shell-dim-dur) var(--shell-dim-ease),
-    visibility var(--shell-instant) linear var(--shell-dim-dur);
+    visibility var(--shell-instant) var(--motion-easing-linear) var(--shell-dim-dur);
 }
 
 .shell-backdrop[data-open='true'] {
@@ -270,7 +271,7 @@
   visibility: hidden;
   transition:
     transform var(--shell-rail-dur) var(--shell-ease),
-    visibility var(--shell-instant) linear var(--shell-rail-dur);
+    visibility var(--shell-instant) var(--motion-easing-linear) var(--shell-rail-dur);
 }
 
 .shell[data-layout='compact'] .shell-aside[data-open='true'] {
@@ -1164,7 +1165,7 @@
 }
 
 .shell-spin {
-  animation: shell-spin var(--shell-spin-dur) linear infinite;
+  animation: shell-spin var(--shell-spin-dur) var(--motion-easing-linear) infinite;
 }
 
 @keyframes shell-spin {

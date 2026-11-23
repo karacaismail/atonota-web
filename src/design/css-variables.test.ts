@@ -26,6 +26,26 @@ describe('CSS değişkenleri', () => {
     expect(vars['--focus-dim-color']).toBe('rgba(100,116,139,0.33)');
   });
 
+  it('kabuk hareket tokenları merkezi değişkenlerle çıkar', () => {
+    const vars = rootVariables();
+    expect(vars['--motion-duration-glide']).toBe('200ms');
+    expect(vars['--motion-duration-glide-fade']).toBe('150ms');
+    expect(vars['--motion-duration-skeleton']).toBe('1200ms');
+    expect(vars['--motion-duration-spin']).toBe('900ms');
+    expect(vars['--motion-duration-instant']).toBe('0ms');
+    expect(String(vars['--motion-easing-glide']).replace(/\s/g, '')).toBe('cubic-bezier(.2,0,0,1)');
+    expect(vars['--motion-easing-linear']).toBe('linear');
+  });
+
+  it('odaklı bağlantı kuralı metin bağlantısı kuralından daha özgüldür', () => {
+    const css = buildDesignCss();
+    const link = 'a:not(.ant-btn):not(.ant-menu-item):not(.ant-tabs-tab)';
+    const rest = css.split('\n').find((line) => line.includes('text-underline-offset: 0.15em'));
+    expect(rest?.startsWith(`${link} {`)).toBe(true);
+    const focus = css.split('\n').find((line) => line.includes('text-decoration-thickness'));
+    expect(focus).toContain(`html[data-focus-mode="keyboard"] ${link}:focus-visible`);
+  });
+
   it('koyu tema gölgeleri ve perde rengini değiştirir', () => {
     const vars = darkVariables();
     expect(vars['--shadow-input']).toBe(designSource.derived.shadowCssDark.input);

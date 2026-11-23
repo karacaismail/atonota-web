@@ -3,7 +3,7 @@
  * Kaynaktaki `derived.css` başlangıç noktasıdır; burada aynı adlar korunur ve
  * açık/koyu değerler doğru bloklara ayrılır.
  */
-import { dropdownAnimation, duration, easing } from './motion';
+import { dropdownAnimation, duration, easing, instantMs } from './motion';
 import type { ThemeMode } from './source';
 import {
   danger,
@@ -96,6 +96,8 @@ export function rootVariables(): Record<string, string> {
     '--motion-easing-standard': easing.standard,
     '--motion-easing-dropdown': easing.dropdown,
     '--motion-easing-owl-pop': easing.owlPop,
+    '--motion-easing-glide': easing.glide,
+    '--motion-easing-linear': easing.linear,
     '--motion-duration-fast': ms(duration.fast),
     '--motion-duration-mid': ms(duration.mid),
     '--motion-duration-slow': ms(duration.slow),
@@ -104,6 +106,11 @@ export function rootVariables(): Record<string, string> {
     '--motion-duration-flyout': ms(duration.flyout),
     '--motion-duration-rail': ms(duration.rail),
     '--motion-duration-owl-pop': ms(duration.owlPop),
+    '--motion-duration-glide': ms(duration.glide),
+    '--motion-duration-glide-fade': ms(duration.glideFade),
+    '--motion-duration-skeleton': ms(duration.skeleton),
+    '--motion-duration-spin': ms(duration.spin),
+    '--motion-duration-instant': ms(instantMs),
     '--space-xxs': px(space.xxs),
     '--space-xs': px(space.xs),
     '--space-sm': px(space.sm),
@@ -203,6 +210,9 @@ function primaryButtonCss(): string {
  * Odak göstergesi. Çevreleyen halka yasaktır. Gösterge alt kenarda tek çizgidir.
  * Görünür odak modu yalnız klavyeyle açılır: `html[data-focus-mode="keyboard"]`.
  */
+/** Metin bağlantısı seçicisi. Düğme, menü ve sekme görünümlü bağlantılar dışarıdadır (türetilmiş karar 3). */
+const TEXT_LINK = 'a:not(.ant-btn):not(.ant-menu-item):not(.ant-tabs-tab)';
+
 function focusCss(): string {
   const on = 'html[data-focus-mode="keyboard"]';
   const bar = 'inset 0 calc(var(--focus-indicator-size) * -1) 0 0 var(--focus-indicator-color)';
@@ -213,7 +223,8 @@ function focusCss(): string {
     '/* antd düğme kuralı 0 px solid bırakır; stil de kapatılır (hesaplanmış outline-style: none). */',
     '.ant-btn.ant-btn:not(:disabled):focus-visible, .ant-btn.ant-btn:focus-visible { outline: none; }',
     `${on} :focus-visible { box-shadow: ${bar}; }`,
-    `${on} a:focus-visible { box-shadow: none; text-decoration: underline; text-decoration-thickness: var(--focus-indicator-size); text-underline-offset: 0.2em; text-decoration-color: var(--focus-indicator-color); }`,
+    '/* Odaklı bağlantı: seçici metin bağlantısı kuralından daha özgüldür; kalınlık ve renk ezilmez. */',
+    `${on} a:focus-visible, ${on} ${TEXT_LINK}:focus-visible { box-shadow: none; text-decoration: underline; text-decoration-thickness: var(--focus-indicator-size); text-underline-offset: 0.2em; text-decoration-color: var(--focus-indicator-color); }`,
     `${on} .ant-btn:focus-visible { box-shadow: var(--shadow-button), ${bar}; }`,
     `${on} .ant-input:focus-visible, ${on} .ant-input-affix-wrapper:focus-within { box-shadow: var(--shadow-input), ${bar}; }`,
     `${on} .ant-input-affix-wrapper > .ant-input:focus-visible { box-shadow: none; }`,
@@ -270,7 +281,8 @@ function baseCss(): string {
     '*, *::before, *::after { box-sizing: border-box; }',
     'img, svg, video { max-width: 100%; height: auto; }',
     '/* Metin bağlantıları altı çizilidir: renk tek ayırt edici olmaz (WCAG 1.4.1). */',
-    'a:not(.ant-btn):not(.ant-menu-item):not(.ant-tabs-tab) { text-decoration: underline; text-underline-offset: 0.15em; }',
+    '/* Özgüllük (0,3,1) antd\'nin `a { text-decoration: none }` kuralını geçer; `:where()` ile sıfırlanırsa antd kazanır. */',
+    `${TEXT_LINK} { text-decoration: underline; text-underline-offset: 0.15em; }`,
   ].join('\n');
 }
 

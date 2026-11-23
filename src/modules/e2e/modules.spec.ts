@@ -65,6 +65,12 @@ test('a leave approval requires review and keeps the original record version', a
   // worker answers, so the test uses the sample leave `ORNEK-IZIN-0001` (Open, docstatus 0).
   // The mock rejects an approval whose `version` differs from the record's `modified`
   // (TimestampMismatchError, 417). A success message therefore proves the original version was sent.
+  // Writes are counted from the page's own requests. The worker answers them, but the page
+  // still issues them, so no approval request may leave before the consent box is checked.
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('hrms_tr.api.approve_leave')) writes.push(request.method());
+  });
   await page.goto('/hr');
   const record = page.locator('.module-record', { hasText: 'ORNEK-IZIN-0001' });
   await expect(record).toContainText('Açık');
@@ -72,11 +78,13 @@ test('a leave approval requires review and keeps the original record version', a
   const approve = page.getByRole('button', { name: 'İzni onayla', exact: true });
   await expect(approve).toBeDisabled();
   await page.getByLabel('İzin talebini okudum ve onaylıyorum.').check();
+  expect(writes).toEqual([]);
   await approve.click();
   await expect(
     page.getByText('Sunucu işlemi kabul etti. Güncel kayıt için sayfayı yenileyin.'),
   ).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(writes).toEqual(['POST']);
   // The list refreshes after the write: the mock now reports the record as approved.
   await expect(record).toContainText('Onaylandı');
 });

@@ -12,7 +12,10 @@ async function overflowX(page: Page) {
   );
 }
 
-const PAGES = ['/', '/satis/teklif', '/asistan', '/satis/teklif/TEK-0003'];
+/** Sahte sunucunun tanıdığı liste: tablo gerçekten çizilir. `/satis/teklif` hata ekranını açar. */
+const LIST = `/ornek/${encodeURIComponent('örnek-kayıt')}`;
+
+const PAGES = ['/', '/satis/teklif', LIST, '/asistan', '/satis/teklif/TEK-0003'];
 
 test.describe('yatay taşma', () => {
   for (const url of PAGES) {
@@ -168,7 +171,7 @@ test.describe('header ve sayfalar', () => {
   test('liste rotası views-collection görünümünü çizer', async ({ page }) => {
     // Uygulama girişi liste rotasını ortak API istemcisine bağlar. Adres parçası DocType adına
     // çevrilir: `örnek-kayıt` -> `Örnek Kayıt`. Sahte sunucu yalnız bu türü verir.
-    await page.goto(`/ornek/${encodeURIComponent('örnek-kayıt')}`);
+    await page.goto(LIST);
     await expect(page.getByRole('heading', { level: 1, name: 'Kayıtlar' })).toBeAttached();
     await expect(page.getByText('ORNEK-0001').first()).toBeVisible();
     await expect(page.getByText('TEK-0001')).toHaveCount(0);
@@ -189,25 +192,27 @@ test.describe('header ve sayfalar', () => {
     await expect(page.getByText('1 değişiklik kaydedilmedi')).toBeHidden();
   });
 
-  test('metin boyutu kaynak alt sınırın altına inmez', async ({ page }) => {
-    await page.goto('/satis/teklif');
-    await page.waitForTimeout(400);
-    const min = await page.evaluate(() => {
-      let m = Infinity;
-      for (const el of document.querySelectorAll<HTMLElement>('.shell *')) {
-        if (!el.childNodes.length) continue;
-        const hasText = [...el.childNodes].some(
-          (n) => n.nodeType === 3 && (n.textContent ?? '').trim(),
-        );
-        if (!hasText || el.closest('.shell-vh')) continue;
-        const r = el.getBoundingClientRect();
-        if (!r.width) continue;
-        m = Math.min(m, parseFloat(getComputedStyle(el).fontSize));
-      }
-      return m;
+  for (const url of ['/satis/teklif', LIST]) {
+    test(`metin boyutu kaynak alt sınırın altına inmez: ${url}`, async ({ page }) => {
+      await page.goto(url);
+      await page.waitForTimeout(400);
+      const min = await page.evaluate(() => {
+        let m = Infinity;
+        for (const el of document.querySelectorAll<HTMLElement>('.shell *')) {
+          if (!el.childNodes.length) continue;
+          const hasText = [...el.childNodes].some(
+            (n) => n.nodeType === 3 && (n.textContent ?? '').trim(),
+          );
+          if (!hasText || el.closest('.shell-vh')) continue;
+          const r = el.getBoundingClientRect();
+          if (!r.width) continue;
+          m = Math.min(m, parseFloat(getComputedStyle(el).fontSize));
+        }
+        return m;
+      });
+      expect(min).toBeGreaterThanOrEqual(12);
     });
-    expect(min).toBeGreaterThanOrEqual(12);
-  });
+  }
 });
 
 test.describe('kayan hover zemini (G1–G3)', () => {
@@ -223,9 +228,15 @@ test.describe('kayan hover zemini (G1–G3)', () => {
     return b ? b.y + b.height / 2 : -1;
   }
 
+  /** Yazı tipi gelmeden ölçülen öğe konumu sonra kayar. Zemin eski konuma yerleşmiş olur. */
+  async function fontsReady(page: Page) {
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  }
+
   test('G1: zemin üzerine gelinen öğeye kayar', async ({ page }) => {
     test.skip(isCompact(page), 'telefonda hover yok');
     await page.goto('/satis/teklif');
+    await fontsReady(page);
     await page.getByRole('button', { name: 'Stok', exact: true }).hover();
     await expect(glide(page)).toHaveAttribute('data-on', 'true');
     await page.getByRole('button', { name: 'Muhasebe', exact: true }).hover();
@@ -244,6 +255,7 @@ test.describe('kayan hover zemini (G1–G3)', () => {
   test('G1: flyout panelinde zemin öğeler arasında kayar', async ({ page }) => {
     test.skip(isCompact(page), 'telefonda hover yok');
     await page.goto('/satis/teklif');
+    await fontsReady(page);
     await page.getByRole('button', { name: 'Satış', exact: true }).hover();
     const fly = page.getByRole('group', { name: 'Satış' });
     const flyGlide = fly.locator('.shell-glide');
@@ -264,6 +276,7 @@ test.describe('kayan hover zemini (G1–G3)', () => {
   test('G3: klavye odağı zemini taşır', async ({ page }) => {
     test.skip(isCompact(page), 'geniş ekran');
     await page.goto('/satis/teklif');
+    await fontsReady(page);
     await page.getByRole('button', { name: 'Stok', exact: true }).focus();
     await page.keyboard.press('Escape');
     await expect(glide(page)).toHaveAttribute('data-on', 'true');

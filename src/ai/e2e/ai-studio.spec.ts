@@ -141,7 +141,10 @@ test.describe('AI Studio', () => {
   });
 
   test('iptal akışı durdurur', async ({ page }) => {
-    await open(page);
+    // Sahte akış düğmeye basılana kadar bekler: e2e derlemesinde `?gecikme=` iki olay arasını
+    // 60 saniye yapar. Böylece akış, durdurma düğmesine basılmadan bitemez.
+    await page.goto(`${PAGE}?gecikme=60000`);
+    await expect(page.getByRole('textbox', { name: 'Asistana mesaj yazın' })).toBeVisible();
     await ask(page, 'Bu haftanın satış özetini çıkar');
     await page.getByRole('button', { name: 'Yanıtı durdur' }).click();
     await expect(page.getByText('Yanıt durduruldu.')).toBeVisible();

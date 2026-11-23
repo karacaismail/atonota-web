@@ -63,11 +63,22 @@ describe('kayan zemin hareketi', () => {
       // Biçimlendirici `.2` değerini `0.2` yazar. İkisi aynı sayıdır.
       .replace(/(?<![\d.])0\./g, '.');
 
-  it('adlı değerler kaynak örnekle aynıdır', () => {
-    expect(decl('--shell-glide-dur')).toBe('200ms');
-    expect(decl('--shell-glide-ease')).toBe('cubic-bezier(.2,0,0,1)');
-    expect(decl('--shell-glide-fade-dur')).toBe('150ms');
-    expect(decl('--shell-glide-fade-ease')).toBe('ease');
+  it('adlı değerler merkezi hareket tokenlarına bağlıdır', () => {
+    // Kaynak değerler (200 ms, cubic-bezier(.2,0,0,1), 150 ms) src/design/motion.ts içindedir.
+    expect(decl('--shell-glide-dur')).toBe('var(--motion-duration-glide)');
+    expect(decl('--shell-glide-ease')).toBe('var(--motion-easing-glide)');
+    expect(decl('--shell-glide-fade-dur')).toBe('var(--motion-duration-glide-fade)');
+    expect(decl('--shell-glide-fade-ease')).toBe('var(--motion-easing-standard)');
+    expect(decl('--shell-skel-dur')).toBe('var(--motion-duration-skeleton)');
+    expect(decl('--shell-spin-dur')).toBe('var(--motion-duration-spin)');
+    expect(decl('--shell-instant')).toBe('var(--motion-duration-instant)');
+  });
+
+  it('yerel süre, eğri ve anahtar sözcük yoktur', () => {
+    const text = body();
+    expect(text.match(/(?<![\w-])\d*\.?\d+m?s(?![\w-])/g) ?? []).toEqual([]);
+    expect(text).not.toMatch(/cubic-bezier\(|steps\(/);
+    expect(text).not.toMatch(/(?<![\w-])(ease-in-out|ease-in|ease-out|ease|linear)(?![\w-])/);
   });
 
   it('zemin geçişi rail eğrisini kullanmaz', () => {

@@ -1,9 +1,8 @@
 import type { ApiClient } from '@/api';
 import type { ShellAccount, ShellViewData } from '@/shell/view-data';
-// Derin içe aktarım: `@/views/collection` girişi CollectionView ve yönlendiriciyi getirir.
+// Hafif giriş: `@/views/collection` ana girişi CollectionView ve yönlendiriciyi getirir.
 // Bu dosya ilk yük parçasındadır; yönlendirici ve görünüm yalnız liste rotasıyla inmelidir.
-import { createApiSource } from '@/views/collection/api-source';
-import { createDefinition } from '@/views/collection/model';
+import { createApiSource, createDefinition } from '@/views/collection/source';
 
 /**
  * Adres parçasını Frappe DocType adına çevirir.
