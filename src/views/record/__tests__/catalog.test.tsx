@@ -410,14 +410,144 @@ describe('versioned field catalog (RE-11, AX-4, Goal 1)', () => {
     expect(decoded).toContain('M20 30');
     expect(decoded).toContain('M120 60');
 
-    // Keyboard signing option (RE-10 / Review 2 Minor 4)
-    await user.click(screen.getByText('Yazarak imzala'));
-    const nameSignInput = screen.getByLabelText('İmza metni');
-    await user.type(nameSignInput, 'Örnek İmza');
-    await user.click(screen.getByRole('button', { name: 'İmzayı uygula' }));
+    // Keyboard signing option (RE-10 / Review 2 Minor 4 & Review 3 Minor 1, 2, 3)
+    const fillTextCalls: { text: string; x: number; y: number; font: string }[] = [];
+    const fakeCtx = {
+      setTransform: vi.fn(),
+      clearRect: vi.fn(),
+      scale: vi.fn(),
+      fillText: vi.fn((text: string, x: number, y: number) => {
+        fillTextCalls.push({ text, x, y, font: fakeCtx.font });
+      }),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      fillStyle: '',
+      strokeStyle: '',
+      lineWidth: 2,
+      lineCap: 'round',
+      lineJoin: 'round',
+      font: '',
+      textBaseline: 'middle',
+    };
 
-    const lastCall = String(onChange.mock.calls[onChange.mock.calls.length - 1]?.[1] ?? '');
-    expect(lastCall.startsWith('data:image/')).toBe(true);
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => fakeCtx as unknown as CanvasRenderingContext2D);
+    const toDataUrlSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ');
+
+    try {
+      await user.click(screen.getByText('Yazarak imzala'));
+      const nameSignInput = screen.getByLabelText('İmza metni');
+      await user.type(nameSignInput, 'Örnek İmza');
+      await user.click(screen.getByRole('button', { name: 'İmzayı uygula' }));
+
+      const typedCall = String(onChange.mock.calls[onChange.mock.calls.length - 1]?.[1] ?? '');
+      // Review 3 Minor 1: Typed signature must produce PNG via an offscreen canvas even when draw canvas is unmounted
+      expect(typedCall.startsWith('data:image/png;base64,')).toBe(true);
+      expect(fillTextCalls).toHaveLength(1);
+    } finally {
+      getContextSpy.mockRestore();
+      toDataUrlSpy.mockRestore();
+    }
+
+    // Review 3 Minor 3: Switching back to Draw mode must have cleared old strokes (M20 30 / M120 60)
+    await user.click(screen.getByText('Çiz'));
+    const remountedCanvas = screen.getByRole('img', { name: 'Çalışan İmzası' });
+    fireEvent.pointerDown(remountedCanvas, { clientX: 55, clientY: 65 });
+    fireEvent.pointerMove(remountedCanvas, { clientX: 95, clientY: 75 });
+    fireEvent.pointerUp(remountedCanvas);
+
+    const postSwitchSvg = decodeURIComponent(
+      String(onChange.mock.calls[onChange.mock.calls.length - 1]?.[1] ?? ''),
+    );
+    expect(postSwitchSvg).toContain('M55 65');
+    expect(postSwitchSvg).not.toContain('M20 30');
+    expect(postSwitchSvg).not.toContain('M120 60');
+  });
+
+  it('emits null (not empty string) when clearing optional Select, Link, or Dynamic Link fields (Review 3 Minor 7)', async () => {
+    const user = userEvent.setup();
+    const adapter = createStubAdapter();
+    const onChange = vi.fn();
+
+    const selectField: DocField = {
+      fieldname: 'status',
+      fieldtype: 'Select',
+      label: 'Durum Seçimi',
+      read_only: false,
+      component: 'select',
+      sensitivity: 'standard',
+      choices: [{ value: 'Open', label: 'Açık' }],
+    };
+
+    const linkField: DocField = {
+      fieldname: 'department',
+      fieldtype: 'Link',
+      label: 'Departman Seçimi',
+      options: 'Department',
+      read_only: false,
+      component: 'link',
+      sensitivity: 'standard',
+    };
+
+    const dynamicLinkField: DocField = {
+      fieldname: 'ref_doc',
+      fieldtype: 'Dynamic Link',
+      label: 'Dinamik Bağlantı',
+      options: 'ref_type',
+      read_only: false,
+      component: 'dynamic-link',
+      sensitivity: 'standard',
+    };
+
+    const { container } = render(
+      <div>
+        <CatalogField
+          field={selectField}
+          value="Open"
+          doc={{ status: 'Open', ref_type: 'Project' }}
+          doctype="Expense Claim"
+          meta={CHILD_META}
+          adapter={adapter}
+          locale="tr"
+          onChange={onChange}
+        />
+        <CatalogField
+          field={linkField}
+          value="DEP-01"
+          doc={{ department: 'DEP-01', ref_type: 'Project' }}
+          doctype="Expense Claim"
+          meta={CHILD_META}
+          adapter={adapter}
+          locale="tr"
+          onChange={onChange}
+        />
+        <CatalogField
+          field={dynamicLinkField}
+          value="PRJ-01"
+          doc={{ ref_doc: 'PRJ-01', ref_type: 'Project' }}
+          doctype="Expense Claim"
+          meta={CHILD_META}
+          adapter={adapter}
+          locale="tr"
+          onChange={onChange}
+        />
+      </div>,
+    );
+
+    const clearIcons = container.querySelectorAll('.ant-select-clear');
+    expect(clearIcons).toHaveLength(3);
+    for (const clearBtn of clearIcons) {
+      await user.click(clearBtn);
+    }
+
+    expect(onChange).toHaveBeenCalledWith('status', null);
+    expect(onChange).toHaveBeenCalledWith('department', null);
+    expect(onChange).toHaveBeenCalledWith('ref_doc', null);
   });
 
   it('renders child Table with meta.child_tables and supports adding and removing rows', async () => {

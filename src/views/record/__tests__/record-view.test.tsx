@@ -230,26 +230,144 @@ describe('RecordView four states, record type checking, and error boundary (RE-1
 
     fireEvent.pointerDown(nameInput);
     expect(root).toHaveAttribute('data-rv-kbd', 'false');
+
+    // Review 3 Minor 10: Tab pressed outside .rv-root (e.g. document.body) must enable keyboard mode immediately
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    expect(root).toHaveAttribute('data-rv-kbd', 'true');
   });
 
-  it('catches rendering crashes inside RecordErrorBoundary without exposing raw stack trace (RE-1)', () => {
+  it('uses localized breadcrumb aria-label and adapts layout to container width (Review 3 Minor 8 & 9)', async () => {
+    const originalInnerWidth = window.innerWidth;
+    const OriginalResizeObserver = globalThis.ResizeObserver;
+    const resizeCallbacks: ResizeObserverCallback[] = [];
+
+    class MockResizeObserver {
+      private readonly cb: ResizeObserverCallback;
+      public constructor(cb: ResizeObserverCallback) {
+        this.cb = cb;
+        resizeCallbacks.push(cb);
+      }
+      public observe(): void {
+        // Triggered manually below
+      }
+      public unobserve(): void {
+        // noop
+      }
+      public disconnect(): void {
+        // noop
+      }
+    }
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+    globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
+    try {
+      const adapter = createMockAdapter();
+      const { container, rerender } = render(
+        <RecordView
+          doctype="Leave Application"
+          name="HR-LAP-TEST-01"
+          locale="tr"
+          adapter={adapter}
+        />,
+      );
+
+      await screen.findByDisplayValue('Örnek Kişi');
+
+      // Review 3 Minor 8: Turkish aria-label instead of hardcoded English "Breadcrumb"
+      expect(screen.getByRole('navigation', { name: 'Sayfa yolu' })).toBeInTheDocument();
+      expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull();
+
+      const rootEl = container.querySelector('.rv-root');
+      expect(rootEl).toHaveAttribute('data-rv-viewport', 'wide');
+
+      // Simulate narrow container (360px) inside a 1440px window
+      for (const cb of resizeCallbacks) {
+        cb(
+          [
+            {
+              contentRect: { width: 360, height: 640 } as DOMRectReadOnly,
+              target: rootEl as Element,
+              borderBoxSize: [],
+              contentBoxSize: [],
+              devicePixelContentBoxSize: [],
+            },
+          ],
+          {} as ResizeObserver,
+        );
+      }
+
+      await waitFor(() => {
+        expect(rootEl).toHaveAttribute('data-rv-viewport', 'phone');
+      });
+
+      rerender(
+        <RecordView
+          doctype="Leave Application"
+          name="HR-LAP-TEST-01"
+          locale="en"
+          adapter={adapter}
+        />,
+      );
+      await screen.findByDisplayValue('Örnek Kişi');
+      expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: originalInnerWidth,
+      });
+      globalThis.ResizeObserver = OriginalResizeObserver;
+    }
+  });
+
+  it('catches rendering crashes inside RecordErrorBoundary without exposing raw stack trace and resets when record name changes (RE-1, Review 3 Minor 11)', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     function BrokenChild(): never {
       throw new Error('INTERNAL_STACK_SECRET_TOKEN_XYZ');
     }
 
-    render(
-      <RecordErrorBoundary locale="tr">
-        <BrokenChild />
-      </RecordErrorBoundary>,
-    );
+    try {
+      const { unmount } = render(
+        <RecordErrorBoundary locale="tr">
+          <BrokenChild />
+        </RecordErrorBoundary>,
+      );
 
-    expect(screen.getByText('Bu form görüntülenemedi')).toBeInTheDocument();
-    expect(screen.queryByText(/INTERNAL_STACK_SECRET_TOKEN_XYZ/)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Görünümü yenile' })).toBeInTheDocument();
+      expect(screen.getByText('Bu form görüntülenemedi')).toBeInTheDocument();
+      expect(screen.queryByText(/INTERNAL_STACK_SECRET_TOKEN_XYZ/)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Görünümü yenile' })).toBeInTheDocument();
+      unmount();
 
-    consoleSpy.mockRestore();
+      // Review 3 Minor 11: Navigating from a crashing record to another record resets RecordView's boundary
+      const crashingMetaAdapter = createMockAdapter({
+        getDocTypeMeta: vi.fn(async () => ({
+          ...SAMPLE_META,
+          schema: {
+            ...SAMPLE_META.schema,
+            get title_field(): string {
+              throw new Error('CRASH_ON_FIRST_RECORD');
+            },
+          },
+        })),
+      });
+      const healthyAdapter = createMockAdapter();
+
+      const { rerender } = render(
+        <RecordView doctype="Leave Application" name="REC-CRASH" adapter={crashingMetaAdapter} />,
+      );
+
+      await screen.findByText('Bu form görüntülenemedi');
+
+      rerender(
+        <RecordView doctype="Leave Application" name="REC-HEALTHY" adapter={healthyAdapter} />,
+      );
+
+      await screen.findByDisplayValue('Örnek Kişi');
+      expect(screen.queryByText('Bu form görüntülenemedi')).toBeNull();
+    } finally {
+      consoleSpy.mockRestore();
+    }
   });
 });
 
@@ -316,33 +434,138 @@ describe('RecordView navigator, dirty state, Discard/Save, createMode, and confl
     });
   });
 
-  it('supports createMode for new records without modified version (Review 1 Minor 5)', async () => {
+  it('supports createMode and transitions to the created record name so a second Save never creates a duplicate (Review 1 Minor 5 & Review 3 Finding 2)', async () => {
     const user = userEvent.setup();
-    const saveRecord = vi.fn(async (params) => ({
-      name: 'HR-LAP-NEW-01',
-      modified: '2026-11-22 14:00:00.000001',
-      docstatus: 0 as const,
-      ...params.data,
-    }));
+    let callNum = 0;
+    const saveRecord = vi.fn(async (params) => {
+      callNum += 1;
+      return {
+        name: params.name ?? `HR-LAP-NEW-0${callNum}`,
+        modified: `2026-11-22 14:0${callNum}:00.000001`,
+        docstatus: 0 as const,
+        employee_name: 'Yeni Örnek Kişi',
+        ...params.data,
+      };
+    });
     const adapter = createMockAdapter({ saveRecord });
 
     render(<RecordView doctype="Leave Application" createMode adapter={adapter} />);
 
     const nameInput = await screen.findByLabelText(/Çalışan Adı/);
     await user.type(nameInput, 'Yeni Örnek Kişi');
+    const saveBtn = screen.getByRole('button', { name: 'Kaydet' });
+    await user.click(saveBtn);
+
+    await waitFor(() => {
+      expect(saveRecord).toHaveBeenCalledTimes(1);
+    });
+    expect(saveRecord).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        doctype: 'Leave Application',
+        name: undefined,
+        data: expect.objectContaining({
+          employee_name: 'Yeni Örnek Kişi',
+        }),
+      }),
+    );
+
+    // Screen transitions to the created record's name and disables Save while clean
+    expect(await screen.findByText(/HR-LAP-NEW-01/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kaydet' })).toBeDisabled();
+
+    // Clicking Save again without edits must NOT send a second create request
+    await user.click(screen.getByRole('button', { name: 'Kaydet' }));
+    expect(saveRecord).toHaveBeenCalledTimes(1);
+
+    // Making a subsequent edit and saving must UPDATE HR-LAP-NEW-01 with its modified timestamp
+    const descInput = screen.getByLabelText(/Açıklama/);
+    await user.type(descInput, 'İkinci düzenleme');
+    expect(screen.getByRole('button', { name: 'Kaydet' })).not.toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
     await waitFor(() => {
-      expect(saveRecord).toHaveBeenCalledWith(
-        expect.objectContaining({
-          doctype: 'Leave Application',
-          name: undefined,
-          data: expect.objectContaining({
-            employee_name: 'Yeni Örnek Kişi',
-          }),
-        }),
-      );
+      expect(saveRecord).toHaveBeenCalledTimes(2);
     });
+    expect(saveRecord).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        doctype: 'Leave Application',
+        name: 'HR-LAP-NEW-01',
+        modified: '2026-11-22 14:01:00.000001',
+        data: {
+          description: 'İkinci düzenleme',
+        },
+      }),
+    );
+  });
+
+  it('validates saveRecord response and conflict latestRecord against DocTypeMeta (SZ-4, Review 3 Finding 4)', async () => {
+    const user = userEvent.setup();
+    const onSaved = vi.fn();
+
+    // Case 1: saveRecord returns malformed field type
+    const badSaveAdapter = createMockAdapter({
+      saveRecord: vi.fn(async () => ({
+        ...SAMPLE_RECORD,
+        total_leave_days: { corrupted: true },
+      })),
+    });
+
+    const { unmount } = render(
+      <RecordView
+        doctype="Leave Application"
+        name="HR-LAP-TEST-01"
+        adapter={badSaveAdapter}
+        onSaved={onSaved}
+      />,
+    );
+
+    await screen.findByDisplayValue('Örnek Kişi');
+    const descInput = screen.getByLabelText(/Açıklama/);
+    await user.clear(descInput);
+    await user.type(descInput, 'Geçerli taslak');
+    await user.click(screen.getByRole('button', { name: 'Kaydet' }));
+
+    await screen.findByText('Kayıt yüklenemedi');
+    expect(screen.getByText(/Sunucu yanıtı beklenen sözleşmeyle uyuşmadı/)).toBeInTheDocument();
+    expect(onSaved).not.toHaveBeenCalled();
+    unmount();
+
+    // Case 2: conflict latestRecord returns malformed field type
+    let getCalls = 0;
+    const badConflictAdapter = createMockAdapter({
+      getRecord: vi.fn(async () => {
+        getCalls += 1;
+        if (getCalls === 1) {
+          return SAMPLE_RECORD;
+        }
+        return {
+          ...SAMPLE_RECORD,
+          total_leave_days: ['invalid-array'],
+        };
+      }),
+      saveRecord: vi.fn(async () => {
+        throw new RecordApiError({
+          code: 'conflict',
+          status: 417,
+          message: 'Belge başka bir oturumda güncellendi.',
+        });
+      }),
+    });
+
+    render(
+      <RecordView doctype="Leave Application" name="HR-LAP-TEST-01" adapter={badConflictAdapter} />,
+    );
+
+    await screen.findByDisplayValue('Örnek Kişi');
+    const descInput2 = screen.getByLabelText(/Açıklama/);
+    await user.clear(descInput2);
+    await user.type(descInput2, 'Çakışan taslak');
+    await user.click(screen.getByRole('button', { name: 'Kaydet' }));
+
+    await screen.findByText('Kayıt yüklenemedi');
+    expect(screen.getByText(/Sunucu yanıtı beklenen sözleşmeyle uyuşmadı/)).toBeInTheDocument();
   });
 
   it('preserves user draft on TimestampMismatchError conflict and shows newer server version (SZ-11)', async () => {

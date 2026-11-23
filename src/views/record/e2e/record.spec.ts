@@ -93,6 +93,22 @@ test.describe('imza alanı ve bağlantı araması', () => {
     expect(inkRegions.rightInk).toBeGreaterThan(10);
     await expect(page.getByText('İmza alındı')).toBeVisible();
     await expect(page.getByText('1 kaydedilmemiş değişiklik')).toBeVisible();
+
+    // Küçük 1: Yazarak imzalama gerçek tarayıcıda PNG üretmeli
+    await page.getByText('Yazarak imzala').click();
+    await page.getByLabel('İmza metni').fill('Örnek İmza');
+    await page.getByRole('button', { name: 'İmzayı uygula' }).click();
+    await expect(page.getByText('İmza alındı')).toBeVisible();
+    await expect(
+      page.locator('[data-fieldname="signature"] img.rv-attach-preview'),
+    ).toHaveAttribute('src', /^data:image\/png;base64,/);
+
+    // Küçük 12: Bölüm kartında dekoratif kenarlık olmamalı (yalnız gölge / yüzey tonu)
+    const cardBorderTop = await page
+      .locator('.rv-section-card')
+      .first()
+      .evaluate((el) => getComputedStyle(el).borderTopWidth);
+    expect(cardBorderTop).toBe('0px');
   });
 
   test('bağlantı araması hata alınca hata metni ve Yeniden dene gösterir', async ({ page }) => {
@@ -129,17 +145,112 @@ test.describe('odak kuralları', () => {
     await expect(root).toHaveAttribute('data-rv-kbd', 'true');
   });
 
-  // foundation birleşince aç
-  test.fixme('klavye odağında çevreleyen halka olmamalı', async ({ page }) => {
+  test('klavye odağında çevreleyen halka olmamalı ve görünür alt çizgi olmalı', async ({
+    page,
+  }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
-    for (let step = 0; step < 25; step += 1) {
+    const inspectFocusedChain = async () =>
+      page.evaluate(() => {
+        const root = document.querySelector('.rv-root');
+        const active = document.activeElement;
+        if (!root || !active || !root.contains(active)) {
+          return { insideRoot: false, visibleOutlines: [], spreadRings: [], hasUnderline: false };
+        }
+
+        const splitShadowLayers = (raw: string): string[] => {
+          if (!raw || raw === 'none') return [];
+          const out: string[] = [];
+          let depth = 0;
+          let current = '';
+          for (const ch of raw) {
+            if (ch === '(') depth += 1;
+            if (ch === ')') depth = Math.max(0, depth - 1);
+            if (ch === ',' && depth === 0) {
+              out.push(current.trim());
+              current = '';
+            } else {
+              current += ch;
+            }
+          }
+          if (current.trim()) out.push(current.trim());
+          return out;
+        };
+
+        const visibleOutlines: string[] = [];
+        const spreadRings: string[] = [];
+        let hasUnderline = false;
+
+        let node: Element | null = active;
+        let stoppedControlWalk = false;
+        while (node && root.contains(node)) {
+          const style = getComputedStyle(node);
+          const outlineW = Number.parseFloat(style.outlineWidth) || 0;
+          if (style.outlineStyle !== 'none' && outlineW > 0) {
+            visibleOutlines.push(`${node.tagName}:${style.outlineStyle}:${style.outlineWidth}`);
+          }
+
+          if (
+            node.classList.contains('rv-section-card') ||
+            node.classList.contains('rv-header') ||
+            node.classList.contains('rv-body') ||
+            node.classList.contains('rv-root')
+          ) {
+            stoppedControlWalk = true;
+          }
+
+          if (!stoppedControlWalk) {
+            const layers = splitShadowLayers(style.boxShadow);
+            for (const layer of layers) {
+              const withoutColors = layer.replace(/rgba?\([^)]+\)/g, '').trim();
+              const isInset = /\binset\b/.test(withoutColors);
+              const nums = (withoutColors.match(/-?\d+(?:\.\d+)?px/g) ?? []).map((v) =>
+                Number.parseFloat(v),
+              );
+              const [offX = 0, offY = 0, blur = 0, spread = 0] = nums;
+              if (isInset && offX === 0 && offY < 0 && blur === 0) {
+                hasUnderline = true;
+              } else if (!isInset && (spread > 0 || (offX === 0 && offY === 0 && blur > 0))) {
+                spreadRings.push(`${node.tagName}:${layer}`);
+              }
+            }
+          }
+
+          node = node.parentElement;
+        }
+
+        return { insideRoot: true, visibleOutlines, spreadRings, hasUnderline };
+      });
+
+    let visitedCount = 0;
+    for (let step = 0; step < 60; step += 1) {
       await page.keyboard.press('Tab');
-      const outlineStyle = await page
-        .locator(':focus')
-        .evaluate((el) => getComputedStyle(el).outlineStyle);
-      expect(outlineStyle).toBe('none');
+      const check = await inspectFocusedChain();
+      if (!check.insideRoot) {
+        if (visitedCount > 0) {
+          break;
+        }
+        continue;
+      }
+      visitedCount += 1;
+      expect(check.visibleOutlines, `Tab adımı ${step} outline bulundu`).toEqual([]);
+      expect(check.spreadRings, `Tab adımı ${step} çevreleyen gölge bulundu`).toEqual([]);
+      expect(check.hasUnderline, `Tab adımı ${step} alt çizgi göstergesi eksik`).toBe(true);
+    }
+
+    expect(visitedCount).toBeGreaterThanOrEqual(5);
+
+    // WebKit'te Tab ile atlanabilen düğme ve seçim öğelerini ayrıca doğrudan odakla denetle
+    for (const target of [
+      page.getByRole('button', { name: 'Sonraki kayıt' }),
+      page.getByRole('checkbox', { name: 'Ödendi' }),
+    ]) {
+      await target.focus();
+      const check = await inspectFocusedChain();
+      expect(check.visibleOutlines).toEqual([]);
+      expect(check.spreadRings).toEqual([]);
+      expect(check.hasUnderline).toBe(true);
     }
   });
 });

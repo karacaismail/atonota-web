@@ -276,4 +276,73 @@ describe('LinkField & Dynamic Link server search (Goal 4, RE-7, Review 2 Finding
       );
     });
   });
+
+  it('debounces rapid typing and supports keyboard retry via Tab + Enter or Enter inside combobox (Review 3 Minor 4, 5, 6)', async () => {
+    const user = userEvent.setup();
+    let shouldFail = false;
+
+    const searchLink = vi.fn(async (params: LinkSearchParams): Promise<readonly LinkOption[]> => {
+      if (shouldFail) {
+        throw new RecordApiError({
+          code: 'network',
+          message: 'Arama sunucusuna ulaşılamadı.',
+        });
+      }
+      return [{ value: 'DEP-M', label: `Sonuç: ${params.txt || 'Tümü'}` }];
+    });
+
+    const adapter: RecordDataAdapter = {
+      getDocTypeMeta: vi.fn(),
+      getRecord: vi.fn(),
+      saveRecord: vi.fn(),
+      searchLink,
+    };
+
+    const linkField: DocField = {
+      fieldname: 'department',
+      fieldtype: 'Link',
+      label: 'Birim',
+      options: 'Department',
+      read_only: false,
+      component: 'link',
+      sensitivity: 'standard',
+    };
+
+    render(
+      <CatalogField
+        field={linkField}
+        value=""
+        doc={{ department: '' }}
+        doctype="Leave Application"
+        meta={BASE_META}
+        adapter={adapter}
+        locale="tr"
+        onChange={vi.fn()}
+      />,
+    );
+
+    const combobox = screen.getByRole('combobox', { name: /Birim/ });
+    await user.click(combobox);
+    await waitFor(() => {
+      expect(searchLink).toHaveBeenCalledTimes(1);
+    });
+
+    // Rapidly typing 11 characters must coalesce into a single debounced request (not 11 calls)
+    await user.type(combobox, 'Mühendislik');
+    await screen.findByText('Sonuç: Mühendislik');
+    expect(searchLink).toHaveBeenCalledTimes(2);
+
+    // Now fail on next search and recover purely with keyboard (Tab -> Yeniden dene -> Enter)
+    shouldFail = true;
+    await user.type(combobox, 'X');
+    await screen.findByText('Arama sunucusuna ulaşılamadı.');
+
+    shouldFail = false;
+    await user.tab();
+    const retryBtn = screen.getByRole('button', { name: 'Yeniden dene' });
+    expect(retryBtn).toHaveFocus();
+    await user.keyboard('{Enter}');
+
+    await screen.findByText('Sonuç: MühendislikX');
+  });
 });
