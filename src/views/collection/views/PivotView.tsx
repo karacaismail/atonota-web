@@ -1,11 +1,18 @@
-import { groupRows } from '../presentation';
+import { groupCounts, summaryNotice } from '../presentation';
 import type { ViewProps } from '../types';
-export default function PivotView({ definition, rows }: ViewProps) {
+export default function PivotView({ definition, rows, summary }: ViewProps) {
   const field = definition.columns.find((item) => item.fieldname === definition.groupField);
   if (!field) return <p data-view="pivot">Bu görünüm için gruplama alanı tanımlanmamış.</p>;
+  const counts = groupCounts(rows, field, summary);
+  const notice = summaryNotice(summary);
   return (
     <section data-view="pivot">
-      <p>Özet tablo yalnız bu sayfadaki kayıtları kapsar.</p>
+      <p>
+        {counts.scope === 'all'
+          ? 'Özet bütün uygun kayıtları kapsar. Toplam ' + counts.total + ' kayıt.'
+          : 'Özet tablo yalnız bu sayfadaki kayıtları kapsar.'}
+      </p>
+      {notice && <p role="status">{notice}</p>}
       <div
         className="collection-scroll"
         tabIndex={0}
@@ -13,7 +20,7 @@ export default function PivotView({ definition, rows }: ViewProps) {
         aria-label="Özet tablo yatay kaydırma"
       >
         <table className="collection-table">
-          <caption className="collection-sr-only">Duruma göre kayıt sayısı</caption>
+          <caption className="collection-sr-only">{field.label} alanına göre kayıt sayısı</caption>
           <thead>
             <tr>
               <th scope="col">{field.label}</th>
@@ -21,17 +28,17 @@ export default function PivotView({ definition, rows }: ViewProps) {
             </tr>
           </thead>
           <tbody>
-            {groupRows(rows, field).map((group) => (
+            {counts.groups.map((group) => (
               <tr key={group.key}>
                 <th scope="row">{group.label}</th>
-                <td>{group.rows.length}</td>
+                <td>{group.count}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <th scope="row">Sayfa toplamı</th>
-              <td>{rows.length}</td>
+              <th scope="row">{counts.scope === 'all' ? 'Toplam' : 'Sayfa toplamı'}</th>
+              <td>{counts.total}</td>
             </tr>
           </tfoot>
         </table>

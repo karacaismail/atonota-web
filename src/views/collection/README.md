@@ -6,7 +6,8 @@ Ana uygulama bağlantısını `foundation` ve `shell` işleri yapar.
 ## Kullanım
 
 Bileşen, ortak tema ve React Router sağlayıcısının içinde çalışır.
-Metadata tanımı `api-client` işinin `getDocType` çağrısından gelir:
+Metadata tanımı `api-client` işinin `getDocType` çağrısından gelir.
+Liste kaynağı ortak `listDocuments` istemcisine bağlanır:
 
 ```tsx
 const docType = await apiClient.getDocType('Örnek Kayıt', undefined, { signal });
@@ -15,13 +16,14 @@ if (docType.status !== 'fresh') return;
 const definition = createDefinition(docType.meta, {
   label: 'Örnek kayıtlar',
 });
+const source = createApiSource(apiClient);
 
-<CollectionView definition={definition} source={collectionSource} mode="dark" />;
+<CollectionView definition={definition} source={source} mode="dark" />;
 ```
 
-`apiClient.getDocType`, `/api/method/platform_core.api.meta.get_doctype` ucunu çağırır ve `message` zarfını açarak doğrulanmış `DocTypeMeta` nesnesini `meta` alanında döndürür.
-Geliştirme ve testlerde `src/mocks/` içindeki `sampleDocTypeMeta` sahte yanıtı bu ucu sözleşmeye uygun biçimde karşılar.
-Özet veya zaman görünümlerinin alan rolleri (`groupField`, `startField`, `endField`, `durationField`) gerekirse `createDefinition` ikinci parametresinde verilir.
+`apiClient.getDocType`, `/api/method/platform_core.api.meta.get_doctype` ucunu çağırır.
+Özet veya zaman görünümlerinin alan rolleri `createDefinition` ikinci parametresinde verilir.
+Bu roller `groupField`, `startField`, `endField` ve `durationField` alanlarıdır.
 
 Başlık, `label` alanındaki Türkçe etiketten gelir.
 Etiket verilmezse başlık “Kayıtlar” olur.
@@ -41,26 +43,33 @@ Hassasiyet işareti korunur. Bu işaret kullanıcıya yetki vermez.
 Bilinmeyen çizici güvenli düz metin gösterir.
 Metne JSON tırnakları eklenmez. HTML çalıştırılmaz.
 
-Liste ve sayfalama için Frappe `/api/v2/document` ucu kullanılacaktır.
-`api-client` bu uç için tipli istemciyi ve sahte işleyiciyi kurmaktadır.
-Tipli istemci `main` dalına girdiğinde `CollectionSource.list(request, signal)` doğrudan o istemciye bağlanacaktır.
+Liste ve sayfalama Frappe `/api/v2/document` ucunu kullanır.
+`createApiSource` isteği ortak `listDocuments` istemcisine verir.
 İstek gereken alanları, süzgeçleri, sıralamayı ve sayfa sınırını içerir.
+Süzgeç yoksa `filters` alanı gönderilmez.
 Eşit sıralama değerlerinde kayıt kimliği ikinci sırayı belirler.
-Yanıt şu biçimdedir:
+İptal sinyali istemciye kadar aktarılır.
+
+Frappe toplam kayıt sayısı vermez.
+Bu yüzden arayüz toplam sayı göstermez.
+“Sonraki sayfa” düğmesi yalnız `hasNextPage` doğruysa açıktır.
+Sayfa yanıtı şu biçimdedir:
 
 ```ts
 {
-  data: [{ name: 'EXAMPLE-001', subject: 'Örnek iş' }],
-  has_next_page: false,
-  // total isteğe bağlıdır. Frappe /api/v2/document toplam sayı döndürmez.
+  data: [{ name: 'ORNEK-0001', title: 'Örnek veri 1' }],
+  hasNextPage: true,
 }
 ```
 
-API bağlantısı yetki hatalarını (`forbidden`, `session_expired`, 401 ve 403) `CollectionError('unauthorized', ...)` biçimine çevirir.
-Diğer hatalarda kullanıcı yeniden deneyebilir.
+`createApiSource` hataları şöyle çevirir:
+
+- `forbidden` ve `session_expired` hatası `CollectionError('unauthorized', ...)` olur.
+- Öteki hatalar `CollectionError('error', ...)` olur. Kullanıcı yeniden deneyebilir.
+- İptal hatası olduğu gibi geçer. Önbellek iptal edilen isteği yok sayar.
+
 Hatalı sayfadan “Önceki sayfa” düğmesiyle dönülebilir.
 Ham sunucu hatası gösterilmez. Geç yanıt yeni sonucu değiştirmez.
-İptal sinyali API çağrısına kadar aktarılmalıdır.
 
 `query-cache.ts` geçici bir sorgu önbelleğidir.
 Veriyi bileşen durumunun dışında, yalnız bellekte tutar.
@@ -75,20 +84,20 @@ Bu geçici çözüm süreye bağlı yenileme yapmaz.
 Üst uygulama veri değişikliğinde kaynak veya tanımı yenilemelidir.
 Ortak sorgu önbelleği sunulunca bu dosya onunla değiştirilmelidir.
 
-## Geçici örnek kaynak
+## Örnek tanım ve testler
 
-Ortak `api-client` (`@/api` ve `@/mocks`) `main` dalına birleşmiştir.
-`example.ts`, metadata zarfını doğrudan `api-client` işinin `sampleDocTypeMeta` sahte yanıtına (`@/mocks`) ve `DocTypeMeta` türüne (`@/api`) bağlar; önizleme görünüm rollerini göstermek için yalnız örnek alan listesini genişletir.
-`model.test.ts`, `apiClient.getDocType` çağrısını `src/mocks/node` sahte sunucusu üzerinden çalıştırarak `createDefinition` uyumunu doğrular.
+`sample.ts` yalnız örnek kayıt tanımını tutar. Veri tutmaz.
+Tanım `sampleDocTypeMeta` nesnesine dayanır.
+Alanlar sahte sunucudaki örnek kayıtlarla eşleşir: `title`, `status` ve `amount`.
+Kayıtlar `@/mocks` içindeki `/api/v2/document` işleyicisinden gelir.
+Testler ortak istemciyi bu sahte sunucuya (MSW) bağlar.
+Yardımcı dosya `test-support/api.ts` konumundadır.
+Üretim giriş dosyası `sample.ts` dosyasını içe aktarmaz.
 
-`main` dalındaki sahte sunucuda genel belge listesi henüz yoktur; yalnız `/api/resource/Leave Application` bulunur.
-Liste ve sayfalama için Frappe `/api/v2/document` ucu kullanılacaktır ve `api-client` tipli istemciyi hazırlamaktadır.
-`fixtures/example-collection.json` yalnız `/api/v2/document` yanıt biçimindeki geçici liste satırlarını tutar.
-Kaldırma koşulu: `api-client` tipli `/api/v2/document` istemcisini ve MSW işleyicisini `main` dalına getirdiğinde `example.ts` içindeki yerel liste uyarlayıcısı ve `fixtures/example-collection.json` kaldırılır, doğrudan tipli istemciye bağlanılır.
-Örnek ekranda “Örnek veri” yazısı görünür.
-Üretim giriş dosyası örnek kaynağı içe aktarmaz.
+Önizleme ekranı da ortak istemciyi ve sahte sunucuyu kullanır.
+Sahte sunucu açıkken ekranda ortak “Örnek veri” bildirimi görünür.
 
-## Kapalı görünümler
+## Özet görünümleri
 
 `enableExperimentalCollectionViews` ayarının varsayılan değeri `false` değeridir.
 Tablo dışındaki beş görünüm bu ayarla kapalıdır.
@@ -96,13 +105,55 @@ Bunlar Kanban, Pivot, Rapor, Gantt ve Timesheet görünümleridir.
 Adres bu görünümlerden birini istese de tablo açılır.
 Kapalı görünümün JavaScript dosyası indirilmez.
 
-Gruplu sayım ve toplam için arka uç yeni uç yazmaktadır.
-O uç ve tipli `api-client` bağlantısı `main` dalına gelene kadar özet görünümler kapalı kalır.
-Sunucu özet ucu bağlanmadan ayarı ana uygulamada açmayın.
-Ayar açıkken örnek görünümler yalnız gelen sayfayı hesaplar.
-Örnek ekran bu sınırı belirtir.
-Sunucu toplamı veya tam veri raporu iddiası yoktur.
+Gruplu sayım ve toplam için arka uç `platform_core.api.collection.group_summary` ucunu yazdı.
+Bu ucun tipli istemcisi başka bir işte yazılıyor.
+İstemci `main` dalına gelene kadar ayarı ana uygulamada açmayın.
 
+Görünüm özet kaynağını `summarySource` özelliğinden alır.
+Kaynağın tek işlevi vardır:
+
+```ts
+interface CollectionSummarySource {
+  groupSummary(request: GroupSummaryRequest, signal: AbortSignal): Promise<unknown>;
+}
+```
+
+İstek `toGroupSummaryRequest` ile kurulur.
+İstekte `doctype`, `groupBy`, `filters` ve `limit` alanları vardır.
+Süzgeçler liste isteğiyle aynıdır. Sayfa bilgisi gönderilmez.
+`limit` değeri sözleşmedeki en büyük değerdir: 100.
+`aggregate` alanı isteğe bağlıdır. Şimdilik görünümler bu alanı göndermez.
+
+Yanıt `parseGroupSummary` ile doğrulanır.
+Yanıt biçimi sözleşmedeki `message` nesnesidir.
+Ad dönüşümü `listDocuments` ile aynıdır: `total_count` alanı `totalCount` olur.
+
+```ts
+{
+  groups: [{ value: 'Açık', count: 16 }],
+  totalCount: 23,
+  truncated: false,
+}
+```
+
+Tipli istemci gelince bağlantı tek satır olur.
+Örneğin istemci işlevinin adı `getGroupSummary` olsun:
+
+```ts
+const summarySource = {
+  groupSummary: (request, signal) => apiClient.getGroupSummary(request, { signal }),
+};
+```
+
+Pivot ve Rapor görünümleri bu kaynağı kullanır:
+
+- Kaynak yoksa yalnız gelen sayfa özetlenir. Ekran bunu açıkça yazar.
+- Kaynak varsa sunucu sayıları gösterilir. Toplam, `totalCount` değeridir.
+- `truncated` doğruysa ekran bazı grupların gösterilmediğini yazar.
+- Özet alınamazsa sayfa özeti gösterilir. Ham sunucu hatası gösterilmez.
+- Görünüm kalkınca ya da sorgu değişince eski özet isteği iptal edilir.
+
+Kanban, Gantt ve Timesheet yalnız gelen sayfayı gösterir.
 Örnek ekranda denemek için adrese `?experimentalViews=1` ekleyin.
 Bu adres seçeneği yalnız `preview/main.tsx` dosyasında okunur.
 Ana bileşen bu adres seçeneğini okumaz.
@@ -113,8 +164,7 @@ Bu teslimde kayıt değiştiren toplu işlem yoktur.
 
 ## Adres durumu
 
-Adres şu alanları taşır:
-`view`, `page`, `size`, `search`, `sort`, `direction`, `filter`, `value`.
+Adreste sekiz sorgu alanı bulunur. Bu alanlar `view`, `page`, `size`, `search`, `sort`, `direction`, `filter` ve `value` alanlarıdır.
 
 Sayfa boyutu 10, 20 veya 50 kayıttır.
 Arama ve süzgeç değişince ilk sayfa açılır.
@@ -134,8 +184,12 @@ Dokunma motoru `--hit-t/r/b/l` değerlerini sağlar.
 Odak modu `html[data-focus-mode="keyboard"]` alanından okunur.
 
 Bu dalda `src/design/` ve `src/engines/` dışa aktarımları henüz boştur.
-Bu nedenle `collection.css` içindeki odak ve dokunma alanı kuralları ile `preview/` klasöründeki geçici köprü dosyaları korunmaktadır.
-Her kopyanın başında kaldırma koşulu yazılıdır: `foundation` `main` dalına girince bu kopyalar silinir ve yerlerine şu ortak işlevler bağlanır:
+Bu yüzden iki geçici kopya duruyor.
+Birincisi `collection.css` içindeki odak ve dokunma alanı kurallarıdır.
+İkincisi `preview/` klasöründeki geçici köprü dosyalarıdır.
+Her kopyanın başında kaldırma koşulu yazılıdır.
+`foundation` işi `main` dalına girince bu kopyalar silinir.
+Yerlerine şu ortak işlevler bağlanır:
 
 - `buildAntdTheme`
 - `ensureDesignStyles`
@@ -145,7 +199,9 @@ Her kopyanın başında kaldırma koşulu yazılıdır: `foundation` `main` dal�
 Kontroller antd'nin açık bileşen alanlarını kullanır.
 Stil kurallarında iç sınıf seçicisi veya öncelik zorlaması yoktur.
 Azaltılmış harekette Select kapanış animasyonu başlatılmaz.
-Dokunmatik kaydırma sonrası tarayıcının son dokunma noktasında ürettiği hareketsiz `mousemove` olayı, klavyeyle seçilen etkin Select seçeneğini sıfırlamaz; gerçek fare hareketi seçeneği değiştirmeye devam eder.
+Dokunmatik kaydırmadan sonra tarayıcı hareketsiz bir `mousemove` olayı üretir.
+Bu olay klavyeyle seçilen Select seçeneğini sıfırlamaz.
+Gerçek fare hareketi seçeneği yine değiştirir.
 Klavye odağı normal temada tek alt çizgiyle görünür.
 Tablo kendi içinde yatay kayar. Sayfa yatay taşmaz.
 Görünür metinler bu teslimde en az 14 CSS px değerindedir.
@@ -164,7 +220,7 @@ npm run test:e2e
 Tarayıcı testleri `src/views/collection/e2e/*.spec.ts` konumundadır.
 Kök `playwright.config.ts` bu dalda hâlâ yalnız `./tests/e2e` klasörünü koşar.
 `foundation` kök ayarda `src/views/**/e2e` yolunu kapsamalı ve önizleme sunucusunu bağlamalıdır.
-Yerel kontrol için kullanılan geçici ayar Git'e girmez.
+Yerel kontrol için `.pane/qa/collection.config.mjs` geçici ayarı kullanıldı. Bu ayar Git'e girmez.
 Güncel komutlar ve sonuçlar `VERIFICATION.md` dosyasındadır.
 Firefox proje kararı gereği çalıştırılmaz.
 WebKit sonucu gerçek Safari sonucu değildir.

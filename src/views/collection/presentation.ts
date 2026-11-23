@@ -1,4 +1,4 @@
-import type { CollectionField, CollectionRow } from './types';
+import type { CollectionField, CollectionRow, SummaryState } from './types';
 import { cellText } from './model';
 const renderers = new Set([
   'Input',
@@ -58,4 +58,53 @@ export function groupRows(rows: CollectionRow[], field: CollectionField) {
     groups.set(key, group);
   }
   return [...groups.entries()].map(([key, group]) => ({ ...group, key }));
+}
+
+export interface GroupCount {
+  key: string;
+  label: string;
+  count: number;
+}
+/** Gruplar ve kapsam. Sunucu özeti hazırsa bütün kayıtları, değilse yalnız sayfayı sayar. */
+export function groupCounts(
+  rows: CollectionRow[],
+  field: CollectionField,
+  summary: SummaryState = { status: 'off' },
+): { scope: 'all' | 'page'; groups: GroupCount[]; total: number; truncated: boolean } {
+  if (summary.status === 'ready') {
+    return {
+      scope: 'all',
+      groups: summary.summary.groups.map((group) => ({
+        key: String(group.value ?? ''),
+        label:
+          group.value === null
+            ? 'Bilgi yok'
+            : (field.choices.find((choice) => choice.value === String(group.value))?.label ??
+              String(group.value)),
+        count: group.count,
+      })),
+      total: summary.summary.totalCount,
+      truncated: summary.summary.truncated,
+    };
+  }
+  return {
+    scope: 'page',
+    groups: groupRows(rows, field).map((group) => ({
+      key: group.key,
+      label: group.label,
+      count: group.rows.length,
+    })),
+    total: rows.length,
+    truncated: false,
+  };
+}
+/** Özet durumunu anlatan cümle. Sayfa özeti kullanılırken boş döner. */
+export function summaryNotice(summary: SummaryState = { status: 'off' }): string | undefined {
+  if (summary.status === 'loading') return 'Sunucu özeti yükleniyor. Şimdilik bu sayfa özetlenir.';
+  if (summary.status === 'error') return 'Sunucu özeti alınamadı. Yalnız bu sayfa özetlenir.';
+  if (summary.status === 'unauthorized')
+    return 'Sunucu özetini görme yetkiniz yok. Yalnız bu sayfa özetlenir.';
+  if (summary.status === 'ready' && summary.summary.truncated)
+    return 'Grup sayısı sınırı aşıldı. Bazı gruplar gösterilmiyor.';
+  return undefined;
 }
