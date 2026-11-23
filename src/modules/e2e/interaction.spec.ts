@@ -53,3 +53,24 @@ test('keyboard focus remains visible without a surrounding ring', async ({ page 
   await button.click();
   await expect(page.locator('html')).toHaveAttribute('data-focus-mode', 'pointer');
 });
+
+test('a long leave heading wraps inside the review', async ({ page }) => {
+  const name = 'A'.repeat(120);
+  const leave = { name, status: 'Open', docstatus: 0 };
+  const listPath = '/api/resource/Leave%20Application';
+  const detailPath = `${listPath}/${name}`;
+  await page.route(
+    ({ pathname }) => pathname === listPath || pathname === detailPath,
+    (route) =>
+      route.fulfill({
+        json: { data: new URL(route.request().url()).pathname === detailPath ? leave : [leave] },
+      }),
+  );
+  await page.goto('/hr');
+  await page.getByRole('button', { name: 'İncele', exact: true }).first().click();
+  const heading = page.getByRole('heading', { name, exact: true, level: 2 });
+  await expect(heading).toHaveCSS('overflow-wrap', 'break-word');
+  expect(await heading.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+    true,
+  );
+});

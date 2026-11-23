@@ -3,20 +3,26 @@ import { createApiClient, createCsrfStore, readApiConfig } from '@/api';
 import { createModuleClient } from '../client';
 
 describe('shared API adapter', () => {
-  it('reads the profile through the permission-checked bootstrap endpoint', async () => {
-    const api = createApiClient({
-      config: readApiConfig({}, 'https://example.test'),
-      csrf: createCsrfStore(),
-    });
-    const { sampleBootstrap } = await import('@/mocks');
-    vi.spyOn(api, 'getBootstrap').mockResolvedValue(sampleBootstrap);
-    const client = createModuleClient(api);
-    expect(await client.getProfile?.({})).toEqual({
-      name: sampleBootstrap.user.name,
-      fullName: sampleBootstrap.user.full_name,
-      roles: sampleBootstrap.user.roles,
-    });
-  });
+  it.each([undefined, true] as const)(
+    'preserves the profile truncation flag %s',
+    async (truncated) => {
+      const api = createApiClient({
+        config: readApiConfig({}, 'https://example.test'),
+        csrf: createCsrfStore(),
+      });
+      const { sampleBootstrap } = await import('@/mocks');
+      vi.spyOn(api, 'getBootstrap').mockResolvedValue(
+        truncated ? { ...sampleBootstrap, truncated } : sampleBootstrap,
+      );
+      const client = createModuleClient(api);
+      expect(await client.getProfile?.({})).toEqual({
+        name: sampleBootstrap.user.name,
+        fullName: sampleBootstrap.user.full_name,
+        roles: sampleBootstrap.user.roles,
+        truncated,
+      });
+    },
+  );
   it('requests visible leave fields with stable server-side paging', async () => {
     const api = createApiClient({
       config: readApiConfig({}, 'https://example.test'),

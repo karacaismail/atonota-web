@@ -57,12 +57,18 @@ function AccountProfile() {
     [get, env?.user],
   );
   const read = useRead(!env?.profile && get ? load : null, 'profile');
-  const renderProfile = (profile: { fullName: string; roles: readonly string[] }) => (
+  const renderProfile = (profile: {
+    fullName: string;
+    roles: readonly string[];
+    truncated?: boolean;
+  }) => (
     <dl>
       <dt>{copy.user}</dt>
       <dd>{profile.fullName}</dd>
       <dt>{copy.roles}</dt>
-      <dd>{profile.roles.join(', ') || copy.notProvided}</dd>
+      <dd>
+        {profile.truncated ? copy.rolesTruncated : profile.roles.join(', ') || copy.notProvided}
+      </dd>
     </dl>
   );
   return (
