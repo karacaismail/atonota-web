@@ -10,6 +10,10 @@ export const MOCK_SCENARIO_KEY = 'atonota.mock-senaryo';
 const SCENARIOS: Record<string, () => void> = {
   'cikis-hatasi': () => setLogout('failure'),
   'cikis-yabanci-adres': () => setLogout('foreign_url'),
+  /** Sağlayıcı kaydetme ve deneme uçları hız sınırı (429 `gateway_busy`) verir. */
+  'saglayici-mesgul': () => {
+    mockState.providerBusy = true;
+  },
 };
 
 function setLogout(outcome: LogoutOutcome): void {

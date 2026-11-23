@@ -13,6 +13,8 @@ type LoginUrl = IdentityComponents['schemas']['LoginUrl'];
 type LogoutUrl = IdentityComponents['schemas']['LogoutUrl'];
 type Proposal = AiComponents['schemas']['Proposal'];
 type GatewayResult = GatewayComponents['schemas']['Result'];
+type ProviderCatalog = GatewayComponents['schemas']['ProviderCatalog'];
+type ConnectionStatus = GatewayComponents['schemas']['ConnectionCheck']['status'];
 
 export const SAMPLE_USER = 'ornek.kisi@example.test';
 export const SAMPLE_CSRF_TOKEN = 'ornek-csrf-belirteci';
@@ -43,8 +45,15 @@ export const sampleBootstrap: Bootstrap = {
     number_format: '#.###,##',
     rounding_method: "Banker's Rounding",
     time_zone: 'Europe/Istanbul',
+    date_format: 'dd.mm.yyyy',
+    time_format: 'HH:mm',
+    first_day_of_the_week: 'Monday',
   },
   installed_apps: ['frappe', 'platform_core'],
+  languages: [
+    { code: 'en', name: 'English' },
+    { code: 'tr', name: 'Türkçe' },
+  ],
   meta_hash: 'b'.repeat(64),
   perm_version: 'c'.repeat(64),
   sidebars: [],
@@ -241,3 +250,203 @@ export const sampleCollection = Array.from({ length: 23 }, (_unused, index) => {
     modified: `2026-11-${String(1 + (number % 22)).padStart(2, '0')} 09:00:00.000000`,
   };
 });
+
+// Yapay zekâ sağlayıcı bağlantıları (model geçidi sözleşmesi: provider_catalog, save_connection,
+// check_connection). Katalog, arka uçtaki `provider_catalog.json` dosyasının sözleşmeye göre
+// süzülmüş hâlidir: `adapter`, `default_url` ve `target` alanları tarayıcıya gitmez. Etiketler
+// oturum diline çevrilmiş gelir; örnek oturum Türkçedir.
+const secretField = {
+  name: 'api_key',
+  label: 'API anahtarı',
+  kind: 'secret',
+  required: true,
+  scope: 'api',
+  description: 'Sağlayıcı panelinden aldığınız gizli anahtar.',
+} as const;
+const serviceAddressField = (description: string) =>
+  ({
+    name: 'base_url',
+    label: 'Hizmet adresi',
+    kind: 'url',
+    required: true,
+    scope: 'api',
+    description,
+  }) as const;
+const commonFields: ProviderCatalog['providers'][number]['common_fields'] = [
+  {
+    name: 'account_name',
+    label: 'Hesap adı',
+    kind: 'text',
+    required: true,
+    scope: 'account',
+    description: 'Bu sitedeki sağlayıcı hesabının adı.',
+  },
+  {
+    name: 'api_name',
+    label: 'Bağlantı adı',
+    kind: 'text',
+    required: true,
+    scope: 'api',
+    description: 'Bu API bağlantısının adı.',
+  },
+];
+
+export const sampleProviderCatalog: ProviderCatalog = {
+  version: 1,
+  categories: [{ id: 'ai_llm', label: 'AI LLM', description: 'Büyük dil modeli sağlayıcıları.' }],
+  providers: [
+    {
+      id: 'openai',
+      category: 'ai_llm',
+      label: 'OpenAI',
+      description: 'Kurum API anahtarıyla OpenAI API.',
+      auth_type: 'api_key',
+      fields: [
+        secretField,
+        {
+          name: 'organization_id',
+          label: 'Kurum kimliği',
+          kind: 'text',
+          required: false,
+          scope: 'account',
+          description: 'İsteğe bağlı kurum kimliği. Geçit bu hesabın her isteğinde gönderir.',
+        },
+        {
+          name: 'project_id',
+          label: 'Proje kimliği',
+          kind: 'text',
+          required: false,
+          scope: 'account',
+          description: 'İsteğe bağlı proje kimliği. Geçit bu hesabın her isteğinde gönderir.',
+        },
+      ],
+      common_fields: commonFields,
+    },
+    {
+      id: 'anthropic',
+      category: 'ai_llm',
+      label: 'Anthropic',
+      description: 'Çalışma alanı API anahtarıyla Anthropic API.',
+      auth_type: 'api_key',
+      fields: [secretField],
+      common_fields: commonFields,
+    },
+    {
+      id: 'gemini',
+      category: 'ai_llm',
+      label: 'Google Gemini',
+      description: 'Google AI Studio API anahtarıyla Gemini API.',
+      auth_type: 'api_key',
+      fields: [secretField],
+      common_fields: commonFields,
+    },
+    {
+      id: 'openai_compatible',
+      category: 'ai_llm',
+      label: 'OpenAI uyumlu hizmet',
+      description: 'OpenAI istek biçimini kendi adresinde kabul eden hizmet.',
+      auth_type: 'bearer',
+      fields: [
+        serviceAddressField('İşlem yolu olmadan hizmet adresi.'),
+        { ...secretField, description: 'Hizmetin gizli taşıyıcı belirteci.' },
+      ],
+      common_fields: commonFields,
+    },
+    {
+      id: 'ollama',
+      category: 'ai_llm',
+      label: 'Ollama',
+      description: 'Platformun kendi ağındaki model sunucusu. Anahtar istemez.',
+      auth_type: 'none',
+      fields: [serviceAddressField('Platformun kendi ağındaki model sunucusunun adresi.')],
+      common_fields: commonFields,
+    },
+  ],
+};
+
+/** Frappe kayıt türleri. Adlar arka uçtaki DocType adlarıdır. */
+export const AI_PROVIDER_DOCTYPE = 'PLT AI Provider';
+export const AI_ACCOUNT_DOCTYPE = 'PLT AI Account';
+export const AI_API_DOCTYPE = 'PLT AI API';
+
+export interface SampleAiProvider {
+  name: string;
+  provider_name: string;
+  catalog_provider: string;
+  enabled: 0 | 1;
+  modified: string;
+}
+export interface SampleAiAccount {
+  name: string;
+  account_name: string;
+  provider: string;
+  enabled: 0 | 1;
+  modified: string;
+}
+/** API kaydının okunan alanları. Parola alanı (`api_key`) listede hiç yoktur. */
+export interface SampleAiConnection {
+  name: string;
+  api_name: string;
+  account: string;
+  connection_status: ConnectionStatus | 'not_checked';
+  connection_checked_at: string | null;
+  health_status: 'healthy' | 'unhealthy' | 'auth_failed';
+  enabled: 0 | 1;
+  modified: string;
+}
+
+export const sampleAiProviders: SampleAiProvider[] = [
+  {
+    name: 'OpenAI',
+    provider_name: 'OpenAI',
+    catalog_provider: 'openai',
+    enabled: 1,
+    modified: '2026-11-20 09:00:00.000001',
+  },
+];
+export const sampleAiAccounts: SampleAiAccount[] = [
+  {
+    name: 'ORNEK-HESAP-0001',
+    account_name: 'Örnek hesap',
+    provider: 'OpenAI',
+    enabled: 1,
+    modified: '2026-11-20 09:00:00.000002',
+  },
+];
+export const sampleAiConnections: SampleAiConnection[] = [
+  {
+    name: 'ORNEK-API-0001',
+    api_name: 'Birincil bağlantı',
+    account: 'ORNEK-HESAP-0001',
+    connection_status: 'connected',
+    connection_checked_at: '2026-11-20 09:05:00',
+    health_status: 'healthy',
+    enabled: 1,
+    modified: '2026-11-20 09:05:00.000003',
+  },
+  {
+    name: 'ORNEK-API-0002',
+    api_name: 'Yedek bağlantı',
+    account: 'ORNEK-HESAP-0001',
+    connection_status: 'not_checked',
+    connection_checked_at: null,
+    health_status: 'healthy',
+    enabled: 1,
+    modified: '2026-11-21 09:00:00.000004',
+  },
+];
+
+/**
+ * Sahte canlı denemenin sonucu gizli anahtarın değerinden gelir. Böylece testler her sonucu
+ * sahte sunucuyla sınar. Gerçek sağlayıcıya istek gitmez. Anahtar yanıta hiç yazılmaz.
+ */
+export const SAMPLE_SECRET_RESULTS: Record<string, ConnectionStatus> = {
+  'gecersiz-anahtar': 'invalid_credentials',
+  'izin-yok': 'permission_denied',
+  'kota-dolu': 'quota_exceeded',
+  'ag-hatasi': 'network_error',
+  'saglayici-hatasi': 'provider_error',
+  'kayit-eksik': 'configuration_error',
+};
+/** Bu adres onaylı adres listesinde değildir. */
+export const SAMPLE_UNAPPROVED_URL = 'https://onaysiz.example.test';

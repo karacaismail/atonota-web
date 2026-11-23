@@ -7,6 +7,18 @@ import { GROUP_SUMMARY_PATH } from '@/api/group-summary';
 import type { components as CollectionComponents } from '@/api/generated/platform_core-collection';
 
 import {
+  AI_ACCOUNT_DOCTYPE,
+  AI_API_DOCTYPE,
+  AI_PROVIDER_DOCTYPE,
+  SAMPLE_SECRET_RESULTS,
+  SAMPLE_UNAPPROVED_URL,
+  type SampleAiAccount,
+  type SampleAiConnection,
+  type SampleAiProvider,
+  sampleAiAccounts,
+  sampleAiConnections,
+  sampleAiProviders,
+  sampleProviderCatalog,
   SAMPLE_USER as SAMPLE_ACCOUNT,
   sampleAccessSummary,
   sampleInstallations,
@@ -66,9 +78,19 @@ export const mockState: {
   gatewayFailure: GatewayFailure | undefined;
   /** Çıkış ucunun yanıtı. Testler hata yolunu böyle sınar. */
   logoutOutcome: LogoutOutcome;
+  /** Yapay zekâ sağlayıcı, hesap ve API bağlantısı kayıtları. Parola alanı burada yoktur. */
+  aiProviders: Map<string, SampleAiProvider>;
+  aiAccounts: Map<string, SampleAiAccount>;
+  aiConnections: Map<string, SampleAiConnection>;
+  /** Doğruysa kaydetme ve deneme uçları hız sınırı (429 `gateway_busy`) verir. */
+  providerBusy: boolean;
 } = {
   gatewayFailure: undefined,
   logoutOutcome: 'ok',
+  aiProviders: new Map(sampleAiProviders.map((item) => [item.name, { ...item }])),
+  aiAccounts: new Map(sampleAiAccounts.map((item) => [item.name, { ...item }])),
+  aiConnections: new Map(sampleAiConnections.map((item) => [item.name, { ...item }])),
+  providerBusy: false,
   signedIn: true,
   proposals: new Map<string, ReturnType<typeof sampleProposal>>(),
   leaves: new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }])),
@@ -88,6 +110,138 @@ export function resetMockState(): void {
   mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
   mockState.records = sampleRecords();
   mockState.installations = sampleInstallations.map((item) => ({ ...item }));
+  mockState.aiProviders = new Map(sampleAiProviders.map((item) => [item.name, { ...item }]));
+  mockState.aiAccounts = new Map(sampleAiAccounts.map((item) => [item.name, { ...item }]));
+  mockState.aiConnections = new Map(sampleAiConnections.map((item) => [item.name, { ...item }]));
+  mockState.providerBusy = false;
+  connectionSecrets.clear();
+  gatewayCalls.save = [];
+  gatewayCalls.check = [];
+}
+
+/**
+ * Kaydedilen sırlar. Yalnız sahte canlı denemenin sonucunu seçmek için tutulur.
+ * Dışa aktarılmaz, hiçbir yanıta ve kayıt listesine yazılmaz.
+ */
+const connectionSecrets = new Map<string, string>();
+/** Kullanıcı başına hız sınırı sayacı: uç başına istek zamanları (ms). */
+const gatewayCalls: { save: number[]; check: number[] } = { save: [], check: [] };
+const GATEWAY_RATE_LIMIT = 10;
+const GATEWAY_RATE_WINDOW_MS = 60_000;
+
+/** Sözleşme: her kullanıcı her ucu 60 saniyede en çok 10 kez çağırır. Aşımda 429 `gateway_busy`. */
+function gatewayBusy(endpoint: keyof typeof gatewayCalls): boolean {
+  if (mockState.providerBusy) return true;
+  const now = Date.now();
+  const recent = gatewayCalls[endpoint].filter((time) => now - time < GATEWAY_RATE_WINDOW_MS);
+  gatewayCalls[endpoint] = recent;
+  if (recent.length >= GATEWAY_RATE_LIMIT) return true;
+  recent.push(now);
+  return false;
+}
+
+function gatewayError(status: number, error: string, extra: Record<string, unknown> = {}) {
+  return HttpResponse.json({ message: { error, ...extra } }, { status });
+}
+
+function catalogProvider(id: unknown) {
+  return sampleProviderCatalog.providers.find((provider) => provider.id === id);
+}
+
+const URL_FIELD_PATTERN = /^https?:\/\/[^\s/?#]+[^\s]*$/;
+
+interface ConnectionBody {
+  provider?: unknown;
+  account?: unknown;
+  account_name?: unknown;
+  api_name?: unknown;
+  fields?: unknown;
+}
+
+/** Kaydetme isteğini sözleşmeye göre denetler. Hata varsa yanıtı, yoksa `undefined` döner. */
+function validateConnection(body: ConnectionBody): Response | undefined {
+  const provider = catalogProvider(body.provider);
+  if (!provider) return gatewayError(400, 'unknown_provider');
+  const hasAccount = body.account !== undefined;
+  const hasAccountName = body.account_name !== undefined;
+  if (hasAccount === hasAccountName)
+    return gatewayError(400, 'invalid_fields', { fields: ['account'] });
+  const name = (value: unknown) =>
+    typeof value === 'string' && value.trim().length > 0 && value.length <= 140;
+  const invalid: string[] = [];
+  if (hasAccountName && !name(body.account_name)) invalid.push('account_name');
+  if (!name(body.api_name)) invalid.push('api_name');
+  const fields =
+    typeof body.fields === 'object' && body.fields !== null && !Array.isArray(body.fields)
+      ? (body.fields as Record<string, unknown>)
+      : undefined;
+  if (!fields) return gatewayError(400, 'invalid_fields', { fields: ['fields'] });
+  if (hasAccount) {
+    const account = mockState.aiAccounts.get(String(body.account));
+    const record = account ? mockState.aiProviders.get(account.provider) : undefined;
+    if (!account || record?.catalog_provider !== provider.id) invalid.push('account');
+  }
+  const known = new Set(provider.fields.map((field) => field.name));
+  for (const key of Object.keys(fields)) if (!known.has(key)) invalid.push(key);
+  for (const field of provider.fields) {
+    const value = fields[field.name];
+    if (value === undefined) {
+      if (field.required) invalid.push(field.name);
+      continue;
+    }
+    if (typeof value !== 'string' || value.length > 4096) {
+      invalid.push(field.name);
+      continue;
+    }
+    if (field.required && value.trim().length === 0) invalid.push(field.name);
+    else if (field.kind === 'url' && value.length > 0 && !URL_FIELD_PATTERN.test(value))
+      invalid.push(field.name);
+    // Hesap alanı yalnız yeni hesapla yazılır (sözleşme: ConnectionInput.fields).
+    else if (field.scope === 'account' && hasAccount && value.length > 0) invalid.push(field.name);
+  }
+  if (invalid.length > 0) {
+    return gatewayError(400, 'invalid_fields', { fields: [...new Set(invalid)] });
+  }
+  return undefined;
+}
+
+function nextAiName(prefix: string, size: number): string {
+  return `${prefix}-${String(size + 1).padStart(4, '0')}`;
+}
+
+/** Sahte canlı denemenin sonucu. Gerçek sağlayıcıya istek gitmez. */
+function sampleCheckStatus(api: SampleAiConnection): SampleAiConnection['connection_status'] {
+  const secret = connectionSecrets.get(api.name);
+  if (secret !== undefined) {
+    const forced = SAMPLE_SECRET_RESULTS[secret];
+    if (forced) return forced;
+  }
+  if (connectionSecrets.get(`${api.name}:base_url`)?.startsWith(SAMPLE_UNAPPROVED_URL)) {
+    return 'endpoint_not_approved';
+  }
+  return 'connected';
+}
+
+/** Kaydı genel satır biçimine çevirir. */
+const asRow = (row: object): Record<string, unknown> => ({ ...row });
+
+/** Frappe API v2 listesi için genel alan seçimi ve sıralama. */
+function listRows<T extends Record<string, unknown>>(rows: T[], url: URL) {
+  const fields = parseJsonParam(url, 'fields') ?? ['name'];
+  const filters = parseJsonParam(url, 'filters');
+  if (!Array.isArray(fields) || typeof filters === 'symbol') return undefined;
+  const start = Number(url.searchParams.get('start') ?? 0);
+  const limit = Number(url.searchParams.get('limit') ?? 20);
+  const sorted = rows
+    .filter((row) => rowMatches(row, filters))
+    .sort(rowOrder(url.searchParams.get('order_by')));
+  const page = sorted
+    .slice(start, start + limit)
+    .map((row) => Object.fromEntries(fields.map((field) => [String(field), row[String(field)]])));
+  return HttpResponse.json({
+    data: page as JsonBodyType,
+    has_next_page: sorted.length > start + limit,
+  });
 }
 
 let versionCounter = 0;
@@ -176,9 +330,9 @@ const COMPARE: Record<string, (left: unknown, right: unknown) => boolean> = {
   'not in': (left, right) => Array.isArray(right) && !right.includes(left),
 };
 
-function collectionMatches(row: CollectionRow, filters: unknown): boolean {
+function rowMatches(row: Record<string, unknown>, filters: unknown): boolean {
   if (filters === undefined || filters === null) return true;
-  const value = (field: unknown) => (row as Record<string, unknown>)[String(field)];
+  const value = (field: unknown) => row[String(field)];
   const test = (field: unknown, operator: unknown, expected: unknown) =>
     COMPARE[String(operator)]?.(value(field), expected) ?? false;
   if (Array.isArray(filters)) {
@@ -190,17 +344,14 @@ function collectionMatches(row: CollectionRow, filters: unknown): boolean {
   );
 }
 
-function collectionOrder(orderBy: string | null) {
+function rowOrder(orderBy: string | null) {
   const [field = 'modified', direction = 'desc'] = (orderBy ?? 'modified desc').split(/\s+/);
   const sign = direction.toLowerCase() === 'asc' ? 1 : -1;
-  return (a: CollectionRow, b: CollectionRow) =>
-    sign *
-    String((a as Record<string, unknown>)[field]).localeCompare(
-      String((b as Record<string, unknown>)[field]),
-      'tr',
-      { numeric: true },
-    );
+  return (a: Record<string, unknown>, b: Record<string, unknown>) =>
+    sign * String(a[field]).localeCompare(String(b[field]), 'tr', { numeric: true });
 }
+const collectionMatches = (row: CollectionRow, filters: unknown) => rowMatches(row, filters);
+const collectionOrder = rowOrder;
 
 const SUMMARY_FILTER_OPERATORS = {
   ...COMPARE,
@@ -813,6 +964,122 @@ export const handlers = [
       return HttpResponse.json({ server_time: SERVER_TIME, message: { revoked } });
     },
   ),
+
+  // Yapay zekâ sağlayıcı kayıtları (Frappe API v2 listesi). Parola alanı kayıtlarda yoktur.
+  http.get('*/api/v2/document/:doctype', ({ request, params }) => {
+    const doctype = String(params.doctype);
+    const rows: Record<string, unknown>[] | undefined =
+      doctype === AI_API_DOCTYPE
+        ? [...mockState.aiConnections.values()].map(asRow)
+        : doctype === AI_ACCOUNT_DOCTYPE
+          ? [...mockState.aiAccounts.values()].map(asRow)
+          : doctype === AI_PROVIDER_DOCTYPE
+            ? [...mockState.aiProviders.values()].map(asRow)
+            : undefined;
+    if (!rows) return undefined;
+    if (!mockState.signedIn) {
+      return HttpResponse.json({ errors: [{ type: 'SessionExpired' }] }, { status: 401 });
+    }
+    return (
+      listRows(rows, new URL(request.url)) ??
+      HttpResponse.json({ errors: [{ type: 'ValidationError' }] }, { status: 417 })
+    );
+  }),
+
+  // Sağlayıcı kataloğu, bağlantı kaydı ve canlı deneme (model geçidi sözleşmesi).
+  http.post('*/api/method/platform_core.api.model.provider_catalog', ({ request }) => {
+    return guard(request, { write: true }) ?? message(sampleProviderCatalog);
+  }),
+
+  http.post('*/api/method/platform_core.api.model.save_connection', async ({ request }) => {
+    const denied = guard(request, { write: true });
+    if (denied) return denied;
+    if (gatewayBusy('save')) return gatewayError(429, 'gateway_busy');
+    const body = (await request.json().catch(() => null)) as ConnectionBody | null;
+    if (!body) return gatewayError(400, 'invalid_fields', { fields: ['fields'] });
+    const invalid = validateConnection(body);
+    if (invalid) return invalid;
+    const definition = catalogProvider(body.provider);
+    if (!definition) return gatewayError(400, 'unknown_provider');
+    const fields = body.fields as Record<string, string>;
+
+    let provider = [...mockState.aiProviders.values()].find(
+      (item) => item.catalog_provider === definition.id,
+    );
+    if (!provider) {
+      provider = {
+        name: definition.label,
+        provider_name: definition.label,
+        catalog_provider: definition.id,
+        enabled: 1,
+        modified: nextVersion(),
+      };
+      mockState.aiProviders.set(provider.name, provider);
+    }
+    let accountName = typeof body.account === 'string' ? body.account : undefined;
+    if (accountName === undefined) {
+      const account: SampleAiAccount = {
+        name: nextAiName('ORNEK-HESAP', mockState.aiAccounts.size),
+        account_name: String(body.account_name).trim(),
+        provider: provider.name,
+        enabled: 1,
+        modified: nextVersion(),
+      };
+      mockState.aiAccounts.set(account.name, account);
+      accountName = account.name;
+    }
+    const api: SampleAiConnection = {
+      name: nextAiName('ORNEK-API', mockState.aiConnections.size),
+      api_name: String(body.api_name).trim(),
+      account: accountName,
+      connection_status: 'not_checked',
+      connection_checked_at: null,
+      health_status: 'healthy',
+      enabled: 1,
+      modified: nextVersion(),
+    };
+    mockState.aiConnections.set(api.name, api);
+    for (const field of definition.fields) {
+      const value = fields[field.name];
+      if (field.kind === 'secret' && value) connectionSecrets.set(api.name, value);
+      if (field.name === 'base_url' && value) connectionSecrets.set(`${api.name}:base_url`, value);
+    }
+    return message({
+      provider: provider.name,
+      account: accountName,
+      api: api.name,
+      connection_status: 'not_checked',
+    });
+  }),
+
+  http.post('*/api/method/platform_core.api.model.check_connection', async ({ request }) => {
+    const denied = guard(request, { write: true });
+    if (denied) return denied;
+    if (gatewayBusy('check')) return gatewayError(429, 'gateway_busy');
+    const body = (await request.json().catch(() => null)) as { api?: unknown } | null;
+    const api = typeof body?.api === 'string' ? mockState.aiConnections.get(body.api) : undefined;
+    if (!api) return gatewayError(400, 'invalid_route');
+    const status = sampleCheckStatus(api);
+    const checked = nextVersion().slice(0, 19);
+    mockState.aiConnections.set(api.name, {
+      ...api,
+      connection_status: status,
+      connection_checked_at: checked,
+      health_status:
+        status === 'connected'
+          ? 'healthy'
+          : status === 'invalid_credentials'
+            ? 'auth_failed'
+            : 'unhealthy',
+      modified: nextVersion(),
+    });
+    return message({
+      api: api.name,
+      status,
+      checked_at: checked,
+      models_visible: status === 'connected' ? 3 : null,
+    });
+  }),
 
   http.post('*/api/method/platform_core.api.model.complete', async ({ request }) => {
     const denied = guard(request, { write: true });

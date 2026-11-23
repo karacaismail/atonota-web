@@ -26,6 +26,7 @@ export interface ApiErrorInit {
   code?: string | undefined;
   retryAfterSeconds?: number | undefined;
   needsSessionCheck?: boolean | undefined;
+  fields?: readonly string[] | undefined;
 }
 
 export class ApiError extends Error {
@@ -35,6 +36,11 @@ export class ApiError extends Error {
   /** Sunucunun hata kodu. Örneğin `exc_type` ya da model geçidinin `error` değeri. */
   readonly code: string | undefined;
   readonly retryAfterSeconds: number | undefined;
+  /**
+   * Sunucunun hatalı bulduğu alan adları. Yalnız model geçidinin `invalid_fields` yanıtında dolar.
+   * Ekran bu alanları formda işaretler. Değerler ya da sunucu iletisi taşınmaz (SZ-8).
+   */
+  readonly fields: readonly string[] | undefined;
   /**
    * Belirsiz 403 yanıtında doğrudur. Oturum bitmiş olabilir.
    * İstemci oturumu ayrı ve önbelleksiz bir istekle doğrular.
@@ -48,6 +54,7 @@ export class ApiError extends Error {
     this.status = init.status;
     this.code = init.code;
     this.retryAfterSeconds = init.retryAfterSeconds;
+    this.fields = init.fields;
     this.needsSessionCheck = init.needsSessionCheck ?? false;
   }
 }
@@ -93,6 +100,17 @@ function readCode(body: unknown): string | undefined {
   return undefined;
 }
 
+/** Geçidin `message.fields` listesini okur. Yalnız metin öğeler alınır. */
+function readFields(body: unknown): string[] | undefined {
+  if (!isRecord(body) || !isRecord(body.message) || !Array.isArray(body.message.fields)) {
+    return undefined;
+  }
+  const fields = body.message.fields.filter(
+    (item): item is string => typeof item === 'string' && item.length > 0,
+  );
+  return fields.length > 0 ? fields : undefined;
+}
+
 function readRetryAfter(headers: Headers | undefined): number | undefined {
   const value = headers?.get('Retry-After');
   if (!value) return undefined;
@@ -104,7 +122,7 @@ function readRetryAfter(headers: Headers | undefined): number | undefined {
 export function toApiError(status: number, body: unknown, headers?: Headers): ApiError {
   const code = readCode(body);
   const retryAfterSeconds = readRetryAfter(headers);
-  const base = { status, code, retryAfterSeconds };
+  const base = { status, code, retryAfterSeconds, fields: readFields(body) };
   const sessionFlag = isRecord(body) && body.session_expired === 1;
 
   // Sunucu hatası her zaman önce gelir. Gövdedeki oturum işareti 5xx yanıtında yok sayılır.

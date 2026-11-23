@@ -1,12 +1,12 @@
 {
   "repository": "frappesetup",
-  "commit": "c61abcc9ad5cc8bd4f9c3b82fef9fb5cd0bb77b0",
+  "commit": "b05a68168a6c4771ea3133053826d24094cd909b",
   "dirty": false,
   "commitSource": "git",
   "files": [
     {
       "path": "openapi/hrms_tr.openapi.yaml",
-      "sha256": "ac13254e68cdf5228fcaa94bc17afd1edac2081f8cfb6d5740e9a8a1d1f8f73d"
+      "sha256": "d81a071d6e603ed1bfc857b19f8a5598a4092c9b426dec38b1e822b3b330d5ab"
     },
     {
       "path": "openapi/identity_sync.openapi.yaml",
@@ -21,20 +21,24 @@
       "sha256": "79c0d3b253b7630e8b5b0b25bc552a832ce323f558f148aa318ce26f7cb8af94"
     },
     {
+      "path": "openapi/platform_core-collection.openapi.yaml",
+      "sha256": "01c5ce007f894549a28cee034d29107d5395eabd1d3a72cca79138b1e67208cf"
+    },
+    {
       "path": "openapi/platform_core-identity.openapi.yaml",
-      "sha256": "f6a4135dbb14a941d220781d1018ad961642f360d202c5330bd3ee2e616515dc"
+      "sha256": "a06df5874b3c284d644d84e637e4eb873c2f82de5e8b39e5804c8d3816b880af"
     },
     {
       "path": "openapi/platform_core-mobile.openapi.yaml",
-      "sha256": "a567d0cc8c21ac0079b2e284fe47e97930d5b0e58a24778e4e2f0c4008c25894"
+      "sha256": "0e693ec9dd1f0b22cad4b0cfdeca8a2ce1778f1a2e009f98ec10f03353fb1535"
     },
     {
       "path": "openapi/platform_core-model-gateway.openapi.yaml",
-      "sha256": "760b3caccc1d90f430c918ea145a523380db519d8e5b85322ececa26c3a7a45f"
+      "sha256": "228cf58407c84175d6b74a89c99d7b86905d525b135d71698f64b7f2d29907f5"
     },
     {
       "path": "openapi/platform_core-shell.openapi.yaml",
-      "sha256": "6b6e3b2e12b54e6349e0112d240dec49e4057b201681a9a38782457c4322ebe5"
+      "sha256": "f97ff2258a17a0bec230817953788624bc8c5329ae5f938bcb727d202eea1ddf"
     },
     {
       "path": "openapi/press_tr.openapi.yaml",
@@ -42,7 +46,7 @@
     },
     {
       "path": "docs/contracts.md",
-      "sha256": "02370aee1f06ea6d10f0702c92f3b81a1604b0704f7cee16d94cfe0a8eb74a83"
+      "sha256": "7737c4ef00e1fe47dfae1648aff7d7aa3a819e2c246b449fc09e0ce398abe00f"
     }
   ]
 }

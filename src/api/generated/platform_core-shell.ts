@@ -75,7 +75,7 @@ export interface paths {
     };
     /**
      * Read the current user's shell data
-     * @description Returns the current user, installed applications and native permission-filtered navigation. The uncompressed JSON response including its envelope is at most 262144 bytes. Oversized data returns HTTP 200 with truncated set to true, identity and formatting retained, and roles, installed applications and navigation emptied. Unknown request parameters are rejected. Each signed-in account is limited to 120 requests per 60 seconds.
+     * @description Returns the current user, installed applications and native permission-filtered navigation. The uncompressed JSON response including its envelope is at most 262144 bytes. Oversized data returns HTTP 200 with truncated set to true, identity, formatting and enabled languages retained, and roles, installed applications and navigation emptied. Unknown request parameters are rejected. Each signed-in account is limited to 120 requests per 60 seconds.
      */
     get: operations['getBootstrap'];
     put?: never;
@@ -135,6 +135,8 @@ export interface components {
       formatting: components['schemas']['Formatting'];
       /** @description Applications installed on this tenant site. */
       installed_apps: string[];
+      /** @description Enabled Language records of the site, ordered by code. The short response keeps this list. */
+      languages: components['schemas']['Language'][];
       /** @description SHA-256 digest of this bootstrap representation. */
       meta_hash: string;
       /** @description Opaque permission generation. Changes on permission/cache invalidation. */
@@ -251,12 +253,29 @@ export interface components {
     Formatting: {
       /** @description Default display currency, or null when the site has not selected one. */
       currency: string | null;
+      /** @description Frappe date pattern for the response language, such as dd.mm.yyyy. The Language record overrides System Settings. */
+      date_format: string;
+      /**
+       * @description First day of the week for the response language. The Language record overrides System Settings.
+       * @enum {string}
+       */
+      first_day_of_the_week:
+        'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
       /** @description Site number formatting pattern. */
       number_format: string;
       /** @description Site rounding rule. */
       rounding_method: string;
+      /** @description Frappe time pattern for the response language, such as HH:mm:ss. The Language record overrides System Settings. */
+      time_format: string;
       /** @description IANA time zone configured for the site. */
       time_zone: string;
+    };
+    /** @description An enabled Frappe Language record. */
+    Language: {
+      /** @description Language code, the name of the Language record, such as tr or en. */
+      code: string;
+      /** @description Language name as stored in the Language record. */
+      name: string;
     };
     /** @description Effective metadata. Keep permission tokens in memory. A verified mobile response may permit offline storage of its non-sensitive definitions. */
     Meta: {
@@ -705,8 +724,21 @@ export interface operations {
            *           "time_zone": "Europe/Istanbul",
            *           "currency": "TRY",
            *           "number_format": "#.###,##",
-           *           "rounding_method": "Commercial Rounding"
+           *           "rounding_method": "Commercial Rounding",
+           *           "date_format": "dd.mm.yyyy",
+           *           "time_format": "HH:mm",
+           *           "first_day_of_the_week": "Monday"
            *         },
+           *         "languages": [
+           *           {
+           *             "code": "en",
+           *             "name": "English"
+           *           },
+           *           {
+           *             "code": "tr",
+           *             "name": "Türkçe"
+           *           }
+           *         ],
            *         "meta_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
            *         "perm_version": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
            *       }

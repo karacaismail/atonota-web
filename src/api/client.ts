@@ -45,15 +45,23 @@ import {
   type Bootstrap,
   type CompletionRequest,
   type CompletionResult,
+  type ConnectionCheck,
+  type ConnectionInput,
   type DocTypeMeta,
   type Guard,
   type JsonRpcResponse,
   type LoginUrl,
   type LogoutUrl,
   type Proposal,
+  type ProviderCatalog,
+  type SavedConnection,
+  CATALOG_ID_PATTERN,
   isApprovalOutcome,
   isBootstrap,
   isCompletionResult,
+  isConnectionCheck,
+  isProviderCatalog,
+  isSavedConnection,
   isDocTypeMeta,
   isJsonRpcResponse,
   isLoginUrl,
@@ -203,6 +211,36 @@ function pagingError(
 }
 
 export type McpResult = { status: 'accepted' } | { status: 'ok'; response: JsonRpcResponse };
+
+const NAME_MAX = 140;
+const FIELD_VALUE_MAX = 4096;
+
+/**
+ * Bağlantı girdisini sözleşme sınırlarıyla denetler. Hatalı girdi sunucuya gitmez.
+ * `code` hatalı alanı söyler: `provider`, `account`, `account_name`, `api_name` ya da `fields`.
+ */
+function connectionInputError(input: ConnectionInput): ApiError | undefined {
+  const invalid = (code: string) =>
+    new ApiError({ kind: 'invalid_request', status: 0, code, fields: [code] });
+  if (!CATALOG_ID_PATTERN.test(input.provider)) return invalid('provider');
+  const hasAccount = input.account !== undefined;
+  const hasAccountName = input.account_name !== undefined;
+  if (hasAccount === hasAccountName) return invalid('account');
+  const nameOk = (value: string | undefined) =>
+    value === undefined || (value.length >= 1 && value.length <= NAME_MAX);
+  if (!nameOk(input.account)) return invalid('account');
+  if (!nameOk(input.account_name)) return invalid('account_name');
+  if (input.api_name.length < 1 || input.api_name.length > NAME_MAX) return invalid('api_name');
+  for (const [name, value] of Object.entries(input.fields)) {
+    if (
+      !CATALOG_ID_PATTERN.test(name) ||
+      typeof value !== 'string' ||
+      value.length > FIELD_VALUE_MAX
+    )
+      return invalid('fields');
+  }
+  return undefined;
+}
 
 /**
  * Frappe'nin standart kayıt uçlarına giden istek (kayıt görünümü).
@@ -804,6 +842,60 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
         if (error instanceof ApiError) return { ok: false, error, body };
         throw error;
       }
+    },
+
+    /**
+     * Sağlayıcı kataloğunu okur: kategoriler, sağlayıcılar ve alan şemaları.
+     * Sözleşme bu ucu POST yapar; istek CSRF başlığı taşır. Yanıtta sır ve model adı yoktur.
+     */
+    listProviderCatalog(options: RequestOptions = {}): Promise<ProviderCatalog> {
+      return unwrap(
+        gateway.POST('/api/method/platform_core.api.model.provider_catalog', {
+          ...signalOf(options),
+          body: {},
+        }),
+        isProviderCatalog,
+        options,
+      );
+    },
+
+    /**
+     * Sağlayıcı bağlantısını kaydeder. Sır yalnız istek gövdesinde gider; yanıt sır döndürmez.
+     * `account` (var olan hesap) ya da `account_name` (yeni hesap) alanlarından tam biri verilir.
+     * Sözleşme dışı istek sunucuya gitmeden `invalid_request` hatası alır.
+     */
+    saveProviderConnection(
+      input: ConnectionInput,
+      options: RequestOptions = {},
+    ): Promise<SavedConnection> {
+      const invalid = connectionInputError(input);
+      if (invalid) return Promise.reject(invalid);
+      return unwrap(
+        gateway.POST('/api/method/platform_core.api.model.save_connection', {
+          ...signalOf(options),
+          body: input,
+        }),
+        isSavedConnection,
+        options,
+      );
+    },
+
+    /**
+     * Kayıtlı bağlantıyı canlı dener. Sunucu sağlayıcıya tek bir model listesi isteği gönderir.
+     * Başarısız deneme de HTTP 200 ve bir `status` değeri döner. Hız sınırı 429 `gateway_busy` olur.
+     */
+    checkProviderConnection(api: string, options: RequestOptions = {}): Promise<ConnectionCheck> {
+      if (api.length === 0 || api.length > 140) {
+        return Promise.reject(new ApiError({ kind: 'invalid_request', status: 0, code: 'api' }));
+      }
+      return unwrap(
+        gateway.POST('/api/method/platform_core.api.model.check_connection', {
+          ...signalOf(options),
+          body: { api },
+        }),
+        isConnectionCheck,
+        options,
+      );
     },
 
     /** Model geçidinden yanıt ister. Model anahtarı sunucudadır (AX-2). */

@@ -6,6 +6,26 @@
  */
 
 export interface paths {
+  '/api/method/platform_core.api.model.check_connection': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Check a saved connection live
+     * @description Requires an authenticated AI Manager or System Manager. Sends one model-list request to the provider. Model-list requests use no tokens, so the check creates no usage charge; the provider may still count it against its rate limit. Writes the result and time to the API record and returns them. A failed check still answers with HTTP 200 and a status code. The response holds no credentials, no provider message and no model names. The deployment must approve the address in model_gateway_endpoints first. connected proves only that the provider accepted the credential; the model list does not show the remaining quota or credit, so a spent quota may appear only on the first billable request. Each user may call this endpoint 10 times in 60 seconds. The next call, or a check while another check of the same connection runs, answers 429 gateway_busy and sends no provider request.
+     */
+    post: operations['checkProviderConnection'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/method/platform_core.api.model.clear_api_credential': {
     parameters: {
       query?: never;
@@ -40,6 +60,26 @@ export interface paths {
      * @description Selects an eligible API for the active tenant and route. Checks permissions, quota, and the route data policy before dispatch. External dispatch masks content when the route permits it. Attempts may incur provider charges. Tool calls are returned as data for the caller to authorize and execute. Selection and provider attempts share a 60-second deadline.
      */
     post: operations['completeModelRequest'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/method/platform_core.api.model.provider_catalog': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * List the provider definitions for the connection form
+     * @description Requires an authenticated AI Manager or System Manager. Returns the categories and provider definitions that the "Add API" form draws from. Each provider lists the fields it needs and whether a field is a secret. The definitions come from the shipped catalog data file, not from a list in code. The response holds no credentials and no model names. Sends no provider request.
+     */
+    post: operations['listProviderCatalog'];
     delete?: never;
     options?: never;
     head?: never;
@@ -106,6 +146,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/method/platform_core.api.model.save_connection': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Save a provider connection
+     * @description Requires an authenticated AI Manager or System Manager with create permission on the registry. Validates the fields against the provider definition. Creates the provider record on first use, a new account or uses an existing account, and always a new API connection. Writes secrets only to the encrypted password field. The response never returns a secret. Sends no provider request. The connection status starts as not_checked; call check_connection next. Each user may call this endpoint 10 times in 60 seconds; the next call answers 429 gateway_busy and saves nothing.
+     */
+    post: operations['saveProviderConnection'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/method/platform_core.api.model.test_api': {
     parameters: {
       query?: never;
@@ -153,6 +213,41 @@ export interface components {
         parameters: Record<string, unknown>;
       }[];
     };
+    ConnectionCheck: {
+      api: string;
+      /** @description Site-local check time in Frappe datetime format */
+      checked_at: string;
+      /** @description Count of models the credential can see on the first page. Names are not returned. */
+      models_visible: number | null;
+      /**
+       * @description connected means the provider accepted the credential. invalid_credentials means HTTP 401. permission_denied means HTTP 403. quota_exceeded means HTTP 429 for a rate limit or a spent quota. Many providers still answer the model list when the credit is spent, so connected does not rule out a spent quota. Anthropic may answer a spent credit with HTTP 400, which becomes provider_error. network_error means the connection failed or timed out. provider_error means another provider answer. endpoint_not_approved means the deployment has not approved the address. configuration_error means the saved record is incomplete.
+       * @enum {unknown}
+       */
+      status:
+        | 'connected'
+        | 'invalid_credentials'
+        | 'permission_denied'
+        | 'quota_exceeded'
+        | 'network_error'
+        | 'provider_error'
+        | 'endpoint_not_approved'
+        | 'configuration_error';
+    };
+    /** @description Give either account (existing account) or account_name (new account), not both. */
+    ConnectionInput: {
+      /** @description Existing AI Account document name of the same provider */
+      account?: string;
+      /** @description Name of a new account */
+      account_name?: string;
+      /** @description Name of the new API connection */
+      api_name: string;
+      /** @description Values of the provider's fields keyed by field name. Account fields are allowed only with a new account. */
+      fields: {
+        [key: string]: string;
+      };
+      /** @description Provider definition id from the catalog */
+      provider: string;
+    } & (unknown | unknown);
     /** @description Three-letter uppercase currency code matching the usage record. */
     CurrencyCode: string;
     /** @description Nonnegative decimal text with at most 12 whole digits and nine fractional digits. No rounding or exponent notation. */
@@ -182,12 +277,53 @@ export interface components {
               | 'provider_unavailable'
               | 'provider_timeout'
               | 'preview_required'
-              | 'preview_invalid';
+              | 'preview_invalid'
+              | 'unknown_provider'
+              | 'invalid_fields'
+              | 'catalog_unavailable';
+            /** @description Names of the connection fields that failed validation */
+            fields?: string[];
           };
         }
       | {
           exc_type: string;
         };
+    FieldDefinition: {
+      description: string;
+      /**
+       * @description A secret field is write-only and never returned.
+       * @enum {unknown}
+       */
+      kind: 'secret' | 'text' | 'url';
+      /** @description Translated field label */
+      label: string;
+      name: string;
+      required: boolean;
+      /**
+       * @description Record that stores the field
+       * @enum {unknown}
+       */
+      scope: 'account' | 'api';
+    };
+    ProviderCatalog: {
+      categories: {
+        description: string;
+        id: string;
+        label: string;
+      }[];
+      providers: {
+        /** @enum {unknown} */
+        auth_type: 'none' | 'api_key' | 'bearer' | 'oauth_client_credentials';
+        category: string;
+        /** @description Name fields every connection needs. account_name is required only for a new account. */
+        common_fields: components['schemas']['FieldDefinition'][];
+        description: string;
+        fields: components['schemas']['FieldDefinition'][];
+        id: string;
+        label: string;
+      }[];
+      version: number;
+    };
     Result: {
       api: string;
       model: string;
@@ -201,6 +337,16 @@ export interface components {
         input: number | null;
         output: number | null;
       };
+    };
+    SavedConnection: {
+      /** @description AI Account document name */
+      account: string;
+      /** @description AI API document name */
+      api: string;
+      /** @constant */
+      connection_status: 'not_checked';
+      /** @description AI Provider document name */
+      provider: string;
     };
   };
   responses: {
@@ -229,6 +375,22 @@ export interface components {
         'application/json': components['schemas']['Error'];
       };
     };
+    /** @description The per-user rate limit is spent or the same connection check is already running */
+    Busy: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "message": {
+         *         "error": "gateway_busy"
+         *       }
+         *     }
+         */
+        'application/json': components['schemas']['Error'];
+      };
+    };
     /** @description Operation conflicts with the current gateway state */
     Conflict: {
       headers: {
@@ -242,6 +404,15 @@ export interface components {
          *       }
          *     }
          */
+        'application/json': components['schemas']['Error'];
+      };
+    };
+    /** @description Invalid request or invalid connection fields */
+    FieldError: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
         'application/json': components['schemas']['Error'];
       };
     };
@@ -333,6 +504,46 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  checkProviderConnection: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "api": "fixture-api"
+         *     }
+         */
+        'application/json': {
+          /** @description AI API document name */
+          api: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Check finished */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            message: components['schemas']['ConnectionCheck'];
+          };
+        };
+      };
+      400: components['responses']['BadRequest'];
+      401: components['responses']['AuthenticationError'];
+      403: components['responses']['PermissionError'];
+      409: components['responses']['Conflict'];
+      429: components['responses']['Busy'];
+      503: components['responses']['Unavailable'];
+    };
+  };
   clearApiCredential: {
     parameters: {
       query?: never;
@@ -416,6 +627,95 @@ export interface operations {
       403: components['responses']['PermissionError'];
       409: components['responses']['Conflict'];
       429: components['responses']['QuotaError'];
+      503: components['responses']['Unavailable'];
+    };
+  };
+  listProviderCatalog: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        /** @example {} */
+        'application/json': Record<string, unknown>;
+      };
+    };
+    responses: {
+      /** @description Provider catalog */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "message": {
+           *         "version": 1,
+           *         "categories": [
+           *           {
+           *             "id": "ai_llm",
+           *             "label": "AI LLM",
+           *             "description": "Large language model providers."
+           *           }
+           *         ],
+           *         "providers": [
+           *           {
+           *             "id": "openai",
+           *             "category": "ai_llm",
+           *             "label": "OpenAI",
+           *             "description": "OpenAI API with an organization API key.",
+           *             "auth_type": "api_key",
+           *             "fields": [
+           *               {
+           *                 "name": "api_key",
+           *                 "label": "API key",
+           *                 "kind": "secret",
+           *                 "required": true,
+           *                 "scope": "api",
+           *                 "description": "Secret API key from the provider console."
+           *               },
+           *               {
+           *                 "name": "organization_id",
+           *                 "label": "Organization ID",
+           *                 "kind": "text",
+           *                 "required": false,
+           *                 "scope": "account",
+           *                 "description": "Optional organization identifier."
+           *               }
+           *             ],
+           *             "common_fields": [
+           *               {
+           *                 "name": "account_name",
+           *                 "label": "Account name",
+           *                 "kind": "text",
+           *                 "required": true,
+           *                 "scope": "account",
+           *                 "description": "Name of the provider account in this site."
+           *               },
+           *               {
+           *                 "name": "api_name",
+           *                 "label": "Connection name",
+           *                 "kind": "text",
+           *                 "required": true,
+           *                 "scope": "api",
+           *                 "description": "Name of this API connection."
+           *               }
+           *             ]
+           *           }
+           *         ]
+           *       }
+           *     }
+           */
+          'application/json': {
+            message: components['schemas']['ProviderCatalog'];
+          };
+        };
+      };
+      401: components['responses']['AuthenticationError'];
+      403: components['responses']['PermissionError'];
       503: components['responses']['Unavailable'];
     };
   };
@@ -564,6 +864,49 @@ export interface operations {
       409: components['responses']['Conflict'];
       417: components['responses']['ValidationError'];
       429: components['responses']['QuotaError'];
+      503: components['responses']['Unavailable'];
+    };
+  };
+  saveProviderConnection: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ConnectionInput'];
+      };
+    };
+    responses: {
+      /** @description Connection saved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "message": {
+           *         "provider": "fixture-provider",
+           *         "account": "fixture-account",
+           *         "api": "fixture-api",
+           *         "connection_status": "not_checked"
+           *       }
+           *     }
+           */
+          'application/json': {
+            message: components['schemas']['SavedConnection'];
+          };
+        };
+      };
+      400: components['responses']['FieldError'];
+      401: components['responses']['AuthenticationError'];
+      403: components['responses']['PermissionError'];
+      409: components['responses']['Conflict'];
+      417: components['responses']['ValidationError'];
+      429: components['responses']['Busy'];
       503: components['responses']['Unavailable'];
     };
   };
