@@ -257,6 +257,16 @@ test.describe('AI Studio', () => {
     /** Tek kenar göstergesi: yalnız alt kenarda içe gölge. x sıfır, y negatif, bulanıklık sıfır. */
     const bottomBar = /0px -\d+(\.\d+)?px 0px 0px inset|inset 0px -\d+(\.\d+)?px 0px 0px/;
 
+    // Dinlenme ölçümünde fare hiçbir alanın üstünde olmamalı. Gönder düğmesine tıklayan fare
+    // yerinde kalır. Dar ekranda form o noktanın altına gelebilir. O zaman Select'in dokunma
+    // katmanı üzerine gelme rengini alır. Bu durum Linux WebKit 320'de oldu (PR #3 CI hatası).
+    await page.mouse.move(0, 0);
+    await expect(selectRoot).not.toHaveClass(/ant-select-focused/);
+    await expect
+      .poll(() => selectRoot.evaluate((el) => el.matches(':hover')), {
+        message: 'dinlenme ölçümünde Select fare altında',
+      })
+      .toBe(false);
     const restInput = await settled(input);
     const restSelect = await settled(select);
     expect(restSelect.shadow).not.toMatch(bottomBar);
