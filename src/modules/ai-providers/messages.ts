@@ -50,6 +50,12 @@ const en = {
   configuration_error: 'The record is incomplete.',
   tooFrequent: 'Checked too often. Wait a minute, then try again.',
   checkFailed: 'The check could not be completed. Try again.',
+  saveTooFrequent: 'Saved too often. Wait a minute, then try again.',
+  saveUncertain:
+    'The outcome is unknown. The connection may have been saved. We read the list again. Find the connection in the list before you save again.',
+  saveRejected: 'The server did not save the connection. Check the provider and the account.',
+  saveConflict: 'The server could not save the connection now. Wait a little, then try again.',
+  loadFailed: 'The page part could not be loaded. Reload the page.',
 };
 
 const tr: typeof en = {
@@ -97,6 +103,12 @@ const tr: typeof en = {
   configuration_error: 'Kayıt eksik.',
   tooFrequent: 'Çok sık denendi. Bir dakika bekleyin, sonra yeniden deneyin.',
   checkFailed: 'Deneme tamamlanamadı. Yeniden deneyin.',
+  saveTooFrequent: 'Çok sık kaydedildi. Bir dakika bekleyin, sonra yeniden deneyin.',
+  saveUncertain:
+    'İşlem sonucu bilinmiyor. Bağlantı kaydedilmiş olabilir. Listeyi yeniden okuduk. Yeniden kaydetmeden önce bağlantıyı listede arayın.',
+  saveRejected: 'Sunucu bağlantıyı kaydetmedi. Sağlayıcıyı ve hesabı denetleyin.',
+  saveConflict: 'Sunucu bağlantıyı şu an kaydedemedi. Biraz bekleyin, sonra yeniden deneyin.',
+  loadFailed: 'Sayfanın bir parçası yüklenemedi. Sayfayı yenileyin.',
 };
 
 export const providerMessages = { en, tr };

@@ -33,7 +33,10 @@ Sayfa `/administration/ai-providers` adresindedir. Sayfa Yönetim bölümünün 
 - Sunucu kataloğu 403 dönerse "API ekle" düğmesi görünmez. Rol denetimini sunucu yapar.
 - Sır alanı maskelidir. Kaydettikten sonra sır ekranda ve durumda tutulmaz.
 - "Kaydet" ve "Bağlantıyı dene" ayrı adımlardır. Deneme sırasında düğme bekler.
-- 429 yanıtı "Çok sık denendi" iletisiyle görünür.
+- Denemede 429 yanıtı "Çok sık denendi" iletisiyle görünür. Kayıtta aynı yanıt "Çok sık kaydedildi" iletisiyle görünür.
+- Kayıt yanıtı bazen gelmez. Örneğin zaman aşımında ya da 5xx yanıtında yanıt gelmez. Sunucu kaydı yazmış olabilir. Bu durumda ekran "İşlem sonucu bilinmiyor" der ve listeyi yeniden okur. Ekran "yeniden deneyin" demez, çünkü her kayıt yeni bir bağlantı açar.
+- Kayıttan sonra odak "Bağlantıyı dene" düğmesine gider. Form kapanınca odak "API ekle" düğmesine döner.
+- Sağlayıcı uçları `src/api/provider-client.ts` dosyasındadır. Bu dosya ilk yüke girmez. Modül istemcisi onu `aiProviders()` çağrısında yükler.
 - Ekran metinleri `ai-providers/messages.ts` dosyasındadır.
 
 ## Eksik sözleşmeler

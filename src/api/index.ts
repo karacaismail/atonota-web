@@ -56,7 +56,6 @@ export type {
   FilterScalar,
 } from './frappe-v2';
 export type { GroupSummary, GroupSummaryFilters, GroupSummaryQuery } from './group-summary';
-export { CONNECTION_STATUSES } from './guards';
 export type {
   ConnectionCheck,
   ConnectionInput,
@@ -65,4 +64,6 @@ export type {
   ProviderDefinition,
   ProviderFieldDefinition,
   SavedConnection,
-} from './guards';
+  AiConnectionListing,
+  ProviderClient,
+} from './provider-client';

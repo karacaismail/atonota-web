@@ -1,13 +1,13 @@
 import { Alert, Button, Input, Select } from 'antd';
-import { useCallback, useId, useState, type ReactNode } from 'react';
-import {
-  ApiError,
-  type ConnectionCheck,
-  type ProviderCatalog,
-  type ProviderDefinition,
-  type ProviderFieldDefinition,
-  type SavedConnection,
-} from '@/api';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { ApiError } from '@/api';
+import type {
+  ConnectionCheck,
+  ProviderCatalog,
+  ProviderDefinition,
+  ProviderFieldDefinition,
+  SavedConnection,
+} from '@/api/provider-client';
 import { useModule } from '../context';
 import { useRead, type Resource } from '../data';
 import { useCopy } from '../messages';
@@ -20,6 +20,7 @@ import {
   buildConnectionInput,
   checkFailureKey,
   joinConnections,
+  saveFailureKey,
   statusKey,
   type RowStatus,
 } from './model';
@@ -30,6 +31,10 @@ type CheckState =
   | { phase: 'done'; status: RowStatus; checkedAt: string }
   | { phase: 'error'; key: ReturnType<typeof checkFailureKey> };
 
+type SaveKey = ReturnType<typeof saveFailureKey>;
+type SaveCopyKey = Extract<SaveKey, `save${string}`>;
+const isSaveCopyKey = (key: SaveKey): key is SaveCopyKey => key.startsWith('save');
+
 /** Frappe tarih saatini (`2026-11-20 09:05:00`) bütün tarayıcıların okuduğu biçime çevirir. */
 const isoDateTime = (value: string | null) => (value ? value.replace(' ', 'T') : value);
 
@@ -37,30 +42,44 @@ const isoDateTime = (value: string | null) => (value ? value.replace(' ', 'T') :
 function useChecks() {
   const env = useModule();
   const [checks, setChecks] = useState<Record<string, CheckState>>({});
-  const check = env?.client?.checkProviderConnection;
+  const load = env?.client?.aiProviders;
   const run = useCallback(
     async (api: string) => {
-      if (!check) return;
+      if (!load) return;
       setChecks((current) => ({ ...current, [api]: { phase: 'pending' } }));
       let next: CheckState;
       try {
-        const result: ConnectionCheck = await check(api, {});
+        const result: ConnectionCheck = await (await load()).checkProviderConnection(api, {});
         next = { phase: 'done', status: result.status, checkedAt: result.checked_at };
       } catch (error) {
         next = { phase: 'error', key: checkFailureKey(error) };
       }
       setChecks((current) => ({ ...current, [api]: next }));
     },
-    [check],
+    [load],
   );
-  return { checks, run, available: Boolean(check) };
+  return { checks, run, available: Boolean(load) };
 }
 
-function CheckButton({ state, onCheck }: { state: CheckState | undefined; onCheck: () => void }) {
+function CheckButton({
+  state,
+  onCheck,
+  marker = false,
+}: {
+  state: CheckState | undefined;
+  onCheck: () => void;
+  /** Kayıt panelindeki düğme. Panel odağı bu işaretle bulur. */
+  marker?: boolean;
+}) {
   const p = useProviderCopy();
   const pending = state?.phase === 'pending';
   return (
-    <Button loading={pending} aria-busy={pending} onClick={pending ? undefined : onCheck}>
+    <Button
+      loading={pending}
+      aria-busy={pending}
+      onClick={pending ? undefined : onCheck}
+      {...(marker ? { 'data-check': '' } : {})}
+    >
       {pending ? p.checking : p.check}
     </Button>
   );
@@ -204,10 +223,12 @@ interface FormProps {
   catalog: ProviderCatalog;
   listing: Resource<AiConnectionListing>;
   onSaved: (saved: SavedConnection, label: string) => void;
+  /** Sonuç bilinmiyor ya da çakışma var. Sayfa bağlantı listesini yeniden okur. */
+  onUncertain: () => void;
 }
 
 /** "API ekle" formu. Alanlar seçilen sağlayıcının tanımından çizilir. */
-function ConnectionForm({ catalog, listing, onSaved }: FormProps) {
+function ConnectionForm({ catalog, listing, onSaved, onUncertain }: FormProps) {
   const env = useModule();
   const p = useProviderCopy();
   const copy = useCopy();
@@ -252,8 +273,8 @@ function ConnectionForm({ catalog, listing, onSaved }: FormProps) {
   );
 
   async function submit() {
-    const save = env?.client?.saveProviderConnection;
-    if (!provider || !save || saving) return;
+    const load = env?.client?.aiProviders;
+    if (!provider || !load || saving) return;
     const missing = new Set<string>();
     for (const field of visibleCommon)
       if (field.required && commonValue(field.name).trim() === '') missing.add(field.name);
@@ -266,8 +287,17 @@ function ConnectionForm({ catalog, listing, onSaved }: FormProps) {
     }
     setSaving(true);
     setFailure(undefined);
+    let providers;
     try {
-      const saved = await save(
+      providers = await load();
+    } catch {
+      // İstek hiç gitmedi. Sonuç belirsiz değildir.
+      setFailure(p.loadFailed);
+      setSaving(false);
+      return;
+    }
+    try {
+      const saved = await providers.saveProviderConnection(
         buildConnectionInput(provider, { account, accountName, apiName, values }),
         {},
       );
@@ -279,8 +309,9 @@ function ConnectionForm({ catalog, listing, onSaved }: FormProps) {
         setInvalid(new Set(error.fields));
         setFailure(p.formInvalid);
       } else {
-        const key = checkFailureKey(error);
-        setFailure(key === 'tooFrequent' || key === 'checkFailed' ? p[key] : copy[key]);
+        const key = saveFailureKey(error);
+        setFailure(isSaveCopyKey(key) ? p[key] : copy[key]);
+        if (key === 'saveUncertain' || key === 'saveConflict') onUncertain();
       }
     } finally {
       setSaving(false);
@@ -329,7 +360,13 @@ function ConnectionForm({ catalog, listing, onSaved }: FormProps) {
             <Select<string>
               id={`${id}-account`}
               value={account}
-              {...(invalid.has('account') ? { status: 'error' as const } : {})}
+              {...(invalid.has('account')
+                ? {
+                    status: 'error' as const,
+                    'aria-invalid': true,
+                    'aria-describedby': `${id}-account-error`,
+                  }
+                : {})}
               onChange={(value) => {
                 setAccount(value);
                 setInvalid(new Set());
@@ -339,6 +376,11 @@ function ConnectionForm({ catalog, listing, onSaved }: FormProps) {
                 ...accounts.map((item) => ({ value: item.name, label: item.label })),
               ]}
             />
+            {invalid.has('account') && (
+              <p id={`${id}-account-error`} className="ai-provider-error">
+                {p.fieldInvalid}
+              </p>
+            )}
             {!isNew && <p className="ai-provider-muted">{p.existingAccountNote}</p>}
           </div>
           {visibleCommon.map((field) => (
@@ -386,12 +428,19 @@ function SavedPanel({
   canCheck: boolean;
 }) {
   const p = useProviderCopy();
+  const panel = useRef<HTMLDivElement>(null);
+  // Form kalkınca odak boşa düşmesin: odak "Bağlantıyı dene" düğmesine, düğme yoksa panele gider.
+  // Bu programatik bir odak taşımasıdır; klavye modu açıksa görünür gösterge korunur.
+  useEffect(() => {
+    const target = panel.current?.querySelector<HTMLElement>('[data-check]') ?? panel.current;
+    target?.focus();
+  }, []);
   return (
-    <div className="module-stack">
+    <div className="module-stack" ref={panel} tabIndex={-1}>
       <Alert type="info" message={p.saved} description={label} />
       {canCheck && (
         <div className="module-actions">
-          <CheckButton state={state} onCheck={onCheck} />
+          <CheckButton state={state} onCheck={onCheck} marker />
         </div>
       )}
       <CheckResult state={state} />
@@ -402,26 +451,38 @@ function SavedPanel({
 export default function AiProvidersPage() {
   const env = useModule();
   const p = useProviderCopy();
-  const listCatalog = env?.client?.listProviderCatalog;
-  const listConnections = env?.client?.listAiConnections;
+  // Sağlayıcı istemcisi ayrı parçadadır. İlk okuma onu yükler; tarayıcı parçayı bir kez indirir.
+  const load = env?.client?.aiProviders;
   // Uç yoksa `useRead` yükleyiciyi hiç çağırmaz; ret yalnız tip için vardır.
-  const unavailable = () => Promise.reject(new Error('unavailable'));
+  const client = useCallback(
+    () => (load ? load() : Promise.reject(new Error('unavailable'))),
+    [load],
+  );
   const loadCatalog = useCallback(
-    (signal: AbortSignal) => listCatalog?.({ signal }) ?? unavailable(),
-    [listCatalog],
+    async (signal: AbortSignal) => (await client()).listProviderCatalog({ signal }),
+    [client],
   );
   const loadConnections = useCallback(
-    (signal: AbortSignal) => listConnections?.({ signal }) ?? unavailable(),
-    [listConnections],
+    async (signal: AbortSignal) => (await client()).listAiConnections({ signal }),
+    [client],
   );
-  const catalog = useRead(listCatalog ? loadCatalog : null, 'catalog');
-  const connections = useRead(listConnections ? loadConnections : null, 'connections');
+  const catalog = useRead(load ? loadCatalog : null, 'catalog');
+  const connections = useRead(load ? loadConnections : null, 'connections');
   const { checks, run, available } = useChecks();
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState<{ api: string; label: string }>();
   const [formKey, setFormKey] = useState(0);
+  // Form kapanınca odak "API ekle" düğmesine döner (programatik dönüş odağı).
+  const returnFocus = useRef(false);
+  const focusAdd = useCallback((node: HTMLButtonElement | null) => {
+    if (node && returnFocus.current) {
+      returnFocus.current = false;
+      node.focus();
+    }
+  }, []);
 
   const closeForm = () => {
+    returnFocus.current = true;
     setOpen(false);
     setSaved(undefined);
     setFormKey((value) => value + 1);
@@ -436,7 +497,7 @@ export default function AiProvidersPage() {
         {(data) =>
           !open ? (
             <div className="module-actions">
-              <Button type="primary" onClick={() => setOpen(true)}>
+              <Button type="primary" ref={focusAdd} onClick={() => setOpen(true)}>
                 {p.add}
               </Button>
             </div>
@@ -458,6 +519,7 @@ export default function AiProvidersPage() {
                     setSaved({ api: result.api, label });
                     connections.refresh();
                   }}
+                  onUncertain={connections.refresh}
                 />
               )}
               <div className="module-actions">

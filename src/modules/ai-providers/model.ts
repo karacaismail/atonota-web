@@ -2,13 +2,10 @@
  * "Yapay zekâ sağlayıcıları" sayfasının saf mantığı. Ekran ve ağ kodu burada yoktur.
  * Sağlayıcı listesi kodda yazılı değildir; her şey sunucu kataloğundan gelir.
  */
-import {
-  ApiError,
-  CONNECTION_STATUSES,
-  type ConnectionInput,
-  type ConnectionStatus,
-  type ProviderDefinition,
-} from '@/api';
+import { ApiError } from '@/api';
+// Sağlayıcı istemcisinden yalnız tip alınır. Değer alınırsa istemci parçası sayfa parçasına da
+// bağlanır ve paketleyici ek bir parça üretir.
+import type { ConnectionInput, ConnectionStatus, ProviderDefinition } from '@/api/provider-client';
 import { failureKind, type FailureKind } from '../data';
 import type { ProviderCopyKey } from './messages';
 
@@ -53,18 +50,68 @@ export function buildConnectionInput(
 }
 
 export type RowStatus = ConnectionStatus | 'not_checked';
-const ROW_STATUSES = new Set<string>([...CONNECTION_STATUSES, 'not_checked']);
+/**
+ * Listede gösterilen durumlar. `satisfies` sözleşmedeki durum listesiyle birebir eşleşmeyi
+ * derleme zamanında zorlar: eksik ya da fazla durum tip hatası verir.
+ */
+const ROW_STATUS_FLAGS = {
+  not_checked: true,
+  connected: true,
+  invalid_credentials: true,
+  permission_denied: true,
+  quota_exceeded: true,
+  network_error: true,
+  provider_error: true,
+  endpoint_not_approved: true,
+  configuration_error: true,
+} as const satisfies Record<RowStatus, true>;
+const ROW_STATUSES = new Set<string>(Object.keys(ROW_STATUS_FLAGS));
 
 /** Durumun ekran metni anahtarı. Anahtar adı durumun kendisidir. */
 export function statusKey(status: RowStatus): ProviderCopyKey {
   return status;
 }
 
-/** Deneme ya da kaydetme hatasının ekran metni anahtarı. */
+/** Canlı deneme hatasının ekran metni anahtarı. Deneme yeni kayıt açmaz; yeniden denenebilir. */
 export function checkFailureKey(error: unknown): 'tooFrequent' | 'checkFailed' | FailureKind {
   if (error instanceof ApiError && error.kind === 'rate_limited') return 'tooFrequent';
   const kind = failureKind(error);
   return kind === 'failure' || kind === 'invalid' ? 'checkFailed' : kind;
+}
+
+export type SaveFailureKey =
+  | 'saveTooFrequent'
+  | 'saveUncertain'
+  | 'saveRejected'
+  | 'saveConflict'
+  | Exclude<
+      FailureKind,
+      'failure' | 'invalid' | 'uncertain' | 'rateLimited' | 'requestRejected' | 'conflict'
+    >;
+
+/**
+ * Kaydetme hatasının ekran metni anahtarı. Kayıt bir yazmadır: ortak kural `failureKind(error, true)`
+ * zaman aşımını, ağ hatasını, 5xx yanıtını ve bozuk yanıtı "sonuç bilinmiyor" sayar. Sunucu kaydı
+ * yazmış olabilir. Bu durumda ekran "yeniden deneyin" demez; çünkü her kayıt yeni bir bağlantı açar.
+ */
+export function saveFailureKey(error: unknown): SaveFailureKey {
+  const kind = failureKind(error, true);
+  switch (kind) {
+    case 'uncertain':
+      return 'saveUncertain';
+    case 'rateLimited':
+      return 'saveTooFrequent';
+    case 'requestRejected':
+      return 'saveRejected';
+    case 'conflict':
+      return 'saveConflict';
+    // `writing` bayrağı bu iki türü hiç döndürmez; tip yine de onları dışarıda bırakır.
+    case 'failure':
+    case 'invalid':
+      return 'saveUncertain';
+    default:
+      return kind;
+  }
 }
 
 export interface ConnectionRow {

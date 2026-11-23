@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '@/api/errors';
-import { CONNECTION_STATUSES, type ProviderDefinition } from '@/api';
+import { CONNECTION_STATUSES, type ProviderDefinition } from '@/api/provider-client';
 import { providerMessages } from './messages';
 import {
   NEW_ACCOUNT,
@@ -8,6 +8,7 @@ import {
   buildConnectionInput,
   checkFailureKey,
   joinConnections,
+  saveFailureKey,
   statusKey,
 } from './model';
 
@@ -92,6 +93,37 @@ describe('messages', () => {
     expect(providerMessages.tr.tooFrequent).toMatch(/^Çok sık denendi\./);
     expect(checkFailureKey(new ApiError({ kind: 'forbidden', status: 403 }))).toBe('forbidden');
     expect(checkFailureKey(new Error('x'))).toBe('checkFailed');
+  });
+});
+
+describe('saveFailureKey', () => {
+  // Kayıt bir yazmadır. Yanıt gelmezse sunucu kaydı yazmış olabilir (ortak kural: failureKind).
+  it.each([
+    ['503', new ApiError({ kind: 'unavailable', status: 503 })],
+    ['500', new ApiError({ kind: 'unknown', status: 500 })],
+    ['zaman aşımı', new ApiError({ kind: 'timeout', status: 0 })],
+    ['ağ hatası', new ApiError({ kind: 'network', status: 0 })],
+    ['bozuk yanıt', new ApiError({ kind: 'invalid_response', status: 200 })],
+  ])('treats %s as an unknown outcome', (_name, error) => {
+    expect(saveFailureKey(error)).toBe('saveUncertain');
+  });
+
+  it('uses save wording, not check wording', () => {
+    expect(saveFailureKey(new ApiError({ kind: 'rate_limited', status: 429 }))).toBe(
+      'saveTooFrequent',
+    );
+    expect(providerMessages.tr.saveTooFrequent).toMatch(/^Çok sık kaydedildi\./);
+    expect(providerMessages.tr.saveUncertain).toMatch(/^İşlem sonucu bilinmiyor\./);
+    expect(
+      saveFailureKey(
+        new ApiError({ kind: 'invalid_request', status: 400, code: 'unknown_provider' }),
+      ),
+    ).toBe('saveRejected');
+    expect(saveFailureKey(new ApiError({ kind: 'invalid_request', status: 417 }))).toBe(
+      'saveRejected',
+    );
+    expect(saveFailureKey(new ApiError({ kind: 'conflict', status: 409 }))).toBe('saveConflict');
+    expect(saveFailureKey(new ApiError({ kind: 'forbidden', status: 403 }))).toBe('forbidden');
   });
 });
 

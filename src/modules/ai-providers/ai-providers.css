@@ -19,7 +19,8 @@
 }
 .ai-provider-row {
   padding-block: var(--space-sm);
-  border-bottom: thin solid var(--module-line);
+  /* Kalınlık kaynak `border.width` değerinden gelir (antd `lineWidth`). */
+  border-bottom: var(--ant-line-width) solid var(--module-line);
 }
 .ai-provider-name {
   font-weight: 600;

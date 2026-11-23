@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { MOCK_SCENARIO_KEY } from '@/mocks/scenarios';
 import { object, text } from '../contracts';
 
@@ -29,12 +29,39 @@ async function openForm(page: Page) {
   await chooseByKeyboard(page, 'Sağlayıcı', 'Anthropic');
 }
 
-async function fillAndSave(page: Page, secret: string) {
+async function fill(page: Page, secret: string) {
   await page.getByLabel(/^Hesap adı/).fill('Ana hesap');
   await page.getByLabel(/^Bağlantı adı/).fill('Deneme bağlantısı');
   await page.getByLabel(/^API anahtarı/).fill(secret);
+}
+
+async function fillAndSave(page: Page, secret: string) {
+  await fill(page, secret);
   await page.getByRole('button', { name: 'Kaydet' }).click();
   await expect(page.getByText('Bağlantı kaydedildi. Bağlantı henüz denenmedi.')).toBeVisible();
+}
+
+/** Odaklı öğede alt çizgi göstergesi var mı? Çevreleyen halka yoktur (outline none). */
+async function expectFocusIndicator(page: Page, button: Locator) {
+  await expect(button).toBeFocused();
+  await expect(page.locator('html')).toHaveAttribute('data-focus-mode', 'keyboard');
+  const style = await button.evaluate((element) => {
+    const computed = getComputedStyle(element);
+    return { shadow: computed.boxShadow, outline: computed.outlineStyle };
+  });
+  expect(style.shadow).toMatch(/inset/);
+  expect(style.outline).toBe('none');
+}
+
+/** Sağlayıcı yanıtlarının gövdesini toplar: kayıt ucu ve bağlantı listesi. */
+function collectBodies(page: Page): Promise<string>[] {
+  const bodies: Promise<string>[] = [];
+  page.on('response', (response) => {
+    const url = response.url();
+    if (url.includes('save_connection') || url.includes('/api/v2/document/'))
+      bodies.push(response.text().catch(() => ''));
+  });
+  return bodies;
 }
 
 test('lists connections without page overflow and passes axe', async ({ page }) => {
@@ -58,7 +85,7 @@ test('lists connections without page overflow and passes axe', async ({ page }) 
   expect((await new AxeBuilder({ page }).include('.module-page').analyze()).violations).toEqual([]);
 });
 
-test('adds an API with the keyboard, saves, then checks it live', async ({ page }) => {
+test('adds an API with the keyboard, saves, then checks it live', async ({ page, browserName }) => {
   await openForm(page);
   const secret = page.getByLabel(/^API anahtarı/);
   await expect(secret).toHaveAttribute('type', 'password');
@@ -66,16 +93,24 @@ test('adds an API with the keyboard, saves, then checks it live', async ({ page 
     violations: [],
   });
 
+  const bodies = collectBodies(page);
   const saveRequest = page.waitForRequest('**/platform_core.api.model.save_connection');
-  await fillAndSave(page, 'ornek-gizli-deger');
+  const saveResponse = page.waitForResponse('**/platform_core.api.model.save_connection');
+  await fill(page, 'ornek-gizli-deger');
+  // Klavye modu Tab ile açılır. Form, sır alanında Enter tuşuyla gönderilir.
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel(/^API anahtarı/)).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Bağlantı kaydedildi. Bağlantı henüz denenmedi.')).toBeVisible();
   const request = await saveRequest;
   expect(request.headers()['x-frappe-csrf-token']).toBeTruthy();
   // Kaydettikten sonra sır sayfada hiçbir yerde durmaz.
   expect(await page.content()).not.toContain('ornek-gizli-deger');
 
+  // Form kalkınca odak "Bağlantıyı dene" düğmesine gider. Elle odak verilmez.
   const form = page.getByRole('region', { name: 'Yeni bağlantı' });
-  const check = form.getByRole('button', { name: 'Bağlantıyı dene' });
-  await check.focus();
+  await expectFocusIndicator(page, form.getByRole('button', { name: 'Bağlantıyı dene' }));
   await page.keyboard.press('Enter');
   const result = form.getByRole('status', { name: 'Deneme sonucu' });
   await expect(result.getByText('Bağlandı', { exact: true })).toBeVisible();
@@ -84,6 +119,23 @@ test('adds an API with the keyboard, saves, then checks it live', async ({ page 
   await expect(
     page.getByRole('list', { name: 'Bağlantılar' }).getByText('Deneme bağlantısı'),
   ).toBeVisible();
+  // Kayıt yanıtında ve liste yanıtlarında sır yoktur.
+  expect(await (await saveResponse).text()).not.toContain('ornek-gizli-deger');
+  const texts = await Promise.all(bodies);
+  expect(texts.length).toBeGreaterThanOrEqual(2);
+  for (const body of texts) expect(body).not.toContain('ornek-gizli-deger');
+
+  // "Formu kapat" düğmesine klavyeyle gidilir. Form kapanınca odak "API ekle" düğmesine döner.
+  const close = form.getByRole('button', { name: 'Formu kapat' });
+  // WebKit düğmeleri sekme sırasına yalnız Option+Tab ile alır.
+  const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+  for (let step = 0; step < 6; step += 1) {
+    if (await close.evaluate((element) => element === document.activeElement)) break;
+    await page.keyboard.press(tab);
+  }
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expectFocusIndicator(page, page.getByRole('button', { name: 'API ekle' }));
   const layout = await page.evaluate(
     () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
   );
@@ -99,6 +151,21 @@ test('shows "Invalid key" for a rejected key', async ({ page }) => {
     form.getByRole('status', { name: 'Deneme sonucu' }).getByText('Anahtar geçersiz'),
   ).toBeVisible();
 });
+
+for (const [secret, text] of [
+  ['ag-hatasi', 'Ağ hatası'],
+  ['kota-dolu', 'Kota doldu'],
+] as const) {
+  test(`shows "${text}" for a failed check`, async ({ page }) => {
+    await openForm(page);
+    await fillAndSave(page, secret);
+    const form = page.getByRole('region', { name: 'Yeni bağlantı' });
+    await form.getByRole('button', { name: 'Bağlantıyı dene' }).click();
+    await expect(
+      form.getByRole('status', { name: 'Deneme sonucu' }).getByText(text, { exact: true }),
+    ).toBeVisible();
+  });
+}
 
 test('marks a missing required field without sending the request', async ({ page }) => {
   await openForm(page);
@@ -144,10 +211,15 @@ test('page code stays out of the initial bundle', async ({ page }) => {
         for (const file of collect(text(dependency), seen)) files.add(file);
     return files;
   };
-  expect(collect('index.html').has(pageFile)).toBe(false);
+  // Sağlayıcı uçları ve denetim işlevleri de ilk yüke girmez (ayrı `provider-client` parçası).
+  const clientFile = text(object(manifest['src/api/provider-client.ts'])['file']);
+  const initial = collect('index.html');
+  expect(initial.has(pageFile)).toBe(false);
+  expect(initial.has(clientFile)).toBe(false);
   const requested: string[] = [];
   page.on('request', (request) => requested.push(new URL(request.url()).pathname));
   await page.goto('/');
   await page.waitForLoadState('networkidle');
   expect(requested.some((path) => path.endsWith(pageFile))).toBe(false);
+  expect(requested.some((path) => path.endsWith(clientFile))).toBe(false);
 });

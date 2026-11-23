@@ -37,7 +37,7 @@ export class ApiError extends Error {
   readonly code: string | undefined;
   readonly retryAfterSeconds: number | undefined;
   /**
-   * Sunucunun hatalı bulduğu alan adları. Yalnız model geçidinin `invalid_fields` yanıtında dolar.
+   * Sunucunun hatalı bulduğu alan adları. Model geçidinin `invalid_fields` yanıtında sağlayıcı istemcisi doldurur.
    * Ekran bu alanları formda işaretler. Değerler ya da sunucu iletisi taşınmaz (SZ-8).
    */
   readonly fields: readonly string[] | undefined;
@@ -100,17 +100,6 @@ function readCode(body: unknown): string | undefined {
   return undefined;
 }
 
-/** Geçidin `message.fields` listesini okur. Yalnız metin öğeler alınır. */
-function readFields(body: unknown): string[] | undefined {
-  if (!isRecord(body) || !isRecord(body.message) || !Array.isArray(body.message.fields)) {
-    return undefined;
-  }
-  const fields = body.message.fields.filter(
-    (item): item is string => typeof item === 'string' && item.length > 0,
-  );
-  return fields.length > 0 ? fields : undefined;
-}
-
 function readRetryAfter(headers: Headers | undefined): number | undefined {
   const value = headers?.get('Retry-After');
   if (!value) return undefined;
@@ -122,7 +111,7 @@ function readRetryAfter(headers: Headers | undefined): number | undefined {
 export function toApiError(status: number, body: unknown, headers?: Headers): ApiError {
   const code = readCode(body);
   const retryAfterSeconds = readRetryAfter(headers);
-  const base = { status, code, retryAfterSeconds, fields: readFields(body) };
+  const base = { status, code, retryAfterSeconds };
   const sessionFlag = isRecord(body) && body.session_expired === 1;
 
   // Sunucu hatası her zaman önce gelir. Gövdedeki oturum işareti 5xx yanıtında yok sayılır.

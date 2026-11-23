@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/errors';
 import type { ConnectionCheck } from '@/api';
 import { sampleProviderCatalog } from '@/mocks/fixtures';
-import { ModuleProvider, type ModuleClient } from '../runtime';
+import { ModuleProvider, type AiProviderClient, type ModuleClient } from '../runtime';
 import ProvidersPage from './Page';
 
 const listing = {
@@ -20,7 +20,7 @@ const listing = {
   providers: [{ name: 'OpenAI', provider_name: 'OpenAI', catalog_provider: 'openai' }],
 };
 
-function client(overrides: Partial<ModuleClient> = {}): ModuleClient {
+function providers(overrides: Partial<AiProviderClient> = {}): AiProviderClient {
   return {
     listProviderCatalog: vi.fn().mockResolvedValue(sampleProviderCatalog),
     listAiConnections: vi
@@ -47,6 +47,14 @@ function client(overrides: Partial<ModuleClient> = {}): ModuleClient {
     } satisfies ConnectionCheck),
     ...overrides,
   };
+}
+
+/** Sayfa sağlayıcı istemcisini tembel yükler. Sahte istemci aynı biçimde verilir. */
+function client(overrides: Partial<AiProviderClient> = {}): ModuleClient & {
+  providers: AiProviderClient;
+} {
+  const fake = providers(overrides);
+  return { aiProviders: () => Promise.resolve(fake), providers: fake };
 }
 
 function renderPage(moduleClient: ModuleClient) {
@@ -133,7 +141,7 @@ describe('AI providers page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
     expect(await screen.findByText('Bağlantı kaydedildi. Bağlantı henüz denenmedi.')).toBeVisible();
-    expect(fake.saveProviderConnection).toHaveBeenCalledWith(
+    expect(fake.providers.saveProviderConnection).toHaveBeenCalledWith(
       {
         provider: 'anthropic',
         account_name: 'Ana hesap',
@@ -144,7 +152,7 @@ describe('AI providers page', () => {
     );
     // Kaydettikten sonra sır ekranda hiçbir yerde durmaz.
     expect(document.body.innerHTML).not.toContain('gizli-anahtar');
-    expect(fake.checkProviderConnection).not.toHaveBeenCalled();
+    expect(fake.providers.checkProviderConnection).not.toHaveBeenCalled();
 
     const form = screen.getByRole('region', { name: 'Yeni bağlantı' });
     fireEvent.click(within(form).getByRole('button', { name: 'Bağlantıyı dene' }));
@@ -153,7 +161,7 @@ describe('AI providers page', () => {
     expect(
       within(result).getByText('Anahtar geçerli. Kalan kota bu denemede görünmez.'),
     ).toBeVisible();
-    expect(fake.checkProviderConnection).toHaveBeenCalledWith('API-2', expect.anything());
+    expect(fake.providers.checkProviderConnection).toHaveBeenCalledWith('API-2', expect.anything());
     // Sonuç yalnız bir yerde yazılır; liste aynı bağlantı için ikinci ileti çizmez.
     expect(screen.getAllByRole('status', { name: 'Deneme sonucu' })).toHaveLength(1);
   });
@@ -218,6 +226,70 @@ describe('AI providers page', () => {
     ).toBeVisible();
     expect(screen.getByLabelText(/^API anahtarı/)).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText(/^Bağlantı adı/)).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it.each([
+    ['503', new ApiError({ kind: 'unavailable', status: 503 })],
+    ['timeout', new ApiError({ kind: 'timeout', status: 0 })],
+  ])('reports an unknown outcome after a %s and reads the list again', async (_name, error) => {
+    const fake = client({ saveProviderConnection: vi.fn().mockRejectedValue(error) });
+    renderPage(fake);
+    await fillAnthropic('k');
+    await screen.findByRole('list', { name: 'Bağlantılar' });
+    expect(fake.providers.listAiConnections).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/^İşlem sonucu bilinmiyor\./);
+    expect(alert).not.toHaveTextContent(/Yeniden deneyin\./);
+    await waitFor(() => expect(fake.providers.listAiConnections).toHaveBeenCalledTimes(2));
+    // Yeni kayıt satırı listeye gelir; yönetici bağlantının yazıldığını görür.
+    expect(await screen.findByText('Birincil', { selector: '.ai-provider-name' })).toBeVisible();
+  });
+
+  it('uses save wording for the rate limit', async () => {
+    const busy = new ApiError({ kind: 'rate_limited', status: 429, code: 'gateway_busy' });
+    renderPage(client({ saveProviderConnection: vi.fn().mockRejectedValue(busy) }));
+    await fillAnthropic('k');
+    fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Çok sık kaydedildi. Bir dakika bekleyin, sonra yeniden deneyin.',
+    );
+  });
+
+  it('marks the account picker with aria-invalid and a text message', async () => {
+    const rejected = new ApiError({
+      kind: 'invalid_request',
+      status: 400,
+      code: 'invalid_fields',
+      fields: ['account'],
+    });
+    renderPage(client({ saveProviderConnection: vi.fn().mockRejectedValue(rejected) }));
+    await fillAnthropic('k');
+    fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+    await screen.findByRole('alert');
+    const picker = screen.getByLabelText('Hesap');
+    expect(picker).toHaveAttribute('aria-invalid', 'true');
+    expect(picker).toHaveAccessibleDescription('Bu alanı denetleyin.');
+  });
+
+  it('moves focus to "Check connection" after saving and back to "Add API" on close', async () => {
+    renderPage(client());
+    await fillAnthropic('k');
+    fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+    await screen.findByText('Bağlantı kaydedildi. Bağlantı henüz denenmedi.');
+    const form = screen.getByRole('region', { name: 'Yeni bağlantı' });
+    await waitFor(() =>
+      expect(within(form).getByRole('button', { name: 'Bağlantıyı dene' })).toHaveFocus(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Formu kapat' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'API ekle' })).toHaveFocus());
+  });
+
+  it('returns focus to "Add API" when the form closes before saving', async () => {
+    renderPage(client());
+    fireEvent.click(await screen.findByRole('button', { name: 'API ekle' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Formu kapat' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'API ekle' })).toHaveFocus());
   });
 
   it('hides "Add API" when the server denies the catalog', async () => {
