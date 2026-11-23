@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
 const isCompact = (page: Page) => {
@@ -19,6 +19,19 @@ async function switcher(page: Page) {
 }
 
 const menu = (page: Page) => page.getByRole('menu', { name: 'Çalışma alanları' });
+
+/** Odaktaki öğe düğmeye göre nerededir? Listenin içi, düğmeden önce, sonra ya da hiçbir öğe. */
+async function focusAfter(page: Page, button: Locator) {
+  return button.evaluate((node) => {
+    const active = document.activeElement;
+    if (!active || active === document.body) return 'none';
+    if (active.closest('.ant-dropdown')) return 'menu';
+    if (active === node) return 'button';
+    return node.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING
+      ? 'after'
+      : 'before';
+  });
+}
 
 test.describe('çalışma alanı menüsü klavyeyle (Ö8)', () => {
   for (const key of ['Enter', ' ', 'ArrowDown']) {
@@ -72,4 +85,63 @@ test.describe('çalışma alanı menüsü klavyeyle (Ö8)', () => {
     await expect(button).toBeFocused();
     await expect(button).toContainText('Örnek Şirket B');
   });
+});
+
+test.describe('çalışma alanı menüsü: Tab ve fareyle açma (Ö-1, K-1)', () => {
+  test('ilk Tab menüyü kapatır ve odağı düğmeden sonraki öğeye taşır', async ({
+    page,
+    browserName,
+  }) => {
+    const button = await switcher(page);
+    await button.focus();
+    await page.keyboard.press('Enter');
+    await expect(menu(page).getByRole('menuitem').first()).toBeFocused();
+
+    await page.keyboard.press('Tab');
+
+    await expect(menu(page)).toBeHidden();
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    // Odak listede ve gövdede kalmaz. Sayfada düğmeden sonra gelen bir öğeye geçer.
+    expect(await focusAfter(page, button)).toBe('after');
+    if (browserName === 'chromium') {
+      // Chromium düğmeleri Tab sırasına alır. Geri Tab düğmeye döner.
+      // Böylece odağın düğmeden hemen sonraki öğede olduğu görülür.
+      await page.keyboard.press('Shift+Tab');
+      await expect(button).toBeFocused();
+    }
+  });
+
+  test('Shift+Tab menüyü kapatır ve odak listede kalmaz', async ({ page }) => {
+    const button = await switcher(page);
+    await button.focus();
+    await page.keyboard.press('Enter');
+    await expect(menu(page).getByRole('menuitem').first()).toBeFocused();
+
+    await page.keyboard.press('Shift+Tab');
+
+    await expect(menu(page)).toBeHidden();
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    // Masaüstünde düğme sayfanın ilk öğesidir. Odak o zaman tarayıcıya geçer.
+    expect(await focusAfter(page, button)).not.toBe('after');
+    expect(await focusAfter(page, button)).not.toBe('menu');
+  });
+
+  for (const [key, index] of [
+    ['ArrowDown', 'first'],
+    ['ArrowUp', 'last'],
+  ] as const) {
+    test(`fareyle açılan menüde ${key} odağı ${index === 'first' ? 'ilk' : 'son'} öğeye taşır`, async ({
+      page,
+    }) => {
+      const button = await switcher(page);
+      await button.click();
+      await expect(menu(page)).toBeVisible();
+
+      await page.keyboard.press(key);
+
+      const items = menu(page).getByRole('menuitem');
+      await expect(index === 'first' ? items.first() : items.last()).toBeFocused();
+      await expect(menu(page)).toBeVisible();
+    });
+  }
 });

@@ -49,11 +49,27 @@ function moveMenuFocus(event: KeyboardEvent<HTMLDivElement>) {
   items[next]?.focus();
 }
 
+/** Düğmede ya da gövdede basılan okun hedefi. Aşağı ok ilk öğeye, yukarı ok son öğeye gider. */
+function arrowTarget(key: string): FocusTarget | null {
+  return key === 'ArrowDown' ? 'first' : key === 'ArrowUp' ? 'last' : null;
+}
+
+/** Açık listenin ilk ya da son öğesine odak verir. Liste çizilmediyse `false` döner. */
+function focusMenuItem(menuId: string, target: FocusTarget): boolean {
+  const items = document.getElementById(menuId)?.querySelectorAll<HTMLElement>(ITEM_SELECTOR);
+  const item = items && (target === 'first' ? items[0] : items[items.length - 1]);
+  if (!item) return false;
+  item.focus();
+  return true;
+}
+
 /**
  * W1: tıklanınca "Açıklamalı" stilde liste açar. Odak perdesi uygulanır.
  * Klavye APG menü düğmesi kalıbına uyar (Ö8):
  * Enter, Space ve aşağı ok listeyi açar ve ilk öğeye gider. Yukarı ok son öğeye gider.
  * Oklar öğeler arasında gezer. Escape listeyi kapatır ve odağı düğmeye verir.
+ * Tab ve Shift+Tab listeyi kapatır. Odak düğmeden sonraki ya da önceki öğeye geçer.
+ * Liste fareyle açıldıysa aşağı ok ilk öğeye, yukarı ok son öğeye gider.
  */
 export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
   const [current, setCurrent] = useState(sampleWorkspaces[0]?.id ?? '');
@@ -70,11 +86,8 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
     let frames = 0;
     let handle = 0;
     const tryFocus = () => {
-      const items = document.getElementById(menuId)?.querySelectorAll<HTMLElement>(ITEM_SELECTOR);
-      const item = items && (target === 'first' ? items[0] : items[items.length - 1]);
-      if (item) {
+      if (focusMenuItem(menuId, target)) {
         pendingFocus.current = null;
-        item.focus();
         return;
       }
       frames += 1;
@@ -82,6 +95,23 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
     };
     handle = requestAnimationFrame(tryFocus);
     return () => cancelAnimationFrame(handle);
+  }, [open, menuId]);
+
+  // Liste fareyle açıldıysa odak menüde değildir (K-1).
+  // Chromium'da odak düğmededir. Bu durumu düğmenin kendi tuş işleyicisi karşılar.
+  // WebKit tıklanan düğmeye odak vermez. Odak sayfa gövdesinde kalır. Bu dinleyici o durumu karşılar.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const target = arrowTarget(event.key);
+      if (!target) return;
+      const active = document.activeElement;
+      if (active && active !== document.body) return;
+      if (focusMenuItem(menuId, target)) event.preventDefault();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [open, menuId]);
 
   const ws = sampleWorkspaces.find((w) => w.id === current) ?? sampleWorkspaces[0];
@@ -93,6 +123,13 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
   };
 
   const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (open) {
+      // Liste fareyle açıldı ve odak düğmede kaldı. Oklar odağı hemen menüye taşır (K-1).
+      // Enter ve Space burada karşılanmaz. Tıklama olarak listeyi kapatır.
+      const arrow = arrowTarget(event.key);
+      if (arrow && focusMenuItem(menuId, arrow)) event.preventDefault();
+      return;
+    }
     const target: FocusTarget | null =
       event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown'
         ? 'first'
@@ -150,6 +187,15 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
             // Escape listeyi kapatır ve odağı hemen düğmeye verir.
             if (event.key === 'Escape') {
               event.preventDefault();
+              close(true);
+              return;
+            }
+            // Tab ve Shift+Tab listeyi kapatır (Ö-1). Tarayıcının Tab davranışı engellenmez.
+            // Odak önce düğmeye döner. Tarayıcı sonraki ya da önceki öğeyi düğmeden sayar.
+            // antd açılır listesi pencereye bir Tab dinleyicisi bağlar. O dinleyici ilk Tab'da
+            // odağı listeye geri çeker. Olay burada durdurulur. Böylece o dinleyiciye ulaşmaz.
+            if (event.key === 'Tab') {
+              event.stopPropagation();
               close(true);
               return;
             }
