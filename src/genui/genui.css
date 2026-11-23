@@ -371,22 +371,29 @@
 .genui .ant-input.ant-input-outlined:focus,
 .genui .ant-input.ant-input-outlined:focus-within,
 .genui .ant-input-affix-wrapper.ant-input-outlined:focus-within,
-.genui .ant-input-affix-wrapper.ant-input-affix-wrapper-focused.ant-input-outlined,
-.genui .ant-select.ant-select-focused.ant-select-outlined .ant-select-selector,
-.genui .ant-select.ant-select-open.ant-select-outlined .ant-select-selector {
+.genui .ant-input-affix-wrapper.ant-input-affix-wrapper-focused.ant-input-outlined {
   border-color: var(--ai-border-control);
   box-shadow: none;
   outline: none;
 }
 
+/*
+ * Açılır listenin odak kenar rengi ve halkası tema tokenıyla kapanır
+ * (`useGenuiFocusTheme`). Aşağıdaki klavye kuralı antd odak kuralından
+ * ağırdır. antd kuralı üç `:not()` parçası taşır. Bu kural da aynı parçaları
+ * ve ek sınıflar taşır. Böylece alt çizgi antd halkasının yerine geçer.
+ */
 html[data-focus-mode='keyboard'] .genui .ant-input.ant-input-outlined:focus-visible,
 html[data-focus-mode='keyboard']
   .genui
   .ant-input-affix-wrapper.ant-input-outlined:has(:focus-visible),
 html[data-focus-mode='keyboard']
   .genui
-  .ant-select.ant-select-focused.ant-select-outlined:focus-within
+  .ant-select.ant-select-focused.ant-select-outlined:not(.ant-select-disabled):not(
+    .ant-select-customize-input
+  ):not(.ant-pagination-size-changer):focus-within
   .ant-select-selector {
+  border-color: var(--ai-border-control);
   box-shadow: inset 0 calc(var(--focus-indicator-size) * -1) 0 0 var(--focus-indicator-color);
 }
 

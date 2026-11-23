@@ -1,4 +1,5 @@
 import { theme } from 'antd';
+import type { ThemeConfig } from 'antd';
 import type { CSSProperties } from 'react';
 import { useMemo } from 'react';
 
@@ -47,5 +48,32 @@ export function useGenuiVars(): CSSProperties {
         '--ai-gap-lg': `${token.paddingLG}px`,
       }) as CSSProperties,
     [token],
+  );
+}
+
+/**
+ * GenUI içindeki giriş alanı ve açılır listenin odak teması.
+ *
+ * Genel kural: çevreleyen odak yasak. antd odakta dört kenarı vurgu rengine
+ * boyar ve halka gölgesi çizer. Bu tema odak kenar rengini dinlenme rengine
+ * eşitler ve halkayı kapatır. Değerler çalışan temanın tokenlarından gelir.
+ * Klavye göstergesi (alt kenarda tek çizgi) `genui.css` dosyasındadır.
+ */
+export function useGenuiFocusTheme(): ThemeConfig {
+  const { token } = theme.useToken();
+  return useMemo(
+    () => ({
+      components: {
+        Select: {
+          activeBorderColor: token.colorBorder,
+          activeOutlineColor: 'transparent',
+        },
+        Input: {
+          activeBorderColor: token.colorBorder,
+          activeShadow: 'none',
+        },
+      },
+    }),
+    [token.colorBorder],
   );
 }
