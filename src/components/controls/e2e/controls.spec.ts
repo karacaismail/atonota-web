@@ -576,28 +576,44 @@ for (const [name, build] of Object.entries(choiceCases)) {
     ] as const) {
       const scope = name === 'segmented' ? page.getByTestId('tabs') : root.locator('..');
       const recorder = await recordTransitions(scope);
+      const check = (runs: Run[], phase: string) => {
+        for (const t of runs) {
+          expect(t.easing, `${name} ${direction} ${phase} ${t.property}`).toBe(standardEasing);
+          expect(sharedDurations, `${name} ${direction} ${phase} ${t.property}`).toContain(
+            t.duration,
+          );
+        }
+      };
+      const finished = async () => {
+        await expect.poll(recorder.settled).toBe(true);
+        await expect.poll(() => transitions(scope)).toBe(0);
+      };
       // Hover first and let the hover feedback finish. Otherwise, on a slow frame, the item
       // can become selected while its hover layer is still fading in. The browser then reverses
       // that transition with a shortened duration (CSS Transitions 1, reversing). Hover
-      // transitions are recorded and checked too.
+      // transitions are checked on their own, so they never count as the click's motion (review 2, Ö-2).
       await target.hover();
-      await expect.poll(recorder.settled).toBe(true);
-      await expect.poll(() => transitions(scope)).toBe(0);
-      await target.click();
-      await expect.poll(recorder.count).toBeGreaterThan(0);
+      await finished();
+      check(await recorder.take(), 'hover');
+      // Press and release are separate steps. A pressed control has its own motion: antd widens
+      // the switch handle under `:active`. With one click, a slow frame lets the release reverse
+      // that motion with a shortened duration (review 2, Ö-1). So the press motion ends first.
+      await page.mouse.down();
+      await finished();
+      check(await recorder.take(), 'press');
+      await page.mouse.up();
+      const noRun = `${name} ${direction}: no transition ran`;
+      await expect.poll(recorder.count, noRun).toBeGreaterThan(0);
       // Wait for the end of the whole motion, so the next click is not a shortened reversal.
       // Segmented moves in steps: label color, then the sliding thumb, then the selected item's
       // hover layer. Between the steps no transition runs for a moment. So the wait first checks
       // the final state (thumb gone, item selected), then that every started transition ended.
       await settled(target);
-      await expect.poll(recorder.settled).toBe(true);
-      await expect.poll(() => transitions(scope)).toBe(0);
+      await finished();
+      // Only the release changes the selection. Its runs alone prove that the click animates.
       const running = await recorder.take();
-      expect(running.length, `${name} ${direction}: no transition ran`).toBeGreaterThan(0);
-      for (const t of running) {
-        expect(t.easing, `${name} ${direction} ${t.property}`).toBe(standardEasing);
-        expect(sharedDurations, `${name} ${direction} ${t.property}`).toContain(t.duration);
-      }
+      expect(running.length, noRun).toBeGreaterThan(0);
+      check(running, 'release');
     }
   });
 }
