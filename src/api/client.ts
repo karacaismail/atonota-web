@@ -234,11 +234,21 @@ export type DocumentResponse =
   | { ok: true; status: number; etag: string | undefined; body: unknown }
   | { ok: false; error: ApiError; body: unknown };
 
-/** İzinli kayıt yolu. Kök, sorgu, parça ve `..` yasaktır. */
+/** İzinli kayıt yolu. Kök, sorgu, parça, `.` ve `..` parçası yasaktır. */
 const DOCUMENT_PATH = /^\/api\/(?:resource|method|v2)\/[^?#\\]+$/;
 
+/** Nokta parçası mı? Tarayıcı `%2e` kodunu nokta gibi çözer; `%2e%2e` de `..` sayılır. */
+function isDotSegment(segment: string): boolean {
+  const plain = segment.replace(/%2e/gi, '.');
+  return plain === '.' || plain === '..';
+}
+
 function isDocumentPath(path: string): boolean {
-  return DOCUMENT_PATH.test(path) && !path.includes('//') && !path.split('/').includes('..');
+  if (!DOCUMENT_PATH.test(path) || path.includes('//')) return false;
+  if (path.split('/').some(isDotSegment)) return false;
+  // Son denetim: tarayıcının çözdüğü yol da izinli önekle başlamalıdır.
+  const resolved = new URL(path, 'https://site.invalid').pathname;
+  return DOCUMENT_PATH.test(resolved);
 }
 
 export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDeps) {

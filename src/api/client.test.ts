@@ -486,6 +486,12 @@ describe('kayıt uçları (frappeDocument)', () => {
     '/files/rapor.pdf',
     '/api/resource/../method/x',
     '/api/resource/User/x?baska=1',
+    // Tarayıcının adres ayrıştırıcısı kodlanmış noktaları `..` gibi çözer (inceleme 3, K1).
+    '/api/resource/%2e%2e/%2e%2e/files/x',
+    '/api/resource/%2E%2E/%2E%2E/files/x',
+    '/api/resource/.%2e/.%2e/files/x',
+    '/api/resource/User/%2e%2e/%2e%2e/method/x',
+    '/api/resource/User/%2e/x',
   ])('izinli kayıt yolu dışındaki adrese istek göndermez: %s', async (path) => {
     const seen: string[] = [];
     mockServer.events.on('request:start', ({ request }) => seen.push(request.url));
@@ -496,5 +502,12 @@ describe('kayıt uçları (frappeDocument)', () => {
     });
     expect(seen).toEqual([]);
     mockServer.events.removeAllListeners();
+  });
+
+  it('kodlanmış ama nokta parçası olmayan kayıt adını kabul eder', async () => {
+    const path = `/api/resource/User/${encodeURIComponent('örnek.kişi%')}`;
+    mockServer.use(http.get(`${SITE}${path}`, () => HttpResponse.json({ data: { name: 'x' } })));
+    const { api } = setup();
+    await expect(api.frappeDocument({ method: 'GET', path })).resolves.toMatchObject({ ok: true });
   });
 });

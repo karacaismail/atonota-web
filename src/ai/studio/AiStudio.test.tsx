@@ -140,6 +140,47 @@ describe('AI Studio', { timeout: 30_000 }, () => {
     expect(screen.getByRole('button', { name: 'Mesajı gönder' })).toBeInTheDocument();
   });
 
+  it('iptalden sonra gelen metni ve bloğu çizmez', async () => {
+    // Sahte sunucu iptal sinyalini yok sayar. İptalden sonra metin, blok ve bitiş olayı gönderir.
+    // Arayüz bu olayları çizmemelidir (inceleme 3, K2).
+    const encode = (event: AgentEvent) => new TextEncoder().encode(encodeAgentEvent(event));
+    let lateSent: (() => void) | undefined;
+    const sent = new Promise<void>((resolve) => (lateSent = resolve));
+    const stubborn: AgentTransport = (_request, signal) =>
+      Promise.resolve(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encode({ type: 'text', delta: 'İlk parça. ' }));
+            signal.addEventListener('abort', () => {
+              controller.enqueue(encode({ type: 'text', delta: 'Geç gelen metin.' }));
+              controller.enqueue(
+                encode({
+                  type: 'ui',
+                  blocks: [{ type: 'kpis', items: [{ label: 'Gelir', value: '1', delta: 1 }] }],
+                }),
+              );
+              controller.enqueue(encode({ type: 'done' }));
+              controller.close();
+              lateSent?.();
+            });
+          },
+        }),
+      );
+    const { signals, transport } = recording(stubborn);
+    const { container } = render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    const user = await send('Geciken siparişleri bul');
+    await screen.findByText(/İlk parça/);
+    await user.click(await screen.findByRole('button', { name: 'Yanıtı durdur' }));
+    expect(await screen.findByText('Yanıt durduruldu.')).toBeInTheDocument();
+    await waitFor(() => expect(signals[0]?.aborted).toBe(true));
+    await sent;
+    // Geç olaylar akışa girdi. Arayüzün onları işlemesi için birkaç görev turu beklenir.
+    for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText(/Geç gelen metin/)).toBeNull();
+    expect(container.querySelector('[data-genui]')).toBeNull();
+    expect(screen.getByText('Yanıt durduruldu.')).toBeInTheDocument();
+  });
+
   it('sunucu araç olayı göndermezse araç listesi göstermez', async () => {
     const events: AgentEvent[] = [{ type: 'text', delta: 'Kısa yanıt.' }, { type: 'done' }];
     render(

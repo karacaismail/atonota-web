@@ -73,7 +73,6 @@ async function openDemo(page: Page) {
   await appReady(page);
 }
 
-/** Dokunma profilinde (`hover: none`) üzerine gelme durumu yoktur; renk değişimi beklenmez. */
 /**
  * Dokunmatik profilde (`hover: none`, örneğin `iphone-13`) üzerine gelme durumu yoktur.
  * O profilde üzerine gelme zemininin ya da yazısının değişmesi beklenmez.
