@@ -1,5 +1,7 @@
 import { Button, Typography } from 'antd';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
+
+import type { LoginProvider } from '@/api/guards';
 
 import { userMessage } from '@/api/errors';
 
@@ -22,9 +24,32 @@ export interface AuthGateProps {
  * İlk açılışta oturumu sorar. Oturum yoksa giriş ekranını gösterir ve kendiliğinden yönlendirmez.
  * Sunucu hatasında yalın bir metin ve yeniden deneme düğmesi gösterir.
  */
+/**
+ * Giriş ekranı açıkken platform listesini sunucudan okur (G-159).
+ * İstek başarısız olursa liste boş kalır. O zaman yalnız AtonotA Login düğmesi görünür.
+ */
+function useLoginProviders(session: PlatformSession, active: boolean): readonly LoginProvider[] {
+  const [providers, setProviders] = useState<readonly LoginProvider[]>([]);
+  useEffect(() => {
+    if (!active) return;
+    const controller = new AbortController();
+    session.api.listLoginProviders({ signal: controller.signal }).then(
+      (list) => {
+        if (!controller.signal.aborted) setProviders(list);
+      },
+      () => {
+        if (!controller.signal.aborted) setProviders([]);
+      },
+    );
+    return () => controller.abort();
+  }, [session, active]);
+  return providers;
+}
+
 export function AuthGate({ session, children, brandName }: AuthGateProps) {
   const state = useAuthState(session.auth);
   const text = messages.tr;
+  const providers = useLoginProviders(session, state.status === 'signed_out');
 
   useEffect(() => {
     void session.auth.check();
@@ -36,7 +61,8 @@ export function AuthGate({ session, children, brandName }: AuthGateProps) {
     case 'signed_out':
       return (
         <LoginScreen
-          onSignIn={() => session.auth.signIn()}
+          onSignIn={(provider) => session.auth.signIn(undefined, provider)}
+          providers={providers}
           {...(brandName ? { brandName } : {})}
           {...(state.notice ? { notice: state.notice } : {})}
         />

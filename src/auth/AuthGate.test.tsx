@@ -72,7 +72,7 @@ describe('AuthGate', () => {
     const { navigate } = setup();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Atonota ile oturum aç' }));
+    await user.click(await screen.findByRole('button', { name: 'AtonotA Login ile oturum aç' }));
 
     expect(navigate).toHaveBeenCalledWith(
       `${SITE}/api/method/platform_core.api.auth.start_login?redirect_to=%2Fpanel`,
@@ -84,12 +84,47 @@ describe('AuthGate', () => {
     mockState.signedIn = false;
     const { navigate } = setup();
     const user = userEvent.setup();
-    await screen.findByRole('button', { name: 'Atonota ile oturum aç' });
+    await screen.findByRole('button', { name: 'AtonotA Login ile oturum aç' });
 
     await user.tab();
     await user.keyboard('{Enter}');
 
     expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('giriş ekranı açık platformları sunucudan okur, kapalı platformu göstermez', async () => {
+    mockState.signedIn = false;
+    setup();
+    const list = await screen.findByRole('list', { name: 'Başka bir hesapla oturum açın' });
+    expect(list).toHaveTextContent('Google ile oturum aç');
+    expect(screen.getByRole('button', { name: 'Facebook ile oturum aç' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'LinkedIn ile oturum aç' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'X ile oturum aç' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /GitHub/ })).not.toBeInTheDocument();
+  });
+
+  it('platform düğmesi start_login yoluna platform adıyla gider', async () => {
+    mockState.signedIn = false;
+    const { navigate } = setup();
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Google ile oturum aç' }));
+    expect(navigate).toHaveBeenCalledWith(
+      `${SITE}/api/method/platform_core.api.auth.start_login?redirect_to=%2Fpanel&provider=google`,
+    );
+  });
+
+  it('platform listesi okunamazsa yalnız AtonotA Login düğmesi kalır', async () => {
+    mockState.signedIn = false;
+    mockServer.use(
+      http.get('*/api/method/platform_core.api.auth.list_login_providers', () =>
+        HttpResponse.json({ exc_type: 'Exception' }, { status: 500 }),
+      ),
+    );
+    setup();
+    await screen.findByRole('button', { name: 'AtonotA Login ile oturum aç' });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 
   it('sunucu hatasında yalın metin ve yeniden deneme düğmesi gösterir', async () => {

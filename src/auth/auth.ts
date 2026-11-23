@@ -8,6 +8,7 @@ import type { ApiClient } from '@/api/client';
 import type { ApiConfig } from '@/api/config';
 import type { CsrfStore } from '@/api/csrf';
 import { ApiError } from '@/api/errors';
+import { isProviderAlias } from '@/api/guards';
 
 /**
  * Giriş ekranındaki kısa not.
@@ -43,9 +44,31 @@ export function isSafeRedirect(path: string): boolean {
 /**
  * Arka ucun giriş başlatma adresini kurar.
  * Dönüş yolu güvenli değilse adrese eklenmez. O zaman sunucu `platform_panel_url` adresine döner.
+ * Platform adı verilirse `provider` olarak eklenir. Sunucu Keycloak'a `kc_idp_hint` olarak geçirir.
+ * Böylece tarayıcı doğrudan platformun giriş sayfasına gider (G-159).
+ * Kurala uymayan platform adı eklenmez. O zaman AtonotA Login giriş ekranı açılır.
  */
-export function startLoginUrl(siteUrl: string, redirectTo: string): string {
+export function startLoginUrl(siteUrl: string, redirectTo: string, provider?: string): string {
   const url = new URL(`${siteUrl}/api/method/platform_core.api.auth.start_login`);
+  if (isSafeRedirect(redirectTo)) url.searchParams.set('redirect_to', redirectTo);
+  if (provider !== undefined && isProviderAlias(provider))
+    url.searchParams.set('provider', provider);
+  return url.toString();
+}
+
+/**
+ * Hesap bağlama adresini kurar (G-160). Tarayıcı bu adrese sayfa geçişiyle gider.
+ * Sunucu oturumu denetler ve Keycloak'ın bağlama akışını başlatır. Tarayıcı belirteç tutmaz.
+ * Platform adı kurala uymazsa adres kurulmaz ve `undefined` döner.
+ */
+export function startLinkUrl(
+  siteUrl: string,
+  provider: string,
+  redirectTo: string,
+): string | undefined {
+  if (!isProviderAlias(provider)) return undefined;
+  const url = new URL(`${siteUrl}/api/method/platform_core.api.auth.start_link`);
+  url.searchParams.set('provider', provider);
   if (isSafeRedirect(redirectTo)) url.searchParams.set('redirect_to', redirectTo);
   return url.toString();
 }
@@ -98,10 +121,13 @@ export function createAuth({ api, config, csrf, navigate, currentPath }: AuthDep
     for (const listener of listeners) listener();
   }
 
-  /** Kullanıcıyı arka ucun giriş akışına götürür. Yalnız kullanıcı eylemiyle ya da oturum bitince çağrılır. */
-  function signIn(redirectTo: string = currentPath()): void {
+  /**
+   * Kullanıcıyı arka ucun giriş akışına götürür. Yalnız kullanıcı eylemiyle ya da oturum bitince çağrılır.
+   * Platform adı verilirse giriş o platformla başlar. Örnek: `signIn(undefined, 'google')`.
+   */
+  function signIn(redirectTo: string = currentPath(), provider?: string): void {
     setState({ status: 'redirecting' });
-    navigate(startLoginUrl(config.siteUrl, redirectTo));
+    navigate(startLoginUrl(config.siteUrl, redirectTo, provider));
   }
 
   return {

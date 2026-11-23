@@ -1,0 +1,108 @@
+{
+  "en": {
+    "title": "AtonotA Login",
+    "lead": "AtonotA Login is a shared sign-in gate for applications.",
+    "lead_more": "People use one account to enter many applications.",
+    "ready_title": "What is available today?",
+    "soon_title": "Coming soon",
+    "soon_intro": "These features are not ready yet. When they are ready, they move to “What is available today?”.",
+    "pricing_title": "Price",
+    "pricing_body": "The price has not been announced yet.",
+    "pricing_more": "This section will be updated after the plan and price decision.",
+    "license_title": "License",
+    "license_product": "The code of AtonotA Login uses the MIT license.",
+    "license_keycloak": "Keycloak has its own Apache-2.0 license. The two licenses are separate.",
+    "cta": "Sign in to the panel",
+    "values": {
+      "single_door": {
+        "title": "One sign-in gate",
+        "body": "A person uses one account to enter many applications. No separate account is needed for each application."
+      },
+      "many_platforms": {
+        "title": "Sign in with many platforms",
+        "body": "A person signs in with a Google, Facebook, LinkedIn or X account. A new platform is added without a code change."
+      },
+      "linked_accounts": {
+        "title": "Linked accounts",
+        "body": "A person links other platform accounts to their own account. The last way to sign in cannot be removed by mistake."
+      },
+      "open_source": {
+        "title": "Open source base",
+        "body": "The product is built on Keycloak, an open source sign-in server."
+      },
+      "data_location": {
+        "title": "Platform data at Hetzner",
+        "body": "The platform data stays on Hetzner servers."
+      },
+      "access_rules": {
+        "title": "Sign-in and permission are separate",
+        "body": "A signed-in person will not be able to do every operation. Each operation will have its own check."
+      },
+      "strong_sign_in": {
+        "title": "Strong sign-in with passkeys",
+        "body": "Administrators will sign in with a passkey or a hardware key."
+      },
+      "email_link": {
+        "title": "Sign in with an email link",
+        "body": "A person will sign in with a one-time link sent by email."
+      },
+      "identity_check": {
+        "title": "Identity check",
+        "body": "An outside provider will review identity documents. The data region will be known after the provider is chosen."
+      }
+    }
+  },
+  "tr": {
+    "title": "AtonotA Login",
+    "lead": "AtonotA Login, uygulamalar için ortak bir giriş kapısıdır.",
+    "lead_more": "Kullanıcılar tek hesapla birçok uygulamaya girer.",
+    "ready_title": "Bugün neler var?",
+    "soon_title": "Yakında",
+    "soon_intro": "Bu özellikler henüz hazır değil. Hazır olunca “Bugün neler var?” bölümüne geçecek.",
+    "pricing_title": "Fiyat",
+    "pricing_body": "Fiyat henüz açıklanmadı.",
+    "pricing_more": "Plan ve fiyat kararı verilince bu bölüm güncellenecek.",
+    "license_title": "Lisans",
+    "license_product": "AtonotA Login'in kodu MIT lisanslıdır.",
+    "license_keycloak": "Keycloak'ın kendi lisansı Apache-2.0'dır. İki lisans birbirinden ayrıdır.",
+    "cta": "Panelde oturum açın",
+    "values": {
+      "single_door": {
+        "title": "Tek giriş kapısı",
+        "body": "Kullanıcı tek hesapla birçok uygulamaya girer. Her uygulama için ayrı hesap gerekmez."
+      },
+      "many_platforms": {
+        "title": "Birçok platformla giriş",
+        "body": "Kullanıcı Google, Facebook, LinkedIn ya da X hesabıyla girer. Yeni platform kod değişmeden eklenir."
+      },
+      "linked_accounts": {
+        "title": "Bağlı hesaplar",
+        "body": "Kullanıcı başka platform hesaplarını kendi hesabına bağlar. Son giriş yolu yanlışlıkla kaldırılamaz."
+      },
+      "open_source": {
+        "title": "Açık kaynak temel",
+        "body": "Ürün, açık kaynak giriş sunucusu Keycloak üzerine kuruludur."
+      },
+      "data_location": {
+        "title": "Platform verisi Hetzner'de",
+        "body": "Platformun verisi Hetzner sunucularında durur."
+      },
+      "access_rules": {
+        "title": "Giriş ile yetki ayrı",
+        "body": "Giriş yapan kişi her işlemi yapamayacak. Her işlemin koşulu ayrı denetlenecek."
+      },
+      "strong_sign_in": {
+        "title": "Geçiş anahtarıyla güçlü giriş",
+        "body": "Yöneticiler geçiş anahtarı ya da donanım anahtarıyla girecek."
+      },
+      "email_link": {
+        "title": "E-posta bağlantısıyla giriş",
+        "body": "Kullanıcı e-postasına gelen tek kullanımlık bağlantıyla girecek."
+      },
+      "identity_check": {
+        "title": "Kimlik doğrulama",
+        "body": "Dış bir sağlayıcı kimlik belgesini inceleyecek. Sağlayıcı seçilince verinin bölgesi belli olacak."
+      }
+    }
+  }
+}

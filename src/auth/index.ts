@@ -1,7 +1,7 @@
 // Bu klasörün sahibi `api-client` işidir.
 // Web paneli erişim belirteci tutmaz. Giriş arka ucun Keycloak akışından geçer.
 // Panele nasıl takılacağı README.md dosyasında yazar.
-export { createAuth, isSafeLogoutUrl, isSafeRedirect, startLoginUrl } from './auth';
+export { createAuth, isSafeLogoutUrl, isSafeRedirect, startLinkUrl, startLoginUrl } from './auth';
 export type { Auth, AuthDeps, AuthState, SignedOutNotice } from './auth';
 export { AuthGate } from './AuthGate';
 export type { AuthGateProps } from './AuthGate';

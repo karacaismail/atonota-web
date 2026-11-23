@@ -23,7 +23,7 @@ describe('readApiConfig', () => {
     const config = readApiConfig({}, 'https://kiraci.example.test');
     expect(config.siteUrl).toBe('https://kiraci.example.test');
     expect(config.credentials).toBe('same-origin');
-    expect(config.keycloakUrl).toBe('https://id.atonota.net');
+    expect(config.keycloakUrl).toBe('https://api.login.atonota.net');
     expect(config.keycloakRealm).toBe('platform');
     expect(config.aiRoute).toBe('');
   });

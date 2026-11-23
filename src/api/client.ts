@@ -30,7 +30,12 @@ import {
   type Revoked,
   UUID_PATTERN,
   isInstallationPage,
+  isLinkedAccounts,
+  isLoginProviderList,
+  isProviderAlias,
   isRevoked,
+  type LinkedAccounts,
+  type LoginProvider,
   type AccessSummary,
   type LeaveApplication,
   type LeaveName,
@@ -385,6 +390,48 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
     return value;
   }
 
+  /**
+   * Sözleşmesi OpenAPI dosyalarında henüz olmayan `/api/method` ucu (AtonotA Login).
+   * İstek yine ortak katmandan geçer: CSRF, çerez ayarı, zaman aşımı ve hata çevirisi aynıdır.
+   */
+  async function callMethod(
+    method: 'GET' | 'POST',
+    name: string,
+    body: unknown,
+    options: RequestOptions,
+  ): Promise<FetchResult> {
+    const headers = new Headers();
+    if (body !== undefined) headers.set('Content-Type', 'application/json');
+    const request = prepare(
+      new Request(`${methodRoot}/${name}`, {
+        method,
+        headers,
+        credentials: config.credentials,
+        ...(method === 'GET' ? { cache: 'no-store' as const } : {}),
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        ...(options.signal ? { signal: options.signal } : {}),
+      }),
+    );
+    const response = await timedFetch(config.timeoutMs)(request);
+    const json = isJsonResponse(response);
+    if (response.ok && !EMPTY_BODY_STATUSES.has(response.status) && !json) {
+      throw new ApiError({ kind: 'invalid_response', status: response.status });
+    }
+    let parsed: unknown;
+    if (json) {
+      try {
+        parsed = await response.json();
+      } catch (error) {
+        if (response.ok) throw error;
+      }
+    }
+    return response.ok ? { data: parsed, response } : { error: parsed, response };
+  }
+
+  function invalidAlias(): Promise<never> {
+    return Promise.reject(new ApiError({ kind: 'invalid_request', status: 0, code: 'provider' }));
+  }
+
   function signalOf(options: RequestOptions): { signal?: AbortSignal } {
     return options.signal ? { signal: options.signal } : {};
   }
@@ -422,6 +469,41 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       return unwrap(
         identity.POST('/platform_core.api.auth.logout', signalOf(options)),
         isLogoutUrl,
+        options,
+      );
+    },
+
+    /**
+     * Giriş ekranının platform listesini okur (G-159). Oturum istemez.
+     * Sunucu yalnız açık platformları döner. Sıra sunucunun sırasıdır.
+     */
+    async listLoginProviders(options: RequestOptions = {}): Promise<LoginProvider[]> {
+      const list = await unwrap(
+        callMethod('GET', 'platform_core.api.auth.list_login_providers', undefined, options),
+        isLoginProviderList,
+        { ...options, notifySessionExpired: false },
+      );
+      return list.providers;
+    },
+
+    /** Oturumdaki kullanıcının bağlı platformlarını okur (G-160). */
+    listLinkedAccounts(options: RequestOptions = {}): Promise<LinkedAccounts> {
+      return unwrap(
+        callMethod('GET', 'platform_core.api.auth.list_linked_accounts', undefined, options),
+        isLinkedAccounts,
+        options,
+      );
+    },
+
+    /**
+     * Bir platform bağını kaldırır. Yeni listeyi döner.
+     * Son giriş yolu kaldırılamaz: sunucu 409 ve `LastSignInMethod` döner.
+     */
+    unlinkAccount(provider: string, options: RequestOptions = {}): Promise<LinkedAccounts> {
+      if (!isProviderAlias(provider)) return invalidAlias();
+      return unwrap(
+        callMethod('POST', 'platform_core.api.auth.unlink_account', { provider }, options),
+        isLinkedAccounts,
         options,
       );
     },

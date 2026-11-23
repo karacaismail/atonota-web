@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { AuthGate, type PlatformSession } from '@/auth';
+import { isPublicPath } from '@/auth/product/path';
 import type { ModuleEnvironment } from '@/modules';
 import { createShellModuleEnvironment } from '@/shell/view-data/modules';
 
@@ -21,7 +22,15 @@ export interface RootProps {
    * Örnek veri canlı veri gibi gösterilmez. Varsayılan `live` olur.
    */
   dataMode?: ModuleEnvironment['mode'];
+  /**
+   * Açılan adresin yolu. Varsayılan `window.location.pathname` olur.
+   * Oturum istemeyen sayfalar (örnek: `/atonota-login`) AuthGate'e girmez.
+   */
+  pathname?: string;
 }
+
+/** Tanıtım sayfası ayrı parçadır. Parça yalnız bu adreste yüklenir. */
+const ProductPage = lazy(() => import('@/auth/product/ProductPage'));
 
 /** Oturum açıkken kabuğun veri bağlantısını kurar: koleksiyon kaynağı ve modül ortamı. */
 function SignedIn({
@@ -78,7 +87,18 @@ export function Root({
   engines = true,
   children,
   dataMode = 'live',
+  pathname = typeof window === 'undefined' ? '/' : window.location.pathname,
 }: RootProps) {
+  if (isPublicPath(pathname)) {
+    // Tanıtım sayfası oturum sormaz (G-165). Tema ve tasarım sağlayıcıları yine kurulur.
+    return (
+      <AppProviders {...(initialThemeChoice ? { initialThemeChoice } : {})} engines={engines}>
+        <Suspense fallback={null}>
+          <ProductPage />
+        </Suspense>
+      </AppProviders>
+    );
+  }
   return (
     <AppProviders {...(initialThemeChoice ? { initialThemeChoice } : {})} engines={engines}>
       <AuthGate session={session}>

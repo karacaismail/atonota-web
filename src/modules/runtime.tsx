@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from 'react';
+import type { LinkedAccounts } from '../api';
 import { ModuleContext } from './context';
 
 export interface RequestOptions {
@@ -35,6 +36,10 @@ export interface ModuleClient {
   getProposal?: (id: string, options: RequestOptions) => Promise<unknown>;
   approveProposal?: (id: string, digest: string, options: RequestOptions) => Promise<unknown>;
   rejectProposal?: (id: string, options: RequestOptions) => Promise<unknown>;
+  /** AtonotA Login: bağlı platformlar (G-160). Yanıt ortak istemcide denetlenmiştir. */
+  listLinkedAccounts?: (options: RequestOptions) => Promise<LinkedAccounts>;
+  /** Bir platform bağını kaldırır. Son giriş yolunda sunucu 409 `LastSignInMethod` döner. */
+  unlinkAccount?: (provider: string, options: RequestOptions) => Promise<LinkedAccounts>;
 }
 export interface ModuleEnvironment {
   tenant: string;

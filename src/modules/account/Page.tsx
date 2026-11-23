@@ -6,6 +6,7 @@ import { useCopy } from '../messages';
 import { useModule } from '../context';
 import { useRead } from '../data';
 import { ModuleFrame, ResourceView, Section } from '../shared';
+import { LinkedAccounts } from './LinkedAccounts';
 
 function DeletionHandoff() {
   const env = useModule();
@@ -97,6 +98,7 @@ export default function AccountPage() {
   return (
     <ModuleFrame title={copy.account}>
       <AccountProfile />
+      <LinkedAccounts />
       <Section title={copy.sessions}>
         <p>{copy.sessionsUnavailable}</p>
       </Section>

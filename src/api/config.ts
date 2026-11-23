@@ -29,7 +29,7 @@ export interface ApiEnv {
   VITE_CSRF_META_NAME?: string;
 }
 
-export const DEFAULT_KEYCLOAK_URL = 'https://id.atonota.net';
+export const DEFAULT_KEYCLOAK_URL = 'https://api.login.atonota.net';
 export const DEFAULT_KEYCLOAK_REALM = 'platform';
 
 function trimSlash(value: string): string {

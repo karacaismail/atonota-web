@@ -415,3 +415,70 @@ export const isRawDocumentPage: Guard<RawDocumentPage> = (value): value is RawDo
   Array.isArray(value.data) &&
   value.data.every(isRecord) &&
   typeof value.has_next_page === 'boolean';
+
+// AtonotA Login: giriş platformları ve bağlı hesaplar (G-159, G-160).
+// Bu uçlar henüz backend OpenAPI sözleşmelerinde yoktur. Sözleşme `src/auth/README.md` içindedir.
+
+/**
+ * Platform adı (Keycloak kimlik sağlayıcı takma adı). Örnek: `google`.
+ * Ad adrese konmadan önce bu kuralla denetlenir (GV-3).
+ */
+export const PROVIDER_ALIAS_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
+export function isProviderAlias(value: unknown): value is string {
+  return typeof value === 'string' && PROVIDER_ALIAS_PATTERN.test(value);
+}
+
+export interface LoginProvider {
+  alias: string;
+  display_name: string;
+}
+
+export interface LoginProviderList {
+  providers: LoginProvider[];
+}
+
+export interface LinkedProvider extends LoginProvider {
+  linked: boolean;
+}
+
+export interface LinkedAccounts {
+  providers: LinkedProvider[];
+  /** Platform dışı giriş yollarının sayısı. Örnek: parola ya da geçiş anahtarı. */
+  local_sign_in_methods: number;
+}
+
+const MAX_PROVIDERS = 100;
+const MAX_DISPLAY_NAME = 80;
+
+function isLoginProvider(value: unknown): value is LoginProvider {
+  return (
+    isRecord(value) &&
+    isProviderAlias(value.alias) &&
+    isString(value.display_name) &&
+    value.display_name.trim().length > 0 &&
+    value.display_name.length <= MAX_DISPLAY_NAME
+  );
+}
+
+function isUniqueProviderList<T extends LoginProvider>(
+  value: unknown,
+  item: (entry: unknown) => entry is T,
+): value is T[] {
+  if (!Array.isArray(value) || value.length > MAX_PROVIDERS || !value.every(item)) return false;
+  return new Set(value.map((entry) => entry.alias)).size === value.length;
+}
+
+export const isLoginProviderList: Guard<LoginProviderList> = (value): value is LoginProviderList =>
+  isRecord(value) && isUniqueProviderList(value.providers, isLoginProvider);
+
+function isLinkedProvider(value: unknown): value is LinkedProvider {
+  return isLoginProvider(value) && typeof (value as { linked?: unknown }).linked === 'boolean';
+}
+
+export const isLinkedAccounts: Guard<LinkedAccounts> = (value): value is LinkedAccounts =>
+  isRecord(value) &&
+  isUniqueProviderList(value.providers, isLinkedProvider) &&
+  typeof value.local_sign_in_methods === 'number' &&
+  Number.isInteger(value.local_sign_in_methods) &&
+  value.local_sign_in_methods >= 0;

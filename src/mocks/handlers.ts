@@ -22,6 +22,9 @@ import {
   sampleDocTypeMeta,
   sampleDocuments,
   sampleLoginUrl,
+  sampleLoginProviders,
+  sampleLinkedProviders,
+  SAMPLE_LOCAL_SIGN_IN_METHODS,
   FOREIGN_LOGOUT_URL,
   sampleLogoutUrl,
   sampleProposal,
@@ -66,7 +69,16 @@ export const mockState: {
   gatewayFailure: GatewayFailure | undefined;
   /** Çıkış ucunun yanıtı. Testler hata yolunu böyle sınar. */
   logoutOutcome: LogoutOutcome;
+  /** Giriş platformu kayıtları. Yalnız açık olanlar yanıta girer (G-159). */
+  loginProviders: { alias: string; display_name: string; enabled: boolean }[];
+  /** Örnek kullanıcının bağlı platformları (G-160). */
+  linkedAccounts: Set<string>;
+  /** Platform dışı giriş yollarının sayısı. Örnek: parola. */
+  localSignInMethods: number;
 } = {
+  loginProviders: sampleLoginProviders.map((item) => ({ ...item })),
+  linkedAccounts: new Set(sampleLinkedProviders),
+  localSignInMethods: SAMPLE_LOCAL_SIGN_IN_METHODS,
   gatewayFailure: undefined,
   logoutOutcome: 'ok',
   signedIn: true,
@@ -76,6 +88,24 @@ export const mockState: {
   installations: sampleInstallations.map((item) => ({ ...item })),
 };
 
+function enabledProviders(): { alias: string; display_name: string }[] {
+  return mockState.loginProviders
+    .filter((item) => item.enabled)
+    .map(({ alias, display_name }) => ({ alias, display_name }));
+}
+
+/** Açık platformlar ve bağlı ama artık kapalı olan platformlar. */
+function linkedAccounts() {
+  const providers = mockState.loginProviders
+    .filter((item) => item.enabled || mockState.linkedAccounts.has(item.alias))
+    .map(({ alias, display_name }) => ({
+      alias,
+      display_name,
+      linked: mockState.linkedAccounts.has(alias),
+    }));
+  return { providers, local_sign_in_methods: mockState.localSignInMethods };
+}
+
 function sampleRecords(): Map<string, CollectionRow> {
   return new Map(sampleCollection.map((row) => [row.name, { ...row }]));
 }
@@ -84,6 +114,9 @@ export function resetMockState(): void {
   mockState.signedIn = true;
   mockState.gatewayFailure = undefined;
   mockState.logoutOutcome = 'ok';
+  mockState.loginProviders = sampleLoginProviders.map((item) => ({ ...item }));
+  mockState.linkedAccounts = new Set(sampleLinkedProviders);
+  mockState.localSignInMethods = SAMPLE_LOCAL_SIGN_IN_METHODS;
   mockState.proposals.clear();
   mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
   mockState.records = sampleRecords();
@@ -423,6 +456,29 @@ export const handlers = [
       return message({ logout_url: FOREIGN_LOGOUT_URL });
     }
     return message(sampleLogoutUrl);
+  }),
+
+  // AtonotA Login (G-159, G-160). Sözleşme `src/auth/README.md` içindedir.
+  http.get('*/api/method/platform_core.api.auth.list_login_providers', () =>
+    message({ providers: enabledProviders() }),
+  ),
+
+  http.get('*/api/method/platform_core.api.auth.list_linked_accounts', ({ request }) => {
+    return guard(request, { write: false }) ?? message(linkedAccounts());
+  }),
+
+  http.post('*/api/method/platform_core.api.auth.unlink_account', async ({ request }) => {
+    const denied = guard(request, { write: true });
+    if (denied) return denied;
+    const body = (await request.json().catch(() => ({}))) as { provider?: unknown };
+    const provider = typeof body.provider === 'string' ? body.provider : '';
+    if (!mockState.linkedAccounts.has(provider)) return frappeError(404, 'DoesNotExistError');
+    // Son giriş yolu kaldırılamaz. Karar sunucunundur; panel yalnız sonucu gösterir.
+    if (mockState.linkedAccounts.size + mockState.localSignInMethods <= 1) {
+      return frappeError(409, 'LastSignInMethod');
+    }
+    mockState.linkedAccounts.delete(provider);
+    return message(linkedAccounts());
   }),
 
   http.get('*/api/method/platform_core.api.shell.get_bootstrap', ({ request }) => {

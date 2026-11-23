@@ -25,9 +25,30 @@ export const sampleLoginUrl: LoginUrl = {
     '?client_id=site-tenant1&response_type=code&scope=openid&state=ornek&nonce=ornek' +
     '&code_challenge=ornek&code_challenge_method=S256' +
     '&redirect_uri=https%3A%2F%2Fkiraci.example.test%2Fapi%2Fmethod%2Fplatform_core.api.auth.keycloak_callback',
-  brand_name: 'Atonota',
-  label: 'Atonota ile oturum aç',
+  brand_name: 'AtonotA Login',
+  label: 'AtonotA Login ile oturum aç',
 };
+
+/**
+ * Sahte sunucunun giriş platformu kayıtları (G-159). Gerçek sunucuda bu kayıtlar veri dosyasından gelir.
+ * `enabled: false` olan kayıt kapalıdır. Kapalı kayıt yanıta girmez. Sıra yanıtın sırasıdır.
+ */
+export const sampleLoginProviders: readonly {
+  alias: string;
+  display_name: string;
+  enabled: boolean;
+}[] = [
+  { alias: 'google', display_name: 'Google', enabled: true },
+  { alias: 'facebook', display_name: 'Facebook', enabled: true },
+  { alias: 'linkedin', display_name: 'LinkedIn', enabled: true },
+  { alias: 'x', display_name: 'X', enabled: true },
+  // Sırrı olmayan platform kapalı kalır. Giriş ekranında görünmez.
+  { alias: 'github', display_name: 'GitHub', enabled: false },
+];
+
+/** Örnek kullanıcının bağlı platformları. Parola ya da geçiş anahtarı yoktur. */
+export const sampleLinkedProviders: readonly string[] = ['google', 'linkedin'];
+export const SAMPLE_LOCAL_SIGN_IN_METHODS = 0;
 
 export const sampleLogoutUrl: LogoutUrl = {
   logout_url: `${SAMPLE_KEYCLOAK_URL}/realms/platform/protocol/openid-connect/logout?client_id=site-tenant1`,

@@ -48,6 +48,8 @@ export type {
 export { pressAccountDeletionUrl, readPressConfig } from './press';
 export type { PressConfig, PressEnv } from './press';
 export type { Installation, InstallationPage, Revoked } from './guards';
+export { PROVIDER_ALIAS_PATTERN, isProviderAlias } from './guards';
+export type { LinkedAccounts, LinkedProvider, LoginProvider } from './guards';
 export type {
   DocumentFilters,
   DocumentListQuery,
