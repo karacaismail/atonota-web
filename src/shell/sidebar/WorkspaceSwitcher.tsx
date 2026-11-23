@@ -204,11 +204,16 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
         selectedKeys: [current],
         onClick: ({ key, domEvent }) => {
           setCurrent(key);
-          // Klavyeyle seçilince odak düğmeye döner. Fareyle seçimde odak taşınmaz.
+          // Klavyeyle seçilince odak düğmeye döner.
           // Aynı Enter tuşu odaktaki düğmeye tıklama olarak geçmesin; yoksa liste yeniden açılır.
           const byKeyboard = domEvent.type === 'keydown';
           if (byKeyboard) domEvent.preventDefault();
-          close(byKeyboard);
+          // Fareyle seçimde odak listedeyse düğmeye döner (inceleme 1, K-3).
+          // Chromium tıklanan öğeye odak verir. Liste hemen `inert` olur; odak gövdeye düşerdi.
+          // Odak listede değilse (örneğin WebKit) odağa dokunulmaz.
+          const surface = document.getElementById(`${menuId}-surface`);
+          const focusInMenu = surface?.contains(document.activeElement) ?? false;
+          close(byKeyboard || focusInMenu);
         },
         'aria-label': t.workspace.menu,
       }}
