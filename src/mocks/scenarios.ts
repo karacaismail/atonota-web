@@ -10,6 +10,10 @@ export const MOCK_SCENARIO_KEY = 'atonota.mock-senaryo';
 const SCENARIOS: Record<string, () => void> = {
   'cikis-hatasi': () => setLogout('failure'),
   'cikis-yabanci-adres': () => setLogout('foreign_url'),
+  // Oturum kapalı başlar. Giriş ekranı ve "AtonotA Login" düğmesi görünür.
+  'oturum-kapali': () => {
+    mockState.signedIn = false;
+  },
 };
 
 function setLogout(outcome: LogoutOutcome): void {

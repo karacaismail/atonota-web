@@ -4,7 +4,7 @@
 interface ImportMetaEnv {
   /** Kiracı sitesinin kökü. Varsayılan sayfanın kökü. */
   readonly VITE_SITE_URL?: string;
-  /** Keycloak kökü. Varsayılan https://id.atonota.net */
+  /** Keycloak kökü. Varsayılan https://api.login.atonota.net */
   readonly VITE_KEYCLOAK_URL?: string;
   /** Keycloak realm adı. Varsayılan platform */
   readonly VITE_KEYCLOAK_REALM?: string;

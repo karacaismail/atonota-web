@@ -60,7 +60,7 @@ describe('API istemcisi', () => {
 
     const result = await api.getLoginUrl('/panel');
 
-    expect(result.login_url).toMatch(/^https:\/\/kimlik\.example\.test\/realms\/platform\//);
+    expect(result.login_url).toMatch(/^https:\/\/api\.login\.atonota\.net\/realms\/platform\//);
     expect(seen).toContain('POST /api/method/platform_core.api.auth.get_login_url');
     mockServer.events.removeAllListeners();
   });

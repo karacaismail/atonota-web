@@ -5,7 +5,7 @@ Bu klasör web panelinin girişini yönetir. Tarayıcı erişim belirteci tutmaz
 ## Giriş nasıl yürür?
 
 1. Panel aynı kökte sunulur. Aynı kök, protokolün, sunucu adının ve kapının aynı olmasıdır.
-2. Kullanıcı “Atonota ile oturum aç” düğmesine basar.
+2. Kullanıcı “AtonotA Login ile oturum aç” düğmesine basar.
 3. Tarayıcı arka ucun `start_login` yoluna gider.
 4. Arka uç kullanıcıyı Keycloak giriş sayfasına gönderir.
 5. Keycloak kullanıcıyı arka ucun `keycloak_callback` yoluna geri gönderir.
@@ -83,13 +83,15 @@ Tarayıcı testleri `VITE_KEYCLOAK_URL` değerini sahte sunucunun Keycloak kök�
 
 ## Sahte sunucuda giriş
 
-Sahte sunucu açıkken örnek kullanıcının oturumu baştan açıktır. Giriş düğmesi bir sayfa geçişidir. Sahte sunucu sayfa geçişlerini karşılamaz. Bu yüzden giriş akışını yalnız gerçek arka uçla deneyebilirsiniz.
+Sahte sunucu açıkken örnek kullanıcının oturumu baştan açıktır. Giriş düğmesi bir sayfa geçişidir. Sahte sunucu `start_login` isteğine 302 yanıtı verir. Yanıt tarayıcıyı `https://api.login.atonota.net` köküne gönderir. O adreste gerçek bir sayfa yoktur. Bu yüzden giriş akışının tamamını yalnız gerçek arka uçla deneyebilirsiniz.
+
+Tarayıcı testi `oturum-kapali` senaryosuyla giriş ekranını açar. Test Keycloak sayfasını boş bir sayfayla taklit eder. Test `src/auth/e2e/login.spec.ts` dosyasındadır.
 
 ## Ayarlar
 
 | Ayar | Görevi | Varsayılan |
 | --- | --- | --- |
 | `VITE_SITE_URL` | Kiracı sitesinin kökü | Sayfanın kökü |
-| `VITE_KEYCLOAK_URL` | Çıkış adresini denetlemek için Keycloak kökü | `https://id.atonota.net` |
+| `VITE_KEYCLOAK_URL` | Çıkış adresini denetlemek için Keycloak kökü | `https://api.login.atonota.net` |
 | `VITE_KEYCLOAK_REALM` | Keycloak realm adı | `platform` |
 | `VITE_CSRF_META_NAME` | CSRF belirtecini taşıyan `meta` öğesinin adı | `csrf-token` |

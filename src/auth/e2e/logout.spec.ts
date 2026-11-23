@@ -42,7 +42,7 @@ test.describe('oturumu kapatma (B1)', () => {
     page,
   }) => {
     // Keycloak sahte bir köktür. Tarayıcı oraya gidince boş bir sayfa döner.
-    await page.route('https://kimlik.example.test/**', (route) =>
+    await page.route(`${SAMPLE_KEYCLOAK_URL}/**`, (route) =>
       route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Çıkış</title>' }),
     );
     await openSidebar(page);
@@ -66,7 +66,7 @@ test.describe('oturumu kapatma (B1)', () => {
     const alert = page.getByRole('alert').filter({ hasText: SIGN_OUT_ERROR });
     await expect(alert).toBeVisible();
     await expect(page.locator('.shell-user').last()).toContainText(SAMPLE_USER);
-    await expect(page).not.toHaveURL(/kimlik\.example\.test/);
+    await expect(page).not.toHaveURL(/api\.login\.atonota\.net/);
   });
 
   test('dar kipte çıkış hatası gözle görünen bir uyarıda çıkar (Ö-2)', async ({ page }) => {

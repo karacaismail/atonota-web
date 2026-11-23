@@ -65,18 +65,18 @@ describe('contract boundaries', () => {
   it('allows only the configured Keycloak host and realm', () => {
     expect(
       safeIdentityUrl(
-        'https://id.atonota.net/realms/atonota/protocol/openid-connect/auth?state=x',
-        'https://id.atonota.net/realms/atonota/',
+        'https://api.login.atonota.net/realms/atonota/protocol/openid-connect/auth?state=x',
+        'https://api.login.atonota.net/realms/atonota/',
       ),
     ).toContain('state=x');
     for (const url of [
       'javascript:alert(1)',
       'https://evil.test/',
-      'https://id.atonota.net.evil.test/',
-      'https://id.atonota.net/realms/other/account',
-      'https://name@id.atonota.net/realms/atonota/account',
+      'https://api.login.atonota.net.evil.test/',
+      'https://api.login.atonota.net/realms/other/account',
+      'https://name@api.login.atonota.net/realms/atonota/account',
     ]) {
-      expect(() => safeIdentityUrl(url, 'https://id.atonota.net/realms/atonota/')).toThrow();
+      expect(() => safeIdentityUrl(url, 'https://api.login.atonota.net/realms/atonota/')).toThrow();
     }
   });
   it('validates the approval digest and refuses ambiguous outcomes', () => {

@@ -17,7 +17,7 @@ describe('LoginScreen', () => {
   it('başlık, açıklama ve tam genişlik düğme sırayla gelir', () => {
     render(<LoginScreen onSignIn={vi.fn()} />);
     const heading = screen.getByRole('heading', { level: 1, name: 'Oturum açın' });
-    const button = screen.getByRole('button', { name: 'Atonota ile oturum aç' });
+    const button = screen.getByRole('button', { name: 'AtonotA Login ile oturum aç' });
     expect(heading.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(button).toHaveStyle({ width: '100%' });
   });
