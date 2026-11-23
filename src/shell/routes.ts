@@ -36,7 +36,7 @@ import {
 import type { ComponentType } from 'react';
 import { createElement, lazy } from 'react';
 
-import { isDemoEnabled } from '@/app/demo-mode';
+import { DEMO_PATH_PREFIX } from '@/app/demo-mode';
 
 import type { ModuleRegistration } from '@/modules';
 import { moduleRegistrations } from '@/modules';
@@ -113,8 +113,9 @@ export const lazyRoutes: RouteEntry[] = [
   ...moduleRoutes,
   ...(shellFeatures.aiStudio ? [aiStudioRoute] : []),
   // Deneme sayfaları yalnız e2e derlemesinde vardır. Koşul derleme zamanında sabittir.
-  // Menüde görünmezler (`menuEntries`, `nav.ts`).
-  ...(isDemoEnabled(import.meta.env.MODE)
+  // İşlev çağrısı kullanılmaz: derleyici çağrıyı sabite çevirmez ve sayfalar üretime girer.
+  // Menüde görünmezler (`menuEntries`).
+  ...(import.meta.env.MODE === 'e2e'
     ? [
         {
           path: '/_demo/shell',
@@ -177,5 +178,5 @@ export function toRouteObjects(entries: RouteEntry[]): RouteObject[] {
 
 /** Menüde görünen kayıtlar: parametresiz yollar. Deneme sayfaları (`/_demo/`) menüde görünmez. */
 export function menuEntries(entries: RouteEntry[]): RouteEntry[] {
-  return entries.filter((e) => !e.path.includes(':') && !e.path.startsWith('/_demo/'));
+  return entries.filter((e) => !e.path.includes(':') && !e.path.startsWith(DEMO_PATH_PREFIX));
 }

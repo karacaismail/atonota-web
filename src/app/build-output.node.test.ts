@@ -12,6 +12,12 @@ const DEMO_PAGE_MARKER = 'Arayüz temeli hazır';
 /** MSW kitaplığının paketteki izleri: kayıt çağrısı, günlük öneki ve işçi dosya adı. */
 const MSW_MARKERS = ['setupWorker', '[MSW]', 'mockServiceWorker'];
 
+/** Deneme rotası: `/_demo/<iş>`. Önekin kendisi (`/_demo/`) yönlendiricide kalabilir. */
+const DEMO_ROUTE = /\/_demo\/[\w-]+/;
+
+/** Deneme sayfalarının parça adları. Üretim çıktısında bu adlarla dosya bulunmamalıdır. */
+const DEMO_CHUNK = /^(DemoPage|ControlsDemoPage)-/;
+
 const DEV_ENV = {
   VITE_DEV_BACKEND: 'https://build-test-backend.example.test',
   VITE_DEV_SITE_NAME: 'build-test-tenant.example.test',
@@ -91,12 +97,17 @@ describe('üretim derlemesi (vite build)', () => {
     for (const name of assetFiles(outDir, '.js')) {
       const text = readFileSync(join(outDir, 'assets', name), 'utf8');
       expect(text.includes(DEMO_PAGE_MARKER), `${name}: deneme sayfası metni`).toBe(false);
-      expect(text.includes('_demo/foundation'), `${name}: deneme yolu`).toBe(false);
+      expect(text.match(DEMO_ROUTE)?.[0], `${name}: deneme rotası`).toBeUndefined();
       // MSW kitaplığı da pakete girmez: işçi kaydı, kitaplık günlük öneki ve işçi dosya adı yoktur.
       for (const marker of MSW_MARKERS) {
         expect(text.includes(marker), `${name}: sahte sunucu izi "${marker}"`).toBe(false);
       }
     }
+  });
+
+  it('deneme sayfalarının parçalarını içermez', () => {
+    const files = readdirSync(join(outDir, 'assets'));
+    expect(files.filter((name) => DEMO_CHUNK.test(name))).toEqual([]);
   });
 
   it('koleksiyon ve kayıt kaynağı zinciri ilk yükte değildir (orkestratör eki: ilk yük paketi)', () => {

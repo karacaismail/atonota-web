@@ -8,23 +8,19 @@
  */
 import { FileText, Rows } from '@phosphor-icons/react';
 
-import { DEMO_PATH_PREFIX } from '@/app/demo-mode';
-
 import { routes } from './paths';
 import { isReservedSegment, menuEntries, routeRegistry } from './routes';
 import type { NavEntry, NavGroup } from './sampleData';
 import type { ShellSidebar } from './view-data';
 
-/** Rota kaydındaki menü bağlantıları. Deneme sayfaları menüye girmez. */
-export const routeNav: NavEntry[] = menuEntries(routeRegistry)
-  .filter((r) => !r.path.startsWith(DEMO_PATH_PREFIX))
-  .map((r): NavEntry => ({
-    kind: 'link',
-    id: `route-${r.path}`,
-    label: r.label,
-    to: r.path,
-    icon: r.icon,
-  }));
+/** Rota kaydındaki menü bağlantıları. Deneme sayfalarını `menuEntries` çıkarır. */
+export const routeNav: NavEntry[] = menuEntries(routeRegistry).map((r): NavEntry => ({
+  kind: 'link',
+  id: `route-${r.path}`,
+  label: r.label,
+  to: r.path,
+  icon: r.icon,
+}));
 
 /**
  * Sunucunun sidebar verisini menü grubuna çevirir.

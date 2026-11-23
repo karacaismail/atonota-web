@@ -4,7 +4,8 @@
  *
  * Yol kuralı: her iş deneme sayfasını `/_demo/<iş>` yolunda açar. Rota kaydı shell işinin tembel
  * rota listesindedir (`src/shell/routes.ts`). Her iş o listeye yalnız kendi satırını ekler:
- *   ...(isDemoEnabled(import.meta.env.MODE) ? [{ path: '/_demo/ai', lazy: () => import('@/ai/demo/page') }] : [])
+ *   ...(import.meta.env.MODE === 'e2e' ? [{ path: '/_demo/ai', ... load: () => import('@/ai/demo/page') }] : [])
+ * Koşul düz karşılaştırma olmalıdır. `isDemoEnabled(...)` çağrısı derlemede sabite dönmez.
  *
  * `/_demo/` öneki hiçbir zaman koleksiyon sayfasına (`/:module/:doctype`) düşmez. Kayıtlı deneme
  * sayfası yoksa yol "bulunamadı" sayfasına gider. Bu kuralı yönlendirici (shell işi) uygular;
