@@ -12,7 +12,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "types": ["node"]
+    "types": ["node"],
+    "allowJs": true
   },
   "include": [
     "vite.config.ts",
@@ -20,6 +21,7 @@
     "playwright.config.ts",
     "eslint.config.js",
     "tests/e2e",
+    "scripts",
     "src/**/*.node.test.ts"
   ]
 }

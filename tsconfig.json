@@ -23,9 +23,10 @@
       "@/*": ["src/*"],
       "@design-source/*": ["design/source/*"]
     },
-    "types": ["vite/client", "@testing-library/jest-dom"]
+    "types": ["vite/client", "@testing-library/jest-dom"],
+    "allowJs": true
   },
-  "include": ["src", "tests/setup", "contracts"],
+  "include": ["src", "tests/setup", "contracts", "scripts"],
   // Node türlerini isteyen testler `*.node.test.ts` adını taşır. Onları tsconfig.node.json denetler.
   // Böylece Node türleri tarayıcı koduna sızmaz.
   "exclude": ["src/**/*.node.test.ts"]

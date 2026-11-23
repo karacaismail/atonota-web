@@ -1,0 +1,34 @@
+/* Odak perdesi. Değerler src/design CSS değişkenlerinden gelir; burada sabit değer yoktur. */
+.focus-dim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dim-overlay);
+  pointer-events: none;
+  background: var(--focus-dim-transparent);
+  -webkit-backdrop-filter: blur(0);
+  backdrop-filter: blur(0);
+  transition-property:
+    background-color,
+    backdrop-filter,
+    -webkit-backdrop-filter;
+  transition-duration: var(--motion-duration-focus-dim);
+  transition-timing-function: var(--motion-easing-standard);
+}
+
+body.focus-dim-on .focus-dim-overlay {
+  background: var(--focus-dim-color);
+  -webkit-backdrop-filter: blur(var(--focus-dim-blur));
+  backdrop-filter: blur(var(--focus-dim-blur));
+}
+
+/* Perdeyi açan öğe perdenin üstünde kalır; odak nettir. */
+body.focus-dim-on .focus-dim-source {
+  position: relative;
+  z-index: var(--z-dim-source);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-dim-overlay {
+    transition: none;
+  }
+}
