@@ -1,5 +1,5 @@
 import { SignOut } from '@phosphor-icons/react';
-import { Button } from 'antd';
+import { Button, message } from 'antd';
 import { useRef, useState } from 'react';
 
 import { t } from '../messages';
@@ -89,10 +89,14 @@ type SignOutPhase = 'idle' | 'pending' | 'failed';
 /**
  * B1: oturumu kapatma düğmesi. İstek sürerken ikinci istek gönderilmez.
  * İstek başarısız olursa oturum açık kalır ve yalın bir hata metni görünür.
+ * Dar kipte metne yer yoktur. Hata o zaman antd `message` ile kısa bir uyarı olarak görünür (Ö-2).
+ * Ekran okuyucu metni her iki kipte de düğmenin yanındaki `alert` alanından bir kez duyar.
  */
 function SignOutButton({ rail, signOut }: { rail: boolean; signOut: () => Promise<void> }) {
   const [phase, setPhase] = useState<SignOutPhase>('idle');
   const busy = useRef(false);
+  // Kendi tutucusuyla çalışır. Böylece antd `App` sarmalayıcısı olmadan da uyarı çıkar.
+  const [toast, toastHolder] = message.useMessage();
 
   const run = () => {
     if (busy.current) return;
@@ -106,12 +110,20 @@ function SignOutButton({ rail, signOut }: { rail: boolean; signOut: () => Promis
       () => {
         busy.current = false;
         setPhase('failed');
+        if (rail) {
+          // Uyarı yalnız gözle görülür. Duyuru `alert` alanındadır. Metin iki kez okunmaz.
+          void toast.open({
+            type: 'error',
+            content: <span aria-hidden="true">{t.footer.signOutError}</span>,
+          });
+        }
       },
     );
   };
 
   return (
     <div className="shell-signout">
+      {toastHolder}
       <Button
         type="text"
         block={!rail}

@@ -82,6 +82,24 @@ describe('SidebarFooter oturumu kapatma (B1)', () => {
     expect(signOut).toHaveBeenCalledTimes(2);
   });
 
+  it('dar kipte istek başarısız olursa hata gözle görünür bir uyarıda çıkar (Ö-2)', async () => {
+    const signOut = vi.fn(() => Promise.reject(new Error('ağ')));
+    render(
+      <ViewDataProvider value={{ account, signOut }}>
+        <SidebarFooter rail />
+      </ViewDataProvider>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Oturumu kapat' }));
+    });
+    const text = 'Oturum kapatılamadı. Oturumunuz açık. Biraz sonra yeniden deneyin.';
+    const visible = await screen.findAllByText(text);
+    // Metin en az bir yerde görünür durur. Yalnız ekran okuyucuya ayrılmış alanda kalmaz.
+    expect(visible.some((node) => !node.closest('.shell-vh'))).toBe(true);
+    // Ekran okuyucu hatayı bir kez duyar.
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
   it('oturum bağlantısı yoksa düğme çizilmez', () => {
     render(<SidebarFooter rail={false} />);
     expect(screen.queryByRole('button', { name: 'Oturumu kapat' })).toBeNull();
