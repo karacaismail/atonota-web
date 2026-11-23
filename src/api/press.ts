@@ -8,6 +8,8 @@
 
 export interface PressEnv {
   VITE_PRESS_URL?: string;
+  /** Vite geliştirme sunucusunda doğrudur. Düz HTTP localhost yalnız bu durumda kabul edilir. */
+  DEV?: boolean;
 }
 
 export interface PressConfig {
@@ -36,7 +38,8 @@ export function readPressConfig(env: PressEnv): PressConfig | undefined {
     throw new Error('VITE_PRESS_URL is not a valid URL.');
   }
   const secure =
-    url.protocol === 'https:' || (url.protocol === 'http:' && isLocalHost(url.hostname));
+    url.protocol === 'https:' ||
+    (env.DEV === true && url.protocol === 'http:' && isLocalHost(url.hostname));
   const bareOrigin =
     url.username === '' &&
     url.password === '' &&

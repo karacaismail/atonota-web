@@ -4,16 +4,26 @@
 // Yazan istek `X-Frappe-CSRF-Token` başlığını taşır (SZ-7). `Authorization` başlığı hiç gönderilmez.
 import createClient, { type Client, type Middleware } from 'openapi-fetch';
 
+import { version as packageVersion } from '../../package.json';
+
 import type { ApiConfig } from './config';
 import type { CsrfStore } from './csrf';
 import { ApiError, toApiError } from './errors';
+import type { DocumentListQuery, DocumentPage, FrappeV2Paths } from './frappe-v2';
 import type { paths as HrmsPaths } from './generated/hrms_tr';
 import type { paths as AccessPaths } from './generated/platform_core-access';
 import type { paths as AiPaths } from './generated/platform_core-ai';
 import type { paths as IdentityPaths } from './generated/platform_core-identity';
+import type { paths as MobilePaths } from './generated/platform_core-mobile';
 import type { paths as GatewayPaths } from './generated/platform_core-model-gateway';
 import type { paths as ShellPaths } from './generated/platform_core-shell';
 import {
+  isRawDocumentPage,
+  type Installation,
+  type Revoked,
+  UUID_PATTERN,
+  isInstallationPage,
+  isRevoked,
   type AccessSummary,
   type LeaveApplication,
   type LeaveName,
@@ -75,6 +85,9 @@ export interface JsonRpcRequest {
     | 'notifications/initialized';
   params?: Record<string, unknown>;
 }
+
+/** Uygulama sürümü. PWA uçları `X-Mobile-App-Version` başlığında `1.2.3` biçimini ister. */
+const APP_VERSION = packageVersion;
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const EMPTY_BODY_STATUSES = new Set([202, 204, 304]);
@@ -162,6 +175,26 @@ export interface ExplainPermissionQuery {
   user?: string;
 }
 
+/**
+ * Sayfalama değerlerini sözleşme sınırlarıyla denetler.
+ * Geçersiz değerde istek gönderilmez ve `invalid_request` hatası döner.
+ */
+function pagingError(
+  start: number,
+  limit: number,
+  bounds: { maxStart?: number; maxLimit: number },
+): ApiError | undefined {
+  const startOk =
+    Number.isInteger(start) &&
+    start >= 0 &&
+    (bounds.maxStart === undefined || start <= bounds.maxStart);
+  if (!startOk) return new ApiError({ kind: 'invalid_request', status: 0, code: 'start' });
+  if (!Number.isInteger(limit) || limit < 1 || limit > bounds.maxLimit) {
+    return new ApiError({ kind: 'invalid_request', status: 0, code: 'page_length' });
+  }
+  return undefined;
+}
+
 export type McpResult = { status: 'accepted' } | { status: 'ok'; response: JsonRpcResponse };
 
 export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDeps) {
@@ -206,6 +239,15 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
   const gateway = make<GatewayPaths>(config.siteUrl, config.modelTimeoutMs);
   const hrms = make<HrmsPaths>(`${config.siteUrl}/api`);
   const access = make<AccessPaths>(methodRoot);
+  const mobile = make<MobilePaths>(methodRoot);
+  const frappeV2 = make<FrappeV2Paths>(config.siteUrl);
+  // PWA uçlarının zorunlu başlıkları. Tarayıcı `Origin` başlığını kendisi koyar ve bu değeri yok sayar.
+  // Panel ve kiracı sitesi aynı köktedir. Bu yüzden değer site köküdür.
+  const pwaHeaders = {
+    Origin: new URL(config.siteUrl).origin,
+    'X-Mobile-App-Version': APP_VERSION,
+    'X-Mobile-Contract-Version': '1' as const,
+  };
 
   /**
    * Belirsiz 403 için oturumu ayrı ve önbelleksiz istekle doğrular (SZ-8).
@@ -384,6 +426,12 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       query: { status?: Proposal['status']; limit?: number; start?: number } = {},
       options: RequestOptions = {},
     ) {
+      // Sözleşme: limit 1 ile 100, start 0 ile 10000 arasındadır.
+      const invalid = pagingError(query.start ?? 0, query.limit ?? 20, {
+        maxStart: 10_000,
+        maxLimit: 100,
+      });
+      if (invalid) return Promise.reject(invalid);
       return unwrap(
         ai.GET('/platform_core.api.ai.list_proposals', { ...signalOf(options), params: { query } }),
         isProposalList,
@@ -450,11 +498,9 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
       options: RequestOptions = {},
     ): Promise<LeaveApplication[]> {
       const pageLength = query.pageLength ?? 20;
-      if (!Number.isInteger(pageLength) || pageLength < 1 || pageLength > 100) {
-        return Promise.reject(
-          new ApiError({ kind: 'invalid_request', status: 0, code: 'page_length' }),
-        );
-      }
+      // Sözleşme: limit_start en az 0, limit_page_length 1 ile 100 arasındadır.
+      const invalid = pagingError(query.start ?? 0, pageLength, { maxLimit: 100 });
+      if (invalid) return Promise.reject(invalid);
       return unwrap(
         hrms.GET('/resource/Leave%20Application', {
           ...signalOf(options),
@@ -533,6 +579,88 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
         isAccessSummary,
         options,
       );
+    },
+
+    /**
+     * Hesabın telefon ve PWA kurulumlarını sayfa sayfa okur. Bir sayfada en çok 20 kurulum olur.
+     * `after`, önceki sayfanın `nextAfter` değeridir. Son sayfada `nextAfter` boştur.
+     */
+    async listInstallations(
+      after?: string,
+      options: RequestOptions = {},
+    ): Promise<{ installations: Installation[]; nextAfter: string | null }> {
+      if (after !== undefined && !UUID_PATTERN.test(after)) {
+        throw new ApiError({ kind: 'invalid_request', status: 0, code: 'invalid_uuid' });
+      }
+      const page = await unwrap(
+        mobile.POST('/platform_core.api.mobile_pwa.v1_list_installations', {
+          ...signalOf(options),
+          params: { header: pwaHeaders },
+          body: after === undefined ? {} : { after },
+        }),
+        isInstallationPage,
+        options,
+      );
+      return { installations: page.installations, nextAfter: page.next_after };
+    },
+
+    /** Hesaba ait bir kurulumu iptal eder. Tarayıcının Frappe oturumu açık kalır. */
+    revokeInstallation(installationId: string, options: RequestOptions = {}): Promise<Revoked> {
+      if (!UUID_PATTERN.test(installationId)) {
+        return Promise.reject(
+          new ApiError({ kind: 'invalid_request', status: 0, code: 'invalid_uuid' }),
+        );
+      }
+      return unwrap(
+        mobile.POST('/platform_core.api.mobile_pwa.v1_revoke_installation', {
+          ...signalOf(options),
+          params: { header: pwaHeaders },
+          body: { installation_id: installationId },
+        }),
+        isRevoked,
+        options,
+      );
+    },
+
+    /**
+     * Bir kayıt türünün kayıtlarını sayfa sayfa okur (Frappe API v2, `GET /api/v2/document/<doctype>`).
+     * Frappe kayıt ve alan iznini uygular. Toplam sayı dönmez. `hasNextPage` sonraki sayfayı söyler.
+     * Gruplu sayım ve toplam bu uçta yoktur. Onlar `group_summary` sözleşmesiyle gelecek.
+     */
+    async listDocuments(
+      doctype: string,
+      query: DocumentListQuery = {},
+      options: RequestOptions = {},
+    ): Promise<DocumentPage> {
+      if (doctype.trim().length === 0) {
+        throw new ApiError({ kind: 'invalid_request', status: 0, code: 'doctype' });
+      }
+      const limit = query.limit ?? 20;
+      const invalid = pagingError(query.start ?? 0, limit, { maxLimit: 100 });
+      if (invalid) throw invalid;
+      const { data, error, response } = await settle(
+        frappeV2.GET('/api/v2/document/{doctype}', {
+          ...signalOf(options),
+          params: {
+            path: { doctype },
+            query: {
+              ...(query.fields ? { fields: JSON.stringify(query.fields) } : {}),
+              ...(query.filters ? { filters: JSON.stringify(query.filters) } : {}),
+              ...(query.orderBy ? { order_by: query.orderBy } : {}),
+              start: query.start ?? 0,
+              limit,
+            },
+          },
+        }),
+        options.signal,
+      );
+      if (!response.ok) return fail(response, error);
+      // API v2 yanıtı `message` zarfı taşımaz. `data` ve `has_next_page` üst düzeydedir.
+      if (!isRawDocumentPage(data)) {
+        throw new ApiError({ kind: 'invalid_response', status: response.status });
+      }
+      sessionExpiredNotified = false;
+      return { data: data.data, hasNextPage: data.has_next_page };
     },
 
     /** Model geçidinden yanıt ister. Model anahtarı sunucudadır (AX-2). */

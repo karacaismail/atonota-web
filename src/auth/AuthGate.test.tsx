@@ -96,6 +96,20 @@ describe('AuthGate', () => {
     expect(await screen.findByText('Panel içeriği')).toBeInTheDocument();
   });
 
+  it('bekleme ve hata ekranları da telefon önce yerleşimi kullanır', async () => {
+    mockServer.use(
+      http.get('*/api/method/frappe.auth.get_logged_user', () =>
+        HttpResponse.json({ exc_type: 'ServerError' }, { status: 500 }),
+      ),
+    );
+    setup();
+    const usesProjectSpacing = (element: HTMLElement | null) =>
+      element?.style.paddingInline === 'var(--space-md)' &&
+      element.style.maxWidth === 'var(--content-max-width)';
+    expect(usesProjectSpacing(screen.getByRole('status').closest('section'))).toBe(true);
+    expect(usesProjectSpacing((await screen.findByRole('alert')).closest('section'))).toBe(true);
+  });
+
   it('oturumdaki kullanıcıyı alt bileşene verir', async () => {
     const navigate = vi.fn();
     const session = createPlatformSession({

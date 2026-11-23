@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { SAMPLE_CSRF_TOKEN, sampleCompletion } from '@/mocks/fixtures';
-import { resetMockState } from '@/mocks/handlers';
+import { mockState, resetMockState } from '@/mocks/handlers';
 import { mockServer } from '@/mocks/node';
 
 import {
@@ -185,5 +185,20 @@ describe('createAgentRequest', () => {
   it('rota adı boşsa kurulmaz', () => {
     const api = createApiClient({ config, csrf: createCsrfStore() });
     expect(() => createAgentRequest({ api, route: '' })).toThrow(/route/);
+  });
+
+  it.each([
+    ['quota_exceeded', 429, 'rate_limited'],
+    ['gateway_busy', 429, 'rate_limited'],
+    ['provider_unavailable', 503, 'unavailable'],
+    ['provider_timeout', 503, 'unavailable'],
+    ['gateway_unavailable', 503, 'unavailable'],
+    ['data_policy_denied', 403, 'forbidden'],
+    ['transaction_active', 409, 'conflict'],
+    ['invalid_route', 400, 'invalid_request'],
+  ] as const)('sahte geçit %s hatasını sözleşmedeki durumla verir', async (code, status, kind) => {
+    mockState.gatewayFailure = code;
+    const { ask } = setup();
+    await expect(ask('merhaba').done).rejects.toMatchObject({ kind, code, status });
   });
 });

@@ -60,6 +60,12 @@ describe('toApiError', () => {
     expect(error.kind).toBe('conflict');
   });
 
+  it('mobil uçların code alanını okur', () => {
+    const error = toApiError(401, { server_time: 1795340000, code: 'pwa_session_required' });
+    expect(error).toMatchObject({ kind: 'session_expired', code: 'pwa_session_required' });
+    expect(toApiError(409, { server_time: 1, code: 'version_conflict' }).kind).toBe('conflict');
+  });
+
   it.each([
     [404, 'not_found'],
     [409, 'conflict'],

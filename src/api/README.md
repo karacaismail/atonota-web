@@ -44,4 +44,43 @@ Ayar yalnız kök olabilir. Örnek: `https://press.example.test`. Şu değerler 
 - yol, sorgu ya da kullanıcı bilgisi taşıyan adres,
 - adres olmayan değer.
 
-Yerel geliştirmede `http://localhost` adresi kabul edilir.
+Yerel geliştirmede `http://localhost` adresi kabul edilir. Bunun için `import.meta.env` nesnesindeki `DEV` değeri doğru olmalıdır. Üretim derlemesinde düz HTTP adresi her zaman hata verir.
+
+### Karar: sayfaya doğrudan giriş
+
+Bu karar orkestratörün 23 Kasım 2026 Pazartesi günkü kararıdır.
+
+`/account-deletion` sayfası Press'in kendi akışıdır. Press yeniden doğrulamayı ve CSRF belirtecini kendisi yönetir. Bu yüzden panelin “Hesabı sil” düğmesi açık kalır.
+
+## Karar: kayıt listesi için Frappe API v2
+
+Bu karar orkestratörün 23 Kasım 2026 Pazartesi günkü kararıdır.
+
+Liste ekranları kayıtları Frappe'nin standart ucundan okur. Uç bizim OpenAPI sözleşmelerimizde yoktur. Ortak ad belgesi bu ucu kabul eder. Frappe kayıt ve alan iznini bu uçta uygular.
+
+Biçim Frappe 16.56.0 kaynağından doğrulandı. Kaynak `v16.56.0` etiketidir. Okunan dosyalar şunlardır:
+
+- `frappe/api/v2.py`: `document_list` işlevi ve yol kuralları,
+- `frappe/api/__init__.py`: yanıt zarfı,
+- `frappe/utils/response.py`: hata biçimi.
+
+İstek şöyledir:
+
+- Yol: `GET /api/v2/document/<doctype>`
+- `fields`: alan adları, JSON dizisi. Verilmezse yalnız `name` döner.
+- `filters`: süzgeç, JSON nesnesi ya da dizisi.
+- `order_by`: sıralama. Örnek: `modified desc`.
+- `start`: atlanacak kayıt sayısı. Varsayılan 0.
+- `limit`: sayfa boyu. Frappe'nin varsayılanı 20'dir.
+
+Yanıt şöyledir:
+
+- Başarıda gövde `{ "data": [...], "has_next_page": true }` olur. `message` zarfı yoktur.
+- Frappe toplam kayıt sayısını vermez.
+- Hatada gövde `{ "errors": [{ "type": "PermissionError" }] }` olur.
+
+İstemci işlevi `listDocuments(doctype, query, options)` olur. Tipler `frappe-v2.ts` dosyasındadır. İstemci sayfa boyunu 1 ile 100 arasında tutar. Bu sınır proje kararıdır (SZ-10).
+
+Gruplu sayım ve toplam bu uçta yoktur. Arka uç bunlar için `platform_core.api.collection.group_summary` ucunu yazıyor. Sözleşme gelince istemci o uca bağlanacak.
+
+Frappe sürümü değişince biçimi yeniden doğrulayın.

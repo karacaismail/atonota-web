@@ -1,5 +1,6 @@
 import { Button, Typography } from 'antd';
 
+import { AuthLayout } from './AuthLayout';
 import messages from './messages.json';
 
 export interface LoginScreenProps {
@@ -9,18 +10,22 @@ export interface LoginScreenProps {
   brandName?: string;
 }
 
-/** Giriş rotasının ekranı. Düğme arka ucun `start_login` akışını başlatır. */
+/**
+ * Giriş rotasının ekranı. Düğme arka ucun `start_login` akışını başlatır.
+ * Yerleşim telefon önce kurulur: 320 px genişlikte kenar boşluğu vardır ve düğme tam genişliktedir.
+ * Ölçüler AuthLayout içinde projenin CSS değişkenlerinden gelir.
+ */
 export function LoginScreen({ onSignIn, brandName = messages.tr.brand }: LoginScreenProps) {
   const text = messages.tr;
   return (
-    <section aria-labelledby="login-title">
-      <Typography.Title level={1} id="login-title">
+    <AuthLayout labelledBy="login-title">
+      <Typography.Title level={1} id="login-title" style={{ margin: 0 }}>
         {text.login_title}
       </Typography.Title>
-      <Typography.Paragraph>{text.login_body}</Typography.Paragraph>
-      <Button type="primary" onClick={onSignIn}>
+      <Typography.Paragraph style={{ margin: 0 }}>{text.login_body}</Typography.Paragraph>
+      <Button type="primary" block onClick={onSignIn} style={{ width: '100%' }}>
         {text.login_button.replace('{brand}', brandName)}
       </Button>
-    </section>
+    </AuthLayout>
   );
 }

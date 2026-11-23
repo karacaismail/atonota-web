@@ -59,7 +59,12 @@ const SESSION_CODES = new Set([
   'reauthentication_required',
   'session_ended',
 ]);
-const CONFLICT_CODES = new Set(['TimestampMismatchError', 'document_changed']);
+const CONFLICT_CODES = new Set([
+  'TimestampMismatchError',
+  'document_changed',
+  'version_conflict',
+  'operation_conflict',
+]);
 /** Bu kodlar kesin yetki reddidir. Oturum denetimi gerekmez. */
 const DEFINITE_FORBIDDEN_CODES = new Set([
   'data_policy_denied',
@@ -83,6 +88,8 @@ function readCode(body: unknown): string | undefined {
   }
   if (isRecord(body.message) && typeof body.message.error === 'string') return body.message.error;
   if (typeof body.error === 'string') return body.error;
+  // Mobil ve PWA uçları hata kodunu `code` alanında verir.
+  if (typeof body.code === 'string' && body.code.length > 0) return body.code;
   return undefined;
 }
 

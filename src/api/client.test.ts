@@ -285,6 +285,19 @@ describe('API istemcisi', () => {
     await expect(api.getBootstrap()).resolves.toMatchObject({ sidebars: [{ name: 'Örnek' }] });
   });
 
+  it.each([
+    ['negatif başlangıç', { start: -1 }],
+    ['kesirli başlangıç', { start: 0.5 }],
+    ['sınır dışı sayfa boyu', { limit: 0 }],
+    ['çok büyük sayfa boyu', { limit: 101 }],
+  ])('öneri listesinde %s için istek göndermez', async (_label, query) => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const { api } = setup();
+    await expect(api.listProposals(query)).rejects.toMatchObject({ kind: 'invalid_request' });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
   it('DocType tanımını ETag ile okur ve 304 yanıtını ayırır', async () => {
     const { api } = setup();
 

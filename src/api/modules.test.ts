@@ -5,9 +5,10 @@ import {
   SAMPLE_CSRF_TOKEN,
   SAMPLE_KEYCLOAK_URL,
   SAMPLE_PRESS_URL,
+  sampleInstallations,
   sampleLeaves,
 } from '@/mocks/fixtures';
-import { resetMockState } from '@/mocks/handlers';
+import { mockState, resetMockState } from '@/mocks/handlers';
 import { mockServer } from '@/mocks/node';
 
 import { createApiClient } from './client';
@@ -44,6 +45,8 @@ beforeAll(() => {
   });
 });
 afterEach(() => {
+  // Panel Press ucunu hiçbir testte çağırmaz. Press'e yalnız tam sayfa yönlendirme yapılır.
+  expect(requests.filter((item) => item.url.origin === SAMPLE_PRESS_URL)).toEqual([]);
   mockServer.resetHandlers();
   resetMockState();
   requests.length = 0;
@@ -76,6 +79,24 @@ describe('HRMS izin başvuruları', () => {
     expect(items).toEqual([
       { name: sampleLeaves[0]?.name, status: 'Open', modified: sampleLeaves[0]?.modified },
     ]);
+  });
+
+  it.each([
+    ['negatif başlangıç', { start: -20 }],
+    ['kesirli başlangıç', { start: 1.5 }],
+    ['kesirli sayfa boyu', { pageLength: 2.5 }],
+    ['çok büyük sayfa boyu', { pageLength: 101 }],
+  ])('%s için istek göndermez', async (_label, query) => {
+    await expect(api().listLeaveApplications(query)).rejects.toMatchObject({
+      kind: 'invalid_request',
+    });
+    expect(requests).toHaveLength(0);
+  });
+
+  it('sahte sunucu yalnız izin başvurusu kayıtlarını karşılar', async () => {
+    const response = await fetch(`${SITE}/api/resource/Customer`).catch(() => undefined);
+    // Başka kayıt türü için sahte uç yoktur. İstek işlenmez ve 403 almaz.
+    expect(response?.status).not.toBe(403);
   });
 
   it('ad üyeliği süzgecini dizi biçiminde gönderir', async () => {
@@ -196,6 +217,137 @@ describe('erişim açıklaması', () => {
   });
 });
 
+describe('cihaz kurulumları (oturumlar)', () => {
+  it('kurulumları sayfa sayfa okur', async () => {
+    const first = await api().listInstallations();
+    expect(first.installations).toHaveLength(2);
+    expect(first.nextAfter).toBe(sampleInstallations[1]?.installation_id);
+    const sent = requests.at(-1);
+    expect(sent?.url.pathname).toBe(
+      '/api/method/platform_core.api.mobile_pwa.v1_list_installations',
+    );
+    expect(sent?.csrf).toBe(SAMPLE_CSRF_TOKEN);
+
+    const second = await api().listInstallations(first.nextAfter ?? undefined);
+    expect(second.installations.map((item) => item.installation_id)).toEqual([
+      sampleInstallations[2]?.installation_id,
+    ]);
+    expect(second.nextAfter).toBeNull();
+  });
+
+  it('kurulumu iptal eder', async () => {
+    const id = sampleInstallations[0]?.installation_id ?? '';
+    await expect(api().revokeInstallation(id)).resolves.toEqual({ revoked: 1 });
+    const page = await api().listInstallations();
+    expect(page.installations.find((item) => item.installation_id === id)?.revoked).toBe(true);
+  });
+
+  it('kimliği UUID olmayan kurulum için istek göndermez', async () => {
+    await expect(api().revokeInstallation('ORNEK')).rejects.toMatchObject({
+      kind: 'invalid_request',
+    });
+    expect(requests).toHaveLength(0);
+  });
+
+  it('bilinmeyen kurulum not_found verir', async () => {
+    await expect(
+      api().revokeInstallation('99999999-0000-4000-8000-000000000001'),
+    ).rejects.toMatchObject({ kind: 'not_found' });
+  });
+
+  it('PWA oturumu yoksa session_expired verir', async () => {
+    mockState.signedIn = false;
+    await expect(api().listInstallations()).rejects.toMatchObject({
+      kind: 'session_expired',
+      code: 'pwa_session_required',
+    });
+  });
+
+  it('UUID olmayan sayfa anahtarı için istek göndermez', async () => {
+    await expect(api().listInstallations('ORNEK')).rejects.toMatchObject({
+      kind: 'invalid_request',
+      code: 'invalid_uuid',
+    });
+    expect(requests).toHaveLength(0);
+  });
+
+  describe('sahte sunucu PWA isteğini sözleşmeye göre denetler', () => {
+    const path = `${SITE}/api/method/platform_core.api.mobile_pwa.v1_list_installations`;
+    const validHeaders = {
+      'Content-Type': 'application/json',
+      Origin: SITE,
+      'X-Frappe-CSRF-Token': SAMPLE_CSRF_TOKEN,
+      'X-Mobile-App-Version': '0.1.0',
+      'X-Mobile-Contract-Version': '1',
+    };
+
+    async function send(headers: Record<string, string>, body: unknown = {}) {
+      const response = await fetch(path, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
+      return { status: response.status, body: (await response.json()) as { code?: string } };
+    }
+
+    it('geçerli istek 200 alır', async () => {
+      expect((await send(validHeaders)).status).toBe(200);
+    });
+
+    it('sürüm başlığı eksikse reddeder', async () => {
+      const { 'X-Mobile-App-Version': _omit, ...headers } = validHeaders;
+      expect(await send(headers)).toMatchObject({
+        status: 400,
+        body: { code: 'invalid_client_version' },
+      });
+    });
+
+    it('sözleşme sürümü başlığı eksikse reddeder', async () => {
+      const { 'X-Mobile-Contract-Version': _omit, ...headers } = validHeaders;
+      expect(await send(headers)).toMatchObject({
+        status: 400,
+        body: { code: 'unsupported_contract_version' },
+      });
+    });
+
+    it('farklı kökten gelen isteği reddeder', async () => {
+      expect(await send({ ...validHeaders, Origin: 'https://kotu.example.test' })).toMatchObject({
+        status: 403,
+        body: { code: 'pwa_request_forbidden' },
+      });
+    });
+
+    it('UUID olmayan sayfa anahtarını reddeder', async () => {
+      expect(await send(validHeaders, { after: 'ORNEK' })).toMatchObject({
+        status: 400,
+        body: { code: 'invalid_uuid' },
+      });
+    });
+
+    it('bilinmeyen gövde alanını reddeder', async () => {
+      expect(await send(validHeaders, { sonraki: 'x' })).toMatchObject({
+        status: 400,
+        body: { code: 'invalid_request' },
+      });
+    });
+  });
+
+  it('bozuk kurulum kaydını reddeder', async () => {
+    mockServer.use(
+      http.post('*/api/method/platform_core.api.mobile_pwa.v1_list_installations', () =>
+        HttpResponse.json({
+          server_time: 1,
+          message: {
+            installations: [{ installation_id: 'x', scope: 'masaustu', revoked: false }],
+            next_after: null,
+          },
+        }),
+      ),
+    );
+    await expect(api().listInstallations()).rejects.toMatchObject({ kind: 'invalid_response' });
+  });
+});
+
 describe('Press hesap silme sayfası', () => {
   it('Press ayarı yoksa adres yoktur', () => {
     expect(readPressConfig({})).toBeUndefined();
@@ -220,13 +372,22 @@ describe('Press hesap silme sayfası', () => {
   });
 
   it('yerel geliştirmede HTTP localhost kabul edilir', () => {
-    expect(readPressConfig({ VITE_PRESS_URL: 'http://localhost:8001' })).toEqual({
+    expect(readPressConfig({ VITE_PRESS_URL: 'http://localhost:8001', DEV: true })).toEqual({
       pressUrl: 'http://localhost:8001',
     });
   });
 
-  it('panel Press ucunu çağırmaz', () => {
+  it('üretimde HTTP localhost kabul edilmez', () => {
+    expect(() => readPressConfig({ VITE_PRESS_URL: 'http://localhost:8001', DEV: false })).toThrow(
+      /VITE_PRESS_URL/,
+    );
+    expect(() => readPressConfig({ VITE_PRESS_URL: 'http://localhost:8001' })).toThrow(
+      /VITE_PRESS_URL/,
+    );
+  });
+
+  it('panel istemcisinde Press adresine giden metot yoktur', () => {
     const client = api() as Record<string, unknown>;
-    expect(Object.keys(client).some((key) => /deletion/i.test(key))).toBe(false);
+    expect(Object.keys(client).some((key) => /press|deletion/i.test(key))).toBe(false);
   });
 });

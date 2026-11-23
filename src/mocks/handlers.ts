@@ -7,6 +7,10 @@ import { TOOL_RESULT_PREFIX } from '@/api/ai-protocol';
 import {
   SAMPLE_USER as SAMPLE_ACCOUNT,
   sampleAccessSummary,
+  sampleInstallations,
+  RESTRICTED_SAMPLE_DOCTYPE,
+  SAMPLE_COLLECTION_DOCTYPE,
+  sampleCollection,
   sampleLeaves,
   SAMPLE_CSRF_TOKEN,
   SAMPLE_DOCTYPE_ETAG,
@@ -22,16 +26,46 @@ import {
 } from './fixtures';
 
 /** Sahte sunucunun durumu. Testler bu değerleri değiştirebilir. `resetMockState` ile sıfırlayın. */
-export const mockState = {
+/**
+ * Sahte model geçidinin verebileceği hatalar ve HTTP durumları.
+ * Kodlar model geçidi sözleşmesindeki `Error` listesindendir.
+ * Durumlar sözleşmedeki yanıt adlarından gelir: BadRequest 400, PermissionError 403,
+ * Conflict 409, QuotaError 429, Unavailable 503.
+ */
+export const GATEWAY_FAILURES = {
+  invalid_route: 400,
+  data_policy_denied: 403,
+  transaction_active: 409,
+  quota_exceeded: 429,
+  gateway_busy: 429,
+  provider_unavailable: 503,
+  provider_timeout: 503,
+  gateway_unavailable: 503,
+} as const;
+
+export type GatewayFailure = keyof typeof GATEWAY_FAILURES;
+
+export const mockState: {
+  signedIn: boolean;
+  proposals: Map<string, ReturnType<typeof sampleProposal>>;
+  leaves: Map<string, (typeof sampleLeaves)[number]>;
+  installations: { installation_id: string; scope: 'mobile' | 'pwa'; revoked: boolean }[];
+  /** Doluysa model geçidi bu hatayı verir. Testler hata ekranını böyle sınar. */
+  gatewayFailure: GatewayFailure | undefined;
+} = {
+  gatewayFailure: undefined,
   signedIn: true,
   proposals: new Map<string, ReturnType<typeof sampleProposal>>(),
   leaves: new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }])),
+  installations: sampleInstallations.map((item) => ({ ...item })),
 };
 
 export function resetMockState(): void {
   mockState.signedIn = true;
+  mockState.gatewayFailure = undefined;
   mockState.proposals.clear();
   mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
+  mockState.installations = sampleInstallations.map((item) => ({ ...item }));
 }
 
 let versionCounter = 0;
@@ -68,6 +102,82 @@ function leaveMatches(leave: Leave, filters: unknown): boolean {
   return Object.entries(filters).every(
     ([key, value]) => (leave as Record<string, unknown>)[key] === value,
   );
+}
+
+const SERVER_TIME = 1795340000;
+const MOCK_INSTALLATION_PAGE = 2;
+
+/** PWA uçları oturum ve CSRF ister. Hata gövdesi `code` alanını taşır. */
+function pwaError(status: number, code: string) {
+  return HttpResponse.json({ server_time: SERVER_TIME, code }, { status });
+}
+
+const APP_VERSION_PATTERN = /^[0-9]{1,5}\.[0-9]{1,5}\.[0-9]{1,5}$/;
+
+/**
+ * PWA uçlarının sözleşme denetimi: oturum, CSRF, köken ve iki sürüm başlığı.
+ * Tarayıcıdaki işçi `Origin` başlığını göremeyebilir. Bu yüzden başlık yoksa geçer.
+ * Başlık varsa isteğin kendi kökeniyle aynı olmalıdır.
+ */
+function pwaGuard(request: Request): Response | undefined {
+  if (request.headers.has('Authorization')) return pwaError(403, 'mixed_authentication');
+  if (!mockState.signedIn) return pwaError(401, 'pwa_session_required');
+  if (request.headers.get('X-Frappe-CSRF-Token') !== SAMPLE_CSRF_TOKEN) {
+    return pwaError(403, 'pwa_request_forbidden');
+  }
+  const origin = request.headers.get('Origin');
+  if (origin !== null && origin !== new URL(request.url).origin) {
+    return pwaError(403, 'pwa_request_forbidden');
+  }
+  if (request.headers.get('X-Mobile-Contract-Version') !== '1') {
+    return pwaError(400, 'unsupported_contract_version');
+  }
+  if (!APP_VERSION_PATTERN.test(request.headers.get('X-Mobile-App-Version') ?? '')) {
+    return pwaError(400, 'invalid_client_version');
+  }
+  return undefined;
+}
+
+const INSTALLATION_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+type CollectionRow = (typeof sampleCollection)[number];
+
+const COMPARE: Record<string, (left: unknown, right: unknown) => boolean> = {
+  '=': (left, right) => left === right,
+  '!=': (left, right) => left !== right,
+  '>': (left, right) => Number(left) > Number(right),
+  '<': (left, right) => Number(left) < Number(right),
+  '>=': (left, right) => Number(left) >= Number(right),
+  '<=': (left, right) => Number(left) <= Number(right),
+  in: (left, right) => Array.isArray(right) && right.includes(left),
+  'not in': (left, right) => Array.isArray(right) && !right.includes(left),
+};
+
+function collectionMatches(row: CollectionRow, filters: unknown): boolean {
+  if (filters === undefined || filters === null) return true;
+  const value = (field: unknown) => (row as Record<string, unknown>)[String(field)];
+  const test = (field: unknown, operator: unknown, expected: unknown) =>
+    COMPARE[String(operator)]?.(value(field), expected) ?? false;
+  if (Array.isArray(filters)) {
+    return filters.every((item) => Array.isArray(item) && test(item[0], item[1], item[2]));
+  }
+  if (typeof filters !== 'object') return false;
+  return Object.entries(filters).every(([field, expected]) =>
+    Array.isArray(expected) ? test(field, expected[0], expected[1]) : test(field, '=', expected),
+  );
+}
+
+function collectionOrder(orderBy: string | null) {
+  const [field = 'modified', direction = 'desc'] = (orderBy ?? 'modified desc').split(/\s+/);
+  const sign = direction.toLowerCase() === 'asc' ? 1 : -1;
+  return (a: CollectionRow, b: CollectionRow) =>
+    sign *
+    String((a as Record<string, unknown>)[field]).localeCompare(
+      String((b as Record<string, unknown>)[field]),
+      'tr',
+      { numeric: true },
+    );
 }
 
 const LEAVE_FIELDS = new Set([
@@ -310,10 +420,10 @@ export const handlers = [
   }),
 
   // HRMS izin başvuruları (hrms_tr sözleşmesi).
-  http.get('*/api/resource/:doctype', ({ request, params }) => {
+  // Yol yalnız izin başvurularını karşılar. Öteki kayıt türleri için sahte uç ayrıca eklenir.
+  http.get('*/api/resource/Leave%20Application', ({ request }) => {
     const denied = guard(request, { write: false });
     if (denied) return denied;
-    if (params.doctype !== 'Leave Application') return frappeError(403, 'PermissionError');
     const url = new URL(request.url);
     const fields = parseJsonParam(url, 'fields') ?? ['name'];
     const filters = parseJsonParam(url, 'filters');
@@ -341,13 +451,10 @@ export const handlers = [
     return HttpResponse.json({ data: page as JsonBodyType });
   }),
 
-  http.get('*/api/resource/:doctype/:name', ({ request, params }) => {
+  http.get('*/api/resource/Leave%20Application/:name', ({ request, params }) => {
     const denied = guard(request, { write: false });
     if (denied) return denied;
-    const leave =
-      params.doctype === 'Leave Application'
-        ? mockState.leaves.get(String(params.name))
-        : undefined;
+    const leave = mockState.leaves.get(String(params.name));
     return leave
       ? HttpResponse.json({ data: leave as JsonBodyType })
       : frappeError(404, 'DoesNotExistError');
@@ -388,6 +495,43 @@ export const handlers = [
     return message({ name: leave.name });
   }),
 
+  // Frappe API v2 kayıt listesi. Biçim Frappe 16.56.0 kaynağından doğrulandı (src/api/README.md).
+  // Yalnız örnek kayıt türleri karşılanır. Öteki türler sonraki işleyiciye geçer.
+  http.get('*/api/v2/document/:doctype', ({ request, params }) => {
+    const doctype = String(params.doctype);
+    if (doctype !== SAMPLE_COLLECTION_DOCTYPE && doctype !== RESTRICTED_SAMPLE_DOCTYPE) {
+      return undefined;
+    }
+    if (!mockState.signedIn) {
+      return HttpResponse.json({ errors: [{ type: 'SessionExpired' }] }, { status: 401 });
+    }
+    if (doctype === RESTRICTED_SAMPLE_DOCTYPE) {
+      return HttpResponse.json({ errors: [{ type: 'PermissionError' }] }, { status: 403 });
+    }
+    const url = new URL(request.url);
+    const fields = parseJsonParam(url, 'fields') ?? ['name'];
+    const filters = parseJsonParam(url, 'filters');
+    if (!Array.isArray(fields) || typeof filters === 'symbol') {
+      return HttpResponse.json({ errors: [{ type: 'ValidationError' }] }, { status: 417 });
+    }
+    const start = Number(url.searchParams.get('start') ?? 0);
+    const limit = Number(url.searchParams.get('limit') ?? 20);
+    const rows = sampleCollection
+      .filter((row) => collectionMatches(row, filters))
+      .sort(collectionOrder(url.searchParams.get('order_by')));
+    const page = rows
+      .slice(start, start + limit)
+      .map((row) =>
+        Object.fromEntries(
+          fields.map((field) => [String(field), (row as Record<string, unknown>)[String(field)]]),
+        ),
+      );
+    return HttpResponse.json({
+      data: page as JsonBodyType,
+      has_next_page: rows.length > start + limit,
+    });
+  }),
+
   // Erişim kuralı motoru (platform_core-access sözleşmesi).
   http.get('*/api/method/platform_core.api.access.explain_permission', ({ request }) => {
     const denied = guard(request, { write: false });
@@ -426,9 +570,63 @@ export const handlers = [
       : frappeError(403, 'PermissionError');
   }),
 
+  // Telefon ve PWA kurulumları (platform_core-mobile sözleşmesi, PWA oturumu).
+  // Sözleşmede sayfa en çok 20 kayıttır. Örnek sunucu sayfalamayı göstermek için 2 kayıt verir.
+  http.post(
+    '*/api/method/platform_core.api.mobile_pwa.v1_list_installations',
+    async ({ request }) => {
+      const failure = pwaGuard(request);
+      if (failure) return failure;
+      const body = (await request.json()) as Record<string, unknown>;
+      if (Object.keys(body).some((key) => key !== 'after')) return pwaError(400, 'invalid_request');
+      if (body.after !== undefined) {
+        if (typeof body.after !== 'string' || !INSTALLATION_ID_PATTERN.test(body.after)) {
+          return pwaError(400, 'invalid_uuid');
+        }
+      }
+      const after = typeof body.after === 'string' ? body.after : undefined;
+      const sorted = [...mockState.installations].sort((a, b) =>
+        a.installation_id.localeCompare(b.installation_id),
+      );
+      const rest = after ? sorted.filter((item) => item.installation_id > after) : sorted;
+      const page = rest.slice(0, MOCK_INSTALLATION_PAGE);
+      const nextAfter = rest.length > page.length ? (page.at(-1)?.installation_id ?? null) : null;
+      return HttpResponse.json({
+        server_time: SERVER_TIME,
+        message: { installations: page, next_after: nextAfter },
+      });
+    },
+  ),
+
+  http.post(
+    '*/api/method/platform_core.api.mobile_pwa.v1_revoke_installation',
+    async ({ request }) => {
+      const failure = pwaGuard(request);
+      if (failure) return failure;
+      const body = (await request.json()) as { installation_id?: string };
+      const item = mockState.installations.find(
+        (entry) => entry.installation_id === body.installation_id,
+      );
+      if (!item)
+        return HttpResponse.json(
+          { server_time: SERVER_TIME, code: 'installation_unavailable' },
+          { status: 404 },
+        );
+      const revoked = item.revoked ? 0 : 1;
+      item.revoked = true;
+      return HttpResponse.json({ server_time: SERVER_TIME, message: { revoked } });
+    },
+  ),
+
   http.post('*/api/method/platform_core.api.model.complete', async ({ request }) => {
     const denied = guard(request, { write: true });
     if (denied) return denied;
+    if (mockState.gatewayFailure) {
+      return HttpResponse.json(
+        { message: { error: mockState.gatewayFailure } },
+        { status: GATEWAY_FAILURES[mockState.gatewayFailure] },
+      );
+    }
     return message(sampleModel((await request.json()) as CompletionBody));
   }),
 ];
