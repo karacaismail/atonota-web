@@ -10,6 +10,11 @@
       "dosya": "src/views/collection/preview/temporary-theme.ts",
       "sahip": "views-collection",
       "neden": "foundation teması gelmeden önce yazılmış geçici kopya. src/design birleşince views-collection işi dosyayı kaldıracak."
+    },
+    {
+      "dosya": "src/shell/shell.css",
+      "sahip": "shell",
+      "neden": "Kapı 23 Kasım 2026 günü bildirim tarar ve anahtar sözcük eğrisini reddeder. Dosyada `visibility 0s linear` geçişleri ve `linear` dönen yükleme simgesi var. Shell işi bunları merkezi hareket tokenlarına taşıyınca bu kayıt silinir."
     }
   ]
 }
