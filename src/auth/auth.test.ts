@@ -128,6 +128,72 @@ describe('createAuth', () => {
     expect(auth.getState()).toEqual({ status: 'redirecting' });
   });
 
+  it('çıkış isteği başarısız olursa oturum açık kalır ve hata döner', async () => {
+    mockServer.use(
+      http.post('*/api/method/platform_core.api.auth.logout', () =>
+        HttpResponse.json({ exc_type: 'Exception' }, { status: 500 }),
+      ),
+    );
+    const { auth, csrf, navigate } = setup();
+    await auth.check();
+
+    await expect(auth.signOut()).rejects.toMatchObject({ kind: 'unknown' });
+
+    expect(auth.getState()).toEqual({ status: 'signed_in', user: SAMPLE_USER });
+    expect(csrf.get()).toBe(SAMPLE_CSRF_TOKEN);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('çıkışta ağ hatası olursa oturum açık kalır', async () => {
+    mockServer.use(
+      http.post('*/api/method/platform_core.api.auth.logout', () => HttpResponse.error()),
+    );
+    const { auth, navigate } = setup();
+    await auth.check();
+
+    await expect(auth.signOut()).rejects.toMatchObject({ kind: 'network' });
+    expect(auth.getState()).toEqual({ status: 'signed_in', user: SAMPLE_USER });
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'http://kimlik.example.test/realms/platform/protocol/openid-connect/logout',
+    'https://baska.example.test/auth/realms/x/protocol/openid-connect/logout?client_id=a',
+  ])('geçerli çıkış adresine gider: %s', async (logoutUrl) => {
+    mockServer.use(
+      http.post('*/api/method/platform_core.api.auth.logout', () =>
+        HttpResponse.json({ message: { logout_url: logoutUrl } }),
+      ),
+    );
+    const { auth, navigate } = setup();
+    await auth.check();
+    await auth.signOut();
+    expect(navigate).toHaveBeenCalledWith(logoutUrl);
+  });
+
+  it.each([
+    'javascript:alert(1)',
+    'ftp://kimlik.example.test/realms/platform/protocol/openid-connect/logout',
+    'https://kimlik.example.test/realms/platform/protocol/openid-connect/logout/ek',
+    'https://kimlik.example.test/realms/platform/protocol/openid-connect/auth',
+    'https://kisi:parola@kimlik.example.test/realms/platform/protocol/openid-connect/logout',
+    '/goreli/protocol/openid-connect/logout',
+  ])('denetimden geçmeyen çıkış adresinde panelin giriş sayfasına döner: %s', async (logoutUrl) => {
+    mockServer.use(
+      http.post('*/api/method/platform_core.api.auth.logout', () =>
+        HttpResponse.json({ message: { logout_url: logoutUrl } }),
+      ),
+    );
+    const { auth, csrf, navigate } = setup();
+    await auth.check();
+
+    await auth.signOut();
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(csrf.get()).toBeUndefined();
+    expect(auth.getState()).toEqual({ status: 'signed_out' });
+  });
+
   it('oturum kullanım sırasında bitince belirteci siler ve bir kez girişe yönlendirir', async () => {
     const { auth, api, csrf, navigate } = setup();
     await auth.check();

@@ -65,7 +65,15 @@ Panel yönlendirici kullanıyorsa giriş ekranını ayrı bir rotaya koyabilirsi
 
 ## Çıkış
 
-Çıkış düğmesi `session.auth.signOut()` işlevini çağırır. İşlev önce Frappe oturumunu kapatır. Sonra kullanıcıyı Keycloak çıkış sayfasına götürür.
+Yan menünün alt bölümünde “Oturumu kapat” düğmesi vardır. Düğme `session.auth.signOut()` işlevini çağırır.
+
+1. İşlev Frappe oturumunu kapatır.
+2. Sunucu Keycloak çıkış adresini verir.
+3. İşlev adresi denetler. Adres `http` ya da `https` olmalıdır. Yolu `/protocol/openid-connect/logout` ile bitmelidir.
+4. Adres denetimden geçerse tarayıcı bu adrese gider.
+5. Adres denetimden geçmezse panelin giriş ekranı açılır.
+
+İstek başarısız olabilir. O zaman oturum açık kalır. İşlev hata verir ve düğme yalın bir hata metni gösterir.
 
 ## Sahte sunucuda giriş
 

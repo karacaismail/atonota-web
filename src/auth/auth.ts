@@ -18,7 +18,7 @@ export type AuthState =
 
 export interface AuthDeps {
   api: Pick<ApiClient, 'getLoggedUser' | 'logout'>;
-  config: Pick<ApiConfig, 'siteUrl' | 'keycloakUrl' | 'keycloakRealm'>;
+  config: Pick<ApiConfig, 'siteUrl'>;
   csrf: CsrfStore;
   /** Tarayıcıyı verilen adrese götürür. Örnek: `(url) => window.location.assign(url)`. */
   navigate: (url: string) => void;
@@ -44,21 +44,25 @@ export function startLoginUrl(siteUrl: string, redirectTo: string): string {
   return url.toString();
 }
 
-/** Keycloak çıkış adresi yalnız ayardaki kökte ve realm altında olabilir (GV-3). */
-function isTrustedLogoutUrl(value: string, config: AuthDeps['config']): boolean {
+const LOGOUT_PATH_SUFFIX = '/protocol/openid-connect/logout';
+
+/**
+ * Keycloak çıkış adresini denetler (GV-3).
+ * Adres tam bir `http` ya da `https` adresi olmalıdır. Yolu `/protocol/openid-connect/logout` ile biter.
+ * Adreste kullanıcı adı ya da parola bulunmaz.
+ */
+export function isSafeLogoutUrl(value: string): boolean {
   let url: URL;
   try {
     url = new URL(value);
   } catch {
     return false;
   }
-  const base = new URL(config.keycloakUrl);
-  const secure = url.protocol === 'https:' || base.protocol === 'http:';
   return (
-    secure &&
-    url.origin === base.origin &&
-    url.pathname ===
-      `/realms/${encodeURIComponent(config.keycloakRealm)}/protocol/openid-connect/logout`
+    (url.protocol === 'https:' || url.protocol === 'http:') &&
+    url.username === '' &&
+    url.password === '' &&
+    url.pathname.endsWith(LOGOUT_PATH_SUFFIX)
   );
 }
 
@@ -118,23 +122,26 @@ export function createAuth({ api, config, csrf, navigate, currentPath }: AuthDep
 
     signIn,
 
-    /** Frappe oturumunu kapatır. Sonra Keycloak çıkış sayfasına gider. */
+    /**
+     * Frappe oturumunu kapatır. Sonra Keycloak çıkış sayfasına gider.
+     * İstek başarısız olursa oturum açık kalır ve işlev `ApiError` ile reddedilir.
+     * Sunucunun verdiği adres denetimden geçmezse panelin giriş ekranı açılır.
+     */
     async signOut(): Promise<void> {
+      let target: { logout_url: string };
       try {
-        const target = await api.logout();
-        csrf.clear();
-        if (!isTrustedLogoutUrl(target.logout_url, config)) {
-          throw new ApiError({
-            kind: 'invalid_response',
-            status: 200,
-            code: 'untrusted_logout_url',
-          });
-        }
-        setState({ status: 'redirecting' });
-        navigate(target.logout_url);
+        target = await api.logout();
       } catch (error) {
-        setState({ status: 'error', error: asApiError(error) });
+        throw asApiError(error);
       }
+      // Frappe oturumu kapandı. Bellekteki CSRF belirteci de silinir.
+      csrf.clear();
+      if (!isSafeLogoutUrl(target.logout_url)) {
+        setState({ status: 'signed_out' });
+        return;
+      }
+      setState({ status: 'redirecting' });
+      navigate(target.logout_url);
     },
 
     /**
