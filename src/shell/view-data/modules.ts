@@ -1,6 +1,8 @@
 import type { ApiClient } from '@/api';
 import type { ModuleEnvironment } from '@/modules';
-import { createModuleClient } from '@/modules';
+// İstemci doğrudan dosyasından gelir. `@/modules` girişi kayıt listesini de taşır.
+// Giriş ekranı kayıt listesini indirmez (ilk yük bütçesi). Test: `src/modules/e2e/ilk-yuk.spec.ts`.
+import { createModuleClient } from '@/modules/client';
 
 export interface ShellModuleEnvironmentInput extends Omit<ModuleEnvironment, 'client' | 'mode'> {
   /** Oturumdaki ortak API istemcisi (`createPlatformSession().api`). */

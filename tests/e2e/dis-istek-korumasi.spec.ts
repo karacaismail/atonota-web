@@ -27,18 +27,9 @@ test.describe('gerçek sunucu koruması', () => {
    * Panel incelemesi 2, K-1: uygulama sayfasında sahte sunucunun servis işçisi istekleri yönetir.
    * WebKit'te Playwright, işçinin ağa geçirdiği isteği görmez. Bu yüzden sahte sunucu
    * `atonota.net` isteğini işçide keser ve tarayıcı günlüğüne yazar. Fixture bu kaydı okur.
+   * Test `test.fail` kullanmaz. Böylece başka bir hata testi geçirmez (inceleme e5-1, K-1).
+   * Fixture kaydı boş değilse testi düşürür. Bu yolu yukarıdaki iki deneme sınar.
    */
-  test('uygulama sayfasında servis işçisinden geçen fetch gerçek sunucuya gitmez ve testi düşürür', async ({
-    page,
-  }) => {
-    test.fail(true, 'Sahte sunucu isteği keser. Ortak fixture kaydı okur ve testi düşürür.');
-    await page.goto('/');
-    await page.waitForFunction(() => navigator.serviceWorker?.controller != null);
-    await page.evaluate(async (url) => {
-      await fetch(url, { mode: 'no-cors' }).catch(() => undefined);
-    }, ENV_PROBE);
-  });
-
   test('uygulama sayfasında servis işçisi gerçek sunucu isteğini ağ hatasına düşürür', async ({
     page,
     gercekSunucuIstekleri,

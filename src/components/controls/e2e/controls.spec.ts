@@ -18,6 +18,15 @@ test.beforeEach(async ({ page }) => {
 const standardEasing = 'cubic-bezier(0.65, 0, 0.35, 1)';
 // Foundation decision 5: the shared fast, mid and slow durations (src/design/motion.ts).
 const sharedDurations = [100, 200, 300];
+/**
+ * WebKit can reverse a transition that has almost finished. It then reports a duration
+ * such as 199.996 ms (CSS Transitions 1, reversing). Within 1 ms the run counts as the shared
+ * duration. A clearly shortened run, for example 150 ms, still fails (review e5-1, K-2).
+ */
+const DURATION_TOLERANCE_MS = 1;
+function asSharedDuration(ms: number): number {
+  return sharedDurations.find((shared) => Math.abs(shared - ms) <= DURATION_TOLERANCE_MS) ?? ms;
+}
 
 /** Turns on keyboard focus mode with a real Tab press, then focuses the target. */
 async function keyboardFocus(page: Page, target: Locator) {
@@ -580,7 +589,7 @@ for (const [name, build] of Object.entries(choiceCases)) {
         for (const t of runs) {
           expect(t.easing, `${name} ${direction} ${phase} ${t.property}`).toBe(standardEasing);
           expect(sharedDurations, `${name} ${direction} ${phase} ${t.property}`).toContain(
-            t.duration,
+            asSharedDuration(t.duration),
           );
         }
       };

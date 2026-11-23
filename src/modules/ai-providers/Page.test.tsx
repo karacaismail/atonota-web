@@ -251,21 +251,24 @@ describe('AI providers page', () => {
     ['503', new ApiError({ kind: 'unavailable', status: 503 })],
     ['timeout', new ApiError({ kind: 'timeout', status: 0 })],
     ['network error', new ApiError({ kind: 'network', status: 0 })],
-  ])('clears the secret after an unknown outcome (%s) and does not send it again', async (_n, error) => {
-    const save = vi.fn().mockRejectedValue(error);
-    renderPage(client({ saveProviderConnection: save }));
-    await fillAnthropic('gizli-anahtar');
-    fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
-    await screen.findByText(/^İşlem sonucu bilinmiyor\./);
-    await waitFor(() => expect(screen.getByLabelText(/^API anahtarı/)).toHaveValue(''));
-    // Sır olmayan alanlar kalır. Yönetici yalnız sırrı yeniden yazar.
-    expect(screen.getByLabelText(/^Bağlantı adı/)).toHaveValue('Birincil');
-    // antd yükleme simgesi kapanış hareketinde bir süre kalır. Ad "loading Kaydet" olabilir.
-    fireEvent.click(screen.getByRole('button', { name: /Kaydet$/ }));
-    expect(await screen.findByLabelText(/^API anahtarı/)).toHaveAttribute('aria-invalid', 'true');
-    expect(save).toHaveBeenCalledTimes(1);
-    expect(document.body.textContent).not.toContain('gizli-anahtar');
-  });
+  ])(
+    'clears the secret after an unknown outcome (%s) and does not send it again',
+    async (_n, error) => {
+      const save = vi.fn().mockRejectedValue(error);
+      renderPage(client({ saveProviderConnection: save }));
+      await fillAnthropic('gizli-anahtar');
+      fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+      await screen.findByText(/^İşlem sonucu bilinmiyor\./);
+      await waitFor(() => expect(screen.getByLabelText(/^API anahtarı/)).toHaveValue(''));
+      // Sır olmayan alanlar kalır. Yönetici yalnız sırrı yeniden yazar.
+      expect(screen.getByLabelText(/^Bağlantı adı/)).toHaveValue('Birincil');
+      // antd yükleme simgesi kapanış hareketinde bir süre kalır. Ad "loading Kaydet" olabilir.
+      fireEvent.click(screen.getByRole('button', { name: /Kaydet$/ }));
+      expect(await screen.findByLabelText(/^API anahtarı/)).toHaveAttribute('aria-invalid', 'true');
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(document.body.textContent).not.toContain('gizli-anahtar');
+    },
+  );
 
   it('keeps the secret after a conflict, because nothing was saved', async () => {
     const conflict = new ApiError({ kind: 'conflict', status: 409 });

@@ -11,7 +11,8 @@ import type { Plugin } from 'vite';
  * Bu kök sahte sunucunun köküyle aynıdır: `src/mocks/fixtures.ts` içindeki `SAMPLE_KEYCLOAK_URL`.
  * Tarayıcı testleri `atonota.net` alanına giden isteği keser: `tests/setup/playwright-fixtures.ts`.
  * Test: `src/auth/e2e-env.test.ts` ve `src/mocks/build-output.node.test.ts`.
- * Üretim paketine girmediğini `src/app/build-output.node.test.ts` denetler.
+ * Bu kök üretimdeki varsayılan kökle aynıdır. `src/app/build-output.node.test.ts` bunu denetler.
+ * Aynı test, üretim paketinde örnek alan adı (`*.example.test`) olmadığını da denetler.
  */
 export const E2E_ENV = {
   VITE_API_MOCKS: 'on',
