@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-import { FOREIGN_LOGOUT_URL, SAMPLE_CSRF_TOKEN, sampleLogoutUrl } from './fixtures';
+import { FOREIGN_LOGOUT_URL, SAMPLE_CSRF_TOKEN, sampleLoginUrl, sampleLogoutUrl } from './fixtures';
 import { mockState, resetMockState } from './handlers';
 import { mockServer } from './node';
 import { applyMockScenario, MOCK_SCENARIO_KEY, readMockScenario } from './scenarios';
@@ -42,6 +42,34 @@ describe('sahte sunucu senaryoları', () => {
     const response = await logout();
     expect(await response.json()).toEqual({ message: { logout_url: FOREIGN_LOGOUT_URL } });
     expect(new URL(FOREIGN_LOGOUT_URL).hostname).toBe('baska.example.test');
+  });
+
+  it('"oturum-kapali" senaryosunda oturum kapalı başlar', async () => {
+    expect(applyMockScenario('oturum-kapali')).toBe(true);
+    const response = await fetch(
+      'https://kiraci.example.test/api/method/frappe.auth.get_logged_user',
+    );
+    expect(response.status).toBe(401);
+    expect(mockState.signedIn).toBe(false);
+  });
+
+  it('start_login isteği AtonotA Login giriş adresine yönlendirir', async () => {
+    const response = await fetch(
+      'https://kiraci.example.test/api/method/platform_core.api.auth.start_login?redirect_to=%2Fpanel',
+      { redirect: 'manual' },
+    );
+    expect(response.status).toBe(302);
+    const location = response.headers.get('location') ?? '';
+    expect(location).toBe(sampleLoginUrl.login_url);
+    expect(new URL(location).origin).toBe('https://api.login.atonota.net');
+  });
+
+  it('start_login güvensiz dönüş yolunu reddeder', async () => {
+    const response = await fetch(
+      'https://kiraci.example.test/api/method/platform_core.api.auth.start_login?redirect_to=%2F%2Fkotu.example.test',
+      { redirect: 'manual' },
+    );
+    expect(response.status).toBe(400);
   });
 
   it('bilinmeyen senaryo yok sayılır', () => {

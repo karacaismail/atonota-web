@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { isBottomBarOnly as isBottomBar, splitShadows } from '../setup/odak-gostergesi';
+import { expect, test, type Locator, type Page } from '../setup/playwright-fixtures';
 
 const DEMO = '/_demo/foundation';
 
@@ -28,18 +29,9 @@ function stops(
   ];
 }
 
-/** Hesaplanmış box-shadow listesini parçalara ayırır. */
-function splitShadows(value: string): string[] {
-  if (!value || value === 'none') return [];
-  return value.split(/,(?![^(]*\))/).map((s) => s.trim());
-}
-
-/** Tek kenarlı gösterge: iç gölge, x 0, y negatif, bulanıklık 0, yayılma 0, birincil renk. */
+/** Birincil renkte tek alt çizgi mi? Ortak denetim: `tests/setup/odak-gostergesi.ts`. */
 function isBottomBarOnly(shadow: string): boolean {
-  if (!shadow.includes(PRIMARY_RGB) || !shadow.includes('inset')) return false;
-  const nums = shadow.replace(/rgba?\([^)]*\)/, '').match(/-?\d+(?:\.\d+)?px/g) ?? [];
-  const [x, y, blur, spread] = nums.map((n) => parseFloat(n));
-  return x === 0 && (y ?? 0) < 0 && (blur ?? 0) === 0 && (spread ?? 0) === 0;
+  return isBottomBar(shadow, PRIMARY_RGB);
 }
 
 async function openKeyboardMode(page: Page) {

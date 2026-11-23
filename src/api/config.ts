@@ -29,7 +29,8 @@ export interface ApiEnv {
   VITE_CSRF_META_NAME?: string;
 }
 
-export const DEFAULT_KEYCLOAK_URL = 'https://id.atonota.net';
+/** AtonotA Login giriş adresi. Ortamlarda `https://api.login.<ortam>.atonota.net` olur. */
+export const DEFAULT_KEYCLOAK_URL = 'https://api.login.atonota.net';
 export const DEFAULT_KEYCLOAK_REALM = 'platform';
 
 function trimSlash(value: string): string {

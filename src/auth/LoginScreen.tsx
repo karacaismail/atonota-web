@@ -7,7 +7,7 @@ import messages from './messages.json';
 export interface LoginScreenProps {
   /** Giriş düğmesine basılınca çağrılır. Örnek: `() => session.auth.signIn()`. */
   onSignIn: () => void;
-  /** Düğmedeki marka adı. Verilmezse “Atonota” olur. */
+  /** Düğmedeki marka adı. Verilmezse “AtonotA Login” olur. */
   brandName?: string;
   /** Verilirse açıklamanın altında kısa bir not görünür. Örnek: `idp_session_may_remain`. */
   notice?: SignedOutNotice;

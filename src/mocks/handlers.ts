@@ -48,6 +48,9 @@ export const GATEWAY_FAILURES = {
 
 export type GatewayFailure = keyof typeof GATEWAY_FAILURES;
 
+/** Sahte `start_login` isteğinin adresi bu anahtarla oturum deposuna yazılır. Tarayıcı testi okur. */
+export const MOCK_START_LOGIN_KEY = 'atonota.mock-start-login';
+
 /**
  * Sahte çıkış ucunun yanıtı.
  * `ok`: örnek Keycloak çıkış adresi. `failure`: sunucu hatası, oturum açık kalır.
@@ -402,6 +405,21 @@ export const handlers = [
       ? message(SAMPLE_USER)
       : frappeError(401, 'SessionExpired', { session_expired: 1 }),
   ),
+
+  // Giriş düğmesi bir sayfa geçişidir. Arka uç tarayıcıyı Keycloak giriş adresine yönlendirir.
+  // Sahte sunucuda hedef AtonotA Login köküdür: `https://api.login.atonota.net`.
+  http.get('*/api/method/platform_core.api.auth.start_login', ({ request }) => {
+    const redirectTo = new URL(request.url).searchParams.get('redirect_to');
+    if (redirectTo !== null && !REDIRECT_PATTERN.test(redirectTo)) {
+      return frappeError(400, 'InvalidRedirect');
+    }
+    try {
+      globalThis.sessionStorage?.setItem(MOCK_START_LOGIN_KEY, request.url);
+    } catch {
+      // Depo yoksa kayıt yapılmaz. Yönlendirme yine olur.
+    }
+    return HttpResponse.redirect(sampleLoginUrl.login_url, 302);
+  }),
 
   http.post('*/api/method/platform_core.api.auth.get_login_url', async ({ request }) => {
     const text = await request.text();

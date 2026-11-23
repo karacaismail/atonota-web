@@ -2,9 +2,14 @@ import { http, HttpResponse } from 'msw';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createApiClient } from '@/api/client';
-import type { ApiConfig } from '@/api/config';
+import { type ApiConfig, DEFAULT_KEYCLOAK_URL, readApiConfig } from '@/api/config';
 import { createCsrfStore } from '@/api/csrf';
-import { SAMPLE_CSRF_TOKEN, SAMPLE_KEYCLOAK_URL, SAMPLE_USER } from '@/mocks/fixtures';
+import {
+  SAMPLE_CSRF_TOKEN,
+  SAMPLE_KEYCLOAK_URL,
+  SAMPLE_USER,
+  sampleLoginUrl,
+} from '@/mocks/fixtures';
 import { mockState, resetMockState } from '@/mocks/handlers';
 import { mockServer } from '@/mocks/node';
 
@@ -55,6 +60,36 @@ describe('isSafeRedirect', () => {
   );
 });
 
+describe('AtonotA Login giriş adresi', () => {
+  const path = '/realms/platform/protocol/openid-connect/logout';
+
+  it('varsayılan Keycloak kökü api.login.atonota.net olur', () => {
+    expect(DEFAULT_KEYCLOAK_URL).toBe('https://api.login.atonota.net');
+    expect(readApiConfig({}, 'https://kiraci.example.test').keycloakUrl).toBe(
+      'https://api.login.atonota.net',
+    );
+  });
+
+  it('çıkış denetimi yeni kökü kabul eder', () => {
+    expect(isSafeLogoutUrl(`https://api.login.atonota.net${path}`, DEFAULT_KEYCLOAK_URL)).toBe(
+      true,
+    );
+  });
+
+  it.each(['https://id.atonota.net', 'https://id.alpha.atonota.net'])(
+    'çıkış denetimi eski kökü reddeder: %s',
+    (oldRoot) => {
+      expect(isSafeLogoutUrl(`${oldRoot}${path}`, DEFAULT_KEYCLOAK_URL)).toBe(false);
+    },
+  );
+
+  it('sahte sunucunun giriş yönlendirmesi api.login.atonota.net köküne gider', () => {
+    expect(SAMPLE_KEYCLOAK_URL).toBe('https://api.login.atonota.net');
+    expect(new URL(sampleLoginUrl.login_url).origin).toBe('https://api.login.atonota.net');
+    expect(sampleLoginUrl.brand_name).toBe('AtonotA Login');
+  });
+});
+
 describe('isSafeLogoutUrl', () => {
   const path = '/realms/platform/protocol/openid-connect/logout';
 
@@ -69,7 +104,7 @@ describe('isSafeLogoutUrl', () => {
   });
 
   it('http adresi yalnız Keycloak kökü de http ise geçer', () => {
-    expect(isSafeLogoutUrl(`http://kimlik.example.test${path}`, SAMPLE_KEYCLOAK_URL)).toBe(false);
+    expect(isSafeLogoutUrl(`http://api.login.atonota.net${path}`, SAMPLE_KEYCLOAK_URL)).toBe(false);
     expect(isSafeLogoutUrl(`http://localhost:8080${path}`, 'http://localhost:8080')).toBe(true);
   });
 
@@ -146,7 +181,7 @@ describe('createAuth', () => {
 
     expect(csrf.get()).toBeUndefined();
     expect(navigate).toHaveBeenCalledWith(
-      expect.stringMatching(/^https:\/\/kimlik\.example\.test\/realms\/platform\//),
+      expect.stringMatching(/^https:\/\/api\.login\.atonota\.net\/realms\/platform\//),
     );
     expect(auth.getState()).toEqual({ status: 'redirecting' });
   });
@@ -180,8 +215,8 @@ describe('createAuth', () => {
   });
 
   it.each([
-    'https://kimlik.example.test/realms/platform/protocol/openid-connect/logout',
-    'https://kimlik.example.test/auth/realms/x/protocol/openid-connect/logout?client_id=a',
+    'https://api.login.atonota.net/realms/platform/protocol/openid-connect/logout',
+    'https://api.login.atonota.net/auth/realms/x/protocol/openid-connect/logout?client_id=a',
   ])('geçerli çıkış adresine gider: %s', async (logoutUrl) => {
     mockServer.use(
       http.post('*/api/method/platform_core.api.auth.logout', () =>
@@ -196,13 +231,13 @@ describe('createAuth', () => {
 
   it.each([
     'https://baska.example.test/realms/platform/protocol/openid-connect/logout',
-    'https://kimlik.example.test:8443/realms/platform/protocol/openid-connect/logout',
-    'http://kimlik.example.test/realms/platform/protocol/openid-connect/logout',
+    'https://api.login.atonota.net:8443/realms/platform/protocol/openid-connect/logout',
+    'http://api.login.atonota.net/realms/platform/protocol/openid-connect/logout',
     'javascript:alert(1)',
-    'ftp://kimlik.example.test/realms/platform/protocol/openid-connect/logout',
-    'https://kimlik.example.test/realms/platform/protocol/openid-connect/logout/ek',
-    'https://kimlik.example.test/realms/platform/protocol/openid-connect/auth',
-    'https://kisi:parola@kimlik.example.test/realms/platform/protocol/openid-connect/logout',
+    'ftp://api.login.atonota.net/realms/platform/protocol/openid-connect/logout',
+    'https://api.login.atonota.net/realms/platform/protocol/openid-connect/logout/ek',
+    'https://api.login.atonota.net/realms/platform/protocol/openid-connect/auth',
+    'https://kisi:parola@api.login.atonota.net/realms/platform/protocol/openid-connect/logout',
     '/goreli/protocol/openid-connect/logout',
   ])('denetimden geçmeyen çıkış adresinde panelin giriş sayfasına döner: %s', async (logoutUrl) => {
     mockServer.use(

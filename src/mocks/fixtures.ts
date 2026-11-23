@@ -16,7 +16,11 @@ type GatewayResult = GatewayComponents['schemas']['Result'];
 
 export const SAMPLE_USER = 'ornek.kisi@example.test';
 export const SAMPLE_CSRF_TOKEN = 'ornek-csrf-belirteci';
-export const SAMPLE_KEYCLOAK_URL = 'https://kimlik.example.test';
+/**
+ * Sahte sunucunun Keycloak kökü. Bu kök AtonotA Login giriş adresidir.
+ * Tarayıcı testleri bu adresin yanıtını taklit eder.
+ */
+export const SAMPLE_KEYCLOAK_URL = 'https://api.login.atonota.net';
 export const SAMPLE_DIGEST = 'a'.repeat(64);
 
 export const sampleLoginUrl: LoginUrl = {
@@ -25,8 +29,8 @@ export const sampleLoginUrl: LoginUrl = {
     '?client_id=site-tenant1&response_type=code&scope=openid&state=ornek&nonce=ornek' +
     '&code_challenge=ornek&code_challenge_method=S256' +
     '&redirect_uri=https%3A%2F%2Fkiraci.example.test%2Fapi%2Fmethod%2Fplatform_core.api.auth.keycloak_callback',
-  brand_name: 'Atonota',
-  label: 'Atonota ile oturum aç',
+  brand_name: 'AtonotA Login',
+  label: 'AtonotA Login ile oturum aç',
 };
 
 export const sampleLogoutUrl: LogoutUrl = {

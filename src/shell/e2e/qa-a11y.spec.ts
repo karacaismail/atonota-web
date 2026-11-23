@@ -4,7 +4,7 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page } from '@playwright/test';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../tests/setup/playwright-fixtures';
 
 const LIST = `/ornek/${encodeURIComponent('örnek-kayıt')}`;
 /** Kabuğun deneme sayfası: metin bağlantısı ve ekmek kırıntısı bağlantısı buradadır. */

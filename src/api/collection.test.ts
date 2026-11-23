@@ -5,6 +5,7 @@ import {
   RESTRICTED_SAMPLE_DOCTYPE,
   SAMPLE_COLLECTION_DOCTYPE,
   SAMPLE_CSRF_TOKEN,
+  SAMPLE_KEYCLOAK_URL,
   sampleCollection,
 } from '@/mocks/fixtures';
 import { handlers, mockState, resetMockState } from '@/mocks/handlers';
@@ -21,7 +22,7 @@ const config: ApiConfig = {
   credentials: 'same-origin',
   timeoutMs: 1_000,
   modelTimeoutMs: 2_000,
-  keycloakUrl: 'https://kimlik.example.test',
+  keycloakUrl: SAMPLE_KEYCLOAK_URL,
   keycloakRealm: 'platform',
   aiRoute: 'ornek-rota',
   csrfMetaName: 'csrf-token',

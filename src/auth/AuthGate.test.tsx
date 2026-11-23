@@ -39,7 +39,8 @@ afterAll(() => mockServer.close());
 
 describe('AuthGate', () => {
   it('çıkış adresi denetimden geçmezse giriş ekranı kimlik oturumu notunu gösterir', async () => {
-    // Ayarda Keycloak kökü verilmedi. Sahte sunucunun çıkış adresi başka kökendedir.
+    // Sahte sunucu başka kökenli bir çıkış adresi verir. Adres Keycloak kökünden gelmez.
+    mockState.logoutOutcome = 'foreign_url';
     const { session, navigate } = setup();
     expect(await screen.findByText('Panel içeriği')).toBeInTheDocument();
 
@@ -72,7 +73,7 @@ describe('AuthGate', () => {
     const { navigate } = setup();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Atonota ile oturum aç' }));
+    await user.click(await screen.findByRole('button', { name: 'AtonotA Login ile oturum aç' }));
 
     expect(navigate).toHaveBeenCalledWith(
       `${SITE}/api/method/platform_core.api.auth.start_login?redirect_to=%2Fpanel`,
@@ -84,7 +85,7 @@ describe('AuthGate', () => {
     mockState.signedIn = false;
     const { navigate } = setup();
     const user = userEvent.setup();
-    await screen.findByRole('button', { name: 'Atonota ile oturum aç' });
+    await screen.findByRole('button', { name: 'AtonotA Login ile oturum aç' });
 
     await user.tab();
     await user.keyboard('{Enter}');
