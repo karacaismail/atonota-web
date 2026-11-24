@@ -486,6 +486,7 @@ function sampleRecordLinks(row: CollectionRow) {
     ilgili_kayit: recordLinks.get(row.name) ?? null,
     kaynak_kayit: number > 1 ? `ORNEK-${String(number - 1).padStart(4, '0')}` : null,
     gizli_kayit: null,
+    aciklama: `${row.title} için açıklama.\nİkinci satır.`,
   };
 }
 

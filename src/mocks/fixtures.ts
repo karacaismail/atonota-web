@@ -123,6 +123,16 @@ export const sampleDocTypeMeta: Meta = {
         component: 'input',
         sensitivity: 'standard',
       },
+      // Çok satırlı metin. Arka uç Small Text alanına `text-area` bileşen adını verir
+      // (frappesetup backend: platform_core/shell/catalog.py).
+      {
+        fieldname: 'aciklama',
+        fieldtype: 'Small Text',
+        label: 'Açıklama',
+        read_only: false,
+        component: 'text-area',
+        sensitivity: 'standard',
+      },
       // Bağlantı alanları. Arka uç Link alanına `link-select` bileşen adını verir
       // (frappesetup backend: platform_core/shell/catalog.py).
       {
