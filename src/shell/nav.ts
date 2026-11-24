@@ -48,3 +48,26 @@ export function navFromSidebars(sidebars: readonly ShellSidebar[]): NavGroup[] {
 export function buildShellNav(groups: readonly NavGroup[]): NavEntry[] {
   return [...routeNav, ...groups];
 }
+
+/** Hızlı eylem. `to` varsa sayfaya gider. `prompt` varsa isteği asistana gönderir. */
+export interface QuickAction {
+  key: string;
+  label: string;
+  to?: string;
+  prompt?: string;
+}
+
+/** Komut alanının altında en çok bu kadar hızlı eylem görünür. */
+export const QUICK_ACTION_LIMIT = 3;
+
+/**
+ * Hızlı eylemler sunucunun sidebar gruplarından gelir.
+ * Gruplar Frappe'nin izin süzgecinden geçmiştir. Liste rotası bu sayfaları açar.
+ * Böylece kullanıcının açamadığı sayfa hızlı eylem olmaz. Veri yoksa liste boştur.
+ */
+export function quickActionsFrom(groups: readonly NavGroup[], limit = QUICK_ACTION_LIMIT) {
+  return groups
+    .flatMap((g) => g.children)
+    .slice(0, limit)
+    .map((l): QuickAction => ({ key: l.id, label: l.label, to: l.to }));
+}

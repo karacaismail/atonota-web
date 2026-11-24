@@ -8,7 +8,7 @@ import { AppContent } from './App';
 import { appPathname } from './base-path';
 import { AppProviders } from './AppProviders';
 import type { ThemeModeChoice } from './theme-mode';
-import { createShellViewData, loadShellAccount } from './view-data';
+import { createShellViewData, loadShellAccount, workspaceFromSite } from './view-data';
 
 export interface RootProps {
   session: PlatformSession;
@@ -83,7 +83,11 @@ function SignedIn({
     };
   }, [session, user, dataMode]);
   // Veri bağlantısı yalnız oturum ya da kullanıcı değişince yeniden kurulur. Ad sonradan gelir.
-  const base = useMemo(() => createShellViewData(session.api), [session]);
+  // Çalışma alanı oturumun sitesidir. Adres çözülemezse alan eklenmez; seçici yalnız logoyu gösterir.
+  const base = useMemo(() => {
+    const workspaces = workspaceFromSite(session.config.siteUrl);
+    return { ...createShellViewData(session.api), ...(workspaces ? { workspaces } : {}) };
+  }, [session]);
   const viewData = useMemo(
     () => ({
       ...base,

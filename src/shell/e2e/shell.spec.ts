@@ -305,7 +305,8 @@ test.describe('komut kutusu önerileri', () => {
   test('öneri etiketi bileşen stili gelmeden de token boyutundadır (WebKit 9.38 px)', async ({
     page,
   }) => {
-    await page.goto('/');
+    // Örnek hızlı eylemler yalnız deneme sayfasındadır. Canlı eylemler sunucu menüsünden gelir.
+    await page.goto(DEMO);
     if (isCompact(page)) await page.getByRole('button', { name: 'Menüyü aç' }).click();
     await expect(page.locator('.shell-chips .ant-prompts-label').first()).toBeVisible();
     const result = await page.evaluate(() => {

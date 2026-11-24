@@ -30,7 +30,7 @@ export const t = {
     modes: { ask: 'Sor', do: 'Yap', search: 'Ara' },
     modeLabel: 'Komut modu',
     placeholder: 'Bir şey sorun ya da / yazın',
-    suggestions: 'Hızlı öneriler',
+    suggestions: 'Hızlı eylemler',
   },
   agents: {
     status: { running: 'Çalışıyor', idle: 'Beklemede', error: 'Hata verdi' },
@@ -100,6 +100,7 @@ export const t = {
     assistantText:
       'Sorunuz alındı. Asistan yanıtı bu sürümde yok. Yanıt yüzeyi sonraki işte gelecek.',
     sample: 'Bu sayfadaki veriler örnektir.',
+    homeEmpty: 'Panel özeti henüz yok. Menüden bir sayfa açın.',
     noModuleEnvironment:
       'Modül bağlantısı kurulmadı. Uygulama girişi kabuğa modül ortamını vermeli.',
     noDataSource: 'Veri kaynağı bağlı değil. Uygulama girişi kabuğa veri bağlantısı vermeli.',

@@ -8,11 +8,13 @@ vi.mock('@ant-design/x', () => import('../testing/antdXMock'));
 import { FocusDimProvider } from '../focus-dim';
 import { routeNav } from '../nav';
 import type { Agent } from '../sampleData';
-import { sampleAgents, sampleNav } from '../sampleData';
+import { sampleAgents, sampleNav, sampleWorkspaces } from '../sampleData';
 import { Sidebar } from './Sidebar';
 
 /** Deneme menüsü: rota bağlantıları ve örnek gruplar. Canlı menü örnek grup göstermez. */
 const demoNav = [...routeNav, ...sampleNav];
+/** Deneme sayfasının örnek çalışma alanları. Canlı panel bunları göstermez. */
+const demoWorkspaces = { items: sampleWorkspaces, current: 'a' };
 
 function setup(variant: 'solid' | 'rail' = 'solid', agents: Agent[] = sampleAgents) {
   const onVariantChange = vi.fn();
@@ -25,6 +27,7 @@ function setup(variant: 'solid' | 'rail' = 'solid', agents: Agent[] = sampleAgen
           onVariantChange={onVariantChange}
           nav={demoNav}
           agents={agents}
+          workspaces={demoWorkspaces}
         />
       </FocusDimProvider>
     </MemoryRouter>,

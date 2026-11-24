@@ -170,6 +170,15 @@ export function parseApproval(value: unknown) {
         : text(source['deny_reason']),
   };
 }
+/**
+ * Önerinin süresi doldu mu? Sunucu durumu henüz `pending` olsa da son zaman geçtiyse doldu sayılır.
+ * Liste bu öneriyi "Süresi doldu" diye yazar; onay düğmesi görünmez.
+ */
+export function proposalExpired(proposal: Proposal, now = Date.now()): boolean {
+  if (proposal.result !== '') return false;
+  if (proposal.status === 'expired') return true;
+  return proposal.status === 'pending' && !(Date.parse(proposal.expires_at) > now);
+}
 export function proposalCanRun(proposal: Proposal, now = Date.now()): boolean {
   return (
     proposal.status === 'pending' && proposal.result === '' && Date.parse(proposal.expires_at) > now

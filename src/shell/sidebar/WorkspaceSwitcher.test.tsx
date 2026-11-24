@@ -1,7 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { sampleWorkspaces } from '../sampleData';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+
+/** Deneme sayfasının örnek çalışma alanları. Birden çok alan açılır liste kurar. */
+const data = { items: sampleWorkspaces, current: 'a' };
 
 /**
  * Kapanan liste hemen anlamsal olarak gizlenir (Linux WebKit kararsızlığı, 23 Kasım 2026).
@@ -12,7 +16,7 @@ describe('WorkspaceSwitcher kapanan liste', () => {
   it('kapanınca liste aria-hidden ve inert olur', () => {
     render(
       <div className="shell">
-        <WorkspaceSwitcher rail={false} />
+        <WorkspaceSwitcher rail={false} data={data} />
       </div>,
     );
     const button = screen.getByRole('button', { name: /Örnek Şirket A/ });
@@ -41,7 +45,7 @@ describe('WorkspaceSwitcher fareyle seçim', () => {
     render(
       <div className="shell">
         <button type="button">Dış düğme</button>
-        <WorkspaceSwitcher rail={false} />
+        <WorkspaceSwitcher rail={false} data={data} />
       </div>,
     );
     const button = screen.getByRole('button', { name: /Örnek Şirket A/ });

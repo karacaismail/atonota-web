@@ -375,3 +375,10 @@ html[data-focus-mode='keyboard'] .ai-scope .ant-btn.ant-btn:focus-visible {
     box-shadow: none;
   }
 }
+
+/* Model geçidi bağlantısı yoksa görünen açıklama. Ölçüler ortak tokenlardan gelir. */
+.ai-not-connected {
+  box-sizing: border-box;
+  max-width: var(--content-max-width);
+  padding: var(--space-lg);
+}

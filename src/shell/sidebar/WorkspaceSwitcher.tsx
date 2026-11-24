@@ -6,10 +6,12 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 
 import { useFocusDim } from '../focus-dim';
 import { t } from '../messages';
-import { sampleWorkspaces } from '../sampleData';
+import type { ShellWorkspace, ShellWorkspaceData } from '../view-data';
 
 interface WorkspaceSwitcherProps {
   rail: boolean;
+  /** Sunucudan gelen çalışma alanları. Yoksa yalnız logo görünür; örnek şirket gösterilmez. */
+  data?: ShellWorkspaceData | undefined;
 }
 
 type FocusTarget = 'first' | 'last';
@@ -64,15 +66,51 @@ function focusMenuItem(menuId: string, target: FocusTarget): boolean {
 }
 
 /**
- * W1: tıklanınca "Açıklamalı" stilde liste açar. Odak perdesi uygulanır.
+ * W1: çalışma alanı seçici. Veri sunucudan gelir (oturumun kiracısı).
+ * Veri yoksa yalnız logo görünür. Tek çalışma alanı varsa ad açılır liste olmadan sade görünür.
+ * Birden çok çalışma alanı varsa açılır liste olur.
+ */
+export function WorkspaceSwitcher({ rail, data }: WorkspaceSwitcherProps) {
+  const items = data?.items ?? [];
+  if (items.length > 1 && data) return <WorkspaceMenu rail={rail} data={data} />;
+  const ws = items[0];
+  return (
+    <div className="shell-ws" data-static="true">
+      <span className="shell-logo" aria-hidden="true">
+        A
+      </span>
+      {ws &&
+        (rail ? (
+          <span className="shell-vh">{t.workspace.label(ws.name)}</span>
+        ) : (
+          <WorkspaceLabel ws={ws} />
+        ))}
+    </div>
+  );
+}
+
+/** Seçicideki ad ve kısa not. Not yoksa not satırı çizilmez. */
+function WorkspaceLabel({ ws }: { ws: ShellWorkspace }) {
+  return (
+    <span className="shell-ws-t">
+      <span className="shell-vh">{t.workspace.prefix}</span>
+      <b>{ws.name}</b>
+      {ws.note ? <small>{ws.note}</small> : null}
+    </span>
+  );
+}
+
+/**
+ * Birden çok çalışma alanı: tıklanınca "Açıklamalı" stilde liste açar. Odak perdesi uygulanır.
  * Klavye APG menü düğmesi kalıbına uyar (Ö8):
  * Enter, Space ve aşağı ok listeyi açar ve ilk öğeye gider. Yukarı ok son öğeye gider.
  * Oklar öğeler arasında gezer. Escape listeyi kapatır ve odağı düğmeye verir.
  * Tab ve Shift+Tab listeyi kapatır. Odak düğmeden sonraki ya da önceki öğeye geçer.
  * Liste fareyle açıldıysa aşağı ok ilk öğeye, yukarı ok son öğeye gider.
  */
-export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
-  const [current, setCurrent] = useState(sampleWorkspaces[0]?.id ?? '');
+function WorkspaceMenu({ rail, data }: { rail: boolean; data: ShellWorkspaceData }) {
+  const workspaces = data.items;
+  const [current, setCurrent] = useState(data.current);
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -137,7 +175,7 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
     return () => document.removeEventListener('keydown', onKey);
   }, [open, menuId]);
 
-  const ws = sampleWorkspaces.find((w) => w.id === current) ?? sampleWorkspaces[0];
+  const ws = workspaces.find((w) => w.id === current) ?? workspaces[0];
   if (!ws) return null;
 
   const close = (returnFocus: boolean) => {
@@ -174,7 +212,7 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
     setOpen(true);
   };
 
-  const items: MenuProps['items'] = sampleWorkspaces.map((w) => ({
+  const items: MenuProps['items'] = workspaces.map((w) => ({
     key: w.id,
     label: (
       <span className="shell-dd-desc">
@@ -183,7 +221,7 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
         </span>
         <span className="shell-dd-t">
           <span>{w.name}</span>
-          <small>{w.note}</small>
+          {w.note ? <small>{w.note}</small> : null}
         </span>
       </span>
     ),
@@ -204,6 +242,7 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
         selectedKeys: [current],
         onClick: ({ key, domEvent }) => {
           setCurrent(key);
+          if (key !== current) data.select?.(key);
           // Klavyeyle seçilince odak düğmeye döner.
           // Aynı Enter tuşu odaktaki düğmeye tıklama olarak geçmesin; yoksa liste yeniden açılır.
           const byKeyboard = domEvent.type === 'keydown';
@@ -263,11 +302,7 @@ export function WorkspaceSwitcher({ rail }: WorkspaceSwitcherProps) {
         </span>
         {!rail && (
           <>
-            <span className="shell-ws-t">
-              <span className="shell-vh">{t.workspace.prefix}</span>
-              <b>{ws.name}</b>
-              <small>{ws.note}</small>
-            </span>
+            <WorkspaceLabel ws={ws} />
             <span className="shell-ws-i" aria-hidden="true">
               <CaretUpDown />
             </span>

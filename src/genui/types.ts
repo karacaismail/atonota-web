@@ -75,6 +75,11 @@ export interface ConfirmBlock {
   confirmLabel: string;
   cancelLabel: string;
   danger?: boolean;
+  /**
+   * Onayın son geçerlilik zamanı, ISO 8601. Örnek: `2026-11-24T12:00:00+03:00`.
+   * Süre geçince blok "Süresi doldu" yazar ve onay düğmesi görünmez.
+   */
+  expiresAt?: string;
 }
 
 export interface FormOption {

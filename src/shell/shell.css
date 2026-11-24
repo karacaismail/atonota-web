@@ -617,9 +617,14 @@ html:has(.shell[data-layout='compact']) {
   cursor: pointer;
 }
 
-.shell-ws:hover,
+.shell-ws:not([data-static]):hover,
 .shell-ws[data-raised='true'] {
   background: var(--shell-ghost);
+}
+
+/* Tek çalışma alanında seçici düğme değildir. Üzerine gelince zemin değişmez. */
+.shell-ws[data-static] {
+  cursor: default;
 }
 
 .shell-sb[data-variant='rail'] .shell-ws {

@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { t } from '../messages';
+import type { QuickAction } from '../nav';
 import { routes } from '../paths';
-import { samplePrompts } from '../sampleData';
 
 type Mode = 'ask' | 'do' | 'search';
 
 interface CommandBoxProps {
+  /** Hızlı eylemler. Liste boşsa bölüm çizilmez. Uydurma öneri gösterilmez. */
+  actions?: readonly QuickAction[];
   onSubmitted?: () => void;
 }
 
@@ -17,7 +19,7 @@ interface CommandBoxProps {
  * Komut alanı. Gönderilen istek asistan sayfasına gider.
  * Bu sürümde yanıt üretilmez. Sahte yanıt gösterilmez.
  */
-export function CommandBox({ onSubmitted }: CommandBoxProps) {
+export function CommandBox({ actions = [], onSubmitted }: CommandBoxProps) {
   const [mode, setMode] = useState<Mode>('ask');
   const [value, setValue] = useState('');
   const navigate = useNavigate();
@@ -28,6 +30,17 @@ export function CommandBox({ onSubmitted }: CommandBoxProps) {
     setValue('');
     navigate(routes.assistant(), { state: { q, mode } });
     onSubmitted?.();
+  };
+
+  // Sayfa eylemi sayfayı açar. İstek eylemi isteği asistana gönderir.
+  const runAction = (action: QuickAction | undefined) => {
+    if (!action) return;
+    if (action.to) {
+      navigate(action.to);
+      onSubmitted?.();
+      return;
+    }
+    if (action.prompt) submit(action.prompt);
   };
 
   return (
@@ -54,12 +67,14 @@ export function CommandBox({ onSubmitted }: CommandBoxProps) {
             placeholder={t.command.placeholder}
           />
         </div>
-        <div className="shell-chips" role="group" aria-label={t.command.suggestions}>
-          <Prompts
-            items={samplePrompts.map((p) => ({ key: p.key, label: p.label }))}
-            onItemClick={({ data }) => submit(String(data.label))}
-          />
-        </div>
+        {actions.length > 0 && (
+          <div className="shell-chips" role="group" aria-label={t.command.suggestions}>
+            <Prompts
+              items={actions.map((a) => ({ key: a.key, label: a.label }))}
+              onItemClick={({ data }) => runAction(actions.find((a) => a.key === data.key))}
+            />
+          </div>
+        )}
       </section>
     </XProvider>
   );

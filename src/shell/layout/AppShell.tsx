@@ -9,12 +9,20 @@ import { isDemoEnabled, isDemoPath } from '@/app/demo-mode';
 import { FocusDimProvider } from '../focus-dim';
 import { isDarkColor } from '../focus-dim/isDarkColor';
 import { t } from '../messages';
-import { buildShellNav, navFromSidebars, routeNav } from '../nav';
+import type { QuickAction } from '../nav';
+import { buildShellNav, navFromSidebars, quickActionsFrom, routeNav } from '../nav';
 import type { NavEntry, NavGroup } from '../sampleData';
-import { sampleAgents, sampleNav, sampleWorkspaces } from '../sampleData';
+import {
+  sampleAgents,
+  sampleCredit,
+  sampleNav,
+  samplePrompts,
+  sampleWorkspaces,
+} from '../sampleData';
 import type { SidebarVariant } from '../sidebar/Sidebar';
 import { Sidebar } from '../sidebar/Sidebar';
 import { shellCssVars } from '../tokens';
+import type { ShellCredit, ShellWorkspaceData } from '../view-data';
 import { useViewData } from '../view-data';
 import { useCompactLayout } from './useMedia';
 
@@ -73,7 +81,12 @@ const DEMO_ENABLED = isDemoEnabled(import.meta.env.MODE);
  * Örnek gruplar ve örnek ajanlar yalnız deneme sayfasında (`/_demo/...`) görünür.
  * Ajan listesi için sunucuda veri yoktur; canlı menüde ajan bölümü gizlidir.
  */
-function useShellNav(): { nav: NavEntry[]; agents: typeof sampleAgents; demo: boolean } {
+function useShellNav(): {
+  nav: NavEntry[];
+  agents: typeof sampleAgents;
+  quickActions: QuickAction[];
+  demo: boolean;
+} {
   const navigation = useViewData()?.navigation;
   const { pathname } = useLocation();
   const demo = DEMO_ENABLED && isDemoPath(pathname);
@@ -90,7 +103,45 @@ function useShellNav(): { nav: NavEntry[]; agents: typeof sampleAgents; demo: bo
     () => (demo ? [...routeNav, ...sampleNav] : buildShellNav(groups)),
     [demo, groups],
   );
-  return { nav, agents: demo ? sampleAgents : [], demo };
+  // Hızlı eylemler izin süzgecinden geçmiş sunucu sayfalarından gelir. Örnek istekler yalnız denemede.
+  const quickActions = useMemo(
+    () => (demo ? samplePrompts : quickActionsFrom(groups)),
+    [demo, groups],
+  );
+  return { nav, agents: demo ? sampleAgents : [], quickActions, demo };
+}
+
+/** Deneme sayfasının örnek çalışma alanları. Canlı panelde kullanılmaz. */
+const DEMO_WORKSPACES: ShellWorkspaceData = {
+  items: sampleWorkspaces,
+  current: sampleWorkspaces[0]?.id ?? '',
+};
+
+/**
+ * AI kredisi. Canlıda sayı yalnız sunucu ucundan gelir. Uç yoksa ya da yanıt boşsa sayaç gizlidir.
+ * Örnek kredi yalnız deneme sayfasında görünür.
+ */
+function useShellCredit(demo: boolean): ShellCredit | null {
+  const source = useViewData()?.credit;
+  // Yanıt hangi kaynaktan geldiyse onunla saklanır. Kaynak değişince eski sayı görünmez.
+  const [loaded, setLoaded] = useState<{ from: unknown; value: ShellCredit | null }>({
+    from: null,
+    value: null,
+  });
+  useEffect(() => {
+    if (demo || !source) return undefined;
+    const ctrl = new AbortController();
+    source.load(ctrl.signal).then(
+      (value) => {
+        if (!ctrl.signal.aborted) setLoaded({ from: source, value });
+      },
+      // İstek başarısızsa sayaç gizli kalır. Uydurma sayı gösterilmez.
+      () => undefined,
+    );
+    return () => ctrl.abort();
+  }, [demo, source]);
+  if (demo) return sampleCredit;
+  return source && loaded.from === source ? loaded.value : null;
 }
 
 interface AppShellProps {
@@ -110,7 +161,10 @@ export function AppShell({ children }: AppShellProps) {
   const mainRef = useRef<HTMLElement>(null);
   const topRef = useRef<HTMLElement>(null);
   const vars = useThemeVars();
-  const { nav, agents, demo } = useShellNav();
+  const { nav, agents, quickActions, demo } = useShellNav();
+  const liveWorkspaces = useViewData()?.workspaces;
+  const workspaces = demo ? DEMO_WORKSPACES : liveWorkspaces;
+  const credit = useShellCredit(demo);
   const isDrawer = compact;
   const modalOpen = isDrawer && drawerOpen;
 
@@ -155,8 +209,8 @@ export function AppShell({ children }: AppShellProps) {
     return () => document.removeEventListener('keydown', onKey);
   }, [modalOpen, closeDrawer]);
 
-  // Üst çubuk örnek çalışma alanı adını yalnız deneme sayfasında yazar. Canlıda veri yoksa gizlidir.
-  const ws = demo ? sampleWorkspaces[0] : undefined;
+  // Üst çubuk açık çalışma alanının adını yazar. Veri yoksa ad gizlidir.
+  const ws = workspaces?.items.find((w) => w.id === workspaces.current) ?? workspaces?.items[0];
 
   return (
     <FocusDimProvider>
@@ -218,6 +272,9 @@ export function AppShell({ children }: AppShellProps) {
             onVariantChange={changeVariant}
             nav={nav}
             agents={agents}
+            workspaces={workspaces}
+            quickActions={quickActions}
+            credit={credit}
             compact={isDrawer}
             onNavigate={isDrawer ? closeDrawer : undefined}
           />

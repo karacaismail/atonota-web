@@ -159,6 +159,52 @@ Kayıt rotası için de aynı kural geçerlidir. Uygulama girişi kayıt rotası
 
 Liste tablosunda kayıt adı kayda giden bağlantıdır. Adresi kabuk verir: `routes.record(module, doctype, name)`.
 
+## Yan menünün sunucu verisi
+
+Bu bölüm 24 Kasım 2026 Salı günü yazıldı. Canlı panelde örnek veri gösterilmez. Örnek veri yalnız `/_demo/shell` deneme sayfasında görünür.
+
+### Çalışma alanı seçici
+
+- Veri `viewData.workspaces` alanından gelir. Tür `ShellWorkspaceData` türüdür.
+- Bu sürümde çalışma alanı oturumun kiracısıdır. Kiracı, oturumun Frappe sitesidir.
+- Uygulama girişi adı site adresinden kurar. Örnek: `https://acme.atonota.net` adresi `acme.atonota.net` adını verir.
+- Tek çalışma alanı varsa seçici açılır liste değildir. Ad sade görünür ve Tab sırasına girmez.
+- Birden çok çalışma alanı varsa seçici açılır liste olur.
+- Veri yoksa yalnız logo görünür.
+
+### Hızlı eylemler
+
+- Hızlı eylemler sunucunun sidebar gruplarından gelir. Gruplar Frappe'nin izin süzgecinden geçer.
+- Bu yüzden kullanıcının açamadığı sayfa hızlı eylem olmaz.
+- En çok 3 eylem görünür. Sayı `QUICK_ACTION_LIMIT` sabitindedir.
+- Liste boşsa bölüm çizilmez.
+
+### AI kredisi
+
+- Sayaç `viewData.credit.load` işlevinden okur. Tür `ShellCreditData` türüdür.
+- İşlev `null` döndürürse sayaç görünmez. İstek başarısız olursa da sayaç görünmez.
+- Bağlantı yoksa sayaç görünmez. Uydurma sayı gösterilmez.
+
+Arka uçta kredi ucu yoktur. Önerilen sözleşme şudur:
+
+- Uç adresi `GET /api/method/platform_core.api.model.get_credit` olur.
+- Yanıt örneği `{ "message": { "used": 250, "total": 1000 } }` biçimindedir.
+- `used` ve `total` sıfır ya da daha büyük tam sayıdır. `total` sıfırsa sayaç görünmez.
+- Kiracının kredisi yoksa yanıt `{ "message": null }` olur.
+
+Bu uç OpenAPI sözleşmesinde yoktur. API istemcisi OpenAPI sözleşmesinden üretilir. Bu yüzden istemciye ve sahte sunucuya elle uç eklenmedi. Uç arka uca eklenince `api-client` işi istemciyi üretir. Sonra uygulama girişi `credit.load` işlevini bağlar.
+
+### AI Studio
+
+- Taşıyıcı `viewData.ai` alanından gelir. Tür `ShellAiData` türüdür.
+- Bağlantı yoksa AI Studio "AI Studio bağlantısı kurulmadı" yazar. Sahte ajan çalışmaz.
+- Sahte taşıyıcı yalnız e2e derlemesinde açılır. Ekran kaynağı "Sahte sunucu" diye yazar.
+
+### Ana sayfa
+
+- Arka uçta panel özeti ucu yoktur.
+- Canlı ana sayfa "Panel özeti henüz yok." yazar. Örnek ajan ve uydurma eşitleme saati gösterilmez.
+
 ## Geçici bağlantılar
 
 `foundation` işi iki parçayı henüz `main` dalına koymadı. Kabuk bu parçaları geçici olarak kendisi kurar.

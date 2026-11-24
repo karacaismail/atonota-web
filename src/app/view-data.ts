@@ -1,7 +1,13 @@
 import { createElement, lazy } from 'react';
 
 import type { ApiClient } from '@/api';
-import type { RecordAddress, ShellAccount, ShellSidebar, ShellViewData } from '@/shell/view-data';
+import type {
+  RecordAddress,
+  ShellAccount,
+  ShellSidebar,
+  ShellViewData,
+  ShellWorkspaceData,
+} from '@/shell/view-data';
 import type { CollectionSource } from '@/views/collection/source';
 
 // Bu dosya ilk yük parçasındadır. Koleksiyon kaynağı ve tanım kurucusu ilk yükte olmamalıdır.
@@ -120,4 +126,21 @@ export async function loadShellAccount(
     /* Ad okunamazsa kart kimliği gösterir. */
   }
   return { user };
+}
+
+/**
+ * Çalışma alanı seçicinin verisi. Bu sürümde çalışma alanı oturumun kiracısıdır (Frappe sitesi).
+ * Ad, site adresinin alan adıdır. Örnek: `https://acme.atonota.net` -> `acme.atonota.net`.
+ * Sunucuda kullanıcının birden çok kiracısını veren uç yoktur; liste tek öğedir.
+ * Adres çözülemezse veri dönmez; seçici yalnız logoyu gösterir.
+ */
+export function workspaceFromSite(siteUrl: string): ShellWorkspaceData | undefined {
+  let host: string;
+  try {
+    host = new URL(siteUrl).hostname;
+  } catch {
+    return undefined;
+  }
+  if (!host) return undefined;
+  return { items: [{ id: host, name: host }], current: host };
 }

@@ -137,7 +137,9 @@ function validate(raw: Obj): KnownBlock | null {
         list(raw['changes'], LIMITS.fields, isChange) &&
         str(raw['confirmLabel']) &&
         str(raw['cancelLabel']) &&
-        (raw['danger'] === undefined || typeof raw['danger'] === 'boolean')
+        (raw['danger'] === undefined || typeof raw['danger'] === 'boolean') &&
+        (raw['expiresAt'] === undefined ||
+          (str(raw['expiresAt']) && Number.isFinite(Date.parse(raw['expiresAt']))))
         ? (raw as unknown as KnownBlock)
         : null;
     case 'form':

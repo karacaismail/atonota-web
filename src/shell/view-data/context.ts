@@ -1,6 +1,7 @@
 import { createContext } from 'react';
 import type { ComponentType } from 'react';
 
+import type { AgentSource, AgentTransport } from '@/ai/agent/types';
 import type { ModuleEnvironment } from '@/modules';
 import type { CollectionDefinition, CollectionSource } from '@/views/collection';
 
@@ -72,7 +73,44 @@ export interface ShellAccount {
   fullName?: string;
 }
 
+/**
+ * Bir çalışma alanı. Bu sürümde çalışma alanı oturumun kiracısıdır (Frappe sitesi).
+ * Örnek: `{ id: 'acme.atonota.net', name: 'acme.atonota.net' }`.
+ */
+export interface ShellWorkspace {
+  id: string;
+  name: string;
+  /** Adın altındaki kısa not. Yoksa not satırı çizilmez. */
+  note?: string;
+}
+
+/** Çalışma alanı seçicinin verisi. Tek öğe varsa seçici açılır liste olmadan sade görünür. */
+export interface ShellWorkspaceData {
+  items: ShellWorkspace[];
+  /** Açık çalışma alanının kimliği. */
+  current: string;
+  /** Başka çalışma alanı seçilince çağrılır. Yoksa seçim yalnız ekranda değişir. */
+  select?: (id: string) => void;
+}
+
+/** AI kredisi. Sayılar sunucudan gelir. */
+export interface ShellCredit {
+  used: number;
+  total: number;
+}
+
+export interface ShellCreditData {
+  /** Krediyi okur. Uç yoksa ya da yanıt geçersizse `null` döner; sayaç görünmez. */
+  load: (signal: AbortSignal) => Promise<ShellCredit | null>;
+}
+
 export interface ShellViewData {
+  /** Çalışma alanı seçici. Yoksa yalnız logo görünür. */
+  workspaces?: ShellWorkspaceData;
+  /** AI kredisi sayacı. Yoksa sayaç görünmez. */
+  credit?: ShellCreditData;
+  /** AI Studio bağlantısı. Yoksa AI Studio "bağlantı kurulmadı" yazar. */
+  ai?: ShellAiData;
   collection?: ShellCollectionData;
   /** Kayıt rotasının bağlantısı. Yoksa kabuk örnek kaydı gösterir (deneme sayfaları). */
   record?: ShellRecordData;
@@ -88,6 +126,12 @@ export interface ShellViewData {
   signOut?: () => Promise<void>;
   /** Modül sayfalarının ortamı. Kabuk bunu `ModuleProvider` ile verir. */
   modules?: ModuleEnvironment;
+}
+
+/** AI Studio taşıyıcısı ve ekranda yazan kaynak adı (AX-7). */
+export interface ShellAiData {
+  transport: AgentTransport;
+  source: AgentSource;
 }
 
 export const ViewDataContext = createContext<ShellViewData | null>(null);

@@ -6,9 +6,12 @@ const isCompact = (page: Page) => {
   return !!v && (v.width <= 767 || v.height <= 499);
 };
 
-/** Çalışma alanı düğmesi. Telefonda düğme menü çekmecesinin içindedir. */
+/**
+ * Çalışma alanı düğmesi. Telefonda düğme menü çekmecesinin içindedir.
+ * Birden çok çalışma alanı yalnız deneme sayfasında vardır. Canlı panel oturumun tek sitesini gösterir.
+ */
 async function switcher(page: Page) {
-  await page.goto('/');
+  await page.goto('/_demo/shell');
   if (isCompact(page)) {
     await page.getByRole('button', { name: 'Menüyü aç' }).click();
     await expect(page.getByRole('dialog', { name: 'Menü' })).toBeVisible();

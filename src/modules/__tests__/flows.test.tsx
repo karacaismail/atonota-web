@@ -301,7 +301,9 @@ describe('süresi geçmiş öneri', () => {
       }),
     );
     fireEvent.click(await screen.findByRole('button', { name: 'İncele' }));
-    expect(await screen.findByText('Bu öneri onaylanamaz. Güncel öneriyi yeniden okuyun.')).toBeVisible();
+    expect(
+      await screen.findByText('Bu öneri onaylanamaz. Güncel öneriyi yeniden okuyun.'),
+    ).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Onayla ve uygula' })).toBeNull();
   });
 });

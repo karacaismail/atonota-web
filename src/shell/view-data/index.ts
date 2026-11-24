@@ -4,12 +4,17 @@ export type {
   CollectionAddress,
   RecordAddress,
   ShellAccount,
+  ShellAiData,
+  ShellCredit,
+  ShellCreditData,
   ShellCollectionData,
   ShellNavigationData,
   ShellRecordData,
   ShellSidebar,
   ShellSidebarLink,
   ShellViewData,
+  ShellWorkspace,
+  ShellWorkspaceData,
 } from './context';
 export { createShellModuleEnvironment } from './modules';
 export type { ShellModuleEnvironmentInput } from './modules';

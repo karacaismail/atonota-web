@@ -3,12 +3,14 @@ import { Button, message } from 'antd';
 import { useRef, useState } from 'react';
 
 import { t } from '../messages';
-import { sampleCredit, sampleUser } from '../sampleData';
-import type { ShellAccount } from '../view-data';
+import { sampleUser } from '../sampleData';
+import type { ShellAccount, ShellCredit } from '../view-data';
 import { useViewData } from '../view-data';
 
 interface SidebarFooterProps {
   rail: boolean;
+  /** AI kredisi. Yoksa sayaç çizilmez. */
+  credit?: ShellCredit | null;
 }
 
 /** Adın ilk iki sözcüğünün baş harfleri. Örnek: "Deneme Kullanıcı" -> "DK". */
@@ -29,43 +31,64 @@ function cardUser(account: ShellAccount | undefined) {
   return { name, role: name === account.user ? '' : account.user, initials: initialsOf(name) };
 }
 
-/** B1: AI kredisi ve kullanıcı. Sidebar'ın en koyu yüzeyidir. */
-export function SidebarFooter({ rail }: SidebarFooterProps) {
-  const viewData = useViewData();
-  const user = cardUser(viewData?.account);
-  const percent = Math.round((sampleCredit.used / sampleCredit.total) * 100);
+/** Kredi geçerli mi? Toplam sıfırdan büyük, kullanılan sıfır ya da daha büyük olmalı. */
+function validCredit(credit: ShellCredit | null): credit is ShellCredit {
+  return (
+    credit !== null &&
+    Number.isFinite(credit.used) &&
+    Number.isFinite(credit.total) &&
+    credit.total > 0 &&
+    credit.used >= 0
+  );
+}
+
+/** AI kredisi halkası. Sayılar sunucudan gelir. */
+function CreditRing({ rail, credit }: { rail: boolean; credit: ShellCredit }) {
+  const percent = Math.min(100, Math.round((credit.used / credit.total) * 100));
   const r = 15;
   const c = 2 * Math.PI * r;
   return (
+    <div className="shell-ring">
+      <svg
+        width="36"
+        height="36"
+        viewBox="0 0 36 36"
+        role="img"
+        aria-label={t.footer.creditRing(percent)}
+      >
+        <circle cx="18" cy="18" r={r} fill="none" strokeWidth="3" className="shell-ring-track" />
+        <circle
+          cx="18"
+          cy="18"
+          r={r}
+          fill="none"
+          strokeWidth="3"
+          strokeLinecap="round"
+          className="shell-ring-value"
+          strokeDasharray={`${(c * percent) / 100} ${c}`}
+          transform="rotate(-90 18 18)"
+        />
+      </svg>
+      {!rail && (
+        <span className="shell-ws-t">
+          <b>{t.footer.credit}</b>
+          <small>{t.footer.creditValue(credit.used, credit.total)}</small>
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * B1: AI kredisi ve kullanıcı. Sidebar'ın en koyu yüzeyidir.
+ * Kredi verisi yoksa sayaç çizilmez. Uydurma sayı gösterilmez.
+ */
+export function SidebarFooter({ rail, credit = null }: SidebarFooterProps) {
+  const viewData = useViewData();
+  const user = cardUser(viewData?.account);
+  return (
     <div className="shell-foot" data-rail={rail ? 'true' : 'false'}>
-      <div className="shell-ring">
-        <svg
-          width="36"
-          height="36"
-          viewBox="0 0 36 36"
-          role="img"
-          aria-label={t.footer.creditRing(percent)}
-        >
-          <circle cx="18" cy="18" r={r} fill="none" strokeWidth="3" className="shell-ring-track" />
-          <circle
-            cx="18"
-            cy="18"
-            r={r}
-            fill="none"
-            strokeWidth="3"
-            strokeLinecap="round"
-            className="shell-ring-value"
-            strokeDasharray={`${(c * percent) / 100} ${c}`}
-            transform="rotate(-90 18 18)"
-          />
-        </svg>
-        {!rail && (
-          <span className="shell-ws-t">
-            <b>{t.footer.credit}</b>
-            <small>{t.footer.creditValue(sampleCredit.used, sampleCredit.total)}</small>
-          </span>
-        )}
-      </div>
+      {validCredit(credit) ? <CreditRing rail={rail} credit={credit} /> : null}
       <div className="shell-user">
         <span className="shell-av" aria-hidden="true">
           {user.initials}

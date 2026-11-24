@@ -24,7 +24,9 @@ describe('AiStudioPage bağlantısı', () => {
   it('bağlantı verilirse sohbet o kaynağı kullanır', () => {
     const transport = vi.fn();
     render(
-      <ViewDataProvider value={{ ai: { transport, source: { label: 'Model geçidi', simulated: false } } }}>
+      <ViewDataProvider
+        value={{ ai: { transport, source: { label: 'Model geçidi', simulated: false } } }}
+      >
         <AiStudioPage />
       </ViewDataProvider>,
     );

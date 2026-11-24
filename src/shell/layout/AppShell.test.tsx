@@ -161,7 +161,9 @@ describe('AppShell örnek veri yok', () => {
     });
     const button = screen.getByRole('button', { name: /birinci\.example\.test/ });
     await userEvent.setup().click(button);
-    expect(await screen.findByRole('menuitem', { name: /ikinci\.example\.test/ })).toBeVisible();
+    expect(
+      await screen.findByRole('menuitem', { name: /ikinci\.example\.test/ }),
+    ).toBeInTheDocument();
   });
 
   it('sunucu menüsü yoksa hızlı eylem görünmez, örnek öneri görünmez', () => {

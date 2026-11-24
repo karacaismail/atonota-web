@@ -121,6 +121,7 @@ export const sampleAgents: Agent[] = [
   },
 ];
 
+/** Deneme sayfasının örnek çalışma alanları. Canlı panelde görünmez. */
 export const sampleWorkspaces = [
   { id: 'a', name: 'Örnek Şirket A', note: 'Ana çalışma alanı' },
   { id: 'b', name: 'Örnek Şirket B', note: 'Deneme çalışma alanı' },
@@ -129,12 +130,14 @@ export const sampleWorkspaces = [
 
 export const sampleUser = { name: 'Örnek Kişi', role: 'Yönetici', initials: 'ÖK' };
 
+/** Deneme sayfasının örnek kredisi. Canlı panelde görünmez. */
 export const sampleCredit = { used: 6200, total: 10000 };
 
+/** Deneme sayfasının örnek hızlı eylemleri. İstek asistana gider. */
 export const samplePrompts = [
-  { key: 'ozet', label: 'Günün özeti' },
-  { key: 'teklif', label: 'Yeni teklif' },
-  { key: 'gecikme', label: 'Gecikenler' },
+  { key: 'ozet', label: 'Günün özeti', prompt: 'Günün özeti' },
+  { key: 'teklif', label: 'Yeni teklif', prompt: 'Yeni teklif' },
+  { key: 'gecikme', label: 'Gecikenler', prompt: 'Gecikenler' },
 ];
 
 export type RowStatus = 'Taslak' | 'Gönderildi' | 'Onaylandı' | 'Reddedildi';

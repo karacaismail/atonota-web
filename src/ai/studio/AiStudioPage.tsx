@@ -1,33 +1,59 @@
 import { XProvider } from '@ant-design/x';
+import { Typography } from 'antd';
 import { useMemo } from 'react';
+
+import { useViewData } from '@/shell/view-data';
 
 import { createMockTransport, MOCK_SOURCE } from '../agent';
 import { AiStudio } from './AiStudio';
+import { NOT_CONNECTED } from './content';
 
-/** Yalnız e2e derlemesinde: `?gecikme=<ms>` sahte akışın iki olay arasındaki beklemesini ayarlar. */
+/** Yalnız e2e derlemesinde: sahte taşıyıcı açılır. Üretim derlemesinde bu dal yoktur. */
 const E2E = import.meta.env.MODE === 'e2e';
 
+/** Yalnız e2e derlemesinde: `?gecikme=<ms>` sahte akışın iki olay arasındaki beklemesini ayarlar. */
 function e2eDelayMs(): number {
   if (!E2E || typeof window === 'undefined') return 0;
   const value = Number(new URLSearchParams(window.location.search).get('gecikme'));
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+/** Model geçidi bağlantısı yoksa ekran bunu açıkça yazar. Sahte ilerleme gösterilmez. */
+function NotConnected() {
+  return (
+    <section className="ai-not-connected" aria-labelledby="ai-not-connected-title">
+      <Typography.Title level={1} id="ai-not-connected-title">
+        {NOT_CONNECTED.title}
+      </Typography.Title>
+      <Typography.Paragraph>{NOT_CONNECTED.body}</Typography.Paragraph>
+      <Typography.Paragraph>{NOT_CONNECTED.next}</Typography.Paragraph>
+    </section>
+  );
+}
+
 /**
  * AI Studio sayfası. Kabuk `/panel/ai` yolunda bu dosyayı tembel yükler (`src/shell/routes.ts`).
- * Taşıyıcı verilmez. AiStudio sahte taşıyıcıyı kullanır ve kaynağı ekranda gösterir (AX-7).
- * Gerçek model geçidi bağlantısı `api-client` ile sonraki işte kurulur.
+ * Taşıyıcı kabuğun veri bağlantısından gelir (`ShellViewData.ai`). Kaynak adı ekranda yazar (AX-7).
+ * Bağlantı yoksa canlı panel "bağlantı kurulmadı" yazar; sahte ajan çalışmaz.
+ * Sahte taşıyıcı yalnız e2e derlemesinde açılır ve "Sahte sunucu" diye yazar.
  * Tarayıcı testleri iptal akışını sınarken sahte akışı `?gecikme=` ile bekletir; üretimde yoktur.
  */
 export default function AiStudioPage() {
+  const ai = useViewData()?.ai;
   const delayMs = e2eDelayMs();
-  const transport = useMemo(
-    () => (delayMs > 0 ? createMockTransport({ delayMs }) : undefined),
-    [delayMs],
+  const mock = useMemo(
+    () => (E2E && !ai ? createMockTransport(delayMs > 0 ? { delayMs } : {}) : undefined),
+    [ai, delayMs],
   );
   return (
     <XProvider>
-      {transport ? <AiStudio transport={transport} source={MOCK_SOURCE} /> : <AiStudio />}
+      {ai ? (
+        <AiStudio transport={ai.transport} source={ai.source} />
+      ) : mock ? (
+        <AiStudio transport={mock} source={MOCK_SOURCE} />
+      ) : (
+        <NotConnected />
+      )}
     </XProvider>
   );
 }

@@ -6,6 +6,7 @@ import {
   parseProposal,
   parseProposalList,
   proposalCanRun,
+  proposalExpired,
   type Proposal,
 } from '../contracts';
 import { useMutation, useRead } from '../data';
@@ -247,7 +248,7 @@ export default function AiOperationsPage() {
                         <p>
                           {proposal.result
                             ? copy[proposal.result]
-                            : proposal.status === 'expired'
+                            : proposalExpired(proposal)
                               ? copy.proposalExpiredLabel
                               : copy[proposal.status]}
                         </p>

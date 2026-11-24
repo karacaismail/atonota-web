@@ -4,11 +4,13 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { useFocusDim } from '../focus-dim';
+import type { QuickAction } from '../nav';
 import { isPathActive } from '../navMatch';
 import { t } from '../messages';
 import { routes } from '../paths';
 import type { Agent, NavEntry, NavGroup, NavLeaf } from '../sampleData';
 import { shellTokens } from '../tokens';
+import type { ShellCredit, ShellWorkspaceData } from '../view-data';
 import { CommandBox } from './CommandBox';
 import type { FlyoutContent, OpenedBy } from './FlyoutItem';
 import { FlyoutItem } from './FlyoutItem';
@@ -25,6 +27,12 @@ export interface SidebarProps {
   onVariantChange: (v: SidebarVariant) => void;
   nav: NavEntry[];
   agents: Agent[];
+  /** Çalışma alanları. Yoksa yalnız logo görünür. */
+  workspaces?: ShellWorkspaceData | undefined;
+  /** Komut alanının hızlı eylemleri. Boşsa bölüm çizilmez. */
+  quickActions?: readonly QuickAction[];
+  /** AI kredisi. Yoksa sayaç çizilmez. */
+  credit?: ShellCredit | null;
   /** Telefon kabuğu. Flyout öğenin altında açılır. */
   compact?: boolean;
   /** Bir sayfaya gidilince çağrılır. Telefonda çekmeceyi kapatır. */
@@ -43,6 +51,9 @@ export function Sidebar({
   onVariantChange,
   nav,
   agents,
+  workspaces,
+  quickActions = [],
+  credit = null,
   compact = false,
   onNavigate,
 }: SidebarProps) {
@@ -282,14 +293,16 @@ export function Sidebar({
       data-compact={compact ? 'true' : 'false'}
     >
       <div className="shell-sb-top">
-        <WorkspaceSwitcher rail={rail} />
+        <WorkspaceSwitcher rail={rail} data={workspaces} />
         {!compact && (
           <RailToggle rail={rail} onToggle={() => onVariantChange(rail ? 'solid' : 'rail')} />
         )}
       </div>
 
       <div className="shell-sb-scroll">
-        {!rail && <CommandBox {...(onNavigate ? { onSubmitted: onNavigate } : {})} />}
+        {!rail && (
+          <CommandBox actions={quickActions} {...(onNavigate ? { onSubmitted: onNavigate } : {})} />
+        )}
 
         <nav
           ref={glideRef}
@@ -309,7 +322,7 @@ export function Sidebar({
                 content={{
                   title: t.command.label,
                   wide: true,
-                  body: <CommandBox onSubmitted={handleNavigate} />,
+                  body: <CommandBox actions={quickActions} onSubmitted={handleNavigate} />,
                   items: [],
                 }}
               />
@@ -331,7 +344,7 @@ export function Sidebar({
         </nav>
       </div>
 
-      <SidebarFooter rail={rail} />
+      <SidebarFooter rail={rail} credit={credit} />
     </div>
   );
 }

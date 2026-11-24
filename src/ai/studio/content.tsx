@@ -57,3 +57,10 @@ export const SLASH_COMMANDS = [
     icon: <Lightning aria-hidden />,
   },
 ];
+
+/** Model geçidi bağlantısı kurulmadığında AI Studio'nun yazdığı metin. Sahte ajan çalışmaz. */
+export const NOT_CONNECTED = {
+  title: 'AI Studio bağlantısı kurulmadı',
+  body: 'Bu panel henüz model geçidine bağlı değil. Bu yüzden asistan yanıt veremez.',
+  next: 'Bağlantı kurulunca sohbet bu sayfada açılır.',
+};
