@@ -25,7 +25,10 @@ test.describe('kayıt sayfası: Small Text alanı', () => {
     expect(await box.evaluate((el) => el.tagName)).toBe('TEXTAREA');
     await expect(box).toHaveValue('Örnek veri 3 için açıklama.\nİkinci satır.');
     await box.focus();
-    await page.keyboard.press('End');
+    // İmleç metnin sonuna konur. End tuşu yalnız satırın sonuna gider.
+    await box.evaluate((el: HTMLTextAreaElement) =>
+      el.setSelectionRange(el.value.length, el.value.length),
+    );
     await page.keyboard.type(' Ek');
     await expect(box).toHaveValue('Örnek veri 3 için açıklama.\nİkinci satır. Ek');
     await expect(page.getByText('1 kaydedilmemiş değişiklik')).toBeVisible();

@@ -159,6 +159,7 @@ npx --no-install prettier --write "$output"
 - Arka uç bu ucu kendi izin kuralıyla değiştirir (`platform_core/access/link_search.py`). İzni olmayan türde sonuç gelmez.
 - Arka uç Link alanına `link-select` bileşen adını verir (`platform_core/shell/catalog.py`). Arayüz bu adı tanır.
 - Dynamic Link alanı da `link-select` adıyla gelir. Bu alan bu işte "desteklenmeyen alan" olarak kalır.
+- Arka uç Small Text, Text ve Long Text alanlarına `text-area` adını verir. Arayüz bu adı tanır ve çok satırlı metin kutusu çizer.
 - Salt okunur bağlantı alanı sunucuya istek atmaz. Yalnız kayıtta zaten okunan hedef adını gösterir.
 - Sahte sunucu aynı ucu karşılar. Yalnız `Örnek Kayıt` türü aranır. Öteki türler 403 alır.
 

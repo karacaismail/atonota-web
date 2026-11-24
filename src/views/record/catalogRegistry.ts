@@ -114,19 +114,21 @@ const CATALOG_DEFINITIONS: Readonly<Record<string, Omit<CatalogEntry, 'supported
     kind: 'field',
     canonicalType: 'Text',
     minCatalogVersion: 1,
-    allowedComponents: ['text', 'textarea'],
+    // Arka uç Small Text, Text ve Long Text için `text-area` adını yollar
+    // (frappesetup backend: platform_core/shell/catalog.py).
+    allowedComponents: ['text', 'textarea', 'text-area'],
   },
   'Small Text': {
     kind: 'field',
     canonicalType: 'Small Text',
     minCatalogVersion: 1,
-    allowedComponents: ['small-text', 'text', 'textarea'],
+    allowedComponents: ['small-text', 'text', 'textarea', 'text-area'],
   },
   'Long Text': {
     kind: 'field',
     canonicalType: 'Long Text',
     minCatalogVersion: 1,
-    allowedComponents: ['long-text', 'text', 'textarea'],
+    allowedComponents: ['long-text', 'text', 'textarea', 'text-area'],
   },
   'Text Editor': {
     kind: 'field',
