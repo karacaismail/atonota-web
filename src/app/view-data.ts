@@ -24,8 +24,11 @@ export function doctypeFromSlug(slug: string): string {
 type Bootstrap = Awaited<ReturnType<ApiClient['getBootstrap']>>;
 type BootstrapSidebar = Bootstrap['sidebars'][number];
 
-/** Grup adını adres parçasına çevirir. Örnek: `Selling` -> `selling`, `Site Plan` -> `site-plan`. */
-function moduleSlug(name: string): string {
+/**
+ * Modül adını adres parçasına çevirir. Örnek: `Selling` -> `selling`, `Site Plan` -> `site-plan`.
+ * Menü grubu ve kayıt bağlantısı aynı çeviriyi kullanır; böylece adres menüdeki grupla eşleşir.
+ */
+export function moduleSlug(name: string): string {
   return name.trim().toLocaleLowerCase('tr').split(/\s+/).filter(Boolean).join('-');
 }
 
