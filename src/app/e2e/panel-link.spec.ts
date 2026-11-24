@@ -46,6 +46,8 @@ test.describe('kayıt sayfası: bağlantı alanı', () => {
     await page.keyboard.type('veri 5');
     const dropdown = page.locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)');
     await expect(dropdown.getByText('Örnek veri 5', { exact: true })).toBeVisible();
+    // Süzülmüş sonuç gelmeden Enter basılmaz. İlk liste de "Örnek veri 5" kaydını içerir.
+    await expect(dropdown.getByText('Örnek veri 1', { exact: true })).toHaveCount(0);
     await page.keyboard.press('Enter');
     await expect(
       page.locator('[data-fieldname="ilgili_kayit"] .ant-select-selection-item'),
