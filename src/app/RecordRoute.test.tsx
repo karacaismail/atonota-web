@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ApiClient } from '@/api';
+import { ApiError, type ApiClient } from '@/api';
 import type * as RecordModule from '@/views/record';
 import type { RecordDataAdapter, RecordViewProps } from '@/views/record';
 
@@ -18,12 +18,56 @@ vi.mock('@/views/record', async (importOriginal) => ({
 
 const { default: RecordRoute } = await import('./RecordRoute');
 
-function fakeApi() {
-  const frappeDocument = vi.fn<ApiClient['frappeDocument']>().mockResolvedValue({
-    ok: true,
-    status: 200,
-    etag: undefined,
-    body: { data: { name: 'ORNEK-0001', modified: '2026-11-23 10:00:00' } },
+const META_PATH = '/api/method/platform_core.api.meta.get_doctype';
+
+/** Kayıt türlerinin sunucudaki modülü. Listede olmayan türün şeması 403 döner. */
+const MODULES: Record<string, string> = {
+  'Örnek Kayıt': 'Ornek',
+  'Leave Application': 'HR',
+  Company: 'Setup',
+};
+
+function metaBody(doctype: string, module: string) {
+  return {
+    message: {
+      schema: {
+        name: doctype,
+        module,
+        sensitivity: 'standard',
+        fields: [],
+        title_field: null,
+        search_fields: '',
+        sort_field: null,
+      },
+      meta_hash: `hash-${doctype}`,
+      perm_version: 'perm-1',
+      child_tables: {},
+      catalog_version: 1,
+      mobile_cache_allowed: false,
+    },
+  };
+}
+
+function fakeApi(modules: Record<string, string> = MODULES) {
+  const frappeDocument = vi.fn<ApiClient['frappeDocument']>(async (request) => {
+    if (request.path === META_PATH) {
+      const doctype = request.query?.['doctype'] ?? '';
+      const module = modules[doctype];
+      if (module === undefined) {
+        return {
+          ok: false,
+          error: new ApiError({ kind: 'forbidden', status: 403, code: 'PermissionError' }),
+          body: {},
+        };
+      }
+      return { ok: true, status: 200, etag: undefined, body: metaBody(doctype, module) };
+    }
+    return {
+      ok: true,
+      status: 200,
+      etag: undefined,
+      body: { data: { name: 'ORNEK-0001', modified: '2026-11-23 10:00:00' } },
+    };
   });
   return { api: { frappeDocument } as Pick<ApiClient, 'frappeDocument'>, frappeDocument };
 }
@@ -66,19 +110,77 @@ describe('RecordRoute', () => {
 });
 
 describe('RecordRoute: bağlantı alanı', () => {
-  it('hedef kayda aynı modül yolunda bağlantı çizer; yönlendirici panel yolunu ekler', async () => {
+  async function renderLinkFrom(
+    page: { module: string; doctype: string; name: string },
+    target: { doctype: string; name: string },
+    modules?: Record<string, string>,
+  ) {
     const { MemoryRouter } = await import('react-router-dom');
-    const { api } = fakeApi();
-    render(<RecordRoute api={api} module="ornek" doctype="örnek-kayıt" name="ORNEK-0003" />);
+    const { api, frappeDocument } = fakeApi(modules);
+    render(<RecordRoute api={api} {...page} />);
     expect(seen.renderLink).toBeDefined();
     render(
       <MemoryRouter basename="/panel" initialEntries={['/panel/']}>
-        {seen.renderLink?.({ doctype: 'Örnek Kayıt', name: 'ORNEK-0002' }, 'ORNEK-0002')}
+        <div data-testid="hedef">{seen.renderLink?.(target, target.name)}</div>
       </MemoryRouter>,
     );
-    expect(screen.getByRole('link', { name: 'ORNEK-0002' }).getAttribute('href')).toBe(
+    return { frappeDocument };
+  }
+
+  it('aynı modüldeki hedef kayda bağlantı çizer; yönlendirici panel yolunu ekler', async () => {
+    await renderLinkFrom(
+      { module: 'ornek', doctype: 'örnek-kayıt', name: 'ORNEK-0003' },
+      { doctype: 'Örnek Kayıt', name: 'ORNEK-0002' },
+    );
+    expect((await screen.findByRole('link', { name: 'ORNEK-0002' })).getAttribute('href')).toBe(
       `/panel/ornek/${encodeURIComponent('örnek-kayıt')}/ORNEK-0002`,
     );
+  });
+
+  it('başka modüldeki hedef kayda kendi modül yolunda bağlantı çizer (Şirket: Setup)', async () => {
+    const { frappeDocument } = await renderLinkFrom(
+      { module: 'hr', doctype: 'leave-application', name: 'HR-LAP-2026-00001' },
+      { doctype: 'Company', name: 'Örnek İnceleme Şirketi' },
+    );
+    expect(
+      (await screen.findByRole('link', { name: 'Örnek İnceleme Şirketi' })).getAttribute('href'),
+    ).toBe(`/panel/setup/company/${encodeURIComponent('Örnek İnceleme Şirketi')}`);
+    expect(frappeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: META_PATH,
+        query: expect.objectContaining({ doctype: 'Company' }),
+      }),
+    );
+  });
+
+  it('hedef türün modülü okunamazsa yanlış modüle bağlantı çizmez; ad düz metin kalır', async () => {
+    const { frappeDocument } = await renderLinkFrom(
+      { module: 'hr', doctype: 'leave-application', name: 'HR-LAP-2026-00001' },
+      { doctype: 'Company', name: 'Örnek İnceleme Şirketi' },
+      { 'Leave Application': 'HR' },
+    );
+    await waitFor(() =>
+      expect(frappeDocument).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: META_PATH,
+          query: expect.objectContaining({ doctype: 'Company' }),
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('hedef').textContent).toBe('Örnek İnceleme Şirketi'),
+    );
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('modül sunucudan gelmeden yanlış yola bağlantı çizmez', async () => {
+    await renderLinkFrom(
+      { module: 'hr', doctype: 'leave-application', name: 'HR-LAP-2026-00001' },
+      { doctype: 'Company', name: 'Örnek İnceleme Şirketi' },
+    );
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByTestId('hedef').textContent).toBe('Örnek İnceleme Şirketi');
+    await screen.findByRole('link', { name: 'Örnek İnceleme Şirketi' });
   });
 
   it('adrese geri çevrilemeyen türde bağlantı çizmez', async () => {
