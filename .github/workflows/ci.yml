@@ -60,8 +60,12 @@ jobs:
           cache: npm
       - name: Bağımlılıkları kur
         run: npm ci
+      # Önbellek, deneme başına süre sınırı, yeniden deneme ve ayna sırası:
+      # .github/actions/playwright-browsers/install.sh
       - name: Tarayıcıyı kur
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        uses: ./.github/actions/playwright-browsers
+        with:
+          browsers: ${{ matrix.browser }}
       - name: Tarayıcı testleri
         run: npx playwright test --grep "${{ matrix.browser == 'chromium' && '^chromium-' || '^(webkit-|iphone-13)' }}"
       - name: Raporu sakla

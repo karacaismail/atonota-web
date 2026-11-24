@@ -1,0 +1,41 @@
+name: Playwright browsers
+description: >-
+  Verilen Playwright tarayıcılarını sistem bağımlılıklarıyla kurar. Tarayıcılar ve apt paketleri
+  önbellekten gelir; önbellek yoksa ya da kurulum olmazsa ağdan kurulur ve kaydedilir. npm ci'dan sonra çağrılır.
+inputs:
+  browsers:
+    description: Boşlukla ayrılmış tarayıcı adları (örneğin "chromium" ya da "webkit").
+    required: true
+runs:
+  using: composite
+  steps:
+    - id: meta
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: |
+        echo "pw=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+        # Önbellek anahtarı tarayıcı kümesine bağlıdır: her matris işi kendi paketlerini saklar.
+        echo "set=$(echo "$BROWSERS" | tr -s ' ' '\n' | sed '/^$/d' | sort | paste -sd- -)" >> "$GITHUB_OUTPUT"
+        # apt paketleri koşucu imajına bağlıdır: imaj sürümü değişince önbellek yenilenir.
+        echo "os=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
+        echo "image=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: pw-browsers-${{ runner.os }}-${{ runner.arch }}-${{ steps.meta.outputs.pw }}-${{ steps.meta.outputs.set }}
+    - id: debs
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/pw-debs
+        # İmaj sürümü anahtarın sonundadır. Tam anahtar yoksa aynı işletim sisteminin
+        # en yeni eski imaj paketleri denenir; kurulum olmazsa install.sh ağdan kurar.
+        key: pw-debs-${{ runner.arch }}-${{ steps.meta.outputs.pw }}-${{ steps.meta.outputs.set }}-${{ steps.meta.outputs.os }}-${{ steps.meta.outputs.image }}
+        restore-keys: |
+          pw-debs-${{ runner.arch }}-${{ steps.meta.outputs.pw }}-${{ steps.meta.outputs.set }}-${{ steps.meta.outputs.os }}-
+    - name: Install system dependencies and browsers
+      shell: bash
+      env:
+        DEBS_HIT: ${{ steps.debs.outputs.cache-hit }}
+        PW_BROWSERS: ${{ inputs.browsers }}
+      run: bash "$GITHUB_ACTION_PATH/install.sh"

@@ -117,6 +117,7 @@ install_from_network "$before"
       PW_APT_KILL_AFTER_SECONDS: '2',
       PW_APT_LOCK_WAIT_SECONDS: String(lockWait),
       PW_DPKG_CONFIGURE_SECONDS: '2',
+      PW_BROWSERS: 'chromium',
     },
   });
   const elapsedSeconds = (Date.now() - start) / 1000;
