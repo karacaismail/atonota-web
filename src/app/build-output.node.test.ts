@@ -79,7 +79,9 @@ function assetFiles(dir: string, ext: string): string[] {
 /** index.html'nin hemen yüklediği dosyalar: script ve modulepreload bağlantıları. */
 function initialAssets(dir: string): string[] {
   const html = readFileSync(join(dir, 'index.html'), 'utf8');
-  const refs = [...html.matchAll(/(?:src|href)="\/?(assets\/[^"]+)"/g)].map((m) => m[1]!);
+  const refs = [...html.matchAll(/(?:src|href)="(?:\/panel)?\/?(assets\/[^"]+)"/g)].map(
+    (m) => m[1]!,
+  );
   return [...new Set(refs)];
 }
 
@@ -92,6 +94,21 @@ afterAll(() => {
 });
 
 describe('üretim derlemesi (vite build)', () => {
+  it('varlıklar /panel/ yolundan yüklenir (canlı panel yolu)', () => {
+    const html = readFileSync(join(outDir, 'index.html'), 'utf8');
+    const refs = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]!);
+    expect(refs.length).toBeGreaterThan(0);
+    for (const ref of refs) expect(ref, ref).toMatch(/^\/panel\/assets\//);
+    expect(initialAssets(outDir).length).toBe(refs.length);
+    for (const name of assetFiles(outDir, '.css')) {
+      const css = readFileSync(join(outDir, 'assets', name), 'utf8');
+      for (const [, url] of css.matchAll(/url\(([^)]+)\)/g)) {
+        if (url!.startsWith('data:')) continue;
+        expect(url, `${name}: ${url}`).toMatch(/^(\/panel\/assets\/|\.\/)/);
+      }
+    }
+  });
+
   it('geliştirme sunucusu ayarlarını içermez', () => {
     for (const name of assetFiles(outDir, '.js')) {
       const contents = readFileSync(join(outDir, 'assets', name), 'utf8');
