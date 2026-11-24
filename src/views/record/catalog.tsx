@@ -7,6 +7,7 @@ import { evaluateFieldState, isFrappeTruthy } from './conditions';
 import { ChildTableField, TableMultiSelectField } from './fields/ChildTableField';
 import { type FieldControlA11yProps, FieldShell } from './fields/FieldShell';
 import { LinkField } from './fields/LinkField';
+import { LinkValue } from './fields/LinkValue';
 import { RichEditorField, SafeFormattedView } from './fields/RichContentFields';
 import {
   AttachField,
@@ -387,6 +388,16 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
       }
 
       case 'Link':
+        if (state.readOnly) {
+          return (
+            <LinkValue
+              targetDoctype={field.options ?? ''}
+              value={typeof value === 'string' ? value : null}
+              locale={locale}
+              a11y={a11y}
+            />
+          );
+        }
         return (
           <LinkField
             field={field}

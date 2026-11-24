@@ -7,6 +7,7 @@ import { handlers } from './handlers';
 import { isGuardedUrl, realServerLogLine } from './real-server';
 import { applyMockScenario, readMockScenario } from './scenarios';
 import { isMockedApiRequest } from './start';
+import { mockWorkerOptions } from './worker-url';
 
 /** Sahte sunucuyu başlatır. Dönen CSRF değeri örnektir ve yalnız sahte sunucuda geçerlidir. */
 export async function startMockWorker(): Promise<{ csrfToken: string }> {
@@ -15,6 +16,8 @@ export async function startMockWorker(): Promise<{ csrfToken: string }> {
   const worker = setupWorker(...handlers);
   await worker.start({
     quiet: true,
+    // İşçi panel yolundadır: kökte `/mockServiceWorker.js`, canlı yolda `/panel/mockServiceWorker.js`.
+    serviceWorker: mockWorkerOptions(import.meta.env.BASE_URL),
     /**
      * Yalnız `/api/` istekleri sahte sunucuya aittir. Karşılığı yoksa istek hata alır ve ağa
      * çıkmaz. Sayfa ve statik dosya istekleri işçiden olduğu gibi geçer. Hazır "error" kuralı

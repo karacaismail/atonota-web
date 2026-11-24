@@ -123,6 +123,36 @@ export const sampleDocTypeMeta: Meta = {
         component: 'input',
         sensitivity: 'standard',
       },
+      // Bağlantı alanları. Arka uç Link alanına `link-select` bileşen adını verir
+      // (frappesetup backend: platform_core/shell/catalog.py).
+      {
+        fieldname: 'ilgili_kayit',
+        fieldtype: 'Link',
+        label: 'İlgili kayıt',
+        options: 'Örnek Kayıt',
+        read_only: false,
+        component: 'link-select',
+        sensitivity: 'standard',
+      },
+      {
+        fieldname: 'kaynak_kayit',
+        fieldtype: 'Link',
+        label: 'Kaynak kayıt',
+        options: 'Örnek Kayıt',
+        read_only: true,
+        component: 'link-select',
+        sensitivity: 'standard',
+      },
+      // Hedef tür için sahte sunucu yetki reddi verir. Arama kayıt göstermez.
+      {
+        fieldname: 'gizli_kayit',
+        fieldtype: 'Link',
+        label: 'Gizli kayıt',
+        options: 'Gizli Örnek Kayıt',
+        read_only: false,
+        component: 'link-select',
+        sensitivity: 'standard',
+      },
     ],
   },
 };

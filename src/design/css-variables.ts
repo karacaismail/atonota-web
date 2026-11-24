@@ -3,6 +3,7 @@
  * Kaynaktaki `derived.css` başlangıç noktasıdır; burada aynı adlar korunur ve
  * açık/koyu değerler doğru bloklara ayrılır.
  */
+import { readCspNonce } from './csp-nonce';
 import { dropdownAnimation, duration, easing, instantMs } from './motion';
 import type { ThemeMode } from './source';
 import {
@@ -316,6 +317,9 @@ export function ensureDesignStyles(doc: Document = document): HTMLStyleElement {
   if (!el) {
     el = doc.createElement('style');
     el.id = DESIGN_STYLE_ID;
+    // Sunucu CSP nonce verdiyse stil öğesi de onu taşır (src/app/csp-nonce.ts).
+    const nonce = readCspNonce(doc);
+    if (nonce) el.nonce = nonce;
     doc.head.appendChild(el);
   }
   const css = buildDesignCss();

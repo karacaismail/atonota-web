@@ -573,6 +573,30 @@
   box-shadow: var(--rv-shadow-card);
 }
 
+/*
+ * Salt okunur bağlantı alanı. Ad, hedef kayda giden bağlantıdır. Renk tokendan gelir.
+ * Metin rengi gövde rengidir: vurgu rengi bu zeminde 4.5:1 karşıtlığı vermiyor (axe).
+ * Bağlantı alt çizgiyle ayrılır. Üzerine gelince çizgi kalınlaşır.
+ */
+.rv-link-value {
+  display: flex;
+  align-items: center;
+}
+
+.rv-link-value a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--rv-control-h-md);
+  color: var(--rv-color-text);
+  text-decoration: underline;
+  text-decoration-color: var(--rv-color-primary);
+  text-underline-offset: 0.2em;
+}
+
+.rv-link-value a:hover {
+  text-decoration-thickness: 2px;
+}
+
 .rv-link-option {
   display: flex;
   flex-direction: column;

@@ -152,3 +152,13 @@ node --input-type=module -e '
 ' "$output"
 npx --no-install prettier --write "$output"
 ```
+
+## Bağlantı alanı araması
+
+- Kayıt görünümü bağlantı alanında `frappe.desk.search.search_link` ucunu çağırır.
+- Arka uç bu ucu kendi izin kuralıyla değiştirir (`platform_core/access/link_search.py`). İzni olmayan türde sonuç gelmez.
+- Arka uç Link alanına `link-select` bileşen adını verir (`platform_core/shell/catalog.py`). Arayüz bu adı tanır.
+- Dynamic Link alanı da `link-select` adıyla gelir. Bu alan bu işte "desteklenmeyen alan" olarak kalır.
+- Salt okunur bağlantı alanı sunucuya istek atmaz. Yalnız kayıtta zaten okunan hedef adını gösterir.
+- Sahte sunucu aynı ucu karşılar. Yalnız `Örnek Kayıt` türü aranır. Öteki türler 403 alır.
+

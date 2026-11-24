@@ -19,23 +19,26 @@ function readWorker(): string {
 
 export function mockWorkerPlugin(): Plugin {
   let emit = false;
+  let base = '/';
   return {
     name: 'atonota-mock-worker',
     configResolved(config) {
+      base = config.base;
       // e2e kipinde değer `vite/e2e-env.ts` dosyasından da gelebilir. Ortamdaki değer önce gelir.
       const mocks = config.env['VITE_API_MOCKS'] ?? e2eEnv(config.mode)['VITE_API_MOCKS'];
       emit = config.command === 'build' && mocks === 'on';
     },
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
-        if (new URL(request.url ?? '/', 'http://localhost').pathname !== `/${WORKER_FILE}`) {
+        // Geliştirme sunucusu `base` yolunda çalışır. İşçi de o yolda sunulur.
+        if (new URL(request.url ?? '/', 'http://localhost').pathname !== `${base}${WORKER_FILE}`) {
           next();
           return;
         }
         response.writeHead(200, {
           'Cache-Control': 'no-cache',
           'Content-Type': 'application/javascript; charset=utf-8',
-          'Service-Worker-Allowed': '/',
+          'Service-Worker-Allowed': base,
         });
         response.end(readWorker());
       });

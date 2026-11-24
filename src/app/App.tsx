@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import type { ShellViewData } from '@/shell/view-data';
 
 import { AppProviders } from './AppProviders';
+import { appPathname } from './base-path';
 import { DEMO_PATH_PREFIX } from './demo-mode';
 
 /**
@@ -19,7 +20,7 @@ const DemoFoundationPage =
   import.meta.env.MODE === 'e2e' ? lazy(() => import('./FoundationPage')) : null;
 
 function currentPath(): string {
-  return typeof window === 'undefined' ? '/' : window.location.pathname;
+  return typeof window === 'undefined' ? '/' : appPathname(window.location.pathname);
 }
 
 /** Kabuk ya da deneme sayfası. Sağlayıcıları çağıran kurar (bkz. `Root`). */

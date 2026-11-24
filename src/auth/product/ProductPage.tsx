@@ -65,7 +65,8 @@ export default function ProductPage() {
         <p className="product-text">{text.license_keycloak}</p>
       </Part>
       <p className="product-text">
-        <a href="/">{text.cta}</a>
+        {/* Panelin ana sayfası: canlıda `/panel/`, yerelde `/`. */}
+        <a href={import.meta.env.BASE_URL}>{text.cta}</a>
       </p>
     </main>
   );

@@ -147,6 +147,7 @@ export function resetMockState(): void {
   mockState.proposals.clear();
   mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
   mockState.records = sampleRecords();
+  recordLinks.clear();
   mockState.installations = sampleInstallations.map((item) => ({ ...item }));
   mockState.aiProviders = new Map(sampleAiProviders.map((item) => [item.name, { ...item }]));
   mockState.aiAccounts = new Map(sampleAiAccounts.map((item) => [item.name, { ...item }]));
@@ -475,11 +476,32 @@ const LEAVE_FIELDS = new Set([
 
 const REDIRECT_PATTERN = /^\/(?!\/)[A-Za-z0-9\-._~/?#@!$&()*+,;=%:[\]]*$/;
 
+/**
+ * Kaydın bağlantı alanları. `kaynak_kayit` bir önceki kayıttır ve salt okunurdur.
+ * `ilgili_kayit` kaydetmeyle değişir; değer `recordLinks` içinde tutulur.
+ */
+function sampleRecordLinks(row: CollectionRow) {
+  const number = Number(row.name.slice(-4));
+  return {
+    ilgili_kayit: recordLinks.get(row.name) ?? null,
+    kaynak_kayit: number > 1 ? `ORNEK-${String(number - 1).padStart(4, '0')}` : null,
+    gizli_kayit: null,
+  };
+}
+
 function sampleRecordResponse(row: CollectionRow) {
   return HttpResponse.json({
-    data: { doctype: SAMPLE_COLLECTION_DOCTYPE, docstatus: 0, ...row } as JsonBodyType,
+    data: {
+      doctype: SAMPLE_COLLECTION_DOCTYPE,
+      docstatus: 0,
+      ...row,
+      ...sampleRecordLinks(row),
+    } as JsonBodyType,
   });
 }
+
+/** `ilgili_kayit` değerleri. `resetMockState` boşaltır. */
+const recordLinks = new Map<string, string>();
 
 function frappeError(status: number, excType: string, extra: Record<string, unknown> = {}) {
   return HttpResponse.json({ exc_type: excType, ...extra }, { status });
@@ -875,6 +897,29 @@ export const handlers = [
     });
   }),
 
+  // Frappe bağlantı araması. Yalnız `Örnek Kayıt` türü aranır. Öteki türler yetki reddi alır;
+  // yanıt kayıt adı içermez. Gerçek sunucu da izni olmayan türde arama yapmaz.
+  http.get('*/api/method/frappe.desk.search.search_link', ({ request }) => {
+    const denied = guard(request, { write: false });
+    if (denied) return denied;
+    const url = new URL(request.url);
+    if (url.searchParams.get('doctype') !== SAMPLE_COLLECTION_DOCTYPE) {
+      return frappeError(403, 'PermissionError');
+    }
+    const txt = (url.searchParams.get('txt') ?? '').trim().toLocaleLowerCase('tr');
+    const pageLength = Math.min(Math.max(Number(url.searchParams.get('page_length')) || 10, 1), 50);
+    const rows = [...mockState.records.values()]
+      .filter(
+        (row) =>
+          txt === '' ||
+          row.name.toLocaleLowerCase('tr').includes(txt) ||
+          row.title.toLocaleLowerCase('tr').includes(txt),
+      )
+      .slice(0, pageLength)
+      .map((row) => ({ value: row.name, label: row.title }));
+    return message(rows);
+  }),
+
   // Frappe kayıt ucu (`/api/resource/<doctype>/<name>`). Yalnız `Örnek Kayıt` türü karşılanır.
   // İzin başvuruları yukarıdaki kendi işleyicisindedir. Tür tanımı ucu gibi, öteki türler
   // yetki reddi (403 `PermissionError`) alır. Kaydetme CSRF belirtecini ve kayıt sürümünü denetler.
@@ -900,6 +945,14 @@ export const handlers = [
     if (!body || body.modified !== row.modified) return frappeError(417, 'TimestampMismatchError');
     if (body.title !== undefined && (typeof body.title !== 'string' || !body.title.trim())) {
       return frappeError(417, 'MandatoryError');
+    }
+    if ('ilgili_kayit' in body) {
+      const link = body.ilgili_kayit;
+      if (link !== null && (typeof link !== 'string' || !mockState.records.has(link))) {
+        return frappeError(417, 'LinkValidationError');
+      }
+      if (link === null) recordLinks.delete(row.name);
+      else recordLinks.set(row.name, link);
     }
     const next: CollectionRow = {
       ...row,

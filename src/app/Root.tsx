@@ -3,9 +3,9 @@ import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 're
 import { AuthGate, type PlatformSession } from '@/auth';
 import { isPublicPath } from '@/auth/product/path';
 import type { ModuleEnvironment } from '@/modules';
-import { createShellModuleEnvironment } from '@/shell/view-data/modules';
 
 import { AppContent } from './App';
+import { appPathname } from './base-path';
 import { AppProviders } from './AppProviders';
 import type { ThemeModeChoice } from './theme-mode';
 import { createShellViewData, loadShellAccount } from './view-data';
@@ -29,6 +29,13 @@ export interface RootProps {
   pathname?: string;
 }
 
+/**
+ * Modül ortamının kurucusu ayrı parçadır. Giriş ekranı bu parçayı indirmez (telefon ilk yük bütçesi).
+ * Parça oturum açılınca hemen istenir. Kabuk ve modül sayfası daha sonra iner; ortam o ana kadar hazır olur.
+ * Ortam gelmeden modül sayfası açılırsa sayfa durum yazar ve ortam gelince kendiliğinden açılır.
+ */
+const loadModuleEnvironment = () => import('@/shell/view-data/modules');
+
 /** Tanıtım sayfası ayrı parçadır. Parça yalnız bu adreste yüklenir. */
 const ProductPage = lazy(() => import('@/auth/product/ProductPage'));
 
@@ -50,27 +57,41 @@ function SignedIn({
     });
     return () => ctrl.abort();
   }, [session, user]);
-  // Veri bağlantısı yalnız oturum ya da kullanıcı değişince yeniden kurulur. Ad sonradan gelir.
-  const base = useMemo(
-    () => ({
-      ...createShellViewData(session.api),
-      modules: createShellModuleEnvironment({
+  // Ortam kurulduğu oturum, kullanıcı ve kiple saklanır. Biri değişince eski ortam kullanılmaz.
+  const [loaded, setLoaded] = useState<
+    { session: PlatformSession; user: string; dataMode: string; env: ModuleEnvironment } | undefined
+  >(undefined);
+  const modules =
+    loaded && loaded.session === session && loaded.user === user && loaded.dataMode === dataMode
+      ? loaded.env
+      : undefined;
+  useEffect(() => {
+    let active = true;
+    void loadModuleEnvironment().then(({ createShellModuleEnvironment }) => {
+      if (!active) return;
+      const env = createShellModuleEnvironment({
         api: session.api,
         tenant: session.config.siteUrl,
         user,
         locale: 'tr',
         mode: dataMode,
-      }),
-    }),
-    [session, user, dataMode],
-  );
+      });
+      setLoaded({ session, user, dataMode, env });
+    });
+    return () => {
+      active = false;
+    };
+  }, [session, user, dataMode]);
+  // Veri bağlantısı yalnız oturum ya da kullanıcı değişince yeniden kurulur. Ad sonradan gelir.
+  const base = useMemo(() => createShellViewData(session.api), [session]);
   const viewData = useMemo(
     () => ({
       ...base,
+      ...(modules ? { modules } : {}),
       account: { user, ...(fullName ? { fullName } : {}) },
       signOut: () => session.auth.signOut(),
     }),
-    [base, user, fullName, session],
+    [base, modules, user, fullName, session],
   );
   return <AppContent viewData={viewData} />;
 }
@@ -89,7 +110,8 @@ export function Root({
   dataMode = 'live',
   pathname = typeof window === 'undefined' ? '/' : window.location.pathname,
 }: RootProps) {
-  if (isPublicPath(pathname)) {
+  // Canlıda adres `/panel/` ile başlar. Karşılaştırma uygulama içindeki yolla yapılır.
+  if (isPublicPath(appPathname(pathname))) {
     // Tanıtım sayfası oturum sormaz (G-165). Tema ve tasarım sağlayıcıları yine kurulur.
     return (
       <AppProviders {...(initialThemeChoice ? { initialThemeChoice } : {})} engines={engines}>

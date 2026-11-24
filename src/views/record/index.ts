@@ -36,6 +36,7 @@ export {
   type RecordMessageKey,
 } from './messages';
 export { RecordErrorBoundary, type RecordErrorBoundaryProps } from './RecordErrorBoundary';
+export { RecordLinkProvider, type RecordLinkRenderer, type RecordLinkTarget } from './recordLink';
 export { RecordNavigator } from './RecordNavigator';
 export { type RecordNavigatorConfig, RecordView, type RecordViewProps } from './RecordView';
 export {

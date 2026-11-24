@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ensureDesignStyles } from '@/design/css-variables';
 
 import { AppProviders } from './AppProviders';
-import { readCspNonce } from './csp-nonce';
+import { readCspNonce } from '@/design/csp-nonce';
 
 /** Sunucu nonce değerini `<meta property="csp-nonce" nonce="...">` öğesine yazar (backend panel.html). */
 function addNonceMeta(value: string): HTMLMetaElement {
@@ -47,7 +47,9 @@ describe('CSP nonce', () => {
     );
     expect(screen.getByRole('button', { name: 'Örnek düğme' })).toBeTruthy();
     const antdStyles = [
-      ...document.head.querySelectorAll('style[data-css-hash], style[data-rc-order]'),
+      ...document.head.querySelectorAll<HTMLStyleElement>(
+        'style[data-css-hash], style[data-rc-order]',
+      ),
     ];
     expect(antdStyles.length).toBeGreaterThan(0);
     for (const style of antdStyles) expect(style.nonce).toBe('ornek-nonce-3');

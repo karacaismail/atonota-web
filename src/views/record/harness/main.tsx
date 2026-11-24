@@ -59,7 +59,7 @@ const HARNESS_META: DocTypeMeta = {
         label: 'Departman',
         options: 'Department',
         read_only: false,
-        component: 'link',
+        component: 'link-select',
         sensitivity: 'standard',
       },
       {

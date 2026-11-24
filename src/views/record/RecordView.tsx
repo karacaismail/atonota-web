@@ -25,6 +25,7 @@ import { buildFormLayout, isLayoutBreakFieldType, type LayoutSection } from './l
 import { formatRecordMessage } from './messages';
 import { RecordErrorBoundary } from './RecordErrorBoundary';
 import { RecordNavigator } from './RecordNavigator';
+import { RecordLinkProvider, type RecordLinkRenderer } from './recordLink';
 import {
   EmptyRecordState,
   ErrorRecordState,
@@ -192,6 +193,11 @@ export interface RecordViewProps {
   onSaved?: ((record: RecordDocument) => void) | undefined;
   onCreateNew?: (() => void) | undefined;
   onSignIn?: (() => void) | undefined;
+  /**
+   * Salt okunur bağlantı alanındaki hedef kayda bağlantı çizer. Uygulama yönlendiricinin
+   * bağlantısını verir. Verilmezse hedef kaydın adı düz metin olarak görünür.
+   */
+  renderRecordLink?: RecordLinkRenderer | undefined;
 }
 
 function RecordSectionCard(props: {
@@ -991,7 +997,9 @@ export function RecordView(props: RecordViewProps) {
           resetKey={recordIdentityKey}
           onReset={() => setBoundaryResetCount((n) => n + 1)}
         >
-          <RecordViewBody key={recordIdentityKey} {...props} isPhoneViewport={isPhoneContainer} />
+          <RecordLinkProvider value={props.renderRecordLink}>
+            <RecordViewBody key={recordIdentityKey} {...props} isPhoneViewport={isPhoneContainer} />
+          </RecordLinkProvider>
         </RecordErrorBoundary>
       </div>
     </ConfigProvider>

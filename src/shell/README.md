@@ -83,6 +83,17 @@ Kuralın tamamı dosyanın başındaki yorumdadır. `routes.test.ts` biçimi den
 
 Modül sayfaları `src/modules/registry.ts` dosyasındaki `moduleRegistrations` listesinden gelir. Kabuk her kaydı `lazyRoutes` listesine bir satır olarak ekler. Menü etiketi kaydın Türkçe adıdır. Modüller menüde "Asistan" bağlantısından sonra görünür. Sayfa dosyası yalnız sayfa açılınca istenir.
 
+## Panel yolu
+
+Canlıda panel `/panel/` yolunda sunulur. Yerel geliştirme kök yolda çalışır.
+
+- Yolu derleme ayarı belirler: `vite/base-path.ts`. Üretim kipi `/panel/` kullanır. Geliştirme ve e2e kipi `/` kullanır.
+- `ATONOTA_BASE` ortam değişkeni varsayılanı ezer. Örnek: `ATONOTA_BASE=/ npm run build`.
+- Router `basename` değerini `import.meta.env.BASE_URL` değerinden alır. Rota kayıtları önek yazmaz.
+- Kabuk rotalarındaki `/panel/ai` yolu canlıda `/panel/panel/ai` olur. Yol çalışır. Adı sadeleştirmek ayrı bir iştir.
+- Uygulama içindeki yol `src/app/base-path.ts` ile bulunur. Örnek: `/panel/atonota-login` için `/atonota-login`.
+- Girişten dönüş adresi tarayıcının tam yoludur. Yani canlıda `/panel/` öneki de gider.
+
 ## Menü verisi
 
 Menü yalnız açılabilen sayfaları gösterir. Menüyü `nav.ts` dosyası kurar. Sıra şöyledir:

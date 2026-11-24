@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 
 import { Root } from '@/app/Root';
 import { createPlatformSession } from '@/auth';
+import { installCspNonce } from '@/design/csp-nonce';
 import { SampleDataNotice } from '@/mocks/SampleDataNotice';
 import { startApiMocks } from '@/mocks/start';
 
@@ -14,6 +15,9 @@ if (!container) {
   throw new Error('Kök öğe bulunamadı: #root');
 }
 const root = container;
+
+// Sunucu CSP nonce verdiyse çalışma anında eklenen stil ve betik öğeleri onu taşır.
+installCspNonce();
 
 // Sahte sunucu açıksa API isteklerinden önce başlar.
 const mocks = await startApiMocks();

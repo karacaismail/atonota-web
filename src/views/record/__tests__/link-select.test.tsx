@@ -91,9 +91,8 @@ describe('bağlantı alanı: arka ucun link-select bileşen adı', () => {
         expect.objectContaining({ doctype: 'Örnek Kayıt', txt: 'veri' }),
       ),
     );
-    await screen.findByText('Örnek veri 2');
-    // Klavyeyle seçim: ilk seçenek etkin olur, Enter seçer.
-    await user.keyboard('{ArrowDown}{Enter}');
+    // Klavyeyle seçim gerçek tarayıcıda denenir (src/app/e2e/panel-link.spec.ts).
+    await user.click(await screen.findByText('Örnek veri 2'));
     expect(onChange).toHaveBeenCalledWith('ilgili_kayit', 'ORNEK-0002');
   });
 });

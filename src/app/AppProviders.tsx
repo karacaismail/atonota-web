@@ -3,6 +3,7 @@ import trTR from 'antd/es/locale/tr_TR';
 import { useEffect, useMemo, type ReactNode } from 'react';
 
 import { buildAntdTheme } from '@/design/antd-theme';
+import { installCspNonce } from '@/design/csp-nonce';
 import { ensureDesignStyles } from '@/design/css-variables';
 import { FocusDimOverlay } from '@/engines/focus-dim';
 import { startFocusMode } from '@/engines/focus-mode';
@@ -21,8 +22,21 @@ function BodyTheme() {
   return null;
 }
 
+/**
+ * Sunucunun CSP nonce değeri. Sayfa açılınca bir kez okunur; değer sayfa boyunca aynıdır.
+ * antd ve öteki kitaplıklar çalışma anında eklediği stil öğelerine bu değeri verir.
+ * Kurulum çocuklar çizilmeden önce yapılır. Değer yoksa hiçbir öğe nonce almaz.
+ */
+function useCspConfig(): { nonce: string } | undefined {
+  return useMemo(() => {
+    const nonce = installCspNonce();
+    return nonce ? { nonce } : undefined;
+  }, []);
+}
+
 function ThemedProviders({ children }: { children: ReactNode }) {
   const { resolved } = useThemeMode();
+  const csp = useCspConfig();
   const reducedMotion = usePrefersReducedMotion();
   const theme = useMemo(
     () => buildAntdTheme(resolved, { reducedMotion }),
@@ -30,7 +44,7 @@ function ThemedProviders({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ConfigProvider theme={theme} locale={trTR}>
+    <ConfigProvider theme={theme} locale={trTR} {...(csp ? { csp } : {})}>
       <AntdApp>
         <BodyTheme />
         {children}

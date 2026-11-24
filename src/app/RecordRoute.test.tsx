@@ -5,12 +5,13 @@ import type { ApiClient } from '@/api';
 import type * as RecordModule from '@/views/record';
 import type { RecordDataAdapter, RecordViewProps } from '@/views/record';
 
-const seen: { adapter?: RecordDataAdapter } = {};
+const seen: { adapter?: RecordDataAdapter; renderLink?: RecordViewProps['renderRecordLink'] } = {};
 
 vi.mock('@/views/record', async (importOriginal) => ({
   ...(await importOriginal<typeof RecordModule>()),
   RecordView: (props: RecordViewProps) => {
     seen.adapter = props.adapter;
+    seen.renderLink = props.renderRecordLink;
     return <p>{`${props.doctype}|${props.name ?? ''}|${props.locale ?? ''}`}</p>;
   },
 }));
@@ -61,5 +62,29 @@ describe('RecordRoute', () => {
       <RecordRoute api={api} module="ornek" doctype="örnek-kayıt" name="ORNEK-0001" />,
     );
     expect(container.querySelector('[class*="shell-"]')).toBeNull();
+  });
+});
+
+describe('RecordRoute: bağlantı alanı', () => {
+  it('hedef kayda aynı modül yolunda bağlantı çizer; yönlendirici panel yolunu ekler', async () => {
+    const { MemoryRouter } = await import('react-router-dom');
+    const { api } = fakeApi();
+    render(<RecordRoute api={api} module="ornek" doctype="örnek-kayıt" name="ORNEK-0003" />);
+    expect(seen.renderLink).toBeDefined();
+    render(
+      <MemoryRouter basename="/panel" initialEntries={['/panel/']}>
+        {seen.renderLink?.({ doctype: 'Örnek Kayıt', name: 'ORNEK-0002' }, 'ORNEK-0002')}
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: 'ORNEK-0002' }).getAttribute('href')).toBe(
+      `/panel/ornek/${encodeURIComponent('örnek-kayıt')}/ORNEK-0002`,
+    );
+  });
+
+  it('adrese geri çevrilemeyen türde bağlantı çizmez', async () => {
+    const { slugFromDoctype } = await import('./record-slug');
+    expect(slugFromDoctype('Örnek Kayıt')).toBe('örnek-kayıt');
+    expect(slugFromDoctype('Sales Invoice')).toBe('sales-invoice');
+    expect(slugFromDoctype('ToDo')).toBeUndefined();
   });
 });

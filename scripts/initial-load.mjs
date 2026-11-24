@@ -4,6 +4,7 @@
  * yolları ziyaret eder ve aktarılan baytları (sıkıştırılmış, CDP `encodedDataLength`) yazar.
  * Dış istekler (kimlik sunucusu gibi) kesilir; yalnız yerel paket ölçülür.
  *
+ * Paket `/panel/` yoluyla derlendiyse yollar o yolun altında açılır (örnek: `/` -> `/panel/`).
  * Kullanım: node scripts/initial-load.mjs [--build] [--out dist] [--port 4381] [--width 360] [yol ...]
  * - `--build`: önce üretim derlemesini alır (`vite build`, sahte sunucu kapalı).
  * - `--build` yoksa `dist/` hazır olmalıdır. Klasörde `mockServiceWorker.js` varsa bu bir e2e
@@ -82,6 +83,14 @@ if (!existsSync(join(outPath, 'index.html'))) {
   );
   process.exit(2);
 }
+/**
+ * Paketin adres yolu (Vite `base`). Üretim derlemesi `/panel/` yolunu kullanır (vite/base-path.ts).
+ * Yol `index.html` içindeki betik adresinden okunur. Ölçülen yollar bu yolun altında açılır.
+ */
+const appBase =
+  readFileSync(join(outPath, 'index.html'), 'utf8').match(/src="(\/(?:[^"/]+\/)*)assets\//)?.[1] ??
+  '/';
+
 if (existsSync(join(outPath, 'mockServiceWorker.js'))) {
   console.error(
     `${outPath} bir e2e derlemesidir (mockServiceWorker.js var). İlk yük yalnız üretim derlemesinde ölçülür. \`npm run build\` ya da \`--build\` kullanın.`,
@@ -153,7 +162,7 @@ async function waitForServer() {
   for (let i = 0; i < 100; i += 1) {
     if (previewExited) throw new Error(`Önizleme sunucusu açılamadı (port ${port} dolu olabilir).`);
     try {
-      const response = await fetch(`${base}/index.html`);
+      const response = await fetch(`${base}${appBase}index.html`);
       if (response.ok) {
         const served = await response.text();
         const expected = readFileSync(join(outPath, 'index.html'), 'utf8');
@@ -177,7 +186,7 @@ function kindOf(name) {
   if (name.endsWith('.js')) return 'JS';
   if (name.endsWith('.css')) return 'CSS';
   if (/\.woff2?$/.test(name)) return 'Yazı tipi';
-  if (name === '/' || name.endsWith('.html')) return 'HTML';
+  if (name.endsWith('/') || name.endsWith('.html')) return 'HTML';
   return 'Diğer';
 }
 
@@ -197,7 +206,7 @@ async function measure(browser, path) {
     const r = requests.get(e.requestId);
     if (r) r.encoded = e.encodedDataLength;
   });
-  await page.goto(base + path, { waitUntil: 'networkidle' });
+  await page.goto(base + appBase.replace(/\/$/, '') + path, { waitUntil: 'networkidle' });
   await page.waitForTimeout(500);
   const rows = [...requests.values()]
     .filter((r) => r.url.startsWith(base))
@@ -206,11 +215,13 @@ async function measure(browser, path) {
   const totals = {};
   for (const r of rows) totals[kindOf(r.name)] = (totals[kindOf(r.name)] ?? 0) + r.encoded;
   const total = rows.reduce((sum, r) => sum + r.encoded, 0);
-  console.log(`\n== ${path} (${width} px, Chromium, aktarılan bayt) ==`);
+  console.log(
+    `\n== ${appBase.replace(/\/$/, '')}${path} (${width} px, Chromium, aktarılan bayt) ==`,
+  );
   for (const r of rows)
     console.log(`${String(r.encoded).padStart(8)} B  ${kindOf(r.name).padEnd(9)} ${r.name}`);
   for (const [k, v] of Object.entries(totals))
-    console.log(`${k.padEnd(10)} ${(v / 1024).toFixed(1)} KB`);
+    console.log(`${k.padEnd(10)} ${(v / 1024).toFixed(1)} KB (${v} B)`);
   console.log(`TOPLAM     ${(total / 1024).toFixed(1)} KB, ${rows.length} istek`);
   await context.close();
 }
