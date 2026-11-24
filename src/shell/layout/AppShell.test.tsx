@@ -113,3 +113,92 @@ describe('AppShell', () => {
     act(() => undefined);
   });
 });
+
+/**
+ * MVP denetimi: panelde örnek veri kalmaz (23 Kasım 2026).
+ * Çalışma alanı, hızlı eylemler ve AI kredisi yalnız sunucu verisinden gelir.
+ */
+describe('AppShell örnek veri yok', () => {
+  const sidebars = [
+    {
+      id: 'Satış',
+      label: 'Satış',
+      module: 'selling',
+      links: [
+        { label: 'Teklifler', doctype: 'Quotation' },
+        { label: 'Siparişler', doctype: 'Sales Order' },
+      ],
+    },
+  ];
+
+  it('çalışma alanı verisi yoksa örnek şirket görünmez', () => {
+    mockCompact(false);
+    renderShell({});
+    expect(screen.queryByText(/Örnek Şirket/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Çalışma alanı/ })).not.toBeInTheDocument();
+  });
+
+  it('tek çalışma alanı açılır liste olmadan sade görünür', () => {
+    mockCompact(false);
+    renderShell({
+      workspaces: { items: [{ id: 'site', name: 'site.example.test' }], current: 'site' },
+    });
+    expect(screen.getByText('site.example.test')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /site\.example\.test/ })).not.toBeInTheDocument();
+    expect(document.querySelector('[aria-haspopup="menu"]')).toBeNull();
+  });
+
+  it('birden çok çalışma alanı varsa seçici açılır liste olur', async () => {
+    mockCompact(false);
+    renderShell({
+      workspaces: {
+        items: [
+          { id: 'a', name: 'birinci.example.test' },
+          { id: 'b', name: 'ikinci.example.test' },
+        ],
+        current: 'a',
+      },
+    });
+    const button = screen.getByRole('button', { name: /birinci\.example\.test/ });
+    await userEvent.setup().click(button);
+    expect(await screen.findByRole('menuitem', { name: /ikinci\.example\.test/ })).toBeVisible();
+  });
+
+  it('sunucu menüsü yoksa hızlı eylem görünmez, örnek öneri görünmez', () => {
+    mockCompact(false);
+    renderShell({});
+    expect(screen.queryByRole('group', { name: 'Hızlı eylemler' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Günün özeti')).not.toBeInTheDocument();
+  });
+
+  it('hızlı eylemler sunucunun izin süzgecinden geçmiş sayfalarından gelir', async () => {
+    mockCompact(false);
+    renderShell({ navigation: { loadSidebars: vi.fn().mockResolvedValue(sidebars) } });
+    const group = await screen.findByRole('group', { name: 'Hızlı eylemler' });
+    const chips = Array.from(group.querySelectorAll('button')).map((b) => b.textContent);
+    expect(chips).toEqual(['Teklifler', 'Siparişler']);
+  });
+
+  it('kredi ucu yoksa sayaç görünmez', () => {
+    mockCompact(false);
+    renderShell({});
+    expect(screen.queryByText('AI kredisi')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /Kredinin/ })).not.toBeInTheDocument();
+  });
+
+  it('kredi ucu boş yanıt verirse sayaç görünmez', async () => {
+    mockCompact(false);
+    const load = vi.fn().mockResolvedValue(null);
+    renderShell({ credit: { load } });
+    await act(async () => Promise.resolve());
+    expect(load).toHaveBeenCalledWith(expect.any(AbortSignal));
+    expect(screen.queryByText('AI kredisi')).not.toBeInTheDocument();
+  });
+
+  it('kredi ucundan gelen sayıyı gösterir', async () => {
+    mockCompact(false);
+    renderShell({ credit: { load: vi.fn().mockResolvedValue({ used: 250, total: 1000 }) } });
+    expect(await screen.findByText('AI kredisi')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Kredinin yüzde 25 kısmı kullanıldı' })).toBeVisible();
+  });
+});

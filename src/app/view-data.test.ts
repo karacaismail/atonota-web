@@ -183,3 +183,20 @@ describe('loadShellAccount', () => {
     });
   });
 });
+
+/** MVP denetimi: çalışma alanı seçici örnek şirket değil, oturumun sitesini gösterir. */
+describe('workspaceFromSite', () => {
+  it('site adresinin alan adını tek çalışma alanı yapar', async () => {
+    const { workspaceFromSite } = await import('./view-data');
+    expect(workspaceFromSite('https://acme.example.test')).toEqual({
+      items: [{ id: 'acme.example.test', name: 'acme.example.test' }],
+      current: 'acme.example.test',
+    });
+  });
+
+  it('adres çözülemezse veri vermez; seçici yalnız logoyu gösterir', async () => {
+    const { workspaceFromSite } = await import('./view-data');
+    expect(workspaceFromSite('')).toBeUndefined();
+    expect(workspaceFromSite('bozuk adres')).toBeUndefined();
+  });
+});

@@ -267,3 +267,29 @@ describe('Seçenek bloğu', () => {
     expect(onAction).toHaveBeenCalledWith({ kind: 'ask', text: 'Geçen ayla karşılaştır' });
   });
 });
+
+/** MVP denetimi: süresi dolmuş öneri onaylanamaz. */
+describe('Onay bloğunun süresi', () => {
+  it('süresi geçmiş onay "Süresi doldu" yazar ve onay düğmesi göstermez', () => {
+    const [block] = parseBlocks([{ ...confirmBlock, expiresAt: '2000-01-01T00:00:00Z' }]);
+    if (!block) throw new Error('blok yok');
+    const onAction = accept();
+    render(<GenUI blocks={[block]} onAction={onAction} />);
+    expect(screen.getByText('Süresi doldu')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Gönder' })).toBeNull();
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it('süresi geçmemiş onayın düğmesi çalışır', () => {
+    const [block] = parseBlocks([{ ...confirmBlock, expiresAt: '2999-01-01T00:00:00Z' }]);
+    if (!block) throw new Error('blok yok');
+    render(<GenUI blocks={[block]} onAction={accept()} />);
+    expect(screen.getByRole('button', { name: 'Gönder' })).toBeEnabled();
+    expect(screen.queryByText('Süresi doldu')).toBeNull();
+  });
+
+  it('bozuk süre bilgisi olan onay JSON görünümüne düşer', () => {
+    const [block] = parseBlocks([{ ...confirmBlock, expiresAt: 'yarın' }]);
+    expect(block?.type).toBe('unknown');
+  });
+});

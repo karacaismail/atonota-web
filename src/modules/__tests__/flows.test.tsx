@@ -277,3 +277,31 @@ describe('explicit approval', () => {
     );
   });
 });
+
+/** MVP denetimi: süresi geçmiş öneri listede "Süresi doldu" yazar ve onaylanamaz. */
+describe('süresi geçmiş öneri', () => {
+  const stale = { ...proposal, expires_at: '2000-01-01T00:00:00+03:00' };
+
+  it('listede "Süresi doldu" durumuyla görünür', async () => {
+    render(
+      wrap(<AiOperationsPage />, {
+        listProposals: vi.fn().mockResolvedValue({ proposals: [stale], has_next_page: false }),
+      }),
+    );
+    expect(await screen.findByText('Süresi doldu')).toBeVisible();
+    expect(screen.queryByText('Onay bekliyor')).toBeNull();
+  });
+
+  it('incelemede onay düğmesi yoktur', async () => {
+    render(
+      wrap(<AiOperationsPage />, {
+        listProposals: vi.fn().mockResolvedValue({ proposals: [stale], has_next_page: false }),
+        getProposal: vi.fn().mockResolvedValue(stale),
+        approveProposal: vi.fn(),
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'İncele' }));
+    expect(await screen.findByText('Bu öneri onaylanamaz. Güncel öneriyi yeniden okuyun.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Onayla ve uygula' })).toBeNull();
+  });
+});
