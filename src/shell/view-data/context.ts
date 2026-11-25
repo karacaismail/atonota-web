@@ -71,6 +71,8 @@ export interface ShellAccount {
   user: string;
   /** Görünen ad. Yoksa kart kullanıcı kimliğini gösterir. */
   fullName?: string;
+  /** Açılış verisindeki roller. Menü süzgeci bunu kullanır (G-168). Yetkiyi sunucu denetler. */
+  roles?: readonly string[];
 }
 
 /**

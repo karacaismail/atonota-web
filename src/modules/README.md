@@ -43,6 +43,18 @@ Sayfa `/administration/ai-providers` adresindedir. Sayfa Yönetim bölümünün 
 - Sağlayıcı uçları `src/api/provider-client.ts` dosyasındadır. Bu dosya ilk yüke girmez. Modül istemcisi onu `aiProviders()` çağrısında yükler.
 - Ekran metinleri `ai-providers/messages.ts` dosyasındadır.
 
+## Rol süzgeci (G-168)
+
+Süzgeç `registry.ts` dosyasındadır. Süzgeç "Tenant Admin Assistant" rolüne uygulanır.
+Kişide "Tenant Admin" ya da "System Manager" rolü varsa süzgeç çalışmaz.
+
+- Kişi menüde şu grupları görür: "Hesap", "Yönetim", "İzin talepleri", "Site ve plan" ve "Yapay zekâ işlemleri".
+- "Yönetim" sayfasında yalnız kullanıcılar bölümü görünür.
+- "Site ve plan" sayfası yalnız okunur. Sayfa bunu bir notla söyler.
+- "Yapay zekâ sağlayıcıları" sayfası menüde görünmez.
+- Rol bilgisi gelmezse menü bugünkü gibi kalır.
+- Süzgeç yalnız ekranı düzenler. Yetkiyi sunucu denetler.
+
 ## Eksik sözleşmeler
 
 Kaynak, `.pane/backend-ref/backend/contracts/` klasöründeki sözleşmelerdir.

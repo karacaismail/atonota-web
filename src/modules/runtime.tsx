@@ -79,6 +79,8 @@ export interface ModuleEnvironment {
   locale?: 'en' | 'tr';
   client?: ModuleClient;
   profile?: { fullName: string; roles: readonly string[]; truncated?: boolean };
+  /** Oturumdaki kişinin rolleri. Ekran süzgeci için kullanılır (G-168). Yetkiyi sunucu denetler. */
+  roles?: readonly string[];
   /** Realm URL comes from validated auth configuration, never from an arbitrary query string. */
   identityRealmUrl?: string;
   accountSecurityUrl?: string;

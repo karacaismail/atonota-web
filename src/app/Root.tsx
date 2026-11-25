@@ -50,10 +50,13 @@ function SignedIn({
   dataMode: ModuleEnvironment['mode'];
 }) {
   const [fullName, setFullName] = useState<string | undefined>(undefined);
+  const [roles, setRoles] = useState<readonly string[] | undefined>(undefined);
   useEffect(() => {
     const ctrl = new AbortController();
     void loadShellAccount(session.api, user, ctrl.signal).then((account) => {
-      if (!ctrl.signal.aborted) setFullName(account.fullName);
+      if (ctrl.signal.aborted) return;
+      setFullName(account.fullName);
+      setRoles(account.roles);
     });
     return () => ctrl.abort();
   }, [session, user]);
@@ -92,10 +95,10 @@ function SignedIn({
     () => ({
       ...base,
       ...(modules ? { modules } : {}),
-      account: { user, ...(fullName ? { fullName } : {}) },
+      account: { user, ...(fullName ? { fullName } : {}), ...(roles ? { roles } : {}) },
       signOut: () => session.auth.signOut(),
     }),
-    [base, modules, user, fullName, session],
+    [base, modules, user, fullName, roles, session],
   );
   return <AppContent viewData={viewData} />;
 }

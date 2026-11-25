@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import { useMemo } from 'react';
 
 import { ModuleProvider } from '@/modules';
 
@@ -11,7 +12,11 @@ import { useViewData } from '../view-data';
  * Ortam yoksa sayfa açılmaz. Sayfa bunun yerine durum yazar.
  */
 export function ModuleBoundary({ page: Page }: { page: ComponentType }) {
-  const env = useViewData()?.modules;
+  const viewData = useViewData();
+  const base = viewData?.modules;
+  const roles = viewData?.account?.roles;
+  // G-168: ekran süzgeci için rolleri ortama ekler. Yetkiyi sunucu denetler.
+  const env = useMemo(() => (base && roles ? { ...base, roles } : base), [base, roles]);
   if (!env) {
     return (
       <div className="shell-page">

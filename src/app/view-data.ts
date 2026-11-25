@@ -120,8 +120,12 @@ export async function loadShellAccount(
 ): Promise<ShellAccount> {
   try {
     const bootstrap = await api.getBootstrap(signal ? { signal } : {});
-    const fullName = bootstrap.user.full_name?.trim();
-    if (bootstrap.user.name === user && fullName) return { user, fullName };
+    if (bootstrap.user.name === user) {
+      const fullName = bootstrap.user.full_name?.trim();
+      const roles = Array.isArray(bootstrap.user.roles) ? bootstrap.user.roles : undefined;
+      if (fullName || roles)
+        return { user, ...(fullName ? { fullName } : {}), ...(roles ? { roles } : {}) };
+    }
   } catch {
     /* Ad okunamazsa kart kimliği gösterir. */
   }

@@ -9,6 +9,8 @@
 import { FileText, Rows } from '@phosphor-icons/react';
 
 import { routes } from './paths';
+import { moduleRegistrations, visibleModules } from '@/modules/registry';
+
 import { isReservedSegment, menuEntries, routeRegistry } from './routes';
 import type { NavEntry, NavGroup } from './sampleData';
 import type { ShellSidebar } from './view-data';
@@ -44,9 +46,18 @@ export function navFromSidebars(sidebars: readonly ShellSidebar[]): NavGroup[] {
     }));
 }
 
-/** Canlı menü: rota bağlantıları ve sunucu grupları. */
-export function buildShellNav(groups: readonly NavGroup[]): NavEntry[] {
-  return [...routeNav, ...groups];
+/**
+ * Canlı menü: rota bağlantıları ve sunucu grupları.
+ * `roles` verilirse kişiye kapalı modül bağlantısı menüye girmez (G-168).
+ * Bu süzgeç yalnız menüyü düzenler. Yetkiyi sunucu denetler.
+ */
+export function buildShellNav(groups: readonly NavGroup[], roles?: readonly string[]): NavEntry[] {
+  const visible = new Set(visibleModules(roles).map((m) => m.path));
+  const hidden = new Set(moduleRegistrations.map((m) => m.path).filter((p) => !visible.has(p)));
+  const links = hidden.size
+    ? routeNav.filter((e) => !(e.kind === 'link' && hidden.has(e.to)))
+    : routeNav;
+  return [...links, ...groups];
 }
 
 /** Hızlı eylem. `to` varsa sayfaya gider. `prompt` varsa isteği asistana gönderir. */

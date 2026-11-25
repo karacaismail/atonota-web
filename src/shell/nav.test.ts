@@ -66,4 +66,22 @@ describe('kabuk menüsü (Ö2)', () => {
     expect(nav.at(-1)?.label).toBe('Satış');
     expect(nav.slice(0, routeNav.length)).toEqual(routeNav);
   });
+
+  it('G-168: kiracı yöneticisi yardımcısı yalnız izinli modülleri menüde görür', () => {
+    const nav = labels(buildShellNav([], ['Tenant Admin Assistant']));
+    for (const label of [
+      'Hesap',
+      'Yönetim',
+      'İzin talepleri',
+      'Site ve plan',
+      'Yapay zekâ işlemleri',
+    ])
+      expect(nav).toContain(label);
+    expect(nav).not.toContain('Yapay zekâ sağlayıcıları');
+    expect(nav).toContain('Ana sayfa');
+  });
+
+  it('G-168: rol bilgisi yoksa menü bütün modülleri gösterir', () => {
+    expect(buildShellNav([], undefined)).toEqual(routeNav);
+  });
 });

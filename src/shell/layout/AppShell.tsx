@@ -87,7 +87,9 @@ function useShellNav(): {
   quickActions: QuickAction[];
   demo: boolean;
 } {
-  const navigation = useViewData()?.navigation;
+  const viewData = useViewData();
+  const navigation = viewData?.navigation;
+  const roles = viewData?.account?.roles;
   const { pathname } = useLocation();
   const demo = DEMO_ENABLED && isDemoPath(pathname);
   const [groups, setGroups] = useState<NavGroup[]>([]);
@@ -100,8 +102,8 @@ function useShellNav(): {
     return () => ctrl.abort();
   }, [navigation]);
   const nav = useMemo(
-    () => (demo ? [...routeNav, ...sampleNav] : buildShellNav(groups)),
-    [demo, groups],
+    () => (demo ? [...routeNav, ...sampleNav] : buildShellNav(groups, roles)),
+    [demo, groups, roles],
   );
   // Hızlı eylemler izin süzgecinden geçmiş sunucu sayfalarından gelir. Örnek istekler yalnız denemede.
   const quickActions = useMemo(

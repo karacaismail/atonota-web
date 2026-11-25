@@ -3,7 +3,7 @@ import { useCallback, useId, useState } from 'react';
 import { parseExplanation } from '../contracts';
 import { useRead } from '../data';
 import { useCopy } from '../messages';
-import { useModule } from '../context';
+import { useModule, useModuleAccess } from '../context';
 import { ModuleFrame, ResourceView, Section } from '../shared';
 
 type Permission = 'read' | 'write' | 'create' | 'delete' | 'submit' | 'cancel';
@@ -22,6 +22,18 @@ export default function AdministrationPage() {
     [explain, query],
   );
   const read = useRead(query && explain ? load : null, JSON.stringify(query));
+  // G-168: yardımcı bu sayfada yalnız kullanıcı listesini görür. Rol ve erişim bölümleri yoktur.
+  const access = useModuleAccess('administration');
+  const usersOnly = access?.kind === 'sections';
+  if (usersOnly) {
+    return (
+      <ModuleFrame title={copy.administration}>
+        <Section title={copy.users}>
+          <p>{copy.usersUnavailable}</p>
+        </Section>
+      </ModuleFrame>
+    );
+  }
   return (
     <ModuleFrame title={copy.administration}>
       <Section title={copy.users}>

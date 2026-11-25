@@ -176,6 +176,26 @@ describe('loadShellAccount', () => {
     });
   });
 
+  it('G-168: menü süzgeci için rolleri açılış verisinden alır', async () => {
+    const getBootstrap = vi.fn().mockResolvedValue({
+      user: { name: 'a@example.test', full_name: 'Ada Kaya', roles: ['Tenant Admin Assistant'] },
+    });
+    await expect(loadShellAccount({ getBootstrap } as never, 'a@example.test')).resolves.toEqual({
+      user: 'a@example.test',
+      fullName: 'Ada Kaya',
+      roles: ['Tenant Admin Assistant'],
+    });
+  });
+
+  it('G-168: açılış verisi başka kullanıcıya aitse rolleri kullanmaz', async () => {
+    const getBootstrap = vi.fn().mockResolvedValue({
+      user: { name: 'b@example.test', full_name: 'Başka', roles: ['System Manager'] },
+    });
+    await expect(loadShellAccount({ getBootstrap } as never, 'a@example.test')).resolves.toEqual({
+      user: 'a@example.test',
+    });
+  });
+
   it('istek başarısızsa yalnız kullanıcı kimliğini döner', async () => {
     const getBootstrap = vi.fn().mockRejectedValue(new Error('ağ'));
     await expect(loadShellAccount({ getBootstrap } as never, 'a@example.test')).resolves.toEqual({
