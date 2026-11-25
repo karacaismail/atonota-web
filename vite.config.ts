@@ -107,7 +107,7 @@ export default defineConfig(({ mode }) => ({
         extends: true,
         test: {
           name: 'app',
-          include: ['src/**/*.test.{ts,tsx}'],
+          include: ['src/**/*.test.{ts,tsx}', 'vite/**/*.test.ts'],
           exclude: ['node_modules', 'dist', '**/e2e/**', ...ANTD_X_MOCK_TESTS],
           deps: {
             optimizer: {
