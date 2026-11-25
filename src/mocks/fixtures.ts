@@ -304,6 +304,17 @@ export const SAMPLE_PRESS_URL = 'https://press.example.test';
 export const SAMPLE_COLLECTION_DOCTYPE = sampleDocTypeMeta.schema.name;
 /** Bu kayıt türü için sahte sunucu yetki reddi verir. */
 export const RESTRICTED_SAMPLE_DOCTYPE = 'Gizli Örnek Kayıt';
+/**
+ * Örnek kullanıcının okuyabildiği modül türleri. Menü bu türleri tanım ucuyla dener (G-94).
+ * Sahte sunucu izin başvurularını ve yapay zekâ bağlantılarını zaten verir.
+ * Liste `src/modules/registry.ts` içindeki `requires` alanlarıyla aynıdır. Test eşitliği denetler.
+ */
+export const MENU_READABLE_DOCTYPES: readonly string[] = [
+  'PLT AI API',
+  'PLT AI Account',
+  'PLT AI Provider',
+  'Leave Application',
+];
 
 export const sampleCollection = Array.from({ length: 23 }, (_unused, index) => {
   const number = index + 1;

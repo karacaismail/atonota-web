@@ -25,6 +25,8 @@ export interface NavLeaf {
   to: string;
   icon: Icon;
   badge?: number;
+  /** Bağlantının açtığı sayfanın okuduğu DocType adları. Bkz. `permittedNav`. */
+  requires?: readonly string[];
 }
 
 export interface NavGroup {

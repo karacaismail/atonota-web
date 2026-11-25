@@ -103,6 +103,18 @@ Menü yalnız açılabilen sayfaları gösterir. Menüyü `nav.ts` dosyası kura
 
 Gruplar açılış verisinden (`get_bootstrap`) gelir. Grupta yalnız DocType bağlantıları vardır. Sahte sunucunun açılış verisinde grup yoktur. Bu yüzden sahte sunucuyla menüde grup görünmez.
 
+### Yetki süzgeci (G-94)
+
+Menü, kullanıcının açamadığı sayfayı göstermez. Süzgeç `nav.ts` içindeki `permittedNav` işlevidir.
+
+1. Modül kaydı, sayfanın okuduğu DocType adlarını `requires` alanında yazar. Örneğin "İzin talepleri" sayfası `Leave Application` türünü okur.
+2. Kabuk bu türleri `viewData.navigation.loadReadable` ile sunucuya sorar.
+3. Uygulama girişi her tür için tanım ucunu (`get_doctype`) çağırır. Sunucu okuma yetkisi yoksa 403 verir.
+4. Sunucunun sidebar grupları Frappe'nin izin süzgecinden geçmiştir. Gruptaki türler okunabilir sayılır.
+5. Rota bağlantıları ve sunucu grupları aynı süzgeçten geçer. Hızlı eylemler de süzülmüş gruplardan gelir.
+
+Kodda rol adı yoktur. Yetki bilgisi gelmezse menü yetki isteyen sayfayı göstermez.
+
 Canlı menüde uydurma sayı yoktur. Ajan listesi için sunucuda veri yoktur. Bu yüzden canlı menüde ajan bölümü gizlidir. Üst çubuktaki çalışma alanı adı da gizlidir.
 
 Örnek gruplar ve örnek ajanlar yalnız deneme sayfasında görünür. Deneme sayfası `/_demo/shell` adresidir. Bu sayfa yalnız e2e derlemesinde vardır. Flyout, kayan zemin ve bağlantı odağı testleri bu sayfada koşar.

@@ -72,7 +72,9 @@ describe('AppShell', () => {
     const loadReadable = vi.fn().mockResolvedValue(new Set(['Leave Application']));
     renderShell({ navigation: { loadSidebars: vi.fn().mockResolvedValue([]), loadReadable } });
     expect(await screen.findByRole('link', { name: 'İzin talepleri' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Yapay zekâ sağlayıcıları' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Yapay zekâ sağlayıcıları' }),
+    ).not.toBeInTheDocument();
     expect(loadReadable).toHaveBeenCalledWith(
       expect.arrayContaining(['Leave Application', 'PLT AI API']),
       expect.any(AbortSignal),
@@ -86,7 +88,9 @@ describe('AppShell', () => {
     await act(async () => Promise.resolve());
     expect(screen.getByRole('link', { name: 'Hesap' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'İzin talepleri' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Yapay zekâ sağlayıcıları' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Yapay zekâ sağlayıcıları' }),
+    ).not.toBeInTheDocument();
   });
 
   it('veri bağlantısı yoksa yetki isteyen sayfa menüde görünmez (G-94)', () => {

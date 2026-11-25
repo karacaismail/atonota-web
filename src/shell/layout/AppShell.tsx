@@ -10,7 +10,14 @@ import { FocusDimProvider } from '../focus-dim';
 import { isDarkColor } from '../focus-dim/isDarkColor';
 import { t } from '../messages';
 import type { QuickAction } from '../nav';
-import { buildShellNav, navFromSidebars, quickActionsFrom, routeNav } from '../nav';
+import {
+  buildShellNav,
+  navFromSidebars,
+  permittedNav,
+  quickActionsFrom,
+  requiredDocTypes,
+  routeNav,
+} from '../nav';
 import type { NavEntry, NavGroup } from '../sampleData';
 import {
   sampleAgents,
@@ -91,22 +98,43 @@ function useShellNav(): {
   const { pathname } = useLocation();
   const demo = DEMO_ENABLED && isDemoPath(pathname);
   const [groups, setGroups] = useState<NavGroup[]>([]);
+  // Sunucunun okumaya izin verdiği DocType adları (G-94). Yanıt gelene kadar küme boştur.
+  // Boş kümede yetki isteyen sayfa menüde görünmez.
+  const [probed, setProbed] = useState<ReadonlySet<string>>(() => new Set());
   useEffect(() => {
     if (!navigation) return undefined;
     const ctrl = new AbortController();
     void navigation.loadSidebars(ctrl.signal).then((sidebars) => {
       if (!ctrl.signal.aborted) setGroups(navFromSidebars(sidebars));
     });
+    navigation.loadReadable?.(requiredDocTypes, ctrl.signal).then(
+      (readable) => {
+        if (!ctrl.signal.aborted) setProbed(readable);
+      },
+      // Yetki bilgisi gelmezse küme boş kalır. Menü yetki isteyen sayfayı göstermez.
+      () => undefined,
+    );
     return () => ctrl.abort();
   }, [navigation]);
-  const nav = useMemo(
-    () => (demo ? [...routeNav, ...sampleNav] : buildShellNav(groups)),
-    [demo, groups],
+  // Sunucunun sidebar grupları Frappe'nin izin süzgecinden geçmiştir (`resolve_sidebar`).
+  // Gruptaki DocType'lar bu yüzden okunabilir sayılır. Modül sayfaları tanım ucuyla denenir.
+  const readable = useMemo(
+    () =>
+      new Set([...probed, ...groups.flatMap((g) => g.children.flatMap((c) => c.requires ?? []))]),
+    [probed, groups],
   );
-  // Hızlı eylemler izin süzgecinden geçmiş sunucu sayfalarından gelir. Örnek istekler yalnız denemede.
+  const permittedGroups = useMemo(
+    () => permittedNav(groups, readable).filter((e): e is NavGroup => e.kind === 'group'),
+    [groups, readable],
+  );
+  const nav = useMemo(
+    () => (demo ? [...routeNav, ...sampleNav] : buildShellNav(permittedGroups, readable)),
+    [demo, permittedGroups, readable],
+  );
+  // Hızlı eylemler menüyle aynı süzgeçten geçer. Örnek istekler yalnız denemede.
   const quickActions = useMemo(
-    () => (demo ? samplePrompts : quickActionsFrom(groups)),
-    [demo, groups],
+    () => (demo ? samplePrompts : quickActionsFrom(permittedGroups)),
+    [demo, permittedGroups],
   );
   return { nav, agents: demo ? sampleAgents : [], quickActions, demo };
 }

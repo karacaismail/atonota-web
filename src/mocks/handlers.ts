@@ -22,6 +22,7 @@ import {
   SAMPLE_USER as SAMPLE_ACCOUNT,
   sampleAccessSummary,
   sampleInstallations,
+  MENU_READABLE_DOCTYPES,
   RESTRICTED_SAMPLE_DOCTYPE,
   SAMPLE_COLLECTION_DOCTYPE,
   sampleCollection,
@@ -699,6 +700,13 @@ export const handlers = [
     const denied = guard(request, { write: false });
     if (denied) return denied;
     const doctype = new URL(request.url).searchParams.get('doctype');
+    // Menü yetki denemesi (G-94): modül türlerinde yalnız okunabilirlik önemlidir.
+    if (doctype && MENU_READABLE_DOCTYPES.includes(doctype)) {
+      return message({
+        ...sampleDocTypeMeta,
+        schema: { ...sampleDocTypeMeta.schema, name: doctype },
+      });
+    }
     if (doctype !== sampleDocTypeMeta.schema.name) return frappeError(403, 'PermissionError');
     if (request.headers.get('If-None-Match') === SAMPLE_DOCTYPE_ETAG) {
       return new HttpResponse(null, { status: 304, headers: { ETag: SAMPLE_DOCTYPE_ETAG } });

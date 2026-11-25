@@ -104,6 +104,19 @@ export function createShellViewData(
           return [];
         }
       },
+      // Tanım ucu, okuma yetkisi olmayan türde 403 verir (`platform_core.shell.metadata`).
+      // Yanıt gelen tür okunabilir sayılır. Hata ya da iptal okunamaz demektir.
+      async loadReadable(doctypes, signal) {
+        const results = await Promise.all(
+          doctypes.map((doctype) =>
+            api.getDocType(doctype, undefined, { signal }).then(
+              () => doctype,
+              () => null,
+            ),
+          ),
+        );
+        return new Set(results.filter((d): d is string => d !== null));
+      },
     },
     record: { Component: Record },
   };

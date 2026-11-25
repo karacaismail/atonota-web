@@ -3,6 +3,12 @@ export interface ModuleRegistration {
   id: string;
   path: string;
   label: { en: string; tr: string };
+  /**
+   * Sayfanın okuduğu DocType adları. Menü bu sayfayı yalnız hepsi okunabilirse gösterir (G-94).
+   * Okuma yetkisini sunucu bildirir. Kodda rol adı yoktur.
+   * Örnek: "İzin talepleri" sayfası `Leave Application` kayıtlarını okur.
+   */
+  requires?: readonly string[];
   /** The shell only calls load after navigation. Importing this registry loads no screen. */
   load: () => Promise<{ default: ComponentType }>;
 }
@@ -24,12 +30,15 @@ export const moduleRegistrations: readonly ModuleRegistration[] = [
     id: 'ai-providers',
     path: '/administration/ai-providers',
     label: { en: 'AI providers', tr: 'Yapay zekâ sağlayıcıları' },
+    // Sayfa bu üç türün listesini okur (`src/api/provider-client.ts`, `AI_DOCTYPES`).
+    requires: ['PLT AI API', 'PLT AI Account', 'PLT AI Provider'],
     load: () => import('./ai-providers/Page'),
   },
   {
     id: 'hr',
     path: '/hr',
     label: { en: 'Leave requests', tr: 'İzin talepleri' },
+    requires: ['Leave Application'],
     load: () => import('./hr/Page'),
   },
   {

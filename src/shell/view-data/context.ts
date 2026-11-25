@@ -46,6 +46,12 @@ export interface ShellSidebar {
 export interface ShellNavigationData {
   /** Menü gruplarını getirir. Veri yoksa ya da istek başarısızsa boş liste döner. */
   loadSidebars: (signal: AbortSignal) => Promise<ShellSidebar[]>;
+  /**
+   * Verilen DocType adlarından kullanıcının okuyabildiklerini döner (G-94).
+   * Kararı sunucu verir. İstek başarısızsa tür okunamaz sayılır.
+   * Bağlantı yoksa menü yetki isteyen sayfayı göstermez.
+   */
+  loadReadable?: (doctypes: readonly string[], signal: AbortSignal) => Promise<ReadonlySet<string>>;
 }
 
 /** Kayıt rotasının adres parçaları. */
