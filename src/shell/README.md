@@ -239,3 +239,18 @@ Kabuğun ayrı Playwright ayarı kaldırıldı. Testleri tek test kapısı koşa
 Matris kök ayarla aynıdır: Chromium ve WebKit, iPhone 13 profili. Firefox koşulmaz.
 
 Deneme sayfası `harness/` klasöründedir. Tema geçicidir. `?tema=acik` adresi açık temayı açar. `?yol=/satis/teklif/TEK-0003` adresi kabuğu bu yolda açar. Deneme sayfasında kayıt bağlantısı yoktur. Bu yüzden kayıt adresi örnek formu çizer. Örnek form testi bu yolu kullanır.
+
+## Yardım kulakçığı (G-137)
+
+Sayfanın sağ kenarında "Yardım" kulakçığı durur. Kulakçık bir düğmedir ve `aria-expanded` taşır.
+
+- Panel sayfa yardımını, sık görevleri ve "Kendi kendine destek modu" anahtarını gösterir.
+- Anahtar `role=switch` taşır. Tercih tarayıcıda `atonota.shell.selfHelp` anahtarıyla saklanır.
+- Mod açıkken alan ve sayfa yardım işaretleri görünür. Mod kapalıyken işaret çizilmez.
+- Alan işareti ekran okuyucuya alan adıyla duyurulur. Örnek: "Başlık alanının yardımı".
+- Panel AI panelinin sağ yuvasını kullanır. Genişlik kaynaktaki `aiStudio.layout.right` değeridir.
+- Panel yan yana sığmazsa tam ekran çekmece olur. Eşik sidebar, panel ve 600 px okunur içerik toplamıdır.
+- Escape paneli kapatır. Odak paneli açan öğeye döner: kulakçık ya da alan işareti.
+- Panel kapalıyken de DOM'da kalır. Böylece yön değişince açık panel, anahtar ve odak korunur.
+
+Sunucu yardım içeriği henüz bağlı değildir. Alan yardımı şimdilik Frappe alan açıklamasından gelir. Sunucu sözleşmesi `platform_core-help.openapi.yaml` dosyasıdır (G-138). Sözleşme bu depoya `contracts:sync` ile alınınca panel `getFieldHelp` ucunu kullanır.

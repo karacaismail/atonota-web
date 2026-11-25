@@ -1,4 +1,4 @@
-import { List, X } from '@phosphor-icons/react';
+import { List, Question, X } from '@phosphor-icons/react';
 import { theme } from 'antd';
 import type { CSSProperties, ReactNode } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -7,6 +7,10 @@ import { useLocation } from 'react-router-dom';
 import { isDemoEnabled, isDemoPath } from '@/app/demo-mode';
 
 import { FocusDimProvider } from '../focus-dim';
+import type { HelpApi, HelpTarget } from '../help/context';
+import { HelpContext, readSelfHelp, writeSelfHelp } from '../help/context';
+import { HelpMarker } from '../help/HelpMarker';
+import { HelpPanel } from '../help/HelpPanel';
 import { isDarkColor } from '../focus-dim/isDarkColor';
 import { t } from '../messages';
 import type { QuickAction } from '../nav';
@@ -28,10 +32,10 @@ import {
 } from '../sampleData';
 import type { SidebarVariant } from '../sidebar/Sidebar';
 import { Sidebar } from '../sidebar/Sidebar';
-import { shellCssVars } from '../tokens';
+import { helpDockQuery, shellCssVars } from '../tokens';
 import type { ShellCredit, ShellWorkspaceData } from '../view-data';
 import { useViewData } from '../view-data';
-import { useCompactLayout } from './useMedia';
+import { useCompactLayout, useMedia } from './useMedia';
 
 const STORAGE_KEY = 'atonota.shell.sidebar';
 
@@ -196,6 +200,36 @@ export function AppShell({ children }: AppShellProps) {
   const isDrawer = compact;
   const modalOpen = isDrawer && drawerOpen;
 
+  // G-137 yardım paneli. AI paneliyle aynı sağ yuvayı kullanır.
+  const dockFits = useMedia(helpDockQuery(variant === 'rail'));
+  const helpMode = !compact && dockFits ? 'dock' : 'drawer';
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpTarget, setHelpTarget] = useState<HelpTarget>({ kind: 'page' });
+  const [selfHelp, setSelfHelp] = useState(readSelfHelp);
+  const helpTab = useRef<HTMLButtonElement>(null);
+  const helpPanel = useRef<HTMLElement>(null);
+  const helpTrigger = useRef<HTMLElement | null>(null);
+  const helpReturn = useRef(false);
+  const helpModal = helpOpen && helpMode === 'drawer';
+
+  const openHelp = useCallback((target: HelpTarget, trigger: HTMLElement | null) => {
+    helpTrigger.current = trigger;
+    setHelpTarget(target);
+    setHelpOpen(true);
+  }, []);
+
+  const closeHelp = useCallback(() => {
+    helpReturn.current = true;
+    setHelpOpen(false);
+  }, []);
+
+  const changeSelfHelp = useCallback((on: boolean) => {
+    setSelfHelp(on);
+    writeSelfHelp(on);
+  }, []);
+
+  const helpApi = useMemo<HelpApi>(() => ({ selfHelp, open: openHelp }), [selfHelp, openHelp]);
+
   const changeVariant = (v: SidebarVariant) => {
     setVariant(v);
     writeVariant(v);
@@ -210,15 +244,41 @@ export function AppShell({ children }: AppShellProps) {
 
   // Çekmece açıkken çekmece dışı etkileşime kapanır.
   // Kapanınca odak menü düğmesine döner. Düğme önce etkileşime açılmalıdır.
+  // Yardım çekmecesi açıkken de kabuğun geri kalanı etkileşime kapanır.
   useLayoutEffect(() => {
     for (const el of [mainRef.current, topRef.current]) {
-      el?.toggleAttribute('inert', modalOpen);
+      el?.toggleAttribute('inert', modalOpen || helpModal);
     }
+    drawerRef.current?.toggleAttribute('inert', helpModal);
+    helpTab.current?.toggleAttribute('inert', modalOpen || helpModal);
     if (!modalOpen && returnFocus.current) {
       returnFocus.current = false;
       menuBtn.current?.focus();
     }
-  }, [modalOpen]);
+    // Panel kapanınca odak paneli açan öğeye döner: kulakçık ya da yardım işareti.
+    if (!helpOpen && helpReturn.current) {
+      helpReturn.current = false;
+      const back = helpTrigger.current;
+      (back?.isConnected ? back : helpTab.current)?.focus();
+    }
+  }, [modalOpen, helpModal, helpOpen]);
+
+  // Panel açılınca odak panele taşınır. Yerleşim değişince odak yerinde kalır.
+  useEffect(() => {
+    if (!helpOpen) return;
+    const p = helpPanel.current;
+    if (!p || p.contains(document.activeElement)) return;
+    p.querySelector<HTMLElement>('[data-help-close]')?.focus();
+  }, [helpOpen, helpTarget]);
+
+  useEffect(() => {
+    if (!helpOpen) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented) closeHelp();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [helpOpen, closeHelp]);
 
   // Açılınca odak çekmeceye geçer. Odak zaten içerideyse yerinde kalır.
   useEffect(() => {
@@ -242,75 +302,104 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <FocusDimProvider>
-      <div
-        className="shell"
-        style={vars}
-        data-layout={isDrawer ? 'compact' : 'wide'}
-        data-variant={variant}
-      >
-        {isDrawer && (
-          <header ref={topRef} className="shell-topbar">
-            <button
-              ref={menuBtn}
-              type="button"
-              className="shell-iconbtn"
-              aria-label={t.nav.openMenu}
-              aria-expanded={drawerOpen}
-              aria-controls="shell-drawer"
-              onClick={() => setDrawerOpen(true)}
-            >
-              <List aria-hidden="true" />
-            </button>
-            <span className="shell-logo" aria-hidden="true">
-              A
-            </span>
-            {ws && <span className="shell-topbar-t">{ws.name}</span>}
-          </header>
-        )}
-        {isDrawer && (
-          <div
-            className="shell-backdrop"
-            data-open={drawerOpen ? 'true' : 'false'}
-            aria-hidden="true"
-            onClick={closeDrawer}
-          />
-        )}
-        <aside
-          ref={drawerRef}
-          id="shell-drawer"
-          className="shell-aside"
-          data-open={isDrawer ? (drawerOpen ? 'true' : 'false') : undefined}
-          {...(isDrawer
-            ? { role: 'dialog', 'aria-modal': drawerOpen, 'aria-label': t.nav.drawer }
-            : {})}
+      <HelpContext.Provider value={helpApi}>
+        <div
+          className="shell"
+          style={vars}
+          data-layout={isDrawer ? 'compact' : 'wide'}
+          data-variant={variant}
+          data-help={helpOpen ? helpMode : 'closed'}
         >
           {isDrawer && (
-            <button
-              type="button"
-              className="shell-iconbtn shell-drawer-close"
-              data-drawer-close=""
-              aria-label={t.nav.closeMenu}
-              onClick={closeDrawer}
-            >
-              <X aria-hidden="true" />
-            </button>
+            <header ref={topRef} className="shell-topbar">
+              <button
+                ref={menuBtn}
+                type="button"
+                className="shell-iconbtn"
+                aria-label={t.nav.openMenu}
+                aria-expanded={drawerOpen}
+                aria-controls="shell-drawer"
+                onClick={() => setDrawerOpen(true)}
+              >
+                <List aria-hidden="true" />
+              </button>
+              <span className="shell-logo" aria-hidden="true">
+                A
+              </span>
+              {ws && <span className="shell-topbar-t">{ws.name}</span>}
+            </header>
           )}
-          <Sidebar
-            variant={variant}
-            onVariantChange={changeVariant}
-            nav={nav}
-            agents={agents}
-            workspaces={workspaces}
-            quickActions={quickActions}
-            credit={credit}
-            compact={isDrawer}
-            onNavigate={isDrawer ? closeDrawer : undefined}
+          {isDrawer && (
+            <div
+              className="shell-backdrop"
+              data-open={drawerOpen ? 'true' : 'false'}
+              aria-hidden="true"
+              onClick={closeDrawer}
+            />
+          )}
+          <aside
+            ref={drawerRef}
+            id="shell-drawer"
+            className="shell-aside"
+            data-open={isDrawer ? (drawerOpen ? 'true' : 'false') : undefined}
+            {...(isDrawer
+              ? { role: 'dialog', 'aria-modal': drawerOpen, 'aria-label': t.nav.drawer }
+              : {})}
+          >
+            {isDrawer && (
+              <button
+                type="button"
+                className="shell-iconbtn shell-drawer-close"
+                data-drawer-close=""
+                aria-label={t.nav.closeMenu}
+                onClick={closeDrawer}
+              >
+                <X aria-hidden="true" />
+              </button>
+            )}
+            <Sidebar
+              variant={variant}
+              onVariantChange={changeVariant}
+              nav={nav}
+              agents={agents}
+              workspaces={workspaces}
+              quickActions={quickActions}
+              credit={credit}
+              compact={isDrawer}
+              onNavigate={isDrawer ? closeDrawer : undefined}
+            />
+          </aside>
+          <main ref={mainRef} className="shell-main" id="main">
+            {selfHelp && (
+              <div className="shell-help-bar">
+                <HelpMarker target={{ kind: 'page' }} />
+              </div>
+            )}
+            {children}
+          </main>
+          <HelpPanel
+            ref={helpPanel}
+            open={helpOpen}
+            mode={helpMode}
+            target={helpTarget}
+            selfHelp={selfHelp}
+            onSelfHelpChange={changeSelfHelp}
+            onClose={closeHelp}
+            tasks={quickActions}
           />
-        </aside>
-        <main ref={mainRef} className="shell-main" id="main">
-          {children}
-        </main>
-      </div>
+          <button
+            ref={helpTab}
+            type="button"
+            className="shell-help-tab"
+            aria-expanded={helpOpen}
+            aria-controls="shell-help"
+            onClick={() => (helpOpen ? closeHelp() : openHelp({ kind: 'page' }, helpTab.current))}
+          >
+            <Question aria-hidden="true" />
+            <span className="shell-help-tab-t">{t.help.tab}</span>
+          </button>
+        </div>
+      </HelpContext.Provider>
     </FocusDimProvider>
   );
 }
