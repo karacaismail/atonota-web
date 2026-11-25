@@ -36,7 +36,12 @@ export type {
   UiBlock,
 } from './ai-agent';
 export type { McpResult } from './client';
-export type { ExplainPermissionQuery, LeaveListQuery } from './client';
+export type {
+  ExplainPermissionQuery,
+  LeaveListQuery,
+  PermissionLogQuery,
+  RolePermissionChange,
+} from './client';
 export type {
   AccessScope,
   AccessSummary,

@@ -18,6 +18,17 @@ async function chooseByKeyboard(page: Page, label: string, option: string) {
     await page.keyboard.press('ArrowDown');
   }
   await page.keyboard.press('Enter');
+  // Açılır panelin kapanma hareketi bitene kadar beklenir. Panel taşma ölçümünü bozmasın.
+  await expect(page.locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')).toHaveCount(
+    0,
+  );
+}
+
+/** antd pencereyi açınca odağı pencereye taşır. Klavye testi bu anı bekler. */
+async function waitForDialogFocus(page: Page) {
+  await expect
+    .poll(() => page.evaluate(() => Boolean(document.activeElement?.closest('.ant-modal'))))
+    .toBe(true);
 }
 
 async function open(page: Page) {
@@ -53,17 +64,21 @@ test('the role matrix saves a change after a before and after review', async ({ 
   await expect(page.getByText('1 değişiklik var')).toBeVisible();
   expect(writes).toEqual([]);
 
+  // Düğmeler klavyeyle açılır. WebKit tıklanan düğmeye odak vermez; Safari de vermez.
   const save = page.getByRole('button', { name: 'Kaydet', exact: true });
-  await save.click();
+  await save.focus();
+  await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('Leave Application, Silme: önce kapalı, sonra açık');
+  await waitForDialogFocus(page);
   // Escape pencereyi kapatır ve odak açan düğmeye döner. Hiçbir şey gönderilmez.
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(save).toBeFocused();
   expect(writes).toEqual([]);
 
-  await save.click();
+  await save.focus();
+  await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Değişiklikleri kaydet' }).click();
   await expect(page.getByText('Değişiklikler kaydedildi.')).toBeVisible();
   expect(writes).toEqual(['POST']);
@@ -74,9 +89,11 @@ test('the role matrix saves a change after a before and after review', async ({ 
 
 test('a standard role is read only', async ({ page }) => {
   await open(page);
-  await chooseByKeyboard(page, 'Rol', 'Employee');
-  await expect(page.getByText('Bu rol standart roldür. İzinlerini değiştiremezsiniz.')).toBeVisible();
-  const matrix = page.getByRole('region', { name: 'Rol matrisi: Employee' });
+  await chooseByKeyboard(page, 'Rol', 'Tenant Admin');
+  await expect(
+    page.getByText('Bu rol standart roldür. İzinlerini değiştiremezsiniz.'),
+  ).toBeVisible();
+  const matrix = page.getByRole('region', { name: 'Rol matrisi: Tenant Admin' });
   await expect(matrix.getByRole('checkbox').first()).toBeDisabled();
 });
 
@@ -138,7 +155,14 @@ test('the account adds a user permission', async ({ page }) => {
 test('the account adds an access rule', async ({ page }) => {
   await open(page);
   const section = page.getByRole('region', { name: 'Kullanıcı izinleri ve kurallar' });
-  await section.getByRole('tab', { name: 'Erişim kuralları' }).click();
+  // Sekme klavyeyle seçilir: odak seçili sekmede, sağ ok ve Enter.
+  await section.getByRole('tab', { name: 'Kullanıcı izinleri' }).focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(section.getByRole('tab', { name: 'Erişim kuralları' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
   await section.getByRole('button', { name: 'Kural ekle' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Başlık', { exact: true }).fill('Satış ekibi izinleri');

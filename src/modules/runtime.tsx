@@ -40,6 +40,8 @@ export interface ModuleClient {
     },
     options: RequestOptions,
   ) => Promise<unknown>;
+  /** G-62 ve G-98: rol, izin satırı, kullanıcı izni, erişim kuralı ve değişiklik kaydı uçları. */
+  admin?: AdminClient;
   listProposals?: (
     query: { limit: number; start: number },
     options: RequestOptions,
@@ -120,6 +122,38 @@ export interface UserAdminClient {
   ) => Promise<{ roleProfiles: string[]; roles: string[] }>;
 }
 export type { AiConnectionListing };
+/**
+ * Yönetim sayfasının rol ve yetki uçları. Ortak istemci yanıtı açar. Sayfa alanları
+ * `../contracts` ayrıştırıcılarıyla denetler. Sunucu her istekte yetkiyi yeniden denetler.
+ */
+export interface AdminClient {
+  listRoles: (options: RequestOptions) => Promise<unknown>;
+  listRolePermissions: (doctype: string, options: RequestOptions) => Promise<unknown>;
+  setRolePermission: (
+    body: {
+      doctype: string;
+      role: string;
+      permlevel: number;
+      permissions: Record<string, boolean>;
+    },
+    options: RequestOptions,
+  ) => Promise<unknown>;
+  listPermissionLogs: (
+    query: { start: number; page_length: number },
+    options: RequestOptions,
+  ) => Promise<unknown>;
+  listUserPermissions: (options: RequestOptions) => Promise<unknown>;
+  createUserPermission: (
+    values: Record<string, string | number>,
+    options: RequestOptions,
+  ) => Promise<unknown>;
+  deleteUserPermission: (name: string, options: RequestOptions) => Promise<unknown>;
+  listAccessRules: (options: RequestOptions) => Promise<unknown>;
+  createAccessRule: (
+    values: Record<string, string | number>,
+    options: RequestOptions,
+  ) => Promise<unknown>;
+}
 /** Bağlı hesap uçları. Ortak istemci yanıtları sözleşmeyle denetler. */
 export interface LinkedAccountsClient {
   listLinkedAccounts: (options: RequestOptions) => Promise<LinkedAccounts>;

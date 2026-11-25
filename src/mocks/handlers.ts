@@ -5,6 +5,7 @@ import { http, HttpResponse, matchRequestUrl, type JsonBodyType } from 'msw';
 import { TOOL_RESULT_PREFIX } from '@/api/ai-protocol';
 import { resetUserAdminState, userAdminHandlers } from './user-admin';
 import { GROUP_SUMMARY_PATH } from '@/api/group-summary';
+import { adminHandlers } from './admin';
 import type { components as CollectionComponents } from '@/api/generated/platform_core-collection';
 
 import {
@@ -654,6 +655,8 @@ export const handlers = [
       HttpResponse.json({ errors: [{ type: 'ValidationError' }] }, { status: 417 })
     );
   }),
+  // G-62 ve G-98 yönetim uçları (`./admin.ts`). Genel kayıt işleyicilerinden önce gelir.
+  ...adminHandlers({ guard, message, frappeError }),
   http.get('*/api/method/frappe.auth.get_logged_user', () =>
     mockState.signedIn
       ? message(SAMPLE_USER)

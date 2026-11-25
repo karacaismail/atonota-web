@@ -173,6 +173,23 @@ export interface LeaveListQuery {
   pageLength?: number;
 }
 
+/** `set_role_permission` gövdesi. `permissions` yalnız değişen hakları taşır. */
+export interface RolePermissionChange {
+  doctype: string;
+  role: string;
+  permlevel?: number;
+  if_owner?: 0 | 1;
+  permissions: Record<string, boolean>;
+}
+
+/** `list_permission_logs` süzgeçleri ve sayfası. */
+export interface PermissionLogQuery {
+  for_doctype?: string;
+  for_document?: string;
+  start?: number;
+  page_length?: number;
+}
+
 export interface ExplainPermissionQuery {
   doctype: string;
   name: string;
@@ -210,7 +227,7 @@ export type McpResult = { status: 'accepted' } | { status: 'ok'; response: JsonR
  * site kökü, çerez ayarı, CSRF deposu, zaman aşımı ve oturum süresi işi aynıdır (SZ-5).
  */
 export interface DocumentRequest {
-  method: 'GET' | 'POST' | 'PUT';
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   /**
    * Site köküne göre yol. `/api/resource/`, `/api/method/` ya da `/api/v2/` ile başlar.
    * Yol parçaları çağıran tarafından kodlanır. Sorgu `query` alanıyla verilir.
@@ -639,6 +656,44 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           params: { query: { doctype } },
         }),
         isAccessSummary,
+        options,
+      );
+    },
+
+    /** Bir kayıt türünün bütün rol izni satırlarını okur (G-62). Kayıt değişmez. */
+    listRolePermissions(doctype: string, options: RequestOptions = {}): Promise<unknown> {
+      return unwrap(
+        access.GET('/platform_core.api.access.list_role_permissions', {
+          ...signalOf(options),
+          params: { query: { doctype } },
+        }),
+        isRecord,
+        options,
+      );
+    },
+
+    /** Bir rolün bir kayıt türündeki izin satırını yazar (G-62). Yalnız verilen haklar değişir. */
+    setRolePermission(body: RolePermissionChange, options: RequestOptions = {}): Promise<unknown> {
+      return unwrap(
+        access.POST('/platform_core.api.access.set_role_permission', {
+          ...signalOf(options),
+          body,
+        }),
+        isRecord,
+        options,
+      );
+    },
+
+    /** Permission Log satırlarını en yeniden başlayarak sayfa sayfa okur (G-98). */
+    listPermissionLogs(query: PermissionLogQuery, options: RequestOptions = {}): Promise<unknown> {
+      const invalid = pagingError(query.start ?? 0, query.page_length ?? 20, { maxLimit: 100 });
+      if (invalid) return Promise.reject(invalid);
+      return unwrap(
+        access.GET('/platform_core.api.access.list_permission_logs', {
+          ...signalOf(options),
+          params: { query },
+        }),
+        isRecord,
         options,
       );
     },

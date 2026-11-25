@@ -6,6 +6,9 @@ import { useRead } from '../data';
 import { useCopy } from '../messages';
 import { useModule } from '../context';
 import { ModuleFrame, ResourceView, Section } from '../shared';
+import PermissionLog from './PermissionLog';
+import PermissionsAndRules from './PermissionsAndRules';
+import RolesSection from './RoleMatrix';
 import { UsersSection } from './Users';
 
 type Permission = 'read' | 'write' | 'create' | 'delete' | 'submit' | 'cancel';
@@ -34,7 +37,13 @@ export default function AdministrationPage() {
       ) : (
         <>
           <Section title={copy.roles}>
-            <p>{copy.rolesUnavailable}</p>
+            <RolesSection />
+          </Section>
+          <Section title={copy.permissionsAndRules}>
+            <PermissionsAndRules />
+          </Section>
+          <Section title={copy.permissionLog}>
+            <PermissionLog />
           </Section>
           <Section title={copy.explain}>
             <p>{copy.accessNote}</p>

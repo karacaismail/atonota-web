@@ -5,9 +5,11 @@ test('access form keeps its draft when resized and its branded dropdown opens', 
   page,
 }) => {
   await page.goto('/administration');
-  await page.getByLabel('Kayıt türü', { exact: true }).fill('Example Proposal Template');
-  await page.getByLabel('Kayıt', { exact: true }).fill('example-record');
-  const select = page.getByRole('combobox');
+  // Sayfada rol seçicisi de var. Test yalnız "Erişimi açıkla" formunu kullanır.
+  const form = page.getByRole('region', { name: 'Erişimi açıkla' });
+  await form.getByLabel('Kayıt türü', { exact: true }).fill('Example Proposal Template');
+  await form.getByLabel('Kayıt', { exact: true }).fill('example-record');
+  const select = form.getByRole('combobox', { name: 'İşlem' });
   await select.press('ArrowDown');
   await expect(select).toHaveAttribute('aria-expanded', 'true');
   // Every running animation settles first: the dropdown motion and the submit button's
@@ -23,7 +25,7 @@ test('access form keeps its draft when resized and its branded dropdown opens', 
   // The dropdown closes with the project's motion (500 ms). While it leaves it still sits at its
   // old absolute position, so the viewport is resized only after it is hidden.
   await expect(page.locator('.ant-select-dropdown')).toBeHidden();
-  const field = page.getByLabel('Kayıt', { exact: true });
+  const field = form.getByLabel('Kayıt', { exact: true });
   await field.focus();
   await page.setViewportSize({ width: 844, height: 390 });
   await expect(field).toBeFocused();
