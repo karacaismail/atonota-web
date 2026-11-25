@@ -1,6 +1,6 @@
 {
   "repository": "frappesetup",
-  "commit": "1d102243d84c1c475633b04c79a77b592907318e",
+  "commit": "bf749818865ff4651bc26d4bde6029712408c849",
   "dirty": false,
   "commitSource": "git",
   "files": [
@@ -26,7 +26,7 @@
     },
     {
       "path": "openapi/platform_core-identity.openapi.yaml",
-      "sha256": "271993d304b884a8c5df120814adc83174f34cfad90d2ae1fa99b5868367a656"
+      "sha256": "f03b3cd55196205865fd3898620ea683a86c36c4f61dd647f7c1c34a11db4e85"
     },
     {
       "path": "openapi/platform_core-mobile.openapi.yaml",

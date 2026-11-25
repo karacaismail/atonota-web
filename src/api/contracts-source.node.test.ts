@@ -55,6 +55,8 @@ describe('sözleşme kopyasının kaynağı', () => {
   it.each([
     '/platform_core.api.identity.invite_user:',
     '/platform_core.api.identity.set_user_role_profiles:',
+    // AJA-913: rol profilini okuyan dar uç.
+    '/platform_core.api.identity.get_user_role_profiles:',
   ])('kimlik sözleşmesinde %s ucu vardır', (path) => {
     expect(contract('platform_core-identity')).toContain(path);
   });

@@ -4,7 +4,7 @@
 // the "Kullanıcılar" section opens. Every request goes through the shared client (SZ-5):
 // `listDocuments` and `frappeDocument` own the site root, the CSRF header, the timeout and the
 // session handling. The server checks the "Tenant Admin" role on every request.
-import type { ApiClient } from '../../api';
+import { ApiError, type ApiClient } from '../../api';
 import type { InviteInput, UserAdminClient, UserRecord, TenantUser } from '../runtime';
 
 const METHOD = '/api/method/platform_core.api.identity';
@@ -49,11 +49,13 @@ async function request(
   path: string,
   signal: AbortSignal | undefined,
   body?: Record<string, unknown>,
+  query?: Record<string, string>,
 ): Promise<unknown> {
   const response = await api.frappeDocument({
     method,
     path,
     ...(body === undefined ? {} : { body }),
+    ...(query === undefined ? {} : { query }),
     ...(signal ? { signal } : {}),
   });
   if (!response.ok) throw response.error;
@@ -74,6 +76,28 @@ function inviteBody(input: InviteInput, dryRun: boolean): Record<string, unknown
   };
 }
 
+const strings = (value: unknown): string[] => (Array.isArray(value) ? value.map(text) : invalid());
+
+/** The role profiles and roles of a tenant user. `undefined` when the server refuses (403). */
+async function readRoleProfiles(
+  api: ApiClient,
+  user: string,
+  signal: AbortSignal | undefined,
+): Promise<{ roleProfiles: string[]; roles: string[] } | undefined> {
+  let body: unknown;
+  try {
+    body = await request(api, 'GET', `${METHOD}.get_user_role_profiles`, signal, undefined, {
+      user,
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.kind === 'forbidden') return undefined;
+    throw error;
+  }
+  const result = envelope(body, 'message');
+  if (!isRecord(result) || result['user'] !== user) return invalid();
+  return { roleProfiles: strings(result['role_profiles']), roles: strings(result['roles']) };
+}
+
 export function createUserAdminClient(api: ApiClient): UserAdminClient {
   return {
     async listUsers({ start }, { signal } = {}) {
@@ -91,21 +115,15 @@ export function createUserAdminClient(api: ApiClient): UserAdminClient {
     },
 
     async getUser(name, { signal } = {}): Promise<UserRecord> {
-      const body = await request(
-        api,
-        'GET',
-        `/api/resource/User/${encodeURIComponent(name)}`,
-        signal,
-      );
+      // AJA-913: the record has no role tables for the "Tenant Admin" role (level 1 stays closed).
+      // The narrow read gives only the role profiles and the roles of a user of this tenant.
+      const [body, assigned] = await Promise.all([
+        request(api, 'GET', `/api/resource/User/${encodeURIComponent(name)}`, signal),
+        readRoleProfiles(api, name, signal),
+      ]);
       const data = envelope(body, 'data');
       if (!isRecord(data)) return invalid();
-      const roleProfiles = childValues(data['role_profiles'], 'role_profile');
-      const roles = childValues(data['roles'], 'role');
-      return {
-        ...parseUser(data),
-        ...(roleProfiles ? { roleProfiles } : {}),
-        ...(roles ? { roles } : {}),
-      };
+      return { ...parseUser(data), ...(assigned ?? {}) };
     },
 
     async listRoleProfiles({ signal } = {}) {
@@ -167,7 +185,6 @@ export function createUserAdminClient(api: ApiClient): UserAdminClient {
       });
       const result = envelope(body, 'message');
       if (!isRecord(result)) return invalid();
-      const strings = (value: unknown) => (Array.isArray(value) ? value.map(text) : invalid());
       return { roleProfiles: strings(result['role_profiles']), roles: strings(result['roles']) };
     },
   };

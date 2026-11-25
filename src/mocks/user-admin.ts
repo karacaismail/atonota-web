@@ -1,5 +1,6 @@
 // G-98: the sample user management endpoints of the "Yönetim" page.
-// Shapes follow `platform_core.api.identity.invite_user`, `set_user_role_profiles` and the
+// Shapes follow `platform_core.api.identity.invite_user`, `set_user_role_profiles`,
+// `get_user_role_profiles` and the
 // Frappe record reads (`/api/v2/document`, `/api/resource`). The names are sample labels.
 import { http, HttpResponse, type JsonBodyType } from 'msw';
 import { SAMPLE_USER } from './fixtures';
@@ -65,8 +66,9 @@ function asRecord(user: SampleTenantUser) {
     full_name: user.full_name,
     enabled: user.enabled,
     last_login: user.last_login,
-    role_profiles: user.role_profiles.map((role_profile) => ({ role_profile })),
-    roles: roles(user.role_profiles).map((role) => ({ role })),
+    // The "Tenant Admin" role has no level 1 right on User. Frappe empties the two tables.
+    role_profiles: [],
+    roles: [],
   };
 }
 
@@ -96,6 +98,18 @@ export function userAdminHandlers(
       return user
         ? HttpResponse.json({ data: asRecord(user) })
         : frappeError(404, 'DoesNotExistError');
+    }),
+
+    http.get('*/api/method/platform_core.api.identity.get_user_role_profiles', ({ request }) => {
+      const denied = guard(request, { write: false });
+      if (denied) return denied;
+      const user = userAdminState.users.get(new URL(request.url).searchParams.get('user') ?? '');
+      if (!user) return frappeError(403, 'PermissionError');
+      return message({
+        user: user.name,
+        role_profiles: [...user.role_profiles].sort(),
+        roles: roles(user.role_profiles),
+      });
     }),
 
     http.get('*/api/resource/Role%20Profile/:name', ({ request, params }) => {
