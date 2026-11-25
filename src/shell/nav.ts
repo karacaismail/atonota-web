@@ -57,24 +57,34 @@ export function permittedNav(
 /**
  * Sunucunun sidebar verisini menü grubuna çevirir.
  * Ayrılmış önekli (`_demo`, `panel`) ya da bağlantısız grup menüye girmez.
+ * Her DocType listesi menüde bir kez görünür. İlk bağlantı kalır, sonrakiler düşer (AJA-807).
+ * Örnek: `User` hem "Kurulum" hem "Kullanıcılar" grubundaysa yalnız "Kurulum" grubunda kalır.
  */
 export function navFromSidebars(sidebars: readonly ShellSidebar[]): NavGroup[] {
+  const seen = new Set<string>();
   return sidebars
-    .filter((g) => g.links.length > 0 && !isReservedSegment(g.module))
-    .map((g) => ({
+    .filter((g) => !isReservedSegment(g.module))
+    .map((g): NavGroup => ({
       kind: 'group',
       id: `sidebar-${g.id}`,
       label: g.label,
       icon: Rows,
-      children: g.links.map((l) => ({
-        kind: 'link',
-        id: `sidebar-${g.id}-${l.doctype}`,
-        label: l.label,
-        to: routes.collection(g.module, l.doctype),
-        icon: FileText,
-        requires: [l.doctype],
-      })),
-    }));
+      children: g.links.flatMap((l) => {
+        if (seen.has(l.doctype)) return [];
+        seen.add(l.doctype);
+        return [
+          {
+            kind: 'link',
+            id: `sidebar-${g.id}-${l.doctype}`,
+            label: l.label,
+            to: routes.collection(g.module, l.doctype),
+            icon: FileText,
+            requires: [l.doctype],
+          },
+        ];
+      }),
+    }))
+    .filter((g) => g.children.length > 0);
 }
 
 /** Canlı menü: rota bağlantıları ve sunucu grupları. İkisi de yetki süzgecinden geçer. */
