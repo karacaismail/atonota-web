@@ -1,0 +1,88 @@
+/**
+ * "Yönetim" sayfasının "Kullanıcılar" bölümündeki ekran metinleri (G-98).
+ * Metinler G-98 tasarım belgesinin 10. bölümünden gelir.
+ */
+import { useModule } from '../context';
+
+const en = {
+  userList: 'User list',
+  invite: 'Invite',
+  inviteTitle: 'Invite a user',
+  inviteNote: 'The person gets an e-mail. The person opens the account with the link.',
+  inviteCancel: 'Cancel',
+  email: 'E-mail (required)',
+  firstName: 'First name',
+  lastName: 'Last name',
+  inviteSend: 'Send invitation',
+  invitePreview: 'The invitation will do these steps:',
+  inviteConfirm: 'Confirm and send',
+  inviteSent: 'Invitation sent.',
+  inviteAfter:
+    'The person appears in the list after the first sign-in. Give the role profile then.',
+  inviteChanged: 'The invitation changed after the preview. Preview it again.',
+  backToList: 'Back to the list',
+  emailInvalid: 'Check the e-mail address.',
+  userExists: 'A user with this e-mail already exists.',
+  noUsers: 'There are no users yet. Invite the first person.',
+  backToUsers: 'Users',
+  roleProfile: 'Role profile',
+  noRoleProfile: 'No role profile',
+  roleProfileHidden: 'The server does not show the role profile of this user.',
+  profileRoles: 'Roles of this profile',
+  roleProfileChange: 'Change role profile',
+  roleProfileSelect: 'Choose a role profile',
+  roleProfileAssign: 'Assign profile',
+  roleProfileAssigned: 'Role profile assigned.',
+  roleProfileSelf: 'You cannot change your own role profile. Another administrator can.',
+  before: 'Before',
+  after: 'After',
+  added: '(new)',
+  removed: '{role} is removed.',
+  unknownRoles: 'The current roles are not known.',
+  statusActive: 'Active',
+  statusDisabled: 'Disabled',
+  lastLogin: 'Last sign-in',
+};
+const tr: Record<keyof typeof en, string> = {
+  userList: 'Kullanıcı listesi',
+  invite: 'Davet et',
+  inviteTitle: 'Kullanıcı davet edin',
+  inviteNote: 'Kişiye bir e-posta gider. Kişi bağlantıyla hesabını açar.',
+  inviteCancel: 'Vazgeç',
+  email: 'E-posta (zorunlu)',
+  firstName: 'Ad',
+  lastName: 'Soyad',
+  inviteSend: 'Daveti gönder',
+  invitePreview: 'Davet şu işlemleri yapacak:',
+  inviteConfirm: 'Onayla ve gönder',
+  inviteSent: 'Davet gönderildi.',
+  inviteAfter: 'Kişi ilk girişten sonra listede görünür. Rol profilini o zaman atayın.',
+  inviteChanged: 'Davet önizlemeden sonra değişti. Daveti yeniden önizleyin.',
+  backToList: 'Listeye dön',
+  emailInvalid: 'E-posta adresini kontrol edin.',
+  userExists: 'Bu e-posta ile bir kullanıcı zaten var.',
+  noUsers: 'Henüz kullanıcı yok. İlk kişiyi davet edin.',
+  backToUsers: 'Kullanıcılar',
+  roleProfile: 'Rol profili',
+  noRoleProfile: 'Rol profili yok',
+  roleProfileHidden: 'Sunucu bu kullanıcının rol profilini göstermiyor.',
+  profileRoles: 'Bu profilin verdiği roller',
+  roleProfileChange: 'Rol profilini değiştir',
+  roleProfileSelect: 'Rol profili seçin',
+  roleProfileAssign: 'Profili ata',
+  roleProfileAssigned: 'Rol profili atandı.',
+  roleProfileSelf: 'Kendi rol profilinizi değiştiremezsiniz. Başka bir yönetici değiştirebilir.',
+  before: 'Önce',
+  after: 'Sonra',
+  added: '(yeni)',
+  removed: '{role} kalkar.',
+  unknownRoles: 'Şu anki roller bilinmiyor.',
+  statusActive: 'Etkin',
+  statusDisabled: 'Kapalı',
+  lastLogin: 'Son giriş',
+};
+export const userMessages = { en, tr };
+export function useUserCopy() {
+  const environment = useModule();
+  return userMessages[environment?.locale ?? 'tr'];
+}

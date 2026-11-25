@@ -6,6 +6,7 @@ import { useRead } from '../data';
 import { useCopy } from '../messages';
 import { useModule } from '../context';
 import { ModuleFrame, ResourceView, Section } from '../shared';
+import { UsersSection } from './Users';
 
 type Permission = 'read' | 'write' | 'create' | 'delete' | 'submit' | 'cancel';
 const operations: Permission[] = ['read', 'write', 'create', 'delete', 'submit', 'cancel'];
@@ -27,9 +28,7 @@ export default function AdministrationPage() {
   const readOnly = isReadOnly(useRoles());
   return (
     <ModuleFrame title={copy.administration}>
-      <Section title={copy.users}>
-        <p>{copy.usersUnavailable}</p>
-      </Section>
+      <UsersSection />
       {readOnly ? (
         <Alert type="info" message={copy.usersOnly} />
       ) : (

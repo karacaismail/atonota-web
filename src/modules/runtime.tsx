@@ -62,6 +62,11 @@ export interface ModuleClient {
    * yalnız "Müşteriler" sayfası çağırınca iner.
    */
   resellers?: () => Promise<ResellerClient>;
+  /**
+   * Kullanıcı yönetimi istemcisini yükler (G-98): kullanıcı listesi, davet ve rol profili.
+   * İstemci kodu ilk yüke girmez; yalnız "Yönetim" sayfası çağırınca iner.
+   */
+  userAdmin?: () => Promise<UserAdminClient>;
 }
 /** Bayi uçları. Ortak istemci yanıtları sözleşmeyle denetler. Yetkiyi sunucu denetler. */
 export interface ResellerClient {
@@ -71,6 +76,48 @@ export interface ResellerClient {
     input: CustomerRequestInput,
     options: RequestOptions,
   ) => Promise<CustomerRequest>;
+}
+/** Kiracının bir kullanıcısı. Ad, Frappe kullanıcı kimliğidir (e-posta). */
+export interface TenantUser {
+  name: string;
+  fullName: string;
+  enabled: boolean;
+  lastLogin: string | null;
+}
+/** Rol profili ve roller sunucu bu alanları gizlerse yoktur. Boş liste "profil yok" demektir. */
+export interface UserRecord extends TenantUser {
+  roleProfiles?: string[];
+  roles?: string[];
+}
+export interface InviteInput {
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+export interface InvitePreview {
+  digest: string;
+  operations: { operation: string; target?: string; destructive: boolean }[];
+}
+/** Kullanıcı yönetimi uçları. Sunucu her istekte rolü yeniden denetler. */
+export interface UserAdminClient {
+  listUsers: (
+    query: { start: number },
+    options?: RequestOptions,
+  ) => Promise<{ users: TenantUser[]; hasNext: boolean }>;
+  getUser: (name: string, options?: RequestOptions) => Promise<UserRecord>;
+  listRoleProfiles: (options?: RequestOptions) => Promise<string[]>;
+  getRoleProfile: (
+    name: string,
+    options?: RequestOptions,
+  ) => Promise<{ name: string; roles: string[] }>;
+  /** Önizleme yalnız okur. Dönen özet, gönderme isteğinin onayıdır. */
+  previewInvite: (input: InviteInput, options?: RequestOptions) => Promise<InvitePreview>;
+  sendInvite: (input: InviteInput, digest: string, options?: RequestOptions) => Promise<void>;
+  setRoleProfiles: (
+    user: string,
+    roleProfiles: string[],
+    options?: RequestOptions,
+  ) => Promise<{ roleProfiles: string[]; roles: string[] }>;
 }
 export type { AiConnectionListing };
 /** Bağlı hesap uçları. Ortak istemci yanıtları sözleşmeyle denetler. */

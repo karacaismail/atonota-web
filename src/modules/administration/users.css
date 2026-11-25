@@ -1,0 +1,77 @@
+/* G-98 "Kullanıcılar" bölümü. Değerler tasarım tokenlarından gelir. */
+.users-primary {
+  align-self: stretch;
+}
+@media (min-width: 48rem) {
+  .users-primary {
+    align-self: flex-start;
+  }
+}
+.users-back {
+  align-self: flex-start;
+}
+/* Satırı kenarlık değil yüzey tonu ayırır. Satırın tamamı kayda gider. */
+.users-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xxs);
+  width: 100%;
+  min-height: var(--btn-h-sm);
+  padding: var(--module-padding);
+  border: 0;
+  border-radius: var(--card-radius);
+  background: var(--module-surface);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.users-row:hover {
+  background: var(--bg-elevated);
+}
+.users-name {
+  font-weight: var(--font-weight-sm);
+}
+.users-name,
+.users-email {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+.users-email {
+  color: var(--module-muted);
+}
+.users-status {
+  display: inline-block;
+  padding: 0 var(--space-xxs);
+  border-radius: var(--radius);
+  background: var(--primary-bg);
+  color: var(--primary-text);
+  font-size: var(--module-font);
+}
+.users-status[data-enabled='false'] {
+  background: var(--bg-layout);
+  color: var(--module-muted);
+}
+.users-title,
+.users-subtitle {
+  margin: 0;
+  font-size: var(--module-font);
+  font-weight: var(--font-weight-sm);
+}
+.users-title {
+  font-size: var(--btn-fs-lg);
+}
+.users-field-error {
+  color: var(--danger-text);
+}
+.users-roles {
+  margin: 0;
+  padding-inline-start: var(--module-padding);
+}
+/* Önce ve sonra listeleri telefonda alt alta, geniş pencerede yan yana durur. */
+.users-compare {
+  display: grid;
+  gap: var(--module-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}

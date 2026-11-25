@@ -42,5 +42,8 @@ export function createModuleClient(api: ApiClient): ModuleClient {
     aiProviders: () => import('../api/provider-client').then((m) => m.createProviderClient(api)),
     // Bayi istemcisi ayrı parçadadır. Yalnız "Müşteriler" sayfası açılınca yüklenir.
     resellers: () => import('../api/reseller-client').then((m) => m.createResellerClient(api)),
+    // Kullanıcı yönetimi istemcisi ayrı parçadadır. Yalnız "Yönetim" sayfası açılınca yüklenir.
+    userAdmin: () =>
+      import('./administration/users-client').then((m) => m.createUserAdminClient(api)),
   };
 }
