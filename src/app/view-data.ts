@@ -35,7 +35,8 @@ type BootstrapSidebar = Bootstrap['sidebars'][number];
  * Menü grubu ve kayıt bağlantısı aynı çeviriyi kullanır; böylece adres menüdeki grupla eşleşir.
  */
 export function moduleSlug(name: string): string {
-  return name.trim().toLocaleLowerCase('tr').split(/\s+/).filter(Boolean).join('-');
+  // Dilden bağımsız küçültme (G-132): Türkçe kural `Integrations` adını `ıntegrations` yapardı.
+  return name.trim().toLocaleLowerCase('en').split(/\s+/).filter(Boolean).join('-');
 }
 
 const truthy = (v: number | boolean | null | undefined) => v === true || v === 1;

@@ -3,6 +3,7 @@ import { createElement, Suspense } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { sampleDocTypeMeta as sampleMeta } from '@/mocks/fixtures';
+import { navFromSidebars } from '@/shell/nav';
 
 vi.mock('./RecordRoute', () => ({
   default: (props: { api: unknown; doctype: string; name: string }) =>
@@ -11,7 +12,7 @@ vi.mock('./RecordRoute', () => ({
 
 const recordApi = { listDocuments: vi.fn(), getDocType: vi.fn(), frappeDocument: vi.fn() };
 
-import { createShellViewData, doctypeFromSlug, loadShellAccount } from './view-data';
+import { createShellViewData, doctypeFromSlug, loadShellAccount, moduleSlug } from './view-data';
 
 describe('doctypeFromSlug', () => {
   it('adres parçasını DocType adına çevirir', () => {
@@ -141,6 +142,40 @@ describe('menü verisi (navigation)', () => {
       },
     ]);
     expect(getBootstrap).toHaveBeenCalledWith({ signal });
+  });
+
+  // G-132: Modül adı dilden bağımsız küçülür. Türkçe kural "I" harfini "ı" yapardı.
+  it('"I" ile başlayan modül adını "i" ile başlayan adrese çevirir', () => {
+    expect(moduleSlug('Integrations')).toBe('integrations');
+    expect(moduleSlug('Item Info')).toBe('item-info');
+    expect(moduleSlug('Selling')).toBe('selling');
+  });
+
+  it('Entegrasyonlar grubunun adresinde noktasız ı yoktur, görünen ad değişmez', async () => {
+    const getBootstrap = vi.fn().mockResolvedValue({
+      sidebars: [
+        sidebar('Integrations', {
+          label: 'Entegrasyonlar',
+          module: 'Integrations',
+          items: [{ label: 'Bağlı Uyulamalar', link_type: 'DocType', link_to: 'Connected App' }],
+        }),
+      ],
+    });
+    const data = createShellViewData({ getBootstrap } as never);
+    const sidebars = await data.navigation?.loadSidebars(new AbortController().signal);
+    expect(sidebars).toEqual([
+      {
+        id: 'Integrations',
+        label: 'Entegrasyonlar',
+        module: 'integrations',
+        links: [{ label: 'Bağlı Uyulamalar', doctype: 'Connected App' }],
+      },
+    ]);
+    const [group] = navFromSidebars(sidebars ?? []);
+    expect(group?.label).toBe('Entegrasyonlar');
+    expect(group?.children[0]?.label).toBe('Bağlı Uyulamalar');
+    expect(group?.children[0]?.to).toBe('/integrations/Connected%20App');
+    expect(group?.children[0]?.to).not.toMatch(/%C4%B1|ı/);
   });
 
   it('sahte sunucunun açılış verisinde sidebar yoksa menüye grup eklemez', async () => {
