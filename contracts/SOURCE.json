@@ -1,7 +1,7 @@
 {
   "repository": "frappesetup",
   "commit": "50b27fce802e3f4be7ea8fb356c956c1e4bfef05",
-  "dirty": false,
+  "dirty": true,
   "commitSource": "git",
   "files": [
     {
@@ -10,11 +10,11 @@
     },
     {
       "path": "openapi/identity_sync.openapi.yaml",
-      "sha256": "9b0768555831774c139a5dadd6808e47c700e7d34131e223d37d6409d3a12bba"
+      "sha256": "7651bb35f4ec572836aa9831ca57e8b8592e1a6189da6fbca4ef23220b46ff3c"
     },
     {
       "path": "openapi/platform_core-access.openapi.yaml",
-      "sha256": "1005a8e014020db1122fbdb98af521b1ec23556e4c635f6b6c5b6f6d99a0c994"
+      "sha256": "f6bdc43dc3ce637d77af5547faf0726d4d449f22a06bbef179287e13b685e6d3"
     },
     {
       "path": "openapi/platform_core-ai.openapi.yaml",
@@ -26,7 +26,7 @@
     },
     {
       "path": "openapi/platform_core-identity.openapi.yaml",
-      "sha256": "62e9f3b1e06fc5b45ea2346bd7179ebfbc12c02c35f29d430e0294bbc095ecce"
+      "sha256": "271993d304b884a8c5df120814adc83174f34cfad90d2ae1fa99b5868367a656"
     },
     {
       "path": "openapi/platform_core-mobile.openapi.yaml",
@@ -34,7 +34,7 @@
     },
     {
       "path": "openapi/platform_core-model-gateway.openapi.yaml",
-      "sha256": "228cf58407c84175d6b74a89c99d7b86905d525b135d71698f64b7f2d29907f5"
+      "sha256": "b72bab744f593d115370f623660ec8d54cc17f4e65e42080eb16a0d856e4cc30"
     },
     {
       "path": "openapi/platform_core-reseller.openapi.yaml",
@@ -46,11 +46,11 @@
     },
     {
       "path": "openapi/press_tr.openapi.yaml",
-      "sha256": "0308f1daec7cc27a67a4323cfad01a8c630b9619d63d72f4ae7b699b8be75ecd"
+      "sha256": "b5530bc4b06dacd8d84034595ce1317e6b1b9cd29291e20e833af2598659df34"
     },
     {
       "path": "docs/contracts.md",
-      "sha256": "4df28abeca2455427e41334a4742557041498ea9c7aee27c7a3fe561befa778b"
+      "sha256": "689dbdd3bbf4b7c7b1ebda34b25e83cfd38520adad3887c1fdcfa7038f72a1aa"
     }
   ]
 }
