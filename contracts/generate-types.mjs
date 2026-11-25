@@ -28,6 +28,7 @@ export const BROWSER_CONTRACTS = [
   'platform_core-access',
   'hrms_tr',
   'platform_core-mobile',
+  'platform_core-reseller',
 ];
 
 const HEADER =
