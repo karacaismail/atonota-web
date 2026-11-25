@@ -55,6 +55,36 @@ describe('kabuk menüsü (Ö2)', () => {
     expect(group?.badge).toBeUndefined();
   });
 
+  it('aynı listeye giden ikinci bağlantıyı menüye koymaz (AJA-807)', () => {
+    // Sunucu `User` listesini iki grupta verir: "Kurulum" ve "Kullanıcılar".
+    const groups = navFromSidebars([
+      {
+        id: 'Kurulum',
+        label: 'Kurulum',
+        module: 'setup',
+        links: [
+          { label: 'Kullanıcılar', doctype: 'User' },
+          { label: 'Sistem ayarları', doctype: 'System Settings' },
+        ],
+      },
+      {
+        id: 'Kullanıcılar',
+        label: 'Kullanıcılar',
+        module: 'users',
+        links: [
+          { label: 'Kullanıcı', doctype: 'User' },
+          { label: 'Rol', doctype: 'Role' },
+        ],
+      },
+    ]);
+    const links = groups.flatMap((g) => g.children);
+    const userLinks = links.filter((l) => l.requires?.includes('User'));
+    expect(userLinks.map((l) => l.label)).toEqual(['Kullanıcılar']);
+    // Başka grup ve bağlantı kaybolmaz.
+    expect(labels(groups)).toEqual(['Kurulum', 'Kullanıcılar']);
+    expect(links.map((l) => l.label)).toEqual(['Kullanıcılar', 'Sistem ayarları', 'Rol']);
+  });
+
   it('ayrılmış önekli ya da boş grubu menüye koymaz', () => {
     const groups = navFromSidebars([
       { id: 'a', label: 'A', module: '_demo', links: [{ label: 'X', doctype: 'X' }] },
