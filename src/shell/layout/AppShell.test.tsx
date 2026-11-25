@@ -67,6 +67,35 @@ describe('AppShell', () => {
     expect(loadSidebars).toHaveBeenCalledWith(expect.any(AbortSignal));
   });
 
+  it('menü yalnız sunucunun okumaya izin verdiği sayfaları gösterir (G-94)', async () => {
+    mockCompact(false);
+    const loadReadable = vi.fn().mockResolvedValue(new Set(['Leave Application']));
+    renderShell({ navigation: { loadSidebars: vi.fn().mockResolvedValue([]), loadReadable } });
+    expect(await screen.findByRole('link', { name: 'İzin talepleri' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Yapay zekâ sağlayıcıları' })).not.toBeInTheDocument();
+    expect(loadReadable).toHaveBeenCalledWith(
+      expect.arrayContaining(['Leave Application', 'PLT AI API']),
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('yetki bilgisi gelmezse yetki isteyen sayfa menüde görünmez (G-94)', async () => {
+    mockCompact(false);
+    const loadReadable = vi.fn().mockRejectedValue(new Error('ağ'));
+    renderShell({ navigation: { loadSidebars: vi.fn().mockResolvedValue([]), loadReadable } });
+    await act(async () => Promise.resolve());
+    expect(screen.getByRole('link', { name: 'Hesap' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'İzin talepleri' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Yapay zekâ sağlayıcıları' })).not.toBeInTheDocument();
+  });
+
+  it('veri bağlantısı yoksa yetki isteyen sayfa menüde görünmez (G-94)', () => {
+    mockCompact(false);
+    renderShell();
+    expect(screen.getByRole('link', { name: 'Hesap' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'İzin talepleri' })).not.toBeInTheDocument();
+  });
+
   it('geniş ekranda sidebar görünür, menü düğmesi yoktur', () => {
     mockCompact(false);
     renderShell();

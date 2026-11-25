@@ -156,6 +156,33 @@ describe('menü verisi (navigation)', () => {
   });
 });
 
+describe('menü yetkisi (G-94)', () => {
+  it('sunucunun okumaya izin verdiği DocType adlarını döner', async () => {
+    const getDocType = vi.fn((doctype: string) =>
+      doctype === 'Leave Application'
+        ? Promise.resolve({ status: 'fresh', meta: sampleMeta })
+        : Promise.reject(new Error('403')),
+    );
+    const data = createShellViewData({ getDocType } as never);
+    const signal = new AbortController().signal;
+    const readable = await data.navigation?.loadReadable?.(
+      ['Leave Application', 'PLT AI API'],
+      signal,
+    );
+    expect(readable).toEqual(new Set(['Leave Application']));
+    expect(getDocType).toHaveBeenCalledWith('Leave Application', undefined, { signal });
+    expect(getDocType).toHaveBeenCalledWith('PLT AI API', undefined, { signal });
+  });
+
+  it('istek başarısızsa hiçbir DocType okunabilir sayılmaz', async () => {
+    const getDocType = vi.fn().mockRejectedValue(new Error('ağ'));
+    const data = createShellViewData({ getDocType } as never);
+    await expect(
+      data.navigation?.loadReadable?.(['Leave Application'], new AbortController().signal),
+    ).resolves.toEqual(new Set());
+  });
+});
+
 describe('loadShellAccount', () => {
   it('görünen adı açılış verisinden alır', async () => {
     const getBootstrap = vi

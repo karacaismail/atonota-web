@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { moduleRegistrations } from '@/modules';
 
-import { buildShellNav, navFromSidebars, routeNav } from './nav';
+import {
+  buildShellNav,
+  navFromSidebars,
+  permittedNav,
+  quickActionsFrom,
+  requiredDocTypes,
+  routeNav,
+} from './nav';
 import { routes } from './paths';
 import type { NavEntry } from './sampleData';
 
@@ -17,7 +24,7 @@ describe('kabuk menüsü (Ö2)', () => {
   });
 
   it('örnek menü gruplarını ve uydurma sayıları göstermez', () => {
-    const nav = buildShellNav([]);
+    const nav = buildShellNav([], new Set());
     expect(labels(nav)).not.toContain('Satış');
     expect(labels(nav)).not.toContain('Görevler');
     expect(nav.some((e) => e.badge !== undefined)).toBe(false);
@@ -62,8 +69,78 @@ describe('kabuk menüsü (Ö2)', () => {
       navFromSidebars([
         { id: 's', label: 'Satış', module: 'selling', links: [{ label: 'T', doctype: 'T' }] },
       ]),
+      new Set(['T', ...requiredDocTypes]),
     );
     expect(nav.at(-1)?.label).toBe('Satış');
     expect(nav.slice(0, routeNav.length)).toEqual(routeNav);
+  });
+});
+
+describe('menü yalnız yetkili sayfaları gösterir (G-94)', () => {
+  const AI = ['PLT AI API', 'PLT AI Account', 'PLT AI Provider'];
+  const linkLabels = (entries: NavEntry[]) =>
+    entries.flatMap((e) => (e.kind === 'link' ? [e.label] : e.children.map((c) => c.label)));
+
+  it('modüller okuma yetkisi gereken DocType adlarını bildirir', () => {
+    const requires = (id: string) => moduleRegistrations.find((m) => m.id === id)?.requires;
+    expect(requires('hr')).toEqual(['Leave Application']);
+    expect(requires('ai-providers')).toEqual(AI);
+    expect(requiredDocTypes).toEqual(expect.arrayContaining(['Leave Application', ...AI]));
+    expect(new Set(requiredDocTypes).size).toBe(requiredDocTypes.length);
+  });
+
+  it('okuma yetkisi olmayan hesap "İzin talepleri" ve "Yapay zekâ sağlayıcıları" bağlantısını görmez', () => {
+    const names = labels(buildShellNav([], new Set(['PLT AI API'])));
+    expect(names).not.toContain('İzin talepleri');
+    expect(names).not.toContain('Yapay zekâ sağlayıcıları');
+    expect(names).toContain('Hesap');
+    expect(names).toContain('Ana sayfa');
+  });
+
+  it('yetkisi olan hesap iki bağlantıyı görmeye devam eder', () => {
+    const names = labels(buildShellNav([], new Set(['Leave Application', ...AI])));
+    expect(names).toContain('İzin talepleri');
+    expect(names).toContain('Yapay zekâ sağlayıcıları');
+  });
+
+  it('yetki bilgisi yoksa yetki isteyen sayfa menüde görünmez', () => {
+    const names = labels(buildShellNav([], new Set()));
+    for (const m of moduleRegistrations)
+      if (m.requires?.length) expect(names).not.toContain(m.label.tr);
+  });
+
+  it('sunucu grubundaki bağlantılar da aynı süzgeçten geçer; boş kalan grup düşer', () => {
+    const groups = navFromSidebars([
+      {
+        id: 'İK',
+        label: 'İK',
+        module: 'hr',
+        links: [
+          { label: 'İzinler', doctype: 'Leave Application' },
+          { label: 'Çalışanlar', doctype: 'Employee' },
+        ],
+      },
+      { id: 'Satış', label: 'Satış', module: 'selling', links: [{ label: 'T', doctype: 'T' }] },
+    ]);
+    const nav = permittedNav(groups, new Set(['Employee']));
+    expect(linkLabels(nav)).toEqual(['Çalışanlar']);
+    expect(nav.map((e) => e.label)).toEqual(['İK']);
+  });
+
+  it('hızlı eylemler süzülmüş gruplardan gelir', () => {
+    const groups = navFromSidebars([
+      {
+        id: 'İK',
+        label: 'İK',
+        module: 'hr',
+        links: [
+          { label: 'İzinler', doctype: 'Leave Application' },
+          { label: 'Çalışanlar', doctype: 'Employee' },
+        ],
+      },
+    ]);
+    const permitted = permittedNav(groups, new Set(['Employee']));
+    const actions = quickActionsFrom(permitted.filter((e) => e.kind === 'group'));
+    expect(actions.map((a) => a.label)).toEqual(['Çalışanlar']);
   });
 });
