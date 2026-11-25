@@ -13,6 +13,14 @@ interface ImportMetaEnv {
   readonly VITE_CSRF_META_NAME?: string;
   /** Sahte sunucu: "on" derlemede açar, "off" geliştirmede kapatır. */
   readonly VITE_API_MOCKS?: 'on' | 'off' | string;
+  /** Yalnız geliştirme sunucusu: yerel Frappe arka ucunun adresi. Bkz. vite/dev-backend.ts */
+  readonly VITE_DEV_BACKEND?: string;
+  /** Yalnız geliştirme sunucusu: Frappe socket.io adresi. */
+  readonly VITE_DEV_SOCKET?: string;
+  /** Yalnız geliştirme sunucusu: Frappe site adı (X-Frappe-Site-Name). */
+  readonly VITE_DEV_SITE_NAME?: string;
+  /** Yalnız geliştirme sunucusu: "browser" ya da "target" Host kipi. */
+  readonly VITE_DEV_BACKEND_HOST?: string;
 }
 
 interface ImportMeta {
