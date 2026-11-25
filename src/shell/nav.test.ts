@@ -4,6 +4,7 @@ import { moduleRegistrations } from '@/modules';
 
 import {
   buildShellNav,
+  moduleAllowed,
   navFromSidebars,
   permittedNav,
   quickActionsFrom,
@@ -172,5 +173,50 @@ describe('menü yalnız yetkili sayfaları gösterir (G-94)', () => {
     const permitted = permittedNav(groups, new Set(['Employee']));
     const actions = quickActionsFrom(permitted.filter((e) => e.kind === 'group'));
     expect(actions.map((a) => a.label)).toEqual(['Çalışanlar']);
+  });
+});
+
+describe('bayi menüsü ve "Müşteriler" sayfası (G-169, G-170)', () => {
+  const LINK = 'Reseller Customer Link';
+  const TENANT = new Set(['Leave Application', 'PLT AI API', 'PLT AI Account', 'PLT AI Provider']);
+  const RESELLER = new Set([LINK]);
+  const modulePaths = new Set(moduleRegistrations.map((m) => m.path));
+  const moduleLabels = (entries: NavEntry[]) =>
+    entries.flatMap((e) => (e.kind === 'link' && modulePaths.has(e.to) ? [e.label] : []));
+
+  it('"Müşteriler" sayfası rota kaydındadır ve bağ kaydını okumayı ister', () => {
+    const customers = routeNav.find((e) => e.kind === 'link' && e.to === '/customers');
+    expect(customers?.label).toBe('Müşteriler');
+    expect(moduleRegistrations.find((m) => m.id === 'customers')?.requires).toEqual([LINK]);
+  });
+
+  it('bayi yalnız "Hesap", "Site ve plan" ve "Müşteriler" gruplarını görür', () => {
+    expect(moduleLabels(buildShellNav([], RESELLER))).toEqual([
+      'Hesap',
+      'Site ve plan',
+      'Müşteriler',
+    ]);
+  });
+
+  it('kiracı "Müşteriler" grubunu görmez, kiracı gruplarını görmeye devam eder', () => {
+    expect(moduleLabels(buildShellNav([], TENANT))).toEqual([
+      'Hesap',
+      'Yönetim',
+      'Yapay zekâ sağlayıcıları',
+      'İzin talepleri',
+      'Site ve plan',
+      'Yapay zekâ işlemleri',
+    ]);
+  });
+
+  it('sayfa kapısı menüyle aynı kuralı kullanır', () => {
+    expect(moduleAllowed('/customers', RESELLER)).toBe(true);
+    expect(moduleAllowed('/customers', TENANT)).toBe(false);
+    expect(moduleAllowed('/administration', RESELLER)).toBe(false);
+    expect(moduleAllowed('/ai-operations', RESELLER)).toBe(false);
+    expect(moduleAllowed('/site-plan', RESELLER)).toBe(true);
+    expect(moduleAllowed('/administration', TENANT)).toBe(true);
+    // Modül olmayan yol bu kapıdan geçmez. Örnek: ana sayfa.
+    expect(moduleAllowed('/', new Set())).toBe(true);
   });
 });

@@ -89,3 +89,79 @@ describe('sahte sunucu senaryoları', () => {
     expect(mockState.logoutOutcome).toBe('ok');
   });
 });
+
+describe('sahte sunucu: dört panel rolü (AJA-831, AJA-834)', () => {
+  const SITE = 'https://kiraci.example.test';
+  const RESELLER = `${SITE}/api/method/platform_core.api.reseller.`;
+  const bootstrapRoles = async () => {
+    const response = await fetch(`${SITE}/api/method/platform_core.api.shell.get_bootstrap`);
+    return ((await response.json()) as { message: { user: { roles: string[] } } }).message.user
+      .roles;
+  };
+  const metaStatus = async (doctype: string) => {
+    const url = new URL(`${SITE}/api/method/platform_core.api.meta.get_doctype`);
+    url.searchParams.set('doctype', doctype);
+    return (await fetch(url)).status;
+  };
+  const requestCustomer = () =>
+    fetch(`${RESELLER}request_customer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': SAMPLE_CSRF_TOKEN },
+      body: JSON.stringify({ customer_name: 'Örnek', contact_email: 'yeni@example.test' }),
+    });
+
+  it.each([
+    ['rol-tenant-admin', 'Tenant Admin'],
+    ['rol-tenant-admin-assistant', 'Tenant Admin Assistant'],
+    ['rol-reseller-admin', 'Reseller Admin'],
+    ['rol-reseller-assistant', 'Reseller Assistant'],
+  ])('"%s" senaryosu açılış verisine "%s" rolünü yazar', async (scenario, role) => {
+    expect(applyMockScenario(scenario)).toBe(true);
+    expect(await bootstrapRoles()).toEqual(['Website User', role]);
+  });
+
+  it('bayi bağ kaydını okur, kiracının iş verisini okuyamaz', async () => {
+    applyMockScenario('rol-reseller-admin');
+    expect(await metaStatus('Reseller Customer Link')).toBe(200);
+    expect(await metaStatus('Leave Application')).toBe(403);
+    expect(await metaStatus('PLT AI API')).toBe(403);
+  });
+
+  it('kiracı yöneticisi bağ kaydını okuyamaz', async () => {
+    applyMockScenario('rol-tenant-admin');
+    expect(await metaStatus('Reseller Customer Link')).toBe(403);
+    expect(await metaStatus('Leave Application')).toBe(200);
+  });
+
+  it('bayi uçları müşteri listesini ve site durumunu verir', async () => {
+    applyMockScenario('rol-reseller-assistant');
+    const list = (await (await fetch(`${RESELLER}list_customers`)).json()) as {
+      message: { customer_tenant: string }[];
+    };
+    expect(list.message.length).toBeGreaterThan(0);
+    const tenant = list.message[0]!.customer_tenant;
+    expect(tenant).toMatch(/\.example\.test$/);
+    const status = await fetch(`${RESELLER}customer_status?customer_tenant=${tenant}`);
+    expect(await status.json()).toEqual({
+      message: { customer_tenant: tenant, status: expect.any(String) },
+    });
+    expect(
+      (await fetch(`${RESELLER}customer_status?customer_tenant=baska.example.test`)).status,
+    ).toBe(403);
+  });
+
+  it('yeni müşteri isteğini yalnız "Reseller Admin" gönderir', async () => {
+    applyMockScenario('rol-reseller-assistant');
+    expect((await requestCustomer()).status).toBe(403);
+    resetMockState();
+    applyMockScenario('rol-reseller-admin');
+    const response = await requestCustomer();
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { message: { name: string } }).message.name).toBeTruthy();
+  });
+
+  it('kiracı rolü bayi uçlarını kullanamaz', async () => {
+    applyMockScenario('rol-tenant-admin');
+    expect((await fetch(`${RESELLER}list_customers`)).status).toBe(403);
+  });
+});
