@@ -8,11 +8,11 @@ import { describe, expect, it } from 'vitest';
 // Kopya temiz bir arka uç commit'inden alınmalıdır.
 const contracts = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'contracts');
 
-type Source = {
+interface Source {
   commit: string;
   dirty: boolean;
   files: { path: string; sha256: string }[];
-};
+}
 
 const source = JSON.parse(readFileSync(join(contracts, 'SOURCE.json'), 'utf8')) as Source;
 
