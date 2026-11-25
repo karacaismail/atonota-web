@@ -18,15 +18,20 @@ import type { ShellSidebar } from './view-data';
 
 /** Rota kaydındaki menü bağlantıları. Deneme sayfalarını `menuEntries` çıkarır. */
 /** Modül yolu ve okuma yetkisi gereken DocType adları. Kaynak: `src/modules/registry.ts`. */
-const moduleRequires = new Map(moduleRegistrations.map((m) => [m.path, m.requires ?? []]));
+const moduleRules = new Map(
+  moduleRegistrations.map((m) => [
+    m.path,
+    { requires: m.requires ?? [], excludes: m.excludes ?? [] },
+  ]),
+);
 
-/** Modüllerin okuma yetkisi istediği bütün DocType adları. Her ad bir kez geçer. */
+/** Menünün sunucuya sorduğu bütün DocType adları: `requires` ve `excludes`. Her ad bir kez geçer. */
 export const requiredDocTypes: readonly string[] = [
-  ...new Set(moduleRegistrations.flatMap((m) => m.requires ?? [])),
+  ...new Set(moduleRegistrations.flatMap((m) => [...(m.requires ?? []), ...(m.excludes ?? [])])),
 ];
 
 export const routeNav: NavEntry[] = menuEntries(routeRegistry).map((r): NavEntry => {
-  const requires = moduleRequires.get(r.path) ?? [];
+  const { requires = [], excludes = [] } = moduleRules.get(r.path) ?? {};
   return {
     kind: 'link',
     id: `route-${r.path}`,
@@ -34,11 +39,33 @@ export const routeNav: NavEntry[] = menuEntries(routeRegistry).map((r): NavEntry
     to: r.path,
     icon: r.icon,
     ...(requires.length > 0 ? { requires } : {}),
+    ...(excludes.length > 0 ? { excludes } : {}),
   };
 });
 
+/** Bağlantı kuralı: istenen türlerin hepsi okunur, dışlayan türlerin hiçbiri okunmaz. */
+function leafAllowed(
+  rule: { requires?: readonly string[]; excludes?: readonly string[] },
+  readable: ReadonlySet<string>,
+): boolean {
+  return (
+    (rule.requires ?? []).every((d) => readable.has(d)) &&
+    !(rule.excludes ?? []).some((d) => readable.has(d))
+  );
+}
+
+/**
+ * Sayfa kapısı (G-94, G-169). Modül sayfası menüyle aynı kuralla açılır.
+ * Modül olmayan yol bu kapıdan geçer. Örnek: bayi hesabı `/administration` sayfasını açamaz.
+ */
+export function moduleAllowed(path: string, readable: ReadonlySet<string>): boolean {
+  const rule = moduleRules.get(path);
+  return !rule || leafAllowed(rule, readable);
+}
+
 /**
  * Menünün yetki süzgeci (G-94). Bağlantı yalnız istediği bütün DocType'lar okunabilirse kalır.
+ * Dışlayan türlerden biri okunabilirse bağlantı düşer (G-169). Örnek: bayi kiracı sayfalarını görmez.
  * Bağlantısı kalmayan grup düşer. Yetki istemeyen bağlantı her zaman kalır.
  * Örnek: `readable` içinde `Leave Application` yoksa "İzin talepleri" görünmez.
  */
@@ -46,7 +73,7 @@ export function permittedNav(
   entries: readonly NavEntry[],
   readable: ReadonlySet<string>,
 ): NavEntry[] {
-  const allowed = (l: NavLeaf) => (l.requires ?? []).every((d) => readable.has(d));
+  const allowed = (l: NavLeaf) => leafAllowed(l, readable);
   return entries.flatMap((e): NavEntry[] => {
     if (e.kind === 'link') return allowed(e) ? [e] : [];
     const children = e.children.filter(allowed);

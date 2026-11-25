@@ -316,6 +316,37 @@ export const MENU_READABLE_DOCTYPES: readonly string[] = [
   'Leave Application',
 ];
 
+/** Bayi hesabının okuduğu tek modül türü (G-169). Kiracı hesabı bu türü okuyamaz. */
+export const RESELLER_READABLE_DOCTYPES: readonly string[] = ['Reseller Customer Link'];
+
+/**
+ * Dört panel rolünün sahte sunucu verisi (AJA-831). Senaryolar `scenarios.ts` dosyasındadır.
+ * `roles` açılış verisine yazılır. `readable` tanım ucunun 200 verdiği türlerdir.
+ */
+export const PANEL_ROLE_PROFILES: Record<string, { roles: string[]; readable: readonly string[] }> =
+  {
+    'Tenant Admin': { roles: ['Website User', 'Tenant Admin'], readable: MENU_READABLE_DOCTYPES },
+    // Yardımcı yapay zekâ sağlayıcılarını göremez (G-168).
+    'Tenant Admin Assistant': {
+      roles: ['Website User', 'Tenant Admin Assistant'],
+      readable: ['Leave Application'],
+    },
+    'Reseller Admin': {
+      roles: ['Website User', 'Reseller Admin'],
+      readable: RESELLER_READABLE_DOCTYPES,
+    },
+    'Reseller Assistant': {
+      roles: ['Website User', 'Reseller Assistant'],
+      readable: RESELLER_READABLE_DOCTYPES,
+    },
+  };
+
+/** Bayinin bağlı örnek müşterileri. Adlar uydurmadır ve `example.test` ile biter. */
+export const sampleResellerCustomers: readonly { customer_tenant: string; status: string }[] = [
+  { customer_tenant: 'musteri-a.example.test', status: 'active' },
+  { customer_tenant: 'musteri-b.example.test', status: 'pending' },
+];
+
 export const sampleCollection = Array.from({ length: 23 }, (_unused, index) => {
   const number = index + 1;
   return {

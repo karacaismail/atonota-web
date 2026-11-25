@@ -3,6 +3,10 @@ import type {
   AiConnectionListing,
   ConnectionCheck,
   ConnectionInput,
+  CustomerRequest,
+  CustomerRequestInput,
+  CustomerStatus,
+  ResellerCustomer,
   LinkedAccounts,
   ProviderCatalog,
   SavedConnection,
@@ -53,6 +57,20 @@ export interface ModuleClient {
    * İstemci kodu ilk yüke girmez; yalnız "Yapay zekâ sağlayıcıları" sayfası çağırınca iner.
    */
   aiProviders?: () => Promise<AiProviderClient>;
+  /**
+   * Bayi istemcisini yükler (G-169, G-170). İstemci kodu ilk yüke girmez;
+   * yalnız "Müşteriler" sayfası çağırınca iner.
+   */
+  resellers?: () => Promise<ResellerClient>;
+}
+/** Bayi uçları. Ortak istemci yanıtları sözleşmeyle denetler. Yetkiyi sunucu denetler. */
+export interface ResellerClient {
+  listCustomers: (options: RequestOptions) => Promise<ResellerCustomer[]>;
+  customerStatus: (tenant: string, options: RequestOptions) => Promise<CustomerStatus>;
+  requestCustomer: (
+    input: CustomerRequestInput,
+    options: RequestOptions,
+  ) => Promise<CustomerRequest>;
 }
 export type { AiConnectionListing };
 /** Bağlı hesap uçları. Ortak istemci yanıtları sözleşmeyle denetler. */

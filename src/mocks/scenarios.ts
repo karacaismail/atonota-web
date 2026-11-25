@@ -3,6 +3,7 @@
 // Bu yüzden test, sayfa açılmadan önce `sessionStorage` içine bir senaryo adı yazar. Örnek:
 //   await page.addInitScript(() => sessionStorage.setItem('atonota.mock-senaryo', 'cikis-hatasi'));
 // Sahte sunucu açılırken bu adı okur. Bu dosya yalnız sahte sunucuyla pakete girer.
+import { PANEL_ROLE_PROFILES } from './fixtures';
 import { type LogoutOutcome, mockState } from './handlers';
 
 export const MOCK_SCENARIO_KEY = 'atonota.mock-senaryo';
@@ -23,7 +24,19 @@ const SCENARIOS: Record<string, () => void> = {
     mockState.signedIn = false;
     mockState.loginProviders = [];
   },
+  // Dört panel rolü (AJA-831). Senaryo açılış verisindeki rolleri ve okunabilen türleri değiştirir.
+  'rol-tenant-admin': () => setRole('Tenant Admin'),
+  'rol-tenant-admin-assistant': () => setRole('Tenant Admin Assistant'),
+  'rol-reseller-admin': () => setRole('Reseller Admin'),
+  'rol-reseller-assistant': () => setRole('Reseller Assistant'),
 };
+
+function setRole(role: string): void {
+  const profile = PANEL_ROLE_PROFILES[role];
+  if (!profile) return;
+  mockState.roles = [...profile.roles];
+  mockState.readableDocTypes = new Set(profile.readable);
+}
 
 function setLogout(outcome: LogoutOutcome): void {
   mockState.logoutOutcome = outcome;

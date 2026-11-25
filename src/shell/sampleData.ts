@@ -27,6 +27,8 @@ export interface NavLeaf {
   badge?: number;
   /** Bağlantının açtığı sayfanın okuduğu DocType adları. Bkz. `permittedNav`. */
   requires?: readonly string[];
+  /** Bu türlerden biri okunabilirse bağlantı görünmez. Bkz. `permittedNav`. */
+  excludes?: readonly string[];
 }
 
 export interface NavGroup {

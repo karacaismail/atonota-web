@@ -24,6 +24,7 @@ import {
   sampleInstallations,
   MENU_READABLE_DOCTYPES,
   RESTRICTED_SAMPLE_DOCTYPE,
+  sampleResellerCustomers,
   SAMPLE_COLLECTION_DOCTYPE,
   sampleCollection,
   sampleLeaves,
@@ -99,7 +100,16 @@ export const mockState: {
   aiConnections: Map<string, SampleAiConnection>;
   /** Doğruysa kaydetme ve deneme uçları hız sınırı (429 `gateway_busy`) verir. */
   providerBusy: boolean;
+  /** Açılış verisindeki kullanıcı rolleri. Rol senaryoları değiştirir (AJA-831). */
+  roles: string[];
+  /** Tanım ucunun 200 verdiği modül türleri (G-94). Öteki türlerde 403 döner. */
+  readableDocTypes: Set<string>;
+  /** Gönderilen yeni müşteri istekleri (G-169). */
+  customerRequests: { name: string; customer_name: string; contact_email: string }[];
 } = {
+  roles: [...sampleBootstrap.user.roles],
+  readableDocTypes: new Set(MENU_READABLE_DOCTYPES),
+  customerRequests: [],
   loginProviders: sampleLoginProviders.map((item) => ({ ...item })),
   linkedAccounts: new Set(sampleLinkedProviders),
   localSignInMethods: SAMPLE_LOCAL_SIGN_IN_METHODS,
@@ -154,6 +164,9 @@ export function resetMockState(): void {
   mockState.aiAccounts = new Map(sampleAiAccounts.map((item) => [item.name, { ...item }]));
   mockState.aiConnections = new Map(sampleAiConnections.map((item) => [item.name, { ...item }]));
   mockState.providerBusy = false;
+  mockState.roles = [...sampleBootstrap.user.roles];
+  mockState.readableDocTypes = new Set(MENU_READABLE_DOCTYPES);
+  mockState.customerRequests = [];
   connectionSecrets.clear();
   gatewayCalls.save = [];
   gatewayCalls.check = [];
@@ -509,6 +522,14 @@ function frappeError(status: number, excType: string, extra: Record<string, unkn
   return HttpResponse.json({ exc_type: excType, ...extra }, { status });
 }
 
+/** Bayi uçlarını yalnız bayi rolleri kullanır. Öteki hesaplar 403 alır. */
+function resellerGuard(): Response | undefined {
+  const reseller = mockState.roles.some(
+    (r) => r === 'Reseller Admin' || r === 'Reseller Assistant',
+  );
+  return reseller ? undefined : frappeError(403, 'PermissionError');
+}
+
 /** Oturumu ve CSRF başlığını sözleşmedeki gibi denetler. Sorun yoksa `undefined` döner. */
 function guard(request: Request, { write }: { write: boolean }): Response | undefined {
   if (request.headers.has('Authorization')) return frappeError(403, 'PermissionError');
@@ -692,8 +713,49 @@ export const handlers = [
     return message(linkedAccounts());
   }),
 
+  // Bayi uçları (G-169, G-170). Biçim AJA-831 arka uç testlerinin sözleşmesidir.
+  // Yalnız bayi rolleri kullanır. Yeni müşteri isteğini yalnız "Reseller Admin" gönderir.
+  http.get('*/api/method/platform_core.api.reseller.list_customers', ({ request }) => {
+    const denied = guard(request, { write: false }) ?? resellerGuard();
+    if (denied) return denied;
+    return message(sampleResellerCustomers.map(({ customer_tenant }) => ({ customer_tenant })));
+  }),
+
+  http.get('*/api/method/platform_core.api.reseller.customer_status', ({ request }) => {
+    const denied = guard(request, { write: false }) ?? resellerGuard();
+    if (denied) return denied;
+    const tenant = new URL(request.url).searchParams.get('customer_tenant');
+    const customer = sampleResellerCustomers.find((c) => c.customer_tenant === tenant);
+    // Başka bayinin müşterisi ile olmayan müşteri aynı yanıtı alır.
+    if (!customer) return frappeError(403, 'PermissionError');
+    return message({ customer_tenant: customer.customer_tenant, status: customer.status });
+  }),
+
+  http.post('*/api/method/platform_core.api.reseller.request_customer', async ({ request }) => {
+    const denied = guard(request, { write: true }) ?? resellerGuard();
+    if (denied) return denied;
+    if (!mockState.roles.includes('Reseller Admin')) return frappeError(403, 'PermissionError');
+    const body = (await request.json().catch(() => null)) as {
+      customer_name?: unknown;
+      contact_email?: unknown;
+    } | null;
+    const name = typeof body?.customer_name === 'string' ? body.customer_name.trim() : '';
+    const email = typeof body?.contact_email === 'string' ? body.contact_email.trim() : '';
+    if (!name || !/^[^@\s]+@[^@\s]+$/.test(email)) return frappeError(417, 'ValidationError');
+    const request_name = `RCR-${String(mockState.customerRequests.length + 1).padStart(4, '0')}`;
+    mockState.customerRequests.push({
+      name: request_name,
+      customer_name: name,
+      contact_email: email,
+    });
+    return message({ name: request_name });
+  }),
+
   http.get('*/api/method/platform_core.api.shell.get_bootstrap', ({ request }) => {
-    return guard(request, { write: false }) ?? message(sampleBootstrap);
+    return (
+      guard(request, { write: false }) ??
+      message({ ...sampleBootstrap, user: { ...sampleBootstrap.user, roles: mockState.roles } })
+    );
   }),
 
   http.get('*/api/method/platform_core.api.meta.get_doctype', ({ request }) => {
@@ -701,7 +763,7 @@ export const handlers = [
     if (denied) return denied;
     const doctype = new URL(request.url).searchParams.get('doctype');
     // Menü yetki denemesi (G-94): modül türlerinde yalnız okunabilirlik önemlidir.
-    if (doctype && MENU_READABLE_DOCTYPES.includes(doctype)) {
+    if (doctype && mockState.readableDocTypes.has(doctype)) {
       return message({
         ...sampleDocTypeMeta,
         schema: { ...sampleDocTypeMeta.schema, name: doctype },

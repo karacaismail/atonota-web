@@ -2,7 +2,11 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { requiredDocTypes } from '@/shell/nav';
 
-import { MENU_READABLE_DOCTYPES, RESTRICTED_SAMPLE_DOCTYPE } from './fixtures';
+import {
+  MENU_READABLE_DOCTYPES,
+  RESELLER_READABLE_DOCTYPES,
+  RESTRICTED_SAMPLE_DOCTYPE,
+} from './fixtures';
 import { resetMockState } from './handlers';
 import { mockServer } from './node';
 
@@ -25,8 +29,13 @@ afterAll(() => mockServer.close());
 describe('sahte sunucu: menü yetkisi (G-94)', () => {
   it('örnek kullanıcı modül sayfalarının okuduğu türleri okuyabilir', async () => {
     expect(requiredDocTypes.length).toBeGreaterThan(0);
-    expect([...MENU_READABLE_DOCTYPES].sort()).toEqual([...requiredDocTypes].sort());
-    for (const doctype of requiredDocTypes) {
+    // Menü bütün türleri sorar. Örnek kullanıcı kiracıdır: bayi bağ kaydını okuyamaz (G-169).
+    expect([...MENU_READABLE_DOCTYPES, ...RESELLER_READABLE_DOCTYPES].sort()).toEqual(
+      [...requiredDocTypes].sort(),
+    );
+    for (const doctype of RESELLER_READABLE_DOCTYPES)
+      expect((await fetch(metaUrl(doctype))).status, doctype).toBe(403);
+    for (const doctype of MENU_READABLE_DOCTYPES) {
       const response = await fetch(metaUrl(doctype));
       expect(response.status, doctype).toBe(200);
       const body = (await response.json()) as { message: { schema: { name: string } } };

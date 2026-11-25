@@ -115,6 +115,17 @@ Menü, kullanıcının açamadığı sayfayı göstermez. Süzgeç `nav.ts` içi
 
 Kodda rol adı yoktur. Yetki bilgisi gelmezse menü yetki isteyen sayfayı göstermez.
 
+### Bayi menüsü (G-169, G-170)
+
+Bayi rolleri yalnız "Hesap", "Site ve plan" ve "Müşteriler" gruplarını görür. Süzgeç yine `permittedNav` işlevidir.
+
+1. "Müşteriler" sayfası `Reseller Customer Link` türünü okumayı ister (`requires`). Kiracı hesabı bu türü okuyamaz.
+2. Kiracı sayfaları aynı türü `excludes` alanında yazar. Bu türü okuyan hesap bayi hesabıdır. Bayi bu sayfaları görmez.
+3. Modül sayfası menüyle aynı kuraldan geçer (`moduleAllowed`). Kural kapalıysa sayfada "Bu sayfayı açma yetkiniz yok" notu görünür.
+4. Sayfa içindeki yazma düğmeleri rollere bakar (`src/modules/access.ts`). Örneğin "Reseller Assistant" yeni müşteri isteği düğmesini görmez.
+
+Süzgeç yalnız ekranı düzenler. Yetkiyi sunucu her istekte yine denetler.
+
 Canlı menüde uydurma sayı yoktur. Ajan listesi için sunucuda veri yoktur. Bu yüzden canlı menüde ajan bölümü gizlidir. Üst çubuktaki çalışma alanı adı da gizlidir.
 
 Örnek gruplar ve örnek ajanlar yalnız deneme sayfasında görünür. Deneme sayfası `/_demo/shell` adresidir. Bu sayfa yalnız e2e derlemesinde vardır. Flyout, kayan zemin ve bağlantı odağı testleri bu sayfada koşar.

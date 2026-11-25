@@ -6,6 +6,7 @@ import { useLocation } from 'react-router-dom';
 
 import { isDemoEnabled, isDemoPath } from '@/app/demo-mode';
 
+import { type ShellAccess, ShellAccessContext } from '../access';
 import { FocusDimProvider } from '../focus-dim';
 import { isDarkColor } from '../focus-dim/isDarkColor';
 import { t } from '../messages';
@@ -89,6 +90,7 @@ const DEMO_ENABLED = isDemoEnabled(import.meta.env.MODE);
  * Ajan listesi için sunucuda veri yoktur; canlı menüde ajan bölümü gizlidir.
  */
 function useShellNav(): {
+  access: ShellAccess;
   nav: NavEntry[];
   agents: typeof sampleAgents;
   quickActions: QuickAction[];
@@ -101,6 +103,9 @@ function useShellNav(): {
   // Sunucunun okumaya izin verdiği DocType adları (G-94). Yanıt gelene kadar küme boştur.
   // Boş kümede yetki isteyen sayfa menüde görünmez.
   const [probed, setProbed] = useState<ReadonlySet<string>>(() => new Set());
+  // Sayfa kapısı yanıtı bekler. Yanıtın hangi bağlantıdan geldiği saklanır.
+  // Bağlantı ya da yetki ucu yoksa kapı beklemez ve boş kümeyle karar verir.
+  const [probedFrom, setProbedFrom] = useState<unknown>(null);
   useEffect(() => {
     if (!navigation) return undefined;
     const ctrl = new AbortController();
@@ -109,10 +114,14 @@ function useShellNav(): {
     });
     navigation.loadReadable?.(requiredDocTypes, ctrl.signal).then(
       (readable) => {
-        if (!ctrl.signal.aborted) setProbed(readable);
+        if (ctrl.signal.aborted) return;
+        setProbed(readable);
+        setProbedFrom(navigation);
       },
       // Yetki bilgisi gelmezse küme boş kalır. Menü yetki isteyen sayfayı göstermez.
-      () => undefined,
+      () => {
+        if (!ctrl.signal.aborted) setProbedFrom(navigation);
+      },
     );
     return () => ctrl.abort();
   }, [navigation]);
@@ -136,7 +145,11 @@ function useShellNav(): {
     () => (demo ? samplePrompts : quickActionsFrom(permittedGroups)),
     [demo, permittedGroups],
   );
-  return { nav, agents: demo ? sampleAgents : [], quickActions, demo };
+  const access = useMemo(
+    () => ({ ready: !navigation?.loadReadable || probedFrom === navigation, readable }),
+    [navigation, probedFrom, readable],
+  );
+  return { access, nav, agents: demo ? sampleAgents : [], quickActions, demo };
 }
 
 /** Deneme sayfasının örnek çalışma alanları. Canlı panelde kullanılmaz. */
@@ -189,7 +202,7 @@ export function AppShell({ children }: AppShellProps) {
   const mainRef = useRef<HTMLElement>(null);
   const topRef = useRef<HTMLElement>(null);
   const vars = useThemeVars();
-  const { nav, agents, quickActions, demo } = useShellNav();
+  const { access, nav, agents, quickActions, demo } = useShellNav();
   const liveWorkspaces = useViewData()?.workspaces;
   const workspaces = demo ? DEMO_WORKSPACES : liveWorkspaces;
   const credit = useShellCredit(demo);
@@ -308,7 +321,7 @@ export function AppShell({ children }: AppShellProps) {
           />
         </aside>
         <main ref={mainRef} className="shell-main" id="main">
-          {children}
+          <ShellAccessContext.Provider value={access}>{children}</ShellAccessContext.Provider>
         </main>
       </div>
     </FocusDimProvider>

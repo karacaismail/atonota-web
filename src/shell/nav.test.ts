@@ -100,10 +100,10 @@ describe('kabuk menüsü (Ö2)', () => {
       navFromSidebars([
         { id: 's', label: 'Satış', module: 'selling', links: [{ label: 'T', doctype: 'T' }] },
       ]),
-      new Set(['T', ...requiredDocTypes]),
+      new Set(['T', ...moduleRegistrations.flatMap((m) => m.requires ?? [])]),
     );
     expect(nav.at(-1)?.label).toBe('Satış');
-    expect(nav.slice(0, routeNav.length)).toEqual(routeNav);
+    expect(nav.slice(0, -1).every((e) => routeNav.includes(e))).toBe(true);
   });
 });
 

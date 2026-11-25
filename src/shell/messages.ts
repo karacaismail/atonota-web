@@ -101,6 +101,8 @@ export const t = {
       'Sorunuz alındı. Asistan yanıtı bu sürümde yok. Yanıt yüzeyi sonraki işte gelecek.',
     sample: 'Bu sayfadaki veriler örnektir.',
     homeEmpty: 'Panel özeti henüz yok. Menüden bir sayfa açın.',
+    checkingAccess: 'Sayfa yetkiniz denetleniyor.',
+    denied: 'Bu sayfayı açma yetkiniz yok. Yetki için yöneticinize başvurun.',
     noModuleEnvironment:
       'Modül bağlantısı kurulmadı. Uygulama girişi kabuğa modül ortamını vermeli.',
     noDataSource: 'Veri kaynağı bağlı değil. Uygulama girişi kabuğa veri bağlantısı vermeli.',

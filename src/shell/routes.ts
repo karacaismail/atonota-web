@@ -33,6 +33,7 @@ import {
   Sparkle,
   SquaresFour,
   UserCircle,
+  UsersThree,
 } from '@phosphor-icons/react';
 import type { ComponentType } from 'react';
 import { createElement, lazy } from 'react';
@@ -72,12 +73,15 @@ export const aiStudioRoute: RouteEntry = {
  * Sayfa ve `ModuleBoundary` yalnız yükleyici çağrılınca istenir.
  * Sayfa `ModuleProvider` içinde açılır.
  */
-export function modulePage(load: ModuleRegistration['load']): RouteEntry['load'] {
+export function modulePage(load: ModuleRegistration['load'], path?: string): RouteEntry['load'] {
   return () =>
     Promise.all([load(), import('./pages/ModuleBoundary')]).then(([page, boundary]) => {
       const Page = page.default;
       const { ModuleBoundary } = boundary;
-      return { default: () => createElement(ModuleBoundary, { page: Page }) };
+      // Yol, sayfa kapısının kuralını seçer (G-94, G-169). Bkz. `moduleAllowed`.
+      return {
+        default: () => createElement(ModuleBoundary, { page: Page, ...(path ? { path } : {}) }),
+      };
     });
 }
 
@@ -89,6 +93,7 @@ const moduleIcons: Record<string, Icon> = {
   hr: CalendarCheck,
   'site-plan': Buildings,
   'ai-operations': Robot,
+  customers: UsersThree,
 };
 
 /** `modules` işinin kayıtları (`src/modules/registry.ts`). Kabuk yalnız biçimi çevirir. */
@@ -96,7 +101,7 @@ export const moduleRoutes: RouteEntry[] = moduleRegistrations.map((m) => ({
   path: m.path,
   label: m.label.tr,
   icon: moduleIcons[m.id] ?? SquaresFour,
-  load: modulePage(m.load),
+  load: modulePage(m.load, m.path),
 }));
 
 /**

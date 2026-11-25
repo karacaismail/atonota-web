@@ -69,3 +69,10 @@ export type {
   AiConnectionListing,
   ProviderClient,
 } from './provider-client';
+// Bayi istemcisinin tipleri. Kod ayrı parçadadır: `reseller-client.ts` yalnız "Müşteriler" sayfasında iner.
+export type {
+  CustomerRequest,
+  CustomerRequestInput,
+  CustomerStatus,
+  ResellerCustomer,
+} from './reseller-client';
