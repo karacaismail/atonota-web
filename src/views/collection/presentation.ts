@@ -23,9 +23,26 @@ export function dateValue(value: unknown): number | undefined {
     ? time
     : undefined;
 }
+/**
+ * Zengin metin alanının değeri HTML'dir. Liste hücresi yalnız düz metni gösterir.
+ * Ayrıştırıcı betik çalıştırmaz. Etiketler atılır, `&amp;` gibi kodlar harfe döner.
+ */
+const richTextTypes = new Set(['Text Editor', 'HTML Editor']);
+const skippedElements = 'script, style, template, noscript';
+function plainText(html: string): string {
+  if (typeof DOMParser === 'undefined')
+    return html
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const body = new DOMParser().parseFromString(html, 'text/html').body;
+  body.querySelectorAll(skippedElements).forEach((node) => node.remove());
+  return (body.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
 export function displayCell(row: CollectionRow, field: CollectionField): string {
   const value = row[field.fieldname];
   if (value === null || value === undefined) return 'Bilgi yok';
+  if (typeof value === 'string' && richTextTypes.has(field.fieldtype)) return plainText(value);
   if (!field.component || !renderers.has(field.component)) return String(value);
   if (field.fieldtype === 'Date') {
     const time = dateValue(value);

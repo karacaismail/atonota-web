@@ -43,6 +43,9 @@ import {
   sampleProposal,
   sampleTools,
 } from './fixtures';
+import { sampleCommunicationMeta, sampleCommunications } from './communication';
+
+const COMMUNICATION_DOCTYPE = sampleCommunicationMeta.schema.name;
 
 /** Sahte sunucunun durumu. Testler bu değerleri değiştirebilir. `resetMockState` ile sıfırlayın. */
 /**
@@ -610,6 +613,22 @@ function sampleModel(body: CompletionBody) {
 }
 
 export const handlers = [
+  // "İletişim" listesi (AJA-812, G-63). Genel şema ucundan önce gelir; o uç başka türü reddeder.
+  http.get('*/api/method/platform_core.api.meta.get_doctype', ({ request }) => {
+    if (new URL(request.url).searchParams.get('doctype') !== COMMUNICATION_DOCTYPE)
+      return undefined;
+    return guard(request, { write: false }) ?? message(sampleCommunicationMeta);
+  }),
+  http.get('*/api/v2/document/:doctype', ({ request, params }) => {
+    if (String(params.doctype) !== COMMUNICATION_DOCTYPE) return undefined;
+    if (!mockState.signedIn) {
+      return HttpResponse.json({ errors: [{ type: 'SessionExpired' }] }, { status: 401 });
+    }
+    return (
+      listRows(sampleCommunications, new URL(request.url)) ??
+      HttpResponse.json({ errors: [{ type: 'ValidationError' }] }, { status: 417 })
+    );
+  }),
   http.get('*/api/method/frappe.auth.get_logged_user', () =>
     mockState.signedIn
       ? message(SAMPLE_USER)

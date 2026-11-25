@@ -29,6 +29,21 @@ export function isNumeric(field: CollectionField) {
   return numericTypes.has(field.fieldtype);
 }
 
+/**
+ * Seçim alanının seçeneklerini okur. Boş değerli seçenek alınmaz.
+ * Frappe'de boş seçenek "değer yok" demektir. Süzgeç zaten "Tümü" seçeneğini kendisi ekler.
+ * Biçimi bozuk seçenek atlanır. Tek bir bozuk seçenek bütün listeyi kapatmaz.
+ * Etiketi boş olan seçenek değerini etiket olarak kullanır.
+ */
+function readChoices(items: unknown[]): CollectionField['choices'] {
+  return items.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const { value, label } = item as Record<string, unknown>;
+    if (typeof value !== 'string' || !value.trim()) return [];
+    return [{ value, label: typeof label === 'string' && label.trim() ? label : value }];
+  });
+}
+
 /** Local projection of platform_core-shell Meta. No scripts or executable rules are accepted. */
 export function createDefinition(input: unknown, roles: ViewRoles = {}): CollectionDefinition {
   const meta = object(input);
@@ -70,12 +85,7 @@ export function createDefinition(input: unknown, roles: ViewRoles = {}): Collect
       throw new CollectionError('error', 'Alan adı yineleniyor.');
     }
     seen.add(name);
-    const choices = Array.isArray(field['choices'])
-      ? field['choices'].map((item) => {
-          const choice = object(item);
-          return { value: text(choice['value']), label: text(choice['label']) };
-        })
-      : [];
+    const choices = Array.isArray(field['choices']) ? readChoices(field['choices']) : [];
     columns.push({
       sensitivity: sensitivity(field['sensitivity']),
       fieldname: name,
