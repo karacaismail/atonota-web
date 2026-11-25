@@ -541,6 +541,34 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/platform_core.api.identity.get_user_role_profiles': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Returns the role profiles and the roles of a user of this tenant (G-98).
+     * @description The two lists are on level 1 of the User document. The “Tenant Admin” role has no level 1 right on User.
+     *     Level 1 also holds `api_key`, `restrict_ip` and `login_after`. This endpoint gives only the two lists.
+     *     No other field of the user is given.
+     *
+     *     Only the “System Manager” and “Tenant Admin” roles call this endpoint.
+     *     A user of the tenant is a Website User with an identity link to the site's issuer.
+     *     Any other user gets 403: a user of another tenant, a desk user, the Administrator or a missing user.
+     *     The answer does not tell whether the person exists.
+     *     The endpoint changes no record. An unknown query field gets 400.
+     */
+    get: operations['getUserRoleProfiles'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/platform_core.api.identity.invite_user': {
     parameters: {
       query?: never;
@@ -2599,6 +2627,49 @@ export interface operations {
       429: components['responses']['IstekSiniri'];
       500: components['responses']['IdentityLockRetryExhausted'];
       503: components['responses']['AnahtarListesiYok'];
+    };
+  };
+  getUserRoleProfiles: {
+    parameters: {
+      query: {
+        /** @description The user's name (the e-mail address). */
+        user: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The profiles and the roles of the user, sorted by name. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            message: {
+              role_profiles: string[];
+              roles: string[];
+              user: string;
+            };
+          };
+        };
+      };
+      /** @description An unknown query field. `exc_type` is `InvalidInput`. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The caller has neither of the two manager roles, or the user is not a user of this tenant. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
     };
   };
   inviteUser: {
