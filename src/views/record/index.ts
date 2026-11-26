@@ -61,6 +61,7 @@ export type {
   LinkOption,
   LinkSearchParams,
   RecordConflictInfo,
+  RecordAssistRequest,
   RecordDataAdapter,
   RecordDocument,
   RecordErrorCode,

@@ -18,6 +18,8 @@ export interface FieldShellProps {
   error?: string | undefined;
   hideLabel?: boolean | undefined;
   children: (a11y: FieldControlA11yProps) => ReactNode;
+  /** Uzun metin alanının yardımcı düğmesi. Etiket kimliğini alır; düğme alan adıyla tanımlanır. */
+  assistAction?: ((labelId: string) => ReactNode) | undefined;
 }
 
 export function FieldShell(props: FieldShellProps) {
@@ -29,6 +31,7 @@ export function FieldShell(props: FieldShellProps) {
     error,
     hideLabel = false,
     children,
+    assistAction,
   } = props;
   const reactId = useId();
   const controlId = `rv-fld-${field.fieldname}-${reactId}`;
@@ -86,7 +89,16 @@ export function FieldShell(props: FieldShellProps) {
           {error}
         </p>
       ) : null}
-      {field.description ? (
+      {assistAction ? (
+        <div className="rv-field-footer">
+          {field.description ? (
+            <p id={helpId} className="rv-field-help">
+              {field.description}
+            </p>
+          ) : null}
+          {assistAction(labelId)}
+        </div>
+      ) : field.description ? (
         <p id={helpId} className="rv-field-help">
           {field.description}
         </p>

@@ -64,6 +64,17 @@ export interface DocField {
   choices?: readonly SelectChoice[] | undefined;
 }
 
+/**
+ * Yardımcı paneli açma isteği. Form yalnız bu olayı verir. Alan değerini değiştirmez.
+ * Öneri kullanıcı onaylayınca ayrı bir değişiklik olarak alana yazılır.
+ */
+export interface RecordAssistRequest {
+  doctype: string;
+  fieldname: string;
+  label: string;
+  value: string;
+}
+
 export interface DocTypeSchema {
   name: string;
   module: string | null;

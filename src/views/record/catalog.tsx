@@ -1,5 +1,5 @@
-import { CalendarBlank, Clock, WarningCircle } from '@phosphor-icons/react';
-import { Checkbox, Input, InputNumber, Select } from 'antd';
+import { CalendarBlank, Clock, Sparkle, WarningCircle } from '@phosphor-icons/react';
+import { Button, Checkbox, Input, InputNumber, Select } from 'antd';
 import type { ReactNode } from 'react';
 
 import { CATALOG_VERSION, resolveCatalogEntry } from './catalogRegistry';
@@ -20,6 +20,7 @@ import {
 } from './fields/SpecializedFields';
 import { formatRecordMessage } from './messages';
 import type {
+  RecordAssistRequest,
   DocField,
   DocTypeMeta,
   RecordDataAdapter,
@@ -102,7 +103,18 @@ export interface CatalogFieldProps {
   compactCell?: boolean | undefined;
   onChange: (fieldname: string, nextValue: unknown) => void;
   onFieldAction?: ((field: DocField) => void) | undefined;
+  /** Verilirse uzun metin alanında tek bir "Yardımcıyla yaz" düğmesi görünür. */
+  onAssistField?: ((request: RecordAssistRequest) => void) | undefined;
 }
+
+/** Yardımcının açıldığı zor alanlar: serbest uzun metin. Kod ve JSON bu kapsamda değildir. */
+const ASSISTABLE_TYPES: ReadonlySet<string> = new Set([
+  'Small Text',
+  'Text',
+  'Long Text',
+  'Text Editor',
+  'Markdown',
+]);
 
 export function CatalogField(props: CatalogFieldProps): ReactNode {
   const {
@@ -125,6 +137,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
     compactCell = false,
     onChange,
     onFieldAction,
+    onAssistField,
   } = props;
 
   const state = evaluateFieldState(field, {
@@ -646,6 +659,35 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
     }
   };
 
+  const canAssist =
+    onAssistField !== undefined &&
+    !compactCell &&
+    !state.readOnly &&
+    ASSISTABLE_TYPES.has(entry.canonicalType);
+  const assistAction = canAssist
+    ? (labelId: string) => (
+        <Button
+          type="text"
+          size="small"
+          htmlType="button"
+          className="rv-field-assist"
+          icon={<Sparkle weight="regular" aria-hidden="true" />}
+          aria-describedby={labelId}
+          disabled={isSubmitting}
+          onClick={() =>
+            onAssistField({
+              doctype,
+              fieldname: field.fieldname,
+              label: field.label ?? field.fieldname,
+              value: typeof value === 'string' ? value : '',
+            })
+          }
+        >
+          {formatRecordMessage(locale, 'assistFieldAction')}
+        </Button>
+      )
+    : undefined;
+
   return (
     <FieldShell
       field={field}
@@ -654,6 +696,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
       isDirty={isDirty}
       error={error}
       hideLabel={compactCell}
+      assistAction={assistAction}
     >
       {renderControl}
     </FieldShell>
