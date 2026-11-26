@@ -553,6 +553,12 @@ test('select is the branded antd select and works with keyboard, pointer and tou
   await expect(popup).toBeVisible();
   const active = popup.locator('.ant-select-item-option-active');
   await expect(active).toHaveText('Açık');
+  // rc-select 14 marks the selected option active again in a setTimeout after the list opens
+  // (OptionList "Auto scroll to item position"). A key pressed before that timer is undone, so
+  // the test waits one frame and one task for it (AJA-1086).
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0))),
+  );
   await page.keyboard.press('ArrowDown');
   await expect(active).toHaveText('Kapalı');
   await page.keyboard.press('Enter');
