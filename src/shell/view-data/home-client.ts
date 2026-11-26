@@ -1,5 +1,5 @@
 import type { ApiClient } from '@/api';
-import { ApiError, userMessage } from '@/api/errors';
+import { ApiError, userMessage } from '@/api';
 
 import type { ShellHomeData } from './home-data';
 import { HomeDataError } from './home-data';

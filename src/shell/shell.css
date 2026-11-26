@@ -54,8 +54,6 @@
   --shell-form-max: 560px;
   /* Ana sayfa: özet sayı kutusunun en dar hâli (taslak: 10rem). */
   --shell-home-kpi-min: 160px;
-  /* Dokunmalı işaretçide düğmenin dokunma alanı (AJA-984 kuralı: telefonda en az 48 px). */
-  --shell-hit-coarse: 48px;
 
   /* Hareket. Süre ve eğriler merkezi tokenlardır (src/design/motion.ts). Değerler kaynak örnek
      sayfanın `.glide`, iskelet ve dönme kurallarından gelir. Solma eğrisi genel S eğrisidir;
@@ -1599,11 +1597,11 @@ html:has(.shell[data-layout='compact']) {
   }
 }
 
-/* Dokunmalı işaretçi: düğmenin dokunma alanı en az 48 px olur. */
+/* Dokunmalı işaretçi: düğmenin dokunma alanı merkezi tokendır (`--hit-target`, 48 px). */
 @media (any-pointer: coarse) {
   .shell-home .ant-btn {
-    min-width: var(--shell-hit-coarse);
-    min-height: var(--shell-hit-coarse);
+    min-width: var(--hit-target);
+    min-height: var(--hit-target);
   }
 }
 

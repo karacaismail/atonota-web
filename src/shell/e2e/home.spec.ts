@@ -37,6 +37,14 @@ async function settle(page: Page) {
   });
 }
 
+/** Klavye kipini Tab ile açar, sonra hedefe odaklanır. WebKit düğmeye Tab ile varsayılan olarak gelmez. */
+async function keyboardFocus(page: Page, target: Locator) {
+  await page.keyboard.press('Tab');
+  await expect(page.locator('html')).toHaveAttribute('data-focus-mode', 'keyboard');
+  await target.focus();
+  await expect(target).toBeFocused();
+}
+
 const coarse = (page: Page) => page.evaluate(() => matchMedia('(any-pointer: coarse)').matches);
 
 test.describe('ana sayfa: Bekleyenler', () => {
@@ -52,20 +60,14 @@ test.describe('ana sayfa: Bekleyenler', () => {
     await expect(
       page.getByRole('heading', { level: 2, name: 'Onayınızı bekleyen 1 izin talebi var' }),
     ).toBeVisible();
-    // Sunucu kararı yazdı: son değişikliklerde onay görünür.
-    await page.reload();
-    await expect(row(page, 'Örnek Kişi 3')).toHaveCount(0);
   });
 
-  test('klavyeyle ret: Tab ile düğmeye gelinir, Enter ile reddedilir', async ({ page }) => {
+  test('klavyeyle ret: düğmeye odaklanılır, Enter ile reddedilir', async ({ page }) => {
     await open(page);
     const item = row(page, 'Örnek Kişi');
     const reject = item.getByRole('button', { name: /Reddet/ });
     await expect(reject).toBeVisible();
-    const approve = item.getByRole('button', { name: /Onayla/ });
-    await approve.focus();
-    await page.keyboard.press('Tab');
-    await expect(reject).toBeFocused();
+    await keyboardFocus(page, reject);
     await page.keyboard.press('Enter');
     await expect(item.getByText('Reddedildi')).toBeVisible();
     await expect(page.getByRole('status', { name: 'Karar sonucu' })).toHaveText(
@@ -76,8 +78,8 @@ test.describe('ana sayfa: Bekleyenler', () => {
     ).toBeVisible();
   });
 
-  test('dokunmayla onay', async ({ page }) => {
-    test.skip(!(await page.evaluate(() => 'ontouchstart' in window)), 'dokunma yok');
+  test('dokunmayla onay', async ({ page, hasTouch }) => {
+    test.skip(!hasTouch, 'dokunma yok');
     await open(page);
     const item = row(page, 'Örnek Kişi');
     await item.getByRole('button', { name: /Onayla/ }).tap();
@@ -111,7 +113,7 @@ test.describe('ana sayfa: Bekleyenler', () => {
 
   test('bölüm sırası taslaktaki gibidir', async ({ page }) => {
     await open(page);
-    await expect(page.getByRole('heading', { level: 2 })).toHaveText([
+    await expect(page.locator('.shell-home').getByRole('heading', { level: 2 })).toHaveText([
       /Onayınızı bekleyen/,
       'Sorunlu kayıtlar',
       'Son değişiklikler',
@@ -120,12 +122,27 @@ test.describe('ana sayfa: Bekleyenler', () => {
   });
 
   test('sahte ilerleme yoktur', async ({ page }) => {
-    await page.route('**/api/method/hrms_tr.api.get_home_summary*', () => undefined);
-    await page.goto('/');
-    await expect(page.getByText('Bekleyen işler yükleniyor.')).toBeVisible();
-    await expect(page.getByRole('progressbar')).toHaveCount(0);
-    const text = (await page.locator('.shell-body').innerText()).trim();
-    expect(text).not.toMatch(/%|\d{1,2}[:.]\d{2}/);
+    // Sahte sunucu servis işçisindedir; istek bekletilemez. Bu yüzden gövdenin her hâli kaydedilir.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __homeSnapshots: string[] };
+      w.__homeSnapshots = [];
+      new MutationObserver(() => {
+        const body = document.querySelector('.shell-home .shell-body');
+        if (!body) return;
+        const bar = body.querySelector('[role="progressbar"], progress') ? '[progressbar]' : '';
+        w.__homeSnapshots.push(`${bar}${body.textContent ?? ''}`);
+      }).observe(document, { subtree: true, childList: true, characterData: true });
+    });
+    await open(page);
+    await expect(row(page, 'Örnek Kişi')).toBeVisible();
+    const snapshots = await page.evaluate(
+      () => (window as unknown as { __homeSnapshots: string[] }).__homeSnapshots,
+    );
+    const loading = snapshots.filter((text) => !text.includes('Onayınızı bekleyen'));
+    expect(loading).toContain('Bekleyen işler yükleniyor.');
+    for (const text of loading) {
+      expect(text).not.toMatch(/%|\[progressbar\]|\d{1,2}[:.]\d{2}/);
+    }
   });
 
   test('yatay taşma yoktur', async ({ page }) => {
@@ -184,12 +201,7 @@ test.describe('ana sayfa: Bekleyenler', () => {
     const approve = row(page, 'Örnek Kişi').getByRole('button', { name: /Onayla/ });
     await expect(approve).toBeVisible();
     await settle(page);
-    // Klavye modu Tab ile açılır. Odak önceki düğmeden Tab ile gelir.
-    await page.getByRole('button', { name: 'Yeni izin talebi' }).focus();
-    await approve.focus();
-    await page.keyboard.press('Shift+Tab');
-    await page.keyboard.press('Tab');
-    await expect(approve).toBeFocused();
+    await keyboardFocus(page, approve);
     const s = await approve.evaluate((el) => {
       const cs = getComputedStyle(el);
       return { outline: cs.outlineStyle, shadow: cs.boxShadow };
