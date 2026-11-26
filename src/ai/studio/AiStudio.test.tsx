@@ -188,7 +188,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
     );
     await send('merhaba');
     await screen.findByText('Kısa yanıt.');
-    expect(screen.queryByText(/Araç işlemleri/)).toBeNull();
+    expect(screen.queryByText('Araç olayları')).toBeNull();
   });
 
   it('onay bloğu onay verilmeden mesaj göndermez, onayla yeni mesaj oluşur', async () => {
@@ -241,10 +241,10 @@ describe('AI Studio', { timeout: 30_000 }, () => {
     expect(screen.queryByRole('button', { name: 'Sohbetleri aç' })).toBeNull();
   });
 
-  it('araç olaylarını "Araç işlemleri" adıyla gösterir, düşünce demez', async () => {
+  it('araç olaylarını "Araç olayları" yüzeyinde gösterir, düşünce demez', async () => {
     render(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
     await send('Bu haftanın satış özetini çıkar');
-    await screen.findByText(/^Araç işlemleri/);
+    await within(screen.getByRole('log')).findByText('Araç olayları');
     expect(screen.queryByText(/Düşünce/)).toBeNull();
     expect(screen.getByText('Örnek adımlar. Gerçek araç çalışmadı.')).toBeInTheDocument();
   });

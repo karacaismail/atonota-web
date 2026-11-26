@@ -48,6 +48,32 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/method/hrms_tr.api.get_home_summary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read the four parts of the home page for the signed-in user.
+     * @description Every part counts and lists only the records the signed-in user can read.
+     *     Lists hold at most 50 items. The counts count every matching record.
+     *     An overlap is two open or approved applications of one team that share at least one day.
+     *     The team is the department of the leave application.
+     *     An application without a department is never an overlap.
+     *     Only applications that end today or later count.
+     *     Two applications of the same employee also count.
+     */
+    get: operations['getHomeSummary'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/method/hrms_tr.api.get_leave_approver': {
     parameters: {
       query?: never;
@@ -62,6 +88,56 @@ export interface paths {
     get: operations['getLeaveApprover'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/method/hrms_tr.api.get_leave_request_context': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read the signed-in employee's defaults for a new leave application.
+     * @description Returns only the active Employee linked to the authenticated session user.
+     *     Employee and user selectors are unsupported and ignored by Frappe, including for administrators.
+     *     Missing employee, display name, leave type, allocation, or balance data is null.
+     *     Each available value has its source DocType in sources. Missing values have null sources.
+     *     HRMS calculates the balance for today's site date, through that date only.
+     *     Existing legacy balance routes remain blocked. This route does not create or change records.
+     *     POST and other non-GET methods are rejected with Frappe's 403 PermissionError.
+     */
+    get: operations['getLeaveRequestContext'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/method/hrms_tr.api.reject_leave': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reject and submit an open leave application.
+     * @description Follows the same rules as approval. The caller needs an approver role and the read, write
+     *     and submit permissions of the application. Nobody rejects their own application.
+     *     The endpoint locks the application and compares the version before it changes anything.
+     *     HRMS submits a rejected application with the status Rejected.
+     *     Send the modified value from the application response in the version field.
+     */
+    post: operations['rejectLeaveApplication'];
     delete?: never;
     options?: never;
     head?: never;
@@ -239,6 +315,65 @@ export interface components {
         type: string;
       }[];
     };
+    HomeCounts: {
+      /** @description People with an approved application that covers today. */
+      on_leave_today: number;
+      /** @description Applications created in the current calendar month. */
+      opened_this_month: number;
+      /** @description Open drafts that wait for the signed-in user. */
+      pending_approvals: number;
+      /** @description All problem records */
+      problems: number;
+    };
+    /** @description A record that needs a fix. */
+    HomeProblem:
+      | {
+          /** @description Department that both applications belong to. */
+          department: string;
+          /**
+           * @description Kind of the problem.
+           * @constant
+           */
+          kind: 'overlap';
+          /** @description The two applications that share days. The earlier one comes first. */
+          leaves: {
+            /** @description Employee display name. */
+            employee_name: string | null;
+            /**
+             * Format: date
+             * @description First leave day.
+             */
+            from_date: string;
+            /** @description Leave application record name. */
+            name: string;
+            /**
+             * Format: date
+             * @description Last leave day.
+             */
+            to_date: string;
+          }[];
+        }
+      | {
+          /** @description Employee record name. */
+          employee: string;
+          /** @description Employee display name. */
+          employee_name: string | null;
+          /**
+           * @description Kind of the problem.
+           * @constant
+           */
+          kind: 'missing_joining_date';
+        };
+    HomeSummary: {
+      /** @description Summary numbers. */
+      counts: components['schemas']['HomeCounts'];
+      /** @description Open draft applications whose approver is the signed-in user. Ordered by the first leave day. */
+      pending_approvals: components['schemas']['PendingApproval'][];
+      /** @description Records that need a fix. Overlaps come first, then employee records. */
+      problems: components['schemas']['HomeProblem'][];
+      /** @description The five readable leave applications that changed last. The newest comes first. */
+      recent_changes: components['schemas']['RecentChange'][];
+    };
     /** @description A full leave application record always includes its name. */
     LeaveApplication: WithRequired<components['schemas']['LeaveApplicationFields'], 'name'>;
     /**
@@ -318,6 +453,81 @@ export interface components {
       data: components['schemas']['LeaveApplication'];
     };
     LeaveName: {
+      /** @description Leave application record name. */
+      name: string;
+    };
+    LeaveRequestContextResponse: {
+      /** @description Available defaults for the signed-in employee. */
+      message: {
+        /** @description Active Employee record name linked to the session user, or null. */
+        employee: string | null;
+        /** @description Display name from that Employee record, or null. */
+        employee_name: string | null;
+        /** @description Remaining days from HRMS for today's site date, or null without balance data. */
+        leave_balance: number | null;
+        /** @description Explicit Leave Type or the single type allocated today. Null when employee or type is missing, or omitted type has no unique allocation. */
+        leave_type: string | null;
+        /** @description Source DocType for each available value. Null means the value is missing. */
+        sources: {
+          /**
+           * @description Employee record, or null when employee is missing.
+           * @enum {string|null}
+           */
+          employee: 'Employee' | null;
+          /**
+           * @description Employee record, or null when its display name is missing.
+           * @enum {string|null}
+           */
+          employee_name: 'Employee' | null;
+          /**
+           * @description Leave ledger records evaluated by HRMS, or null without balance data.
+           * @enum {string|null}
+           */
+          leave_balance: 'Leave Ledger Entry' | null;
+          /**
+           * @description Leave Type for an explicit name, Leave Allocation for the single allocated type, or null when no type was resolved.
+           * @enum {string|null}
+           */
+          leave_type: 'Leave Type' | 'Leave Allocation' | null;
+        };
+      };
+    };
+    PendingApproval: {
+      /** @description Employee display name. */
+      employee_name: string | null;
+      /**
+       * Format: date
+       * @description First requested leave day.
+       */
+      from_date: string | null;
+      /** @description Leave balance before this application. Null when the user cannot read the field. */
+      leave_balance: number | null;
+      /** @description Leave category linked to the request. */
+      leave_type: string | null;
+      /** @description Leave application record name. */
+      name: string;
+      /**
+       * Format: date
+       * @description Last requested leave day.
+       */
+      to_date: string | null;
+      /** @description Leave days calculated by HRMS. */
+      total_leave_days: number | null;
+      /** @description The modified value. Send it unchanged to approve_leave or reject_leave. */
+      version: string;
+    };
+    RecentChange: {
+      /**
+       * @description What the last change did. The client shows its own text for each value.
+       * @enum {string}
+       */
+      action: 'created' | 'updated' | 'approved' | 'rejected' | 'cancelled';
+      /** @description Full name of the user who made the last change. */
+      actor: string;
+      /** @description Time of the last change in the site time zone without a UTC offset. */
+      at: string;
+      /** @description Employee display name of the application. */
+      employee_name: string | null;
       /** @description Leave application record name. */
       name: string;
     };
@@ -570,6 +780,90 @@ export interface operations {
       429: components['responses']['RateLimitExceeded'];
     };
   };
+  getHomeSummary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Home page summary. An empty part is an empty list or a zero count. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "message": {
+           *         "pending_approvals": [
+           *           {
+           *             "name": "HR-LAP-TEST-01",
+           *             "version": "2026-11-22 09:00:00.000001",
+           *             "employee_name": "Synthetic Employee 3",
+           *             "leave_type": "Synthetic Annual Leave",
+           *             "from_date": "2026-12-08",
+           *             "to_date": "2026-12-12",
+           *             "total_leave_days": 5,
+           *             "leave_balance": 11
+           *           }
+           *         ],
+           *         "problems": [
+           *           {
+           *             "kind": "missing_joining_date",
+           *             "employee": "HR-EMP-TEST-08",
+           *             "employee_name": "Synthetic Employee 8"
+           *           },
+           *           {
+           *             "kind": "overlap",
+           *             "department": "Synthetic Team A - HRT",
+           *             "leaves": [
+           *               {
+           *                 "name": "HR-LAP-TEST-38",
+           *                 "employee_name": "Synthetic Employee 4",
+           *                 "from_date": "2026-12-14",
+           *                 "to_date": "2026-12-15"
+           *               },
+           *               {
+           *                 "name": "HR-LAP-TEST-39",
+           *                 "employee_name": "Synthetic Employee 6",
+           *                 "from_date": "2026-12-15",
+           *                 "to_date": "2026-12-16"
+           *               }
+           *             ]
+           *           }
+           *         ],
+           *         "recent_changes": [
+           *           {
+           *             "name": "HR-LAP-TEST-40",
+           *             "employee_name": "Synthetic Employee 2",
+           *             "actor": "Synthetic Employee 2",
+           *             "action": "created",
+           *             "at": "2026-11-26 09:40:00.000001"
+           *           }
+           *         ],
+           *         "counts": {
+           *           "pending_approvals": 1,
+           *           "on_leave_today": 3,
+           *           "opened_this_month": 14,
+           *           "problems": 2
+           *         }
+           *       }
+           *     }
+           */
+          'application/json': {
+            /** @description Summary of the signed-in user. */
+            message: components['schemas']['HomeSummary'];
+          };
+        };
+      };
+      401: components['responses']['AuthenticationFailed'];
+      403: components['responses']['PermissionDenied'];
+      429: components['responses']['RateLimitExceeded'];
+    };
+  };
   getLeaveApprover: {
     parameters: {
       query: {
@@ -623,6 +917,132 @@ export interface operations {
           'application/json': components['schemas']['FrappeError'];
         };
       };
+    };
+  };
+  getLeaveRequestContext: {
+    parameters: {
+      query?: {
+        /**
+         * @description Exact Leave Type record name. An explicit name is resolved from Leave Type.
+         *     If omitted, use the signed-in employee's submitted Leave Allocation records valid today.
+         *     Select the type only when those allocations contain exactly one distinct leave type.
+         *     The source is Leave Allocation. No allocation or multiple types yields null type and balance.
+         *     No translated-name matching or alternate leave type is inferred.
+         * @example Annual Leave
+         */
+        leave_type?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Available defaults and their sources. A missing allocation is null, not zero. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "message": {
+           *         "employee": "HR-EMP-TEST-01",
+           *         "employee_name": "Örnek Kişi 1",
+           *         "leave_type": "Annual Leave",
+           *         "leave_balance": 8.5,
+           *         "sources": {
+           *           "employee": "Employee",
+           *           "employee_name": "Employee",
+           *           "leave_type": "Leave Allocation",
+           *           "leave_balance": "Leave Ledger Entry"
+           *         }
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['LeaveRequestContextResponse'];
+        };
+      };
+      401: components['responses']['AuthenticationFailed'];
+      403: components['responses']['PermissionDenied'];
+      /** @description Invalid leave_type input. Empty strings, objects, and names over 140 characters are rejected. */
+      417: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "exc_type": "FrappeTypeError"
+           *     }
+           */
+          'application/json': components['schemas']['FrappeError'];
+        };
+      };
+    };
+  };
+  rejectLeaveApplication: {
+    parameters: {
+      query?: never;
+      header?: {
+        /**
+         * @description Frappe requires this header for a write request if the session has a CSRF token.
+         * @example synthetic-csrf-token
+         */
+        'X-Frappe-CSRF-Token'?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "name": "HR-LAP-TEST-01",
+         *       "version": "2026-11-22 09:00:00.000001"
+         *     }
+         */
+        'application/json': components['schemas']['ApproveLeaveRequest'];
+      };
+    };
+    responses: {
+      /** @description Name of the rejected record. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "message": {
+           *         "name": "HR-LAP-TEST-01"
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApproveLeaveResponse'];
+        };
+      };
+      401: components['responses']['AuthenticationFailed'];
+      403: components['responses']['PermissionDenied'];
+      404: components['responses']['LeaveNotFound'];
+      /**
+       * @description The application version changed, input validation failed, the application is not an open draft,
+       *     or HRMS validation failed. A version conflict returns TimestampMismatchError.
+       */
+      417: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "exc_type": "TimestampMismatchError"
+           *     }
+           */
+          'application/json': components['schemas']['FrappeError'];
+        };
+      };
+      429: components['responses']['RateLimitExceeded'];
     };
   };
   denyLegacyLeaveQueryGet: {

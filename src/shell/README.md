@@ -237,10 +237,18 @@ Bu uç OpenAPI sözleşmesinde yoktur. API istemcisi OpenAPI sözleşmesinden ü
 - Bağlantı yoksa AI Studio "AI Studio bağlantısı kurulmadı" yazar. Sahte ajan çalışmaz.
 - Sahte taşıyıcı yalnız e2e derlemesinde açılır. Ekran kaynağı "Sahte sunucu" diye yazar.
 
-### Ana sayfa
+### Ana sayfa (Bekleyenler)
 
-- Arka uçta panel özeti ucu yoktur.
-- Canlı ana sayfa "Panel özeti henüz yok." yazar. Örnek ajan ve uydurma eşitleme saati gösterilmez.
+- Ana sayfanın adı "Bekleyenler" olur. Veri `get_home_summary` ucundan gelir.
+- Bölüm sırası şöyledir: bekleyen onaylar, sorunlu kayıtlar, son değişiklikler, özet sayılar.
+- Kullanıcı talebi bu ekranda onaylar ya da reddeder. Sonuç aynı satırda görünür.
+- Sonucu ekran okuyucu da duyurur. Duyuru alanının adı "Karar sonucu" olur.
+- Onay ya da ret hata verirse talep listede kalır. Hata satırda yazılır.
+- Yükleme sırasında yüzde, sahte çubuk ve uydurma saat gösterilmez.
+- Bağlantı `ShellHomeData` türündedir. `createShellModuleEnvironment` bağlantıyı da kurar.
+- Uygulama girişi isterse bağlantıyı `viewData.home` alanıyla da verebilir.
+- Bağlantı hiç yoksa sayfa bunu açıkça yazar. Örnek ajan gösterilmez.
+- Testler: `pages/HomePage.test.tsx`, `view-data/home-client.test.ts`, `e2e/home.spec.ts`.
 
 ## Yardımcı panel
 

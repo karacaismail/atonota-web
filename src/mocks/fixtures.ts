@@ -172,6 +172,7 @@ export const SAMPLE_DOCTYPE_ETAG = '"ornek-etag-1"';
 export function sampleProposal(overrides: Partial<Proposal> = {}): Proposal {
   return {
     proposal_id: 'ornek-oneri-1',
+    source_proposal: null,
     status: 'pending',
     result: '',
     tool: 'plt_create_document',
@@ -189,6 +190,10 @@ export function sampleProposal(overrides: Partial<Proposal> = {}): Proposal {
     created_at: '2026-11-23T11:50:00+00:00',
     result_document: null,
     error: null,
+    first_approved_at: null,
+    risk_level: 'R1',
+    second_approved_at: null,
+    second_approver: null,
     ...overrides,
   };
 }
@@ -264,6 +269,70 @@ export const sampleLeaves: LeaveApplication[] = [
     total_leave_days: 1,
   },
 ];
+
+/**
+ * "ana-sayfa-iki-bekleyen" senaryosunun ikinci açık başvurusu.
+ * Varsayılan listede yoktur. Böylece öteki testlerin satır sayısı değişmez.
+ */
+export const sampleSecondOpenLeave: LeaveApplication = {
+  name: 'ORNEK-IZIN-0003',
+  employee: 'ORNEK-CALISAN-03',
+  employee_name: 'Örnek Kişi 3',
+  leave_type: 'Örnek Yıllık İzin',
+  from_date: '2026-12-08',
+  to_date: '2026-12-12',
+  status: 'Open',
+  docstatus: 0,
+  modified: '2026-11-22 09:10:00.000001',
+  total_leave_days: 5,
+};
+
+type HomeProblem = HrmsComponents['schemas']['HomeProblem'];
+type RecentChange = HrmsComponents['schemas']['RecentChange'];
+
+/** Ana sayfanın sorunlu kayıtları. Çakışmalar önce, çalışan kayıtları sonra gelir. */
+export const sampleHomeProblems: HomeProblem[] = [
+  {
+    kind: 'overlap',
+    department: 'Örnek Ekip A',
+    leaves: [
+      {
+        name: 'ORNEK-IZIN-0038',
+        employee_name: 'Örnek Kişi 4',
+        from_date: '2026-12-14',
+        to_date: '2026-12-15',
+      },
+      {
+        name: 'ORNEK-IZIN-0039',
+        employee_name: 'Örnek Kişi 5',
+        from_date: '2026-12-15',
+        to_date: '2026-12-16',
+      },
+    ],
+  },
+  { kind: 'missing_joining_date', employee: 'ORNEK-CALISAN-08', employee_name: 'Örnek Kişi 8' },
+];
+
+/** Ana sayfanın son değişiklikleri. En yeni önce gelir. */
+export const sampleRecentChanges: RecentChange[] = [
+  {
+    name: 'ORNEK-IZIN-0002',
+    employee_name: 'Örnek Kişi 2',
+    actor: 'Örnek Kişi',
+    action: 'approved',
+    at: '2026-11-22 09:05:00.000001',
+  },
+  {
+    name: 'ORNEK-IZIN-0001',
+    employee_name: 'Örnek Kişi',
+    actor: 'Örnek Kişi',
+    action: 'created',
+    at: '2026-11-22 09:00:00.000001',
+  },
+];
+
+/** Ana sayfanın sabit sayıları. Bekleyen ve sorunlu sayısı sahte sunucuda hesaplanır. */
+export const sampleHomeCounts = { on_leave_today: 1, opened_this_month: 3 };
 
 export const sampleAccessSummary: AccessSummary = {
   doctype: 'Örnek Kayıt',

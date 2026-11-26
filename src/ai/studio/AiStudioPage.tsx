@@ -4,9 +4,10 @@ import { useMemo } from 'react';
 
 import { useViewData } from '@/shell/view-data';
 
-import { createMockTransport, MOCK_SOURCE } from '../agent';
+import { MOCK_SOURCE } from '../agent';
 import { AiStudio } from './AiStudio';
 import { NOT_CONNECTED } from './content';
+import { createFlowDemoTransport } from './flowDemo';
 
 /** Yalnız e2e derlemesinde: sahte taşıyıcı açılır. Üretim derlemesinde bu dal yoktur. */
 const E2E = import.meta.env.MODE === 'e2e';
@@ -42,7 +43,7 @@ export default function AiStudioPage() {
   const ai = useViewData()?.ai;
   const delayMs = e2eDelayMs();
   const mock = useMemo(
-    () => (E2E && !ai ? createMockTransport(delayMs > 0 ? { delayMs } : {}) : undefined),
+    () => (E2E && !ai ? createFlowDemoTransport(delayMs > 0 ? { delayMs } : {}) : undefined),
     [ai, delayMs],
   );
   return (

@@ -301,6 +301,114 @@ export const isLeaveList: Guard<LeaveApplication[]> = (value): value is LeaveApp
 export const isLeaveName: Guard<LeaveName> = (value): value is LeaveName =>
   isRecord(value) && isString(value.name) && value.name.length > 0;
 
+// Ana sayfa özeti (hrms_tr sözleşmesi, `get_home_summary`).
+export type HomeSummary = HrmsComponents['schemas']['HomeSummary'];
+export type PendingApproval = HrmsComponents['schemas']['PendingApproval'];
+export type HomeProblem = HrmsComponents['schemas']['HomeProblem'];
+export type RecentChange = HrmsComponents['schemas']['RecentChange'];
+export type HomeCounts = HrmsComponents['schemas']['HomeCounts'];
+
+const RECENT_ACTIONS = new Set(['created', 'updated', 'approved', 'rejected', 'cancelled']);
+const HOME_COUNT_KEYS = ['pending_approvals', 'on_leave_today', 'opened_this_month', 'problems'];
+
+function hasOnlyKeys(value: Record<string, unknown>, keys: string[]): boolean {
+  return Object.keys(value).every((key) => keys.includes(key));
+}
+
+function isListOf(value: unknown, max: number, check: (item: unknown) => boolean): boolean {
+  return Array.isArray(value) && value.length <= max && value.every(check);
+}
+
+function isCount(value: unknown): boolean {
+  return Number.isInteger(value) && (value as number) >= 0;
+}
+
+function isPendingApproval(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, [
+      'name',
+      'version',
+      'employee_name',
+      'leave_type',
+      'from_date',
+      'to_date',
+      'total_leave_days',
+      'leave_balance',
+    ]) &&
+    isString(value.name) &&
+    isString(value.version) &&
+    isNullableString(value.employee_name) &&
+    isNullableString(value.leave_type) &&
+    isNullableString(value.from_date) &&
+    isNullableString(value.to_date) &&
+    isNullableNumber(value.total_leave_days) &&
+    isNullableNumber(value.leave_balance)
+  );
+}
+
+function isOverlapLeave(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, ['name', 'employee_name', 'from_date', 'to_date']) &&
+    isString(value.name) &&
+    isNullableString(value.employee_name) &&
+    isString(value.from_date) &&
+    isString(value.to_date)
+  );
+}
+
+function isHomeProblem(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (value.kind === 'overlap') {
+    return (
+      hasOnlyKeys(value, ['kind', 'department', 'leaves']) &&
+      isString(value.department) &&
+      Array.isArray(value.leaves) &&
+      value.leaves.length === 2 &&
+      value.leaves.every(isOverlapLeave)
+    );
+  }
+  if (value.kind === 'missing_joining_date') {
+    return (
+      hasOnlyKeys(value, ['kind', 'employee', 'employee_name']) &&
+      isString(value.employee) &&
+      isNullableString(value.employee_name)
+    );
+  }
+  return false;
+}
+
+function isRecentChange(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, ['name', 'employee_name', 'actor', 'action', 'at']) &&
+    isString(value.name) &&
+    isNullableString(value.employee_name) &&
+    isString(value.actor) &&
+    isString(value.action) &&
+    RECENT_ACTIONS.has(value.action) &&
+    isString(value.at)
+  );
+}
+
+function isHomeCounts(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, HOME_COUNT_KEYS) &&
+    HOME_COUNT_KEYS.every((key) => isCount(value[key]))
+  );
+}
+
+/** Ana sayfa özetini denetler. Dört parçanın hepsi zorunludur. Liste sınırları sözleşmeden gelir. */
+export const isHomeSummary: Guard<HomeSummary> = (value): value is HomeSummary =>
+  isRecord(value) &&
+  hasOnlyKeys(value, ['pending_approvals', 'problems', 'recent_changes', 'counts']) &&
+  isListOf(value.pending_approvals, 50, isPendingApproval) &&
+  isListOf(value.problems, 50, isHomeProblem) &&
+  isListOf(value.recent_changes, 5, isRecentChange) &&
+  isHomeCounts(value.counts);
+
 // Erişim kuralı motoru (platform_core-access sözleşmesi).
 export type AccessScope = AccessComponents['schemas']['Scope'];
 export type PermissionExplanation = AccessComponents['schemas']['Explanation'];

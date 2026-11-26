@@ -43,11 +43,12 @@ test.describe('canlı panelde örnek veri yok', () => {
     await expect(page.getByText('Günün özeti')).toHaveCount(0);
   });
 
-  test('ana sayfa örnek ajan göstermez, durumu açıkça yazar', async ({ page }) => {
+  test('ana sayfa örnek ajan göstermez, bekleyen işleri sunucudan alır', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1, name: 'Ana sayfa' })).toBeVisible();
-    await expect(page.getByText('Panel özeti henüz yok. Menüden bir sayfa açın.')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Bekleyenler' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: /Onayınızı bekleyen/ })).toBeVisible();
     await expect(page.getByText('Bu sayfadaki veriler örnektir.')).toHaveCount(0);
+    await expect(page.getByText('Kayıt yok')).toHaveCount(0);
   });
 
   test('klavyeyle gezinince çalışma alanı Tab sırasına girmez', async ({ page }) => {

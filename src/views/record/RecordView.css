@@ -63,6 +63,7 @@
 
 .rv-root[data-theme='dark'] .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):active {
   background: var(--rv-btn-primary-dark-active-bg);
+  color: var(--rv-btn-primary-hover-fg);
 }
 
 .rv-root[data-rv-kbd='true'] :focus-visible,
@@ -217,7 +218,7 @@
 }
 
 .rv-sync-badge--dirty {
-  color: var(--rv-color-warning);
+  color: var(--rv-color-text);
 }
 
 .rv-dirty-dot {

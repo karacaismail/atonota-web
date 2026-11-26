@@ -1,3 +1,15 @@
+export {
+  AGENT_MODES,
+  approveFlow,
+  createFlow,
+  FLOW_STEPS,
+  MODE_LABELS,
+  parseFlowEvent,
+  receiveServerEvent,
+  setFlowMode,
+  STEP_LABELS,
+} from './flow';
+export type { AgentMode, FlowEvent, FlowState, FlowStep } from './flow';
 export { encodeAgentEvent, parseAgentEvent } from './events';
 export { createHttpTransport } from './httpTransport';
 export type { HttpTransportOptions } from './httpTransport';
