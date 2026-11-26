@@ -209,6 +209,8 @@ export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
     '--rv-btn-primary-dark-active-bg': accessiblePrimary.dark.backgroundActive,
     '--rv-pill-primary-fg': isDark ? primary.hover : hexToRgba(primary.light.text, 1),
     '--rv-pill-primary-bg': hexToRgba(primary.color, primary.dark.background),
+    // The active date segment uses the brand tint instead of WebKit's native focus ring.
+    '--rv-date-segment-bg': hexToRgba(primary.color, primary.dark.background),
     '--rv-pill-success-fg': resolved.colorSuccessText,
     '--rv-pill-success-bg': resolved.colorSuccessBg,
     '--rv-pill-warning-fg': isDark ? resolved.colorWarningText : hexToRgba(primary.light.text, 1),

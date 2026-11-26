@@ -275,6 +275,7 @@ export function HarnessApp() {
   });
   const [linkFailOnce, setLinkFailOnce] = useState(params.get('linkError') === '1');
   const [currentIndex, setCurrentIndex] = useState(3);
+  const [assistCalls, setAssistCalls] = useState(0);
 
   const adapter: RecordDataAdapter = {
     getDocTypeMeta: async () => (isLeave ? LEAVE_META : HARNESS_META),
@@ -318,7 +319,7 @@ export function HarnessApp() {
   };
 
   return (
-    <main>
+    <main data-assist-calls={assistCalls}>
       {isLeave ? (
         <RecordView
           doctype="Leave Application"
@@ -329,6 +330,9 @@ export function HarnessApp() {
           themeMode={themeMode}
           locale="tr"
           breadcrumbs={[]}
+          {...(params.get('assist') === '1'
+            ? { onAssistField: () => setAssistCalls((count) => count + 1) }
+            : {})}
         />
       ) : (
         <RecordView
