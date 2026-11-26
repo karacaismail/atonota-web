@@ -6,12 +6,14 @@
  */
 import type {
   ChartBar,
+  ConfirmTarget,
   FieldChange,
   FormField,
   FormOption,
   GenUIBlock,
   KnownBlock,
   KpiItem,
+  RiskLevel,
   TableCell,
   TableColumn,
 } from './types';
@@ -47,6 +49,20 @@ function num(value: unknown): value is number {
 
 function list<T>(value: unknown, max: number, check: (item: unknown) => item is T): value is T[] {
   return Array.isArray(value) && value.length > 0 && value.length <= max && value.every(check);
+}
+
+function isRisk(value: unknown): value is RiskLevel {
+  return value === 'R1' || value === 'R2' || value === 'R3';
+}
+
+function isTarget(value: unknown): value is ConfirmTarget {
+  return (
+    isObj(value) &&
+    str(value['label']) &&
+    str(value['name']) &&
+    // Boşluktan ibaret ad yazılarak onaylanamaz.
+    value['name'].trim().length > 0
+  );
 }
 
 function isKpi(value: unknown): value is KpiItem {
@@ -139,7 +155,12 @@ function validate(raw: Obj): KnownBlock | null {
         str(raw['cancelLabel']) &&
         (raw['danger'] === undefined || typeof raw['danger'] === 'boolean') &&
         (raw['expiresAt'] === undefined ||
-          (str(raw['expiresAt']) && Number.isFinite(Date.parse(raw['expiresAt']))))
+          (str(raw['expiresAt']) && Number.isFinite(Date.parse(raw['expiresAt'])))) &&
+        (raw['risk'] === undefined || isRisk(raw['risk'])) &&
+        (raw['target'] === undefined || isTarget(raw['target'])) &&
+        // R3 onayında kullanıcı hedefin adını yazar. Hedef yoksa onay çizilmez.
+        (raw['risk'] !== 'R3' || raw['target'] !== undefined) &&
+        (raw['undoProposal'] === undefined || typeof raw['undoProposal'] === 'boolean')
         ? (raw as unknown as KnownBlock)
         : null;
     case 'form':

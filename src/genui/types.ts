@@ -80,6 +80,29 @@ export interface ConfirmBlock {
    * Süre geçince blok "Süresi doldu" yazar ve onay düğmesi görünmez.
    */
   expiresAt?: string;
+  /**
+   * Risk düzeyi. Düzeyi sunucu atar, model değiştiremez.
+   * Düzey gelmezse kart R1 gibi davranır.
+   * - R1: tek "Onayla" düğmesi.
+   * - R2: "Önizlemeyi okudum." kutusu işaretlenince düğme açılır.
+   * - R3: kullanıcı `target.name` değerini elle yazınca düğme açılır.
+   */
+  risk?: RiskLevel;
+  /** Hedef kayıt. `label` kartta görünür. R3 düzeyinde `name` elle yazılır. R3 için zorunludur. */
+  target?: ConfirmTarget;
+  /**
+   * Sunucu geri alma önerisi ucunu bildirirse `true` olur.
+   * Yalnız o zaman onaydan sonra "Geri almayı öner" düğmesi görünür.
+   * Kartta hiçbir zaman "Geri al" düğmesi yoktur. Sunucuda geri alma yok.
+   */
+  undoProposal?: boolean;
+}
+
+export type RiskLevel = 'R1' | 'R2' | 'R3';
+
+export interface ConfirmTarget {
+  label: string;
+  name: string;
 }
 
 export interface FormOption {
