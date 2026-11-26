@@ -356,7 +356,7 @@ export interface components {
         employee_name: string | null;
         /** @description Remaining days from HRMS for today's site date, or null without balance data. */
         leave_balance: number | null;
-        /** @description Resolved Leave Type record name, or null when employee or type is missing. */
+        /** @description Explicit Leave Type or the single type allocated today. Null when employee or type is missing, or omitted type has no unique allocation. */
         leave_type: string | null;
         /** @description Source DocType for each available value. Null means the value is missing. */
         sources: {
@@ -376,10 +376,10 @@ export interface components {
            */
           leave_balance: 'Leave Ledger Entry' | null;
           /**
-           * @description Leave Type record, or null when no type was resolved.
+           * @description Leave Type for an explicit name, Leave Allocation for the single allocated type, or null when no type was resolved.
            * @enum {string|null}
            */
-          leave_type: 'Leave Type' | null;
+          leave_type: 'Leave Type' | 'Leave Allocation' | null;
         };
       };
     };
@@ -691,7 +691,10 @@ export interface operations {
     parameters: {
       query?: {
         /**
-         * @description Exact Leave Type record name. Omission selects Annual Leave only if that record exists.
+         * @description Exact Leave Type record name. An explicit name is resolved from Leave Type.
+         *     If omitted, use the signed-in employee's submitted Leave Allocation records valid today.
+         *     Select the type only when those allocations contain exactly one distinct leave type.
+         *     The source is Leave Allocation. No allocation or multiple types yields null type and balance.
          *     No translated-name matching or alternate leave type is inferred.
          * @example Annual Leave
          */
@@ -719,7 +722,7 @@ export interface operations {
            *         "sources": {
            *           "employee": "Employee",
            *           "employee_name": "Employee",
-           *           "leave_type": "Leave Type",
+           *           "leave_type": "Leave Allocation",
            *           "leave_balance": "Leave Ledger Entry"
            *         }
            *       }
