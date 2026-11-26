@@ -7,6 +7,12 @@ const nf = new Intl.NumberFormat('tr-TR');
 export const formatNumber = (n: number) => nf.format(n);
 
 export const t = {
+  assist: {
+    title: 'Asistan',
+    open: 'Asistan',
+    close: 'Asistanı kapat',
+    empty: 'Asistan bu sürümde yanıt vermez. Panelin içeriği sonraki işte gelecek.',
+  },
   nav: {
     label: 'Ana gezinme',
     sectionMain: 'Gezinme',
@@ -19,6 +25,13 @@ export const t = {
     toSolid: 'Geniş görünüme geç',
     submenuOf: (name: string) => `${name} alt menüsü`,
     aiAction: (name: string) => `${name} için AI'a sor`,
+  },
+  bottomBar: {
+    label: 'Alt menü',
+    pending: 'Bekleyenler',
+    search: 'Ara',
+    assistant: 'Asistan',
+    menu: 'Menü',
   },
   workspace: {
     label: (name: string) => `Çalışma alanı: ${name}`,

@@ -2,15 +2,24 @@
 
 Bu klasör uygulamanın kabuğudur. Kabukta sidebar, sayfa başlığı ve yönlendirme vardır. Kararlar `design/source/control-size-config.json` dosyasından gelir.
 
-## Telefon kararı: çekmece
+## Telefon kararı: alt çubuk ve çekmece
 
-Telefonda sidebar çekmeceye dönüşür. Alt gezinme kullanılmaz.
+Telefonda ekranın altında dört düğmeli bir çubuk vardır. Karar model belgesinin 6. bölümündedir (AJA-982b).
 
-Gerekçeler şunlardır:
+Düğmeler sırayla şunlardır:
 
-1. Sidebar yalnız bağlantı listesi değildir. İçinde komut alanı, AI ajanları, çalışma alanı seçici ve kredi kartı vardır. Alt gezinme en çok 4 ya da 5 bağlantı taşır. Bu parçalar oraya sığmaz.
-2. Kaynak kural S4 şöyle der: AI öğeleri gezinmeyle eşit ağırlıktadır. Alt gezinme AI öğelerini ikinci plana iterdi.
-3. Çekmece masaüstüyle aynı içeriği taşır. Kullanıcı iki ayrı düzen öğrenmez.
+1. "Bekleyenler": ana sayfayı açar.
+2. "Ara": menüyü açar. Komut alanı "Ara" kipine geçer ve odak komut alanına gider.
+3. "Asistan": asistan sayfasını açar.
+4. "Menü": menüyü açar.
+
+Menü kapanınca odak menüyü açan düğmeye döner. Menü Escape tuşuyla ve "Menüyü kapat" düğmesiyle kapanır.
+
+Sidebar telefonda çekmece olarak kalır. Çekmece masaüstüyle aynı içeriği taşır. İçinde komut alanı, iş grupları ve çalışma alanı seçici vardır. Kimlik şeridindeki "Menüyü aç" düğmesi de aynı çekmeceyi açar.
+
+Yatay telefonda alt çubuk sol kenara geçer. Kararı CSS verir: `(orientation: landscape) and (max-height: 499px)`. React ağacı değişmez. Bu yüzden yön değişince form verisi ve odak korunur. Sol çubuk kabuğun üst kenarından başlar. Kimlik şeridini ve kabuğun üstündeki notu örtmez.
+
+Sanal klavye açılınca alt çubuk gizlenir. Karar `useVirtualKeyboard.ts` dosyasındadır. Görünür alan (`visualViewport`) pencerenin %20'sinden fazla küçülürse klavye açık sayılır. Yakınlaştırma klavye sayılmaz. Cihaz adı ve user-agent kullanılmaz.
 
 Telefonda alt menü sağda açılmaz. Ekranda yer yoktur. Alt menü üst öğenin altında, çekmecenin içinde açılır. Açmak için üst öğeye dokunun. İkinci dokunuş alt menüyü kapatır. Klavye kuralları aynıdır.
 
@@ -232,6 +241,22 @@ Bu uç OpenAPI sözleşmesinde yoktur. API istemcisi OpenAPI sözleşmesinden ü
 
 - Arka uçta panel özeti ucu yoktur.
 - Canlı ana sayfa "Panel özeti henüz yok." yazar. Örnek ajan ve uydurma eşitleme saati gösterilmez.
+
+## Yardımcı panel
+
+Yardımcı panelin yeri kabuktadır. Panelin içeriği `ai-studio` işinindir. İçerik `AppShell` bileşenine `assistant` özelliğiyle verilir. İçerik yoksa kısa bir not görünür.
+
+- Kimlik şeridinde "Asistan" düğmesi vardır. Düğme paneli açar ve kapatır.
+- Panel tıklama, dokunma, Enter ve Space ile açılır. Fare üstüne gelince panel açılmaz.
+- Geniş ekranda panel sağdaki ızgara sütunudur. Genişliği `--shell-assist-w` tokenıdır. Sayfa içeriği daralır, örtülmez.
+- Telefon kabuğunda panel alttan tam boy açılan iletişim kutusudur. Geri kalan kabuk etkileşime kapanır.
+- Escape ve kapatma düğmesi paneli kapatır. Odak paneli açan düğmeye döner.
+- Başka bir düğme de paneli açabilir. Düğme `useAssistPanel()` kancasını kullanır. Örneğin `toggle(e.currentTarget)`. Panel kapanınca odak o düğmeye döner.
+- Reduced motion tercihinde panel hareketsiz açılır.
+
+## Odak perdesi yalnız iletişim kutusundadır
+
+Odak perdesini yalnız iletişim kutusu açar. Menü, alt menü paneli, çalışma alanı listesi, yardımcı panel ve sayfa perde açmaz. Telefon çekmecesi kendi arka zeminini kullanır.
 
 ## Geçici bağlantılar
 

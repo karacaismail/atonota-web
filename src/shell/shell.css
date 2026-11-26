@@ -54,6 +54,13 @@
   --shell-kb-col: 240px;
   --shell-stat-min: 200px;
   --shell-form-max: 560px;
+  /* Yatay telefonda sol çubuğun en küçük genişliği. Kaynak: onaylı taslak, `--rail-w`. */
+  --shell-bar-rail-w: 5.5rem;
+  /* Yardımcı panelin geniş ekran genişliği. Onaylı taslakta 26rem'dir. */
+  --shell-assist-w: 416px;
+  /* "Örnek veri" notunun görünen yüksekliği. Kabuk ölçer ve satır içi yazar. Not yoksa 0'dır. */
+  --shell-note-h: 0px;
+  --shell-zero: 0px;
 
   /* Hareket. Süre ve eğriler merkezi tokenlardır (src/design/motion.ts). Değerler kaynak örnek
      sayfanın `.glide`, iskelet ve dönme kurallarından gelir. Solma eğrisi genel S eğrisidir;
@@ -109,7 +116,16 @@
 
 /* ---------- Odak göstergesi: çevrelemeyen alt çizgi ---------- */
 /* Çizgi kutu kenarına değmez. Bu yüzden kavisli kenar oluşmaz. */
-.shell :is(.shell-item, .shell-ws, .shell-tg, .shell-iconbtn, .shell-fly-ai, .shell-kb-card) {
+.shell
+  :is(
+    .shell-item,
+    .shell-ws,
+    .shell-tg,
+    .shell-iconbtn,
+    .shell-fly-ai,
+    .shell-kb-card,
+    .shell-bar-item
+  ) {
   outline: none;
 }
 
@@ -118,7 +134,8 @@
 .shell-tg::after,
 .shell-iconbtn::after,
 .shell-fly-ai::after,
-.shell-kb-card::after {
+.shell-kb-card::after,
+.shell-bar-item::after {
   content: '';
   position: absolute;
   left: var(--shell-item-px);
@@ -135,8 +152,21 @@ html[data-focus-mode='keyboard'] .shell-ws:focus-visible::after,
 html[data-focus-mode='keyboard'] .shell-tg:focus-visible::after,
 html[data-focus-mode='keyboard'] .shell-iconbtn:focus-visible::after,
 html[data-focus-mode='keyboard'] .shell-fly-ai:focus-visible::after,
-html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible::after {
+html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible::after,
+html[data-focus-mode='keyboard'] .shell-bar-item:focus-visible::after {
   opacity: 1;
+}
+
+/* Alt çubuğun tek göstergesi alt çizgidir. Genel odak gölgesi ikinci gösterge olmaz. */
+html[data-focus-mode='keyboard'] .shell-bar-item:focus-visible {
+  box-shadow: none;
+}
+
+/* Panel düğmelerinin tek göstergesi ortak alt kenar çizgisidir (iç gölge).
+   Kabuğun ikinci alt çizgisi bu düğmelerde açılmaz. */
+html[data-focus-mode='keyboard']
+  :is(.shell-assist-btn, .shell-assist .shell-iconbtn):focus-visible::after {
+  opacity: 0;
 }
 
 @media (forced-colors: active) {
@@ -145,7 +175,8 @@ html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible::after {
   html[data-focus-mode='keyboard'] .shell-tg:focus-visible,
   html[data-focus-mode='keyboard'] .shell-iconbtn:focus-visible,
   html[data-focus-mode='keyboard'] .shell-fly-ai:focus-visible,
-  html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible {
+  html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible,
+  html[data-focus-mode='keyboard'] .shell-bar-item:focus-visible {
     outline: var(--shell-focus-line) solid CanvasText;
   }
   .shell-item::after,
@@ -153,7 +184,8 @@ html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible::after {
   .shell-tg::after,
   .shell-iconbtn::after,
   .shell-fly-ai::after,
-  .shell-kb-card::after {
+  .shell-kb-card::after,
+  .shell-bar-item::after {
     display: none;
   }
 }
@@ -198,6 +230,83 @@ html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible::after {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+}
+
+/* ---------- Yardımcı panel ---------- */
+/* Geniş ekranda panel sağdaki ızgara sütunudur. Sayfa içeriği daralır, örtülmez. */
+.shell[data-layout='wide'][data-assist='open'] {
+  grid-template-columns: auto minmax(0, 1fr) var(--shell-assist-w);
+}
+
+.shell-assist {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--shell-bg);
+}
+
+.shell-assist[hidden] {
+  display: none;
+}
+
+.shell[data-layout='wide'] .shell-assist {
+  height: 100%;
+  overflow: auto;
+}
+
+.shell-assist-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--shell-space-md);
+  padding: var(--shell-pad) var(--shell-gutter);
+}
+
+.shell-assist-title {
+  margin: 0;
+  font-size: var(--shell-fs-lg);
+  font-weight: var(--shell-hd-title-fw);
+}
+
+.shell-assist-body {
+  padding: 0 var(--shell-gutter) var(--shell-gutter);
+  overflow-wrap: break-word;
+}
+
+/* Telefonda panel alttan açılır. Panel "Örnek veri" notunun altından ekranın altına uzanır.
+   `--shell-note-h` notun görünen yüksekliğidir. Kabuk ölçer.
+   Kapanış hareketi bitince panel gizlenir. */
+.shell[data-layout='compact'] .shell-assist {
+  position: fixed;
+  inset: var(--shell-note-h) 0 0 0;
+  z-index: var(--shell-z-raised);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: max(var(--shell-zero), calc(env(safe-area-inset-top) - var(--shell-note-h)))
+    env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  transform: translateY(100%);
+  visibility: hidden;
+  transition:
+    transform var(--shell-rail-dur) var(--shell-ease),
+    visibility var(--shell-instant) var(--motion-easing-linear) var(--shell-rail-dur);
+}
+
+.shell[data-layout='compact'] .shell-assist[data-open='true'] {
+  transform: none;
+  visibility: visible;
+  transition:
+    transform var(--shell-rail-dur) var(--shell-ease),
+    visibility var(--shell-instant);
+}
+
+/* Telefonda düğme ilk satırda kalır. Kimlik alanları ikinci satıra iner. */
+.shell[data-layout='compact'] .shell-assist-btn {
+  order: 1;
+}
+
+.shell[data-layout='compact'] .shell-identity-fields {
+  order: 2;
 }
 
 /* ---------- Yerleşim: telefon kabuğu ---------- */
@@ -385,6 +494,104 @@ html:has(.shell[data-layout='compact']) {
   top: var(--shell-pad);
   right: var(--shell-pad);
   z-index: 1;
+}
+
+/* ---------- Telefon alt çubuğu ---------- */
+/* Dikey telefonda çubuk ekranın altındadır. Yatay telefonda sol kenara geçer.
+   Çubuğun gerçek boyu `--shell-bar-block` ve `--shell-bar-inline` ile ölçülür.
+   Böylece büyütülmüş yazıda da içerik çubuğun altında kalmaz. */
+.shell-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: var(--shell-z-topbar);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+  background: var(--shell-bg-c);
+  box-shadow: 0 calc(-1 * var(--shell-hairline)) 0 var(--shell-bd);
+}
+
+/* Sanal klavye açılınca çubuk yalnız dikey telefonda gizlenir. Kaynak: onaylı taslak,
+   `body.kbd-open .bottombar` kuralı dikey telefon bölümündedir. Yatay telefonda sol çubuk
+   yerinde kalır. Böylece kabuğun sol payı sıfırlanmaz ve sayfa sola kaymaz. */
+@media not ((orientation: landscape) and (max-height: 499px)) {
+  .shell-bar[data-keyboard='open'] {
+    display: none;
+  }
+}
+
+.shell-bar-item {
+  all: unset;
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--shell-space-2xs);
+  min-width: var(--shell-hit);
+  min-height: var(--shell-hit);
+  padding: var(--shell-space-xs) var(--shell-space-2xs);
+  color: var(--shell-tx2);
+  font-size: var(--shell-fs-min);
+  text-align: center;
+  cursor: pointer;
+}
+
+.shell-bar-item > svg {
+  flex: none;
+  font-size: var(--shell-item-icon);
+}
+
+.shell-bar-item > span {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.shell-bar-item:hover {
+  background: var(--shell-ghost);
+  color: var(--shell-tx);
+}
+
+.shell-bar-item[aria-current='page'],
+.shell-bar-item[aria-expanded='true'] {
+  color: var(--shell-tx);
+  font-weight: var(--shell-item-fw);
+}
+
+.shell-bar-item[aria-current='page'] > svg,
+.shell-bar-item[aria-expanded='true'] > svg {
+  color: var(--shell-pri);
+}
+
+.shell[data-layout='compact'] .shell-main {
+  padding-bottom: var(--shell-bar-block, 0);
+}
+
+@media (orientation: landscape) and (max-height: 499px) {
+  .shell[data-layout='compact'] {
+    padding-left: var(--shell-bar-inline, 0);
+  }
+
+  .shell[data-layout='compact'] .shell-main {
+    padding-bottom: 0;
+  }
+
+  .shell-bar {
+    inset: var(--shell-bar-top, 0) auto 0 0;
+    min-width: calc(var(--shell-bar-rail-w) + env(safe-area-inset-left));
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(var(--shell-hit), 1fr);
+    padding: 0;
+    padding-left: env(safe-area-inset-left);
+    box-shadow: var(--shell-hairline) 0 0 var(--shell-bd);
+  }
+
+  .shell-bar-item {
+    padding-inline: var(--shell-space-xs);
+  }
 }
 
 /* ---------- Sidebar ---------- */
