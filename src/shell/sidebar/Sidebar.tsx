@@ -1,10 +1,11 @@
 import { Sparkle } from '@phosphor-icons/react';
 import { Tooltip } from 'antd';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { useFocusDim } from '../focus-dim';
 import type { QuickAction } from '../nav';
+import { groupNavigation } from '../nav';
 import { isPathActive } from '../navMatch';
 import { t } from '../messages';
 import { routes } from '../paths';
@@ -12,6 +13,7 @@ import type { Agent, NavEntry, NavGroup, NavLeaf } from '../sampleData';
 import { shellTokens } from '../tokens';
 import type { ShellCredit, ShellWorkspaceData } from '../view-data';
 import { CommandBox } from './CommandBox';
+import type { CommandMode } from './CommandBox';
 import type { FlyoutContent, OpenedBy } from './FlyoutItem';
 import { FlyoutItem } from './FlyoutItem';
 import { RailToggle } from './RailToggle';
@@ -37,6 +39,10 @@ export interface SidebarProps {
   compact?: boolean;
   /** Bir sayfaya gidilince çağrılır. Telefonda çekmeceyi kapatır. */
   onNavigate?: (() => void) | undefined;
+  /** Live work is grouped by task. The isolated legacy demo retains its flyouts. */
+  grouped?: boolean;
+  commandMode?: CommandMode;
+  onCommandModeChange?: (mode: CommandMode) => void;
 }
 
 interface OpenState {
@@ -56,6 +62,9 @@ export function Sidebar({
   credit = null,
   compact = false,
   onNavigate,
+  grouped = false,
+  commandMode,
+  onCommandModeChange,
 }: SidebarProps) {
   const rail = variant === 'rail' && !compact;
   const [open, setOpen] = useState<OpenState | null>(null);
@@ -215,6 +224,8 @@ export function Sidebar({
         className="shell-item"
         data-nav-link=""
         data-sb-top=""
+        // Explicit native tab stop also enables link traversal in macOS WebKit.
+        tabIndex={0}
         onClick={handleNavigate}
         onFocus={close}
         {...(rail ? { 'aria-label': l.label } : {})}
@@ -301,7 +312,12 @@ export function Sidebar({
 
       <div className="shell-sb-scroll">
         {!rail && (
-          <CommandBox actions={quickActions} {...(onNavigate ? { onSubmitted: onNavigate } : {})} />
+          <CommandBox
+            actions={quickActions}
+            mode={commandMode}
+            onModeChange={onCommandModeChange}
+            {...(onNavigate ? { onSubmitted: onNavigate } : {})}
+          />
         )}
 
         <nav
@@ -322,16 +338,38 @@ export function Sidebar({
                 content={{
                   title: t.command.label,
                   wide: true,
-                  body: <CommandBox actions={quickActions} onSubmitted={handleNavigate} />,
+                  body: (
+                    <CommandBox
+                      actions={quickActions}
+                      mode={commandMode}
+                      onModeChange={onCommandModeChange}
+                      onSubmitted={handleNavigate}
+                    />
+                  ),
                   items: [],
                 }}
               />
             </ul>
           )}
-          {!rail && <h2 className="shell-sec">{t.nav.sectionMain}</h2>}
-          <ul className="shell-list">
-            {nav.map((e) => (e.kind === 'group' ? renderGroup(e) : renderLeaf(e)))}
-          </ul>
+          {grouped ? (
+            groupNavigation(nav).map((section) => (
+              <Fragment key={section.id}>
+                <h2 id={`${baseId}-${section.id}`} className={rail ? 'shell-vh' : 'shell-sec'}>
+                  {section.label}
+                </h2>
+                <ul className="shell-list" aria-labelledby={`${baseId}-${section.id}`}>
+                  {section.children.map(renderLeaf)}
+                </ul>
+              </Fragment>
+            ))
+          ) : (
+            <>
+              {!rail && <h2 className="shell-sec">{t.nav.sectionMain}</h2>}
+              <ul className="shell-list">
+                {nav.map((e) => (e.kind === 'group' ? renderGroup(e) : renderLeaf(e)))}
+              </ul>
+            </>
+          )}
           {/* Ajan verisi yoksa bölüm gizlidir. Uydurma ajan gösterilmez. */}
           {agents.length > 0 && (
             <>

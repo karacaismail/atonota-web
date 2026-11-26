@@ -70,7 +70,7 @@ export const shellTokens = {
   sidebar: {
     widthExpanded: sb.widthExpanded,
     widthCollapsed: sb.widthCollapsed,
-    item: sb.item,
+    item: { ...sb.item, fontSize: Math.max(14, sb.item.fontSize) },
     /** S2: etkin öğe göstergesi genişliği. */
     indicator: num(sb.active.indicator, /(\d+)\s*px/, 'sidebar.active.indicator'),
     /** S2: etkin zemin opaklığı, açık ve koyu tema. */
@@ -134,7 +134,8 @@ export const shellTokens = {
     /** Kredi halkası dolumu (kaynak: aiMotion, 1.2 s). */
     ring: secondsToMs(aiItem(/halkası:[^\d]*([\d.]+)\s*s/i), 'aiMotion halka'),
   },
-  typography: config.typography,
+  /** Approved workspace model, section 6: minimum 14 px, body 16 px. */
+  typography: { ...config.typography, min: 14, default: 16 },
   primary: config.primary.color,
   darkPalette: config.darkPalette,
 } as const;

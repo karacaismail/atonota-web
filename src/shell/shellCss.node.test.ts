@@ -64,9 +64,9 @@ describe('kayan zemin hareketi', () => {
       .replace(/(?<![\d.])0\./g, '.');
 
   it('adlı değerler merkezi hareket tokenlarına bağlıdır', () => {
-    // Kaynak değerler (200 ms, cubic-bezier(.2,0,0,1), 150 ms) src/design/motion.ts içindedir.
+    // Süreler kaynakta kalır. Kabuk onaylı simetrik eğriyi kullanır.
     expect(decl('--shell-glide-dur')).toBe('var(--motion-duration-glide)');
-    expect(decl('--shell-glide-ease')).toBe('var(--motion-easing-glide)');
+    expect(decl('--shell-glide-ease')).toBe('var(--motion-easing-standard)');
     expect(decl('--shell-glide-fade-dur')).toBe('var(--motion-duration-glide-fade)');
     expect(decl('--shell-glide-fade-ease')).toBe('var(--motion-easing-standard)');
     expect(decl('--shell-skel-dur')).toBe('var(--motion-duration-skeleton)');

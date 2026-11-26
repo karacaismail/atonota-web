@@ -95,8 +95,7 @@ test.describe('klavye ile flyout', () => {
     await page.goto(DEMO);
     // Tembel sayfa gelene kadar beklenir. Sonra odak denetlenir.
     await expect(page.getByRole('heading', { level: 1, name: 'Kabuk denemesi' })).toBeVisible();
-    // WebKit, Safari gibi Tab ile bağlantı ve düğmeleri atlar. Bu yüzden
-    // menünün kendi aşağı ok gezinmesi kullanılır. Bu yol her motorda aynıdır.
+    // Ok tuşları görsel odak modunu açmaz. Yalnız Tab ve Shift+Tab modu açar.
     // Rota bağlantıları "Ana sayfa" ile "Satış" arasındadır. Rota listesinin son
     // parametresiz satırı "AI Studio" bağlantısıdır. "Satış" düğmesi ondan hemen sonradır.
     await page.getByRole('link', { name: 'AI Studio' }).focus();
@@ -104,6 +103,11 @@ test.describe('klavye ile flyout', () => {
     const next = page.getByRole('button', { name: 'Satış', exact: true });
     await expect(next).toBeFocused();
     await expect(next).toHaveCSS('outline-style', 'none');
+    await expect
+      .poll(() => next.evaluate((el) => getComputedStyle(el, '::after').opacity))
+      .toBe('0');
+    await page.keyboard.press('Tab');
+    await next.focus();
     await expect
       .poll(() => next.evaluate((el) => getComputedStyle(el, '::after').opacity))
       .toBe('1');

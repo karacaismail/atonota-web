@@ -15,6 +15,7 @@ import { routes } from './paths';
 import { isReservedSegment, menuEntries, routeRegistry } from './routes';
 import type { NavEntry, NavGroup, NavLeaf } from './sampleData';
 import type { ShellSidebar } from './view-data';
+import { workspaceText } from './workspaceMessages';
 
 /** Rota kaydındaki menü bağlantıları. Deneme sayfalarını `menuEntries` çıkarır. */
 /** Modül yolu ve okuma yetkisi gereken DocType adları. Kaynak: `src/modules/registry.ts`. */
@@ -124,6 +125,45 @@ export function buildShellNav(
   readable: ReadonlySet<string>,
 ): NavEntry[] {
   return permittedNav([...routeNav, ...groups], readable);
+}
+
+export interface NavigationSection {
+  id: 'review' | 'people' | 'management';
+  label: string;
+  children: NavLeaf[];
+}
+
+/** Presentation only: callers supply the result of the existing permission filter. */
+export function groupNavigation(entries: readonly NavEntry[]): NavigationSection[] {
+  const leaves = entries.flatMap((entry) => (entry.kind === 'link' ? [entry] : entry.children));
+  const sections: NavigationSection[] = [
+    { id: 'review', label: workspaceText.review, children: [] },
+    { id: 'people', label: workspaceText.people, children: [] },
+    { id: 'management', label: workspaceText.management, children: [] },
+  ];
+  const seen = new Set<string>();
+  const hasLeavePage = leaves.some((leaf) => leaf.to === '/hr');
+  const reviewPaths = new Set(['/', '/asistan', '/panel/ai', '/ai-operations']);
+  for (const leaf of leaves) {
+    // The dedicated leave screen and its generic collection represent the same work.
+    if (
+      hasLeavePage &&
+      leaf.to.split('/').at(-1) === encodeURIComponent('Leave Application') &&
+      leaf.requires?.length === 1 &&
+      leaf.requires[0] === 'Leave Application'
+    )
+      continue;
+    const path = leaf.to.replace(/\/+$/, '') || '/';
+    if (seen.has(path)) continue;
+    seen.add(path);
+    const sectionId = reviewPaths.has(path)
+      ? 'review'
+      : path === '/hr' || path.startsWith('/hr/')
+        ? 'people'
+        : 'management';
+    sections.find((section) => section.id === sectionId)?.children.push(leaf);
+  }
+  return sections.filter((section) => section.children.length > 0);
 }
 
 /** Hızlı eylem. `to` varsa sayfaya gider. `prompt` varsa isteği asistana gönderir. */

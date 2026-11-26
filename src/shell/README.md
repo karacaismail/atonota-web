@@ -273,3 +273,53 @@ Kaydırma kutusundaki boşluk, bu alanların kırpılmasını önler.
 Test, gerçek dokunma noktalarını ve dış kenardan etkinleşmeyi kontrol eder.
 WebKit'in 320 piksel projesinde dokunma ayrıca açılır.
 Ekran genişliği tek başına dokunmatik giriş anlamına gelmez.
+
+## Kimlik şeridi ve iş grupları
+
+Kimlik şeridi kiracıyı, ortamı ve kipi gösterir.
+Kiracı adı açık çalışma alanından gelir.
+Ortam, uygulamanın verdiği `modules.mode` alanından gelir.
+`example` değeri “Deneme”, `live` değeri “Canlı” olarak görünür.
+Bu alan gelmediyse şerit “Doğrulanıyor” yazar.
+Kabuk ortamı adresten veya derleme türünden tahmin etmez.
+Kip, komut alanındaki seçimi gösterir.
+Dar menüye geçince kip korunur.
+
+Menü bağlantıları önce mevcut yetki süzgecinden geçer.
+`groupNavigation` sonucu üç iş grubuna ayırır.
+Gruplar “Bakmak ve onaylamak”, “İnsan kaynakları” ve “Yönetim” adlarını taşır.
+Boş grup görünmez.
+Aynı sayfa yalnız bir kez görünür.
+İzin sayfası varsa genel izin listesi ayrıca gösterilmez.
+Başka bir işi yapan bağlantı korunur.
+Eski açılır menü örnekleri yalnız deneme sayfasında kalır.
+
+Şerit telefonda üstte kalır.
+Kabuk şeridin gerçek yüksekliğini ölçer.
+Kaydırma payı bu ölçüye uyar.
+Böylece şerit klavye odağını örtmez.
+Menü bağlantılarında `tabIndex={0}` vardır.
+Bu ayar macOS WebKit içinde Tab ile gezinmeyi sağlar.
+Odak göstergesini yalnız ortak klavye modu açar.
+
+En küçük kabuk metni 14 px, gövde metni 16 px olur.
+Değerler `tokens.ts` dosyasındadır.
+Telefon menüsünün bağlantı yüksekliği en az 48 px olur.
+Düğmelerin görünmeyen dokunma alanı mevcut ortak kurala uyar.
+Menü hareketi ortak simetrik eğriyi kullanır.
+
+İlgili kontroller şu komutlarla çalışır:
+
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run build
+E2E_PORT=4199 npm run test:e2e -- src/shell/e2e/identity-navigation.spec.ts
+E2E_PORT=4199 npm run test:e2e -- src/shell/e2e src/shell/sidebar/e2e --project=chromium-320 --project=chromium-desktop --project=webkit-320 --project=webkit-desktop --workers=3
+```
+
+Kimlik denemesi `identity/harness/` klasöründedir.
+Bu deneme gerçek sunucuya bağlanmaz.
+Üretim derlemesi bu deneme girişini içermez.
+Görsel referans dosyaları bu işte değiştirilmez.
