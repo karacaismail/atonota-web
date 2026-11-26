@@ -36,6 +36,7 @@ import { shellCssVars } from '../tokens';
 import type { AccountKind, ShellCredit, ShellWorkspaceData } from '../view-data';
 import { useViewData } from '../view-data';
 import { workspaceText } from '../workspaceMessages';
+import { BottomBar } from './BottomBar';
 import { useCompactLayout } from './useMedia';
 
 const STORAGE_KEY = 'atonota.shell.sidebar';
@@ -236,6 +237,10 @@ export function AppShell({ children }: AppShellProps) {
   const compact = useCompactLayout();
   const [variant, setVariant] = useState<SidebarVariant>(readVariant);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Menüyü açan düğme. Odak kapanınca bu düğmeye döner.
+  const [opener, setOpener] = useState<'header' | 'menu' | 'search'>('header');
+  const openerEl = useRef<HTMLElement | null>(null);
+  const barRef = useRef<HTMLElement>(null);
   const [commandMode, setCommandMode] = useState<CommandMode>('ask');
   const menuBtn = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -280,15 +285,23 @@ export function AppShell({ children }: AppShellProps) {
     setDrawerOpen(false);
   }, []);
 
+  const openDrawer = (kind: 'header' | 'menu' | 'search', el: HTMLElement) => {
+    openerEl.current = el;
+    setOpener(kind);
+    if (kind === 'search') setCommandMode('search');
+    setDrawerOpen(true);
+  };
+
   // Çekmece açıkken çekmece dışı etkileşime kapanır.
   // Kapanınca odak menü düğmesine döner. Düğme önce etkileşime açılmalıdır.
   useLayoutEffect(() => {
-    for (const el of [mainRef.current, topRef.current]) {
+    for (const el of [mainRef.current, topRef.current, barRef.current]) {
       el?.toggleAttribute('inert', modalOpen);
     }
     if (!modalOpen && returnFocus.current) {
       returnFocus.current = false;
-      menuBtn.current?.focus();
+      const target = openerEl.current?.isConnected ? openerEl.current : menuBtn.current;
+      target?.focus();
     }
   }, [modalOpen]);
 
@@ -297,8 +310,11 @@ export function AppShell({ children }: AppShellProps) {
     if (!modalOpen) return;
     const d = drawerRef.current;
     if (!d || d.contains(document.activeElement)) return;
-    d.querySelector<HTMLElement>('[data-drawer-close]')?.focus();
-  }, [modalOpen]);
+    // "Ara" düğmesi komut alanını açar. Öteki düğmeler kapatma düğmesini açar.
+    const field =
+      opener === 'search' ? d.querySelector<HTMLElement>('.shell-sender textarea') : null;
+    (field ?? d.querySelector<HTMLElement>('[data-drawer-close]'))?.focus();
+  }, [modalOpen, opener]);
 
   useEffect(() => {
     if (!modalOpen) return undefined;
@@ -327,9 +343,9 @@ export function AppShell({ children }: AppShellProps) {
               type="button"
               className="shell-iconbtn"
               aria-label={t.nav.openMenu}
-              aria-expanded={drawerOpen}
+              aria-expanded={drawerOpen && opener === 'header'}
               aria-controls="shell-drawer"
-              onClick={() => setDrawerOpen(true)}
+              onClick={(e) => openDrawer('header', e.currentTarget)}
             >
               <List aria-hidden="true" />
             </button>
@@ -392,6 +408,15 @@ export function AppShell({ children }: AppShellProps) {
           )}
           <ShellAccessContext.Provider value={access}>{children}</ShellAccessContext.Provider>
         </main>
+        {isDrawer && (
+          <BottomBar
+            ref={barRef}
+            open={drawerOpen}
+            opener={opener === 'header' ? null : opener}
+            onMenu={(e) => openDrawer('menu', e.currentTarget)}
+            onSearch={(e) => openDrawer('search', e.currentTarget)}
+          />
+        )}
       </div>
     </FocusDimProvider>
   );

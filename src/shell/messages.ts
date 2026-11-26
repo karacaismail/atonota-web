@@ -20,6 +20,13 @@ export const t = {
     submenuOf: (name: string) => `${name} alt menüsü`,
     aiAction: (name: string) => `${name} için AI'a sor`,
   },
+  bottomBar: {
+    label: 'Alt menü',
+    pending: 'Bekleyenler',
+    search: 'Ara',
+    assistant: 'Asistan',
+    menu: 'Menü',
+  },
   workspace: {
     label: (name: string) => `Çalışma alanı: ${name}`,
     prefix: 'Çalışma alanı:',

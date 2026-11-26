@@ -2,15 +2,24 @@
 
 Bu klasör uygulamanın kabuğudur. Kabukta sidebar, sayfa başlığı ve yönlendirme vardır. Kararlar `design/source/control-size-config.json` dosyasından gelir.
 
-## Telefon kararı: çekmece
+## Telefon kararı: alt çubuk ve çekmece
 
-Telefonda sidebar çekmeceye dönüşür. Alt gezinme kullanılmaz.
+Telefonda ekranın altında dört düğmeli bir çubuk vardır. Karar model belgesinin 6. bölümündedir (AJA-982b).
 
-Gerekçeler şunlardır:
+Düğmeler sırayla şunlardır:
 
-1. Sidebar yalnız bağlantı listesi değildir. İçinde komut alanı, AI ajanları, çalışma alanı seçici ve kredi kartı vardır. Alt gezinme en çok 4 ya da 5 bağlantı taşır. Bu parçalar oraya sığmaz.
-2. Kaynak kural S4 şöyle der: AI öğeleri gezinmeyle eşit ağırlıktadır. Alt gezinme AI öğelerini ikinci plana iterdi.
-3. Çekmece masaüstüyle aynı içeriği taşır. Kullanıcı iki ayrı düzen öğrenmez.
+1. "Bekleyenler": ana sayfayı açar.
+2. "Ara": menüyü açar. Komut alanı "Ara" kipine geçer ve odak komut alanına gider.
+3. "Asistan": asistan sayfasını açar.
+4. "Menü": menüyü açar.
+
+Menü kapanınca odak menüyü açan düğmeye döner. Menü Escape tuşuyla ve "Menüyü kapat" düğmesiyle kapanır.
+
+Sidebar telefonda çekmece olarak kalır. Çekmece masaüstüyle aynı içeriği taşır. İçinde komut alanı, iş grupları ve çalışma alanı seçici vardır. Kimlik şeridindeki "Menüyü aç" düğmesi de aynı çekmeceyi açar.
+
+Yatay telefonda alt çubuk sol kenara geçer. Kararı CSS verir: `(orientation: landscape) and (max-height: 499px)`. React ağacı değişmez. Bu yüzden yön değişince form verisi ve odak korunur. Sol çubuk kabuğun üst kenarından başlar. Kimlik şeridini ve kabuğun üstündeki notu örtmez.
+
+Sanal klavye açılınca alt çubuk gizlenir. Karar `useVirtualKeyboard.ts` dosyasındadır. Görünür alan (`visualViewport`) pencerenin %20'sinden fazla küçülürse klavye açık sayılır. Yakınlaştırma klavye sayılmaz. Cihaz adı ve user-agent kullanılmaz.
 
 Telefonda alt menü sağda açılmaz. Ekranda yer yoktur. Alt menü üst öğenin altında, çekmecenin içinde açılır. Açmak için üst öğeye dokunun. İkinci dokunuş alt menüyü kapatır. Klavye kuralları aynıdır.
 
