@@ -5,7 +5,7 @@ import { GenUI } from './GenUI';
 import { GENUI_REGISTRY } from './registry';
 import { parseBlock, parseBlocks } from './schema';
 import type { GenUIActionResult } from './types';
-import { SURFACE_SAMPLES } from './demo/samples';
+import { SURFACE_SAMPLES, SURFACE_STATES } from './demo/samples';
 
 /**
  * Altı yapay zekâ yüzeyi (AJA-1156): kapsam şeridi, araç olayı listesi, kaynak kartı,
@@ -25,7 +25,9 @@ describe('Yüzey kaydı', () => {
   });
 
   it('deneme örneklerinin hepsi şemadan geçer', () => {
-    for (const sample of SURFACE_SAMPLES) expect(parseBlock(sample).type).not.toBe('unknown');
+    for (const sample of [...SURFACE_SAMPLES, ...SURFACE_STATES]) {
+      expect(parseBlock(sample).type, sample.type).not.toBe('unknown');
+    }
   });
 
   it('kayıtta olmayan blok tipini hiç çizmez', () => {

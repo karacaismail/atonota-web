@@ -2,9 +2,14 @@
  * Sunucudan gelen GenUI bloklarını doğrular (U2, AX-4).
  *
  * Türü, alanları ve boyutu denetler. Geçmeyen blok `unknown` olur.
- * `unknown` blok yalnız düz JSON metni olarak çizilir.
+ * `unknown` bloğun türü ilk altı bloktan biriyse düz JSON metni olarak çizilir.
+ * Başka her `unknown` blok hiç çizilmez (model belgesi: "Liste dışı blok çizilmez").
+ *
+ * Altı yapay zekâ yüzeyi (AJA-1156) katı doğrulanır. Tanımsız alan bloğu reddeder.
+ * Böylece güven yüzdesi ya da modelin iç düşüncesi ekrana gelemez.
  */
 import type {
+  AssistMode,
   ChartBar,
   FieldChange,
   FormField,
@@ -12,8 +17,14 @@ import type {
   GenUIBlock,
   KnownBlock,
   KpiItem,
+  QueueItem,
+  ResultOutcome,
+  RiskLevel,
+  SourceItem,
   TableCell,
   TableColumn,
+  ToolEvent,
+  ToolEventStatus,
 } from './types';
 
 /** Boyut sınırları. Büyük blok ekranı ve belleği zorlamasın. */
@@ -26,6 +37,10 @@ export const LIMITS = {
   fields: 12,
   options: 20,
   blocks: 12,
+  events: 30,
+  sources: 8,
+  queue: 20,
+  url: 2048,
 } as const;
 
 type Obj = Record<string, unknown>;
@@ -110,8 +125,173 @@ function isChoice(value: unknown): value is string {
   return str(value);
 }
 
+/* --- Yapay zekâ yüzeyleri --- */
+
+/** Nesnede yalnız izinli alanlar varsa `true` döner. Fazladan alan reddedilir. */
+function only(value: Obj, keys: readonly string[]): boolean {
+  return Object.keys(value).every((key) => keys.includes(key));
+}
+
+/** Boş olabilen liste. Kaynak kartı ve karar kuyruğu boş durumu kendisi yazar. */
+function listOrEmpty<T>(
+  value: unknown,
+  max: number,
+  check: (item: unknown) => item is T,
+): value is T[] {
+  return Array.isArray(value) && value.length <= max && value.every(check);
+}
+
+function oneOf<T extends string>(value: unknown, allowed: readonly T[]): value is T {
+  return typeof value === 'string' && (allowed as readonly string[]).includes(value);
+}
+
+function uniqueIds(items: { id: string }[]): boolean {
+  return new Set(items.map((item) => item.id)).size === items.length;
+}
+
+const MODES: readonly AssistMode[] = ['ask', 'search', 'draft', 'act'];
+const EVENT_STATUSES: readonly ToolEventStatus[] = ['running', 'done', 'failed'];
+const RISKS: readonly RiskLevel[] = ['R0', 'R1', 'R2', 'R3'];
+const OUTCOMES: readonly ResultOutcome[] = ['succeeded', 'failed', 'unknown'];
+
+/**
+ * Bağlantı yalnız `http(s)://` ya da uygulama içi `/yol` olur.
+ * `javascript:`, `data:` ve `//alan` biçimleri reddedilir.
+ */
+function isSafeUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length === 0 || value.length > LIMITS.url) return false;
+  if (/\s/.test(value)) return false;
+  if (value.startsWith('/')) return !value.startsWith('//') && !value.startsWith('/\\');
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+function isSource(value: unknown): value is SourceItem {
+  return (
+    isObj(value) &&
+    only(value, ['title', 'url']) &&
+    str(value['title']) &&
+    (value['url'] === undefined || isSafeUrl(value['url']))
+  );
+}
+
+function isEvent(value: unknown): value is ToolEvent {
+  return (
+    isObj(value) &&
+    only(value, ['id', 'tool', 'summary', 'status']) &&
+    str(value['id']) &&
+    str(value['tool']) &&
+    str(value['summary']) &&
+    oneOf(value['status'], EVENT_STATUSES)
+  );
+}
+
+function isStrictChange(value: unknown): value is FieldChange {
+  return isObj(value) && only(value, ['field', 'before', 'after']) && isChange(value);
+}
+
+function isQueueItem(value: unknown): value is QueueItem {
+  return (
+    isObj(value) &&
+    only(value, ['id', 'title', 'detail', 'risk']) &&
+    str(value['id']) &&
+    str(value['title']) &&
+    str(value['detail'], false) &&
+    oneOf(value['risk'], RISKS)
+  );
+}
+
+/** Altı yüzeyi doğrular. Yüzey türü değilse `undefined` döner. */
+function validateSurface(raw: Obj): boolean | undefined {
+  switch (raw['type']) {
+    case 'scope':
+      return (
+        only(raw, ['type', 'tenant', 'environment', 'mode', 'scope']) &&
+        str(raw['tenant']) &&
+        str(raw['environment']) &&
+        oneOf(raw['mode'], MODES) &&
+        str(raw['scope'], false)
+      );
+    case 'events':
+      return (
+        only(raw, ['type', 'items']) &&
+        list(raw['items'], LIMITS.events, isEvent) &&
+        uniqueIds(raw['items'])
+      );
+    case 'source':
+      return only(raw, ['type', 'items']) && listOrEmpty(raw['items'], LIMITS.sources, isSource);
+    case 'review':
+      return (
+        only(raw, ['type', 'summary', 'risk', 'target', 'reversible', 'changes', 'sources']) &&
+        str(raw['summary']) &&
+        oneOf(raw['risk'], RISKS) &&
+        str(raw['target']) &&
+        str(raw['reversible']) &&
+        list(raw['changes'], LIMITS.fields, isStrictChange) &&
+        (raw['sources'] === undefined || listOrEmpty(raw['sources'], LIMITS.sources, isSource))
+      );
+    case 'queue':
+      return (
+        only(raw, ['type', 'items']) &&
+        listOrEmpty(raw['items'], LIMITS.queue, isQueueItem) &&
+        uniqueIds(raw['items'])
+      );
+    case 'result':
+      return (
+        only(raw, ['type', 'outcome', 'summary']) &&
+        oneOf(raw['outcome'], OUTCOMES) &&
+        str(raw['summary'])
+      );
+    default:
+      return undefined;
+  }
+}
+
+/** İlk altı blok. Bunlar doğrulanamazsa düz JSON metni olarak çizilir (AX-6). */
+const JSON_FALLBACK_TYPES: readonly string[] = [
+  'kpis',
+  'chart',
+  'table',
+  'confirm',
+  'form',
+  'choices',
+];
+
+/** Güven, olasılık ya da iç düşünce taşıyan alan adları. */
+const FORBIDDEN_KEY =
+  /^(confidence|certainty|probability|g(u|ü)ven|reasoning|thinking|thoughts?|chain_?of_?thought|rationale)/i;
+
+function hasForbiddenKey(value: unknown, depth = 0): boolean {
+  if (depth > 6) return true;
+  if (Array.isArray(value)) return value.some((item) => hasForbiddenKey(item, depth + 1));
+  if (!isObj(value)) return false;
+  return Object.entries(value).some(
+    ([key, item]) => FORBIDDEN_KEY.test(key) || hasForbiddenKey(item, depth + 1),
+  );
+}
+
+/**
+ * Doğrulanamayan blok ham JSON olarak gösterilsin mi?
+ * Yalnız ilk altı bloğun türü ve yasak alan taşımayan veri gösterilir.
+ * Kayıtta olmayan tür ve yüzey türleri hiç çizilmez.
+ */
+export function showsRawJson(raw: unknown): boolean {
+  return (
+    isObj(raw) &&
+    typeof raw['type'] === 'string' &&
+    JSON_FALLBACK_TYPES.includes(raw['type']) &&
+    !hasForbiddenKey(raw)
+  );
+}
+
 /** Bloğu doğrular. Geçerliyse aynı nesneyi tipli döndürür. */
 function validate(raw: Obj): KnownBlock | null {
+  const surface = validateSurface(raw);
+  if (surface !== undefined) return surface ? (raw as unknown as KnownBlock) : null;
   switch (raw['type']) {
     case 'kpis':
       return list(raw['items'], LIMITS.items, isKpi) ? (raw as unknown as KnownBlock) : null;

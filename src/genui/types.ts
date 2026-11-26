@@ -110,14 +110,113 @@ export interface ChoicesBlock {
   items: string[];
 }
 
-/** Bilinmeyen ya da doğrulanamayan blok. Yalnız JSON olarak gösterilir. */
+/*
+ * Yapay zekâ yüzeyleri (AJA-1156). Model belgesi: "Onaylı bileşen listesi".
+ * Dürüstlük kuralı: yüzeylerde güven yüzdesi ve modelin iç düşüncesi yoktur.
+ * Şema bu yüzeylerde tanımsız alanı reddeder.
+ */
+
+/** Yardımcının kipi. Ekranda "Sor", "Ara", "Taslak hazırla" ya da "İşlem yap" yazar. */
+export type AssistMode = 'ask' | 'search' | 'draft' | 'act';
+
+/** Kapsam şeridi: işin hangi kiracıda, ortamda, kipte ve kapsamda yapıldığı. */
+export interface ScopeBlock {
+  type: 'scope';
+  tenant: string;
+  environment: string;
+  mode: AssistMode;
+  /** Örnek: "İnsan kaynakları, izin talepleri". */
+  scope?: string;
+}
+
+/** Araç olayının durumu. Olay yalnız sunucudan gelince eklenir. */
+export type ToolEventStatus = 'running' | 'done' | 'failed';
+
+export interface ToolEvent {
+  /** Olayın tekil kimliği. Liste sırası sunucunun gönderdiği sıradır. */
+  id: string;
+  /** Aracın adı. Örnek: `izin_talebi.oku`. */
+  tool: string;
+  summary: string;
+  status: ToolEventStatus;
+}
+
+export interface EventsBlock {
+  type: 'events';
+  items: ToolEvent[];
+}
+
+/** Kaynak. Bağlantı yalnız `https://`, `http://` ya da `/` ile başlar. */
+export interface SourceItem {
+  title: string;
+  url?: string;
+}
+
+/** Kaynak kartı. Liste boşsa kart "Kaynak yok." yazar. */
+export interface SourceBlock {
+  type: 'source';
+  items: SourceItem[];
+}
+
+/** Risk düzeyini sunucu atar. Model düzeyi değiştiremez. */
+export type RiskLevel = 'R0' | 'R1' | 'R2' | 'R3';
+
+/** Değişiklik incelemesi. Salt okunurdur, onay düğmesi taşımaz. */
+export interface ReviewBlock {
+  type: 'review';
+  /** Bir cümlelik özet. */
+  summary: string;
+  risk: RiskLevel;
+  /** Hedef kayıt. */
+  target: string;
+  /** "Geri alınabilir mi?" sorusunun yanıtı. */
+  reversible: string;
+  changes: FieldChange[];
+  /** Kaynaklar. Yoksa ekran "Kaynak yok." yazar. */
+  sources?: SourceItem[];
+}
+
+export interface QueueItem {
+  id: string;
+  title: string;
+  detail?: string;
+  risk: RiskLevel;
+}
+
+/** Karar kuyruğu: kullanıcının kararını bekleyen işler. Salt okunurdur. */
+export interface QueueBlock {
+  type: 'queue';
+  items: QueueItem[];
+}
+
+/** Sunucu işi bir kez yapar. Sonuç "başarılı", "başarısız" ya da "bilinmiyor" olur. */
+export type ResultOutcome = 'succeeded' | 'failed' | 'unknown';
+
+export interface ResultBlock {
+  type: 'result';
+  outcome: ResultOutcome;
+  summary: string;
+}
+
+/** Doğrulanamayan blok. Kayıtlı türse JSON olarak gösterilir, değilse hiç çizilmez. */
 export interface UnknownBlock {
   type: 'unknown';
   raw: unknown;
 }
 
 export type KnownBlock =
-  KpisBlock | ChartBlock | TableBlock | ConfirmBlock | FormBlock | ChoicesBlock;
+  | KpisBlock
+  | ChartBlock
+  | TableBlock
+  | ConfirmBlock
+  | FormBlock
+  | ChoicesBlock
+  | ScopeBlock
+  | EventsBlock
+  | SourceBlock
+  | ReviewBlock
+  | QueueBlock
+  | ResultBlock;
 
 export type GenUIBlock = KnownBlock | UnknownBlock;
 

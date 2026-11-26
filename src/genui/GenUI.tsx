@@ -5,6 +5,7 @@ import type { ComponentType } from 'react';
 
 import { JsonView } from './blocks/JsonView';
 import { GENUI_REGISTRY, type BlockProps } from './registry';
+import { showsRawJson } from './schema';
 import type { GenUIActionHandler, GenUIBlock, GenUIDecisions, KnownBlock } from './types';
 import { useGenuiFocusTheme, useGenuiVars } from './useGenuiVars';
 
@@ -26,7 +27,10 @@ export function GenUI({ blocks, onAction, busy = false, decisions = {} }: GenUIP
     <ConfigProvider theme={focusTheme}>
       <div className="genui" style={vars}>
         {blocks.map((block, index) => {
-          if (block.type === 'unknown') return <JsonView key={index} raw={block.raw} />;
+          // Kayıtta olmayan blok çizilmez. Yalnız bozuk gelen ilk altı blok JSON olarak görünür.
+          if (block.type === 'unknown') {
+            return showsRawJson(block.raw) ? <JsonView key={index} raw={block.raw} /> : null;
+          }
           const View = GENUI_REGISTRY[block.type] as ComponentType<BlockProps<KnownBlock>>;
           const decided =
             block.type === 'confirm' || block.type === 'form' ? decisions[block.id] : undefined;

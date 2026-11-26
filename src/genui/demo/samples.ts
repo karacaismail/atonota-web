@@ -79,3 +79,23 @@ export const SURFACE_SAMPLES: RawBlock[] = [
     summary: 'İZN-0041 talebinin bitiş tarihi 11 Aralık 2026 oldu. Örnek sonuçtur.',
   },
 ];
+
+/** Ek durumlar: yüksek riskli inceleme, boş kaynak, boş kuyruk ve başarısız sonuç. */
+export const SURFACE_STATES: RawBlock[] = [
+  {
+    type: 'review',
+    summary: 'Örnek Kişi 7 kullanıcısı silinir.',
+    risk: 'R3',
+    target: 'Kullanıcı: Örnek Kişi 7',
+    reversible: 'Hayır. Silinen kullanıcı geri gelmez.',
+    changes: [
+      { field: 'Hesap', before: 'Etkin', after: 'Silindi' },
+      { field: 'Roller', before: 'Standart çalışan', after: 'Yok' },
+    ],
+    sources: [{ title: 'Kullanıcı listesi', url: '/admin/users' }],
+  },
+  { type: 'source', items: [] },
+  { type: 'queue', items: [] },
+  { type: 'result', outcome: 'failed', summary: 'Bildirim gönderilemedi. Örnek sonuçtur.' },
+  { type: 'result', outcome: 'unknown', summary: 'Sunucu yanıt vermedi. Örnek sonuçtur.' },
+];
