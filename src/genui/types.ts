@@ -87,7 +87,7 @@ export interface ConfirmBlock {
    * - R2: "Önizlemeyi okudum." kutusu işaretlenince düğme açılır.
    * - R3: kullanıcı `target.name` değerini elle yazınca düğme açılır.
    */
-  risk?: RiskLevel;
+  risk?: ConfirmRisk;
   /** Hedef kayıt. `label` kartta görünür. R3 düzeyinde `name` elle yazılır. R3 için zorunludur. */
   target?: ConfirmTarget;
   /**
@@ -98,7 +98,8 @@ export interface ConfirmBlock {
   undoProposal?: boolean;
 }
 
-export type RiskLevel = 'R1' | 'R2' | 'R3';
+/** Onay kartı yalnız yazan işlemde açılır. R0 okuma onay istemez. */
+export type ConfirmRisk = Exclude<RiskLevel, 'R0'>;
 
 export interface ConfirmTarget {
   label: string;

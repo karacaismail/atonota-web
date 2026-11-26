@@ -2,7 +2,7 @@ import { ArrowCounterClockwise, CheckCircle, Warning, XCircle } from '@phosphor-
 import { Alert, Button, Checkbox, Input } from 'antd';
 import { useEffect, useId, useState } from 'react';
 
-import type { ConfirmBlock, GenUIActionHandler, GenUIDecision, RiskLevel } from '../types';
+import type { ConfirmBlock, ConfirmRisk, GenUIActionHandler, GenUIDecision } from '../types';
 import { ChangeTable } from './ChangeTable';
 import {
   BUSY_NOTE,
@@ -14,7 +14,7 @@ import {
 } from './useDecision';
 
 /** Risk düzeyinin yazılı adı. Düzey renkle değil yazıyla anlatılır. */
-const RISK_LABEL: Record<RiskLevel, string> = {
+const RISK_LABEL: Record<ConfirmRisk, string> = {
   R1: 'R1 Düşük',
   R2: 'R2 Orta',
   R3: 'R3 Yüksek',

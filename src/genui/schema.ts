@@ -11,6 +11,7 @@
 import type {
   AssistMode,
   ChartBar,
+  ConfirmRisk,
   ConfirmTarget,
   FieldChange,
   FormField,
@@ -65,7 +66,7 @@ function list<T>(value: unknown, max: number, check: (item: unknown) => item is 
   return Array.isArray(value) && value.length > 0 && value.length <= max && value.every(check);
 }
 
-function isRisk(value: unknown): value is RiskLevel {
+function isRisk(value: unknown): value is ConfirmRisk {
   return value === 'R1' || value === 'R2' || value === 'R3';
 }
 
