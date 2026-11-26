@@ -147,6 +147,7 @@ test.describe('Ö6: yapışkan üst çubuk odaklanan öğeyi örtmez', () => {
   test('liste sayfasında aşağıdan odaklanan kutu üst çubuğun altında kalmaz', async ({ page }) => {
     test.skip(!isCompact(page), 'üst çubuk yalnız telefon kabuğunda');
     await page.goto(LIST);
+    await page.getByRole('button', { name: 'Seç', exact: true }).click();
     const box = page.getByRole('checkbox', { name: 'Bu sayfadaki tüm kayıtları seç' });
     await expect(box).toBeAttached();
     await settle(page);
