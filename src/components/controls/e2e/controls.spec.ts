@@ -1,4 +1,5 @@
 import { expect, test } from '../../../../tests/setup/playwright-fixtures';
+import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page } from '@playwright/test';
 import designSource from '../../../../design/source/control-size-config.json' with { type: 'json' };
 
@@ -9,6 +10,50 @@ async function box(locator: Locator) {
   const bounds = await locator.boundingBox();
   if (!bounds) throw new Error('Expected an element with a visible layout box');
   return bounds;
+}
+
+/** Reads a CSS custom property from the root element (the central tokens). */
+async function token(page: Page, name: string) {
+  return page.evaluate(
+    (property) => getComputedStyle(document.documentElement).getPropertyValue(property).trim(),
+    name,
+  );
+}
+
+/**
+ * The area a pointer can hit: the element box joined with its `::after` hit layer.
+ * The hit-area engine draws that layer (`.hit::after`); controls.css may enlarge it.
+ */
+async function hitBox(locator: Locator) {
+  return locator.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const after = getComputedStyle(element, '::after');
+    let { top, right, bottom, left } = rect;
+    if (after.content !== 'none' && after.position === 'absolute') {
+      const own = getComputedStyle(element);
+      const edge = (value: string) => parseFloat(value) || 0;
+      top = Math.min(top, rect.top + edge(own.borderTopWidth) + edge(after.top));
+      bottom = Math.max(bottom, rect.bottom - edge(own.borderBottomWidth) - edge(after.bottom));
+      left = Math.min(left, rect.left + edge(own.borderLeftWidth) + edge(after.left));
+      right = Math.max(right, rect.right - edge(own.borderRightWidth) - edge(after.right));
+    }
+    return { width: right - left, height: bottom - top };
+  });
+}
+
+/** Splits a computed `box-shadow` into layers of numbers: x, y, blur, spread. */
+function shadowLayers(value: string) {
+  if (value === 'none') return [];
+  return value.split(/,(?![^()]*\))/).map((layer) => {
+    const inset = /\binset\b/.test(layer);
+    const lengths =
+      layer
+        .replace(/rgba?\([^)]*\)|color\([^)]*\)/g, '')
+        .match(/-?\d*\.?\d+px/g)
+        ?.map((length) => parseFloat(length)) ?? [];
+    const [x = 0, y = 0, blur = 0, spread = 0] = lengths;
+    return { inset, x, y, blur, spread };
+  });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -134,7 +179,10 @@ async function transitions(target: Locator) {
     .then((list) => list.length);
 }
 
-test('controls match the locked height and font size', async ({ page }) => {
+test('controls match the locked height and font size', async ({ page, hasTouch }) => {
+  // On a touch screen (any-pointer: coarse) every control grows to the touch target token.
+  const touch = hasTouch ? parseFloat(await token(page, '--hit-target')) : 0;
+  expect(hasTouch ? touch : 48).toBe(48);
   for (const [size, height, fontSize] of [
     ['small', 36, 14],
     ['middle', 42, 16],
@@ -147,7 +195,10 @@ test('controls match the locked height and font size', async ({ page }) => {
       ['.ant-select-selector', '.ant-select-selection-item'],
       ['.ant-input-number', '.ant-input-number-input'],
     ] as const) {
-      await expect(row.locator(surface), `${size} ${surface}`).toHaveCSS('height', `${height}px`);
+      await expect(row.locator(surface), `${size} ${surface}`).toHaveCSS(
+        'height',
+        `${Math.max(height, touch)}px`,
+      );
       await expect(row.locator(text), `${size} ${text}`).toHaveCSS('font-size', `${fontSize}px`);
     }
     await expect(page.getByTestId(`link-${size}`)).toHaveCSS('font-size', `${fontSize}px`);
@@ -156,21 +207,25 @@ test('controls match the locked height and font size', async ({ page }) => {
   await expect(page.getByTestId('card')).toHaveCSS('border-radius', '10px');
 });
 
-test('choice controls match the locked height and font size', async ({ page }) => {
+test('choice controls match the locked height and font size', async ({ page, hasTouch }) => {
   // Source: control-size-config.json choice.C3 and the per-control antdTheme blocks.
   // Values are read from the source file: the smallest text is 14 px (AJA-997).
+  // The tab labels are 14 px and each tab item is 28 px (AJA-998, draft `.seg`).
+  // On touch the rows grow to 48 px.
   const c = designSource.choice;
-  for (const [control, height, fontSize] of [
-    ['.ant-checkbox-wrapper', c.checkbox.height, c.checkbox.labelSize],
-    ['.ant-radio-button-wrapper', c.radio.height, c.radio.labelSize],
-    ['.atonota-switch', c.switch.height, c.switch.labelSize],
-    ['.ant-switch', c.switch.trackHeight, c.switch.antdTheme.token.fontSize],
-    ['.ant-segmented', c.tabs.height, c.tabs.fontSize],
-    ['.ant-tag', c.tag.height, c.tag.fontSize],
+  const touch = hasTouch ? 48 : 0;
+  for (const [control, height, fontSize, grows] of [
+    ['.ant-checkbox-wrapper', c.checkbox.height, c.checkbox.labelSize, true],
+    ['.ant-radio-button-wrapper', c.radio.height, c.radio.labelSize, true],
+    ['.atonota-switch', c.switch.height, c.switch.labelSize, true],
+    ['.ant-switch', c.switch.trackHeight, c.switch.antdTheme.token.fontSize, false],
+    ['.ant-segmented-item', 28, 14, true],
+    ['.ant-tag', c.tag.height, c.tag.fontSize, false],
   ] as const) {
     expect(fontSize, `${control} text`).toBeGreaterThanOrEqual(14);
     const target = page.locator('.controls-demo').locator(control).first();
-    await expect.soft(target, control).toHaveCSS('height', `${height}px`, { timeout: 1000 });
+    const expected = grows ? Math.max(height, touch) : height;
+    await expect.soft(target, control).toHaveCSS('height', `${expected}px`, { timeout: 1000 });
     await expect.soft(target, control).toHaveCSS('font-size', `${fontSize}px`, { timeout: 1000 });
   }
   await expect(page.locator('.controls-demo-row').first().locator('.ant-checkbox-inner')).toHaveCSS(
@@ -310,7 +365,7 @@ test('open menu with long text stays inside the viewport', async ({ page }) => {
   );
 });
 
-test('select joins its popup and form controls retain the inset shadow', async ({ page }) => {
+test('select joins its popup and only the popup has a shadow', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const row = page.getByTestId('row-small');
   const selector = row.locator('.ant-select-selector');
@@ -333,8 +388,9 @@ test('select joins its popup and form controls retain the inset shadow', async (
     row.locator('.ant-input-affix-wrapper'),
     row.locator('.ant-input-number'),
   ]) {
-    await expect(surface).toHaveCSS('box-shadow', /inset/);
+    await expect(surface).toHaveCSS('box-shadow', 'none');
   }
+  await expect(popup).not.toHaveCSS('box-shadow', 'none');
   await popup.getByText('Kapalı', { exact: true }).click();
   await expect(selector).toHaveText('Kapalı');
   await expect(popup).toBeHidden();
@@ -372,17 +428,170 @@ test('split actions stay separate and use the shared hit-area engine', async ({
   await expect(page.getByTestId('action')).toHaveText('edit');
 });
 
-test('form surfaces retain the shared inset shadow in dark mode', async ({ page }) => {
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  const row = page.getByTestId('row-small');
-  for (const control of ['.ant-input-affix-wrapper', '.ant-select-selector', '.ant-input-number']) {
-    await expect(row.locator(control)).toHaveCSS(
-      'box-shadow',
-      /inset rgb\(0, 0, 0\)|rgb\(0, 0, 0\).*inset/,
-    );
+for (const scheme of ['light', 'dark'] as const) {
+  test(`controls have no shadow outside the popup in ${scheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', scheme);
+    const demo = page.locator('.controls-demo');
+    for (const control of [
+      '.atonota-button',
+      '.ant-input-affix-wrapper',
+      '.ant-select-selector',
+      '.ant-input-number',
+      '.ant-checkbox-wrapper',
+      '.ant-radio-wrapper',
+      '.ant-radio-button-wrapper',
+      '.ant-switch',
+      '.ant-segmented',
+      '.ant-segmented-item-selected',
+      '.ant-tag',
+      '.atonota-card',
+    ]) {
+      const target = demo.locator(control).first();
+      await expect.soft(target, control).toHaveCSS('box-shadow', 'none', { timeout: 1000 });
+    }
+  });
+}
+
+test('keyboard focus shows one indicator that does not surround the control', async ({ page }) => {
+  const row = page.getByTestId('row-middle');
+  const cases: [string, Locator, Locator][] = [
+    ['button', row.locator('.atonota-button'), row.locator('.atonota-button')],
+    ['input', row.locator('.ant-input'), row.locator('.ant-input-affix-wrapper')],
+    ['select', row.getByRole('combobox'), row.locator('.ant-select-selector')],
+    ['number', row.locator('.ant-input-number-input'), row.locator('.ant-input-number')],
+    [
+      'checkbox',
+      page.getByRole('checkbox', { name: 'Seç' }),
+      page.locator('.ant-checkbox-wrapper', { hasText: 'Seç' }),
+    ],
+    ['switch', page.getByRole('switch', { name: 'Etkin' }), page.getByRole('switch')],
+    [
+      'tabs',
+      page.getByTestId('tabs').locator('input').first(),
+      page.getByTestId('tabs').locator('.ant-segmented-item').first(),
+    ],
+  ];
+  for (const [name, input, surface] of cases) {
+    await keyboardFocus(page, input);
+    await expect(input, name).toBeFocused();
+    // A ring would be an outline or a shadow on every side. Neither is allowed.
+    for (const element of [input, surface]) {
+      await expect(element, name).toHaveCSS('outline-style', 'none');
+      const rings = async () =>
+        shadowLayers(await element.evaluate((node) => getComputedStyle(node).boxShadow)).filter(
+          (layer) => layer.spread > 0 || layer.blur !== 0 || layer.x !== 0 || layer.y > 0,
+        ).length;
+      await expect.poll(rings, { message: `${name} ring` }).toBe(0);
+    }
+    // The single indicator: an underline shadow on the surface or a bottom bar (`::before`).
+    // antd surfaces animate their shadow, so the count is read until the transition ends.
+    const indicators = async () => {
+      const indicator = await surface.evaluate((node) => {
+        const shadow = getComputedStyle(node).boxShadow;
+        const before = getComputedStyle(node, '::before');
+        return { shadow, bar: before.content !== 'none' && before.backgroundColor };
+      });
+      const underline = shadowLayers(indicator.shadow).filter((layer) => layer.y < 0);
+      const bars = indicator.bar && indicator.bar !== 'rgba(0, 0, 0, 0)' ? 1 : 0;
+      return underline.length + bars;
+    };
+    await expect.poll(indicators, { message: `${name} indicator` }).toBe(1);
+    // An underline shadow touches the bottom corners, so they lose their radius (no curved edge).
+    const corners = () =>
+      surface.evaluate((node) => {
+        const style = getComputedStyle(node);
+        if (style.boxShadow === 'none') return 'no underline shadow';
+        return `${style.borderBottomLeftRadius} ${style.borderBottomRightRadius}`;
+      });
+    await expect.poll(corners, { message: `${name} corner` }).toMatch(/^(0px 0px|no underline)/);
   }
 });
+
+test('touch targets are at least 48 px on a touch screen', async ({ page, hasTouch }) => {
+  test.skip(!hasTouch, 'Only touch profiles use the coarse touch target');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const demo = page.locator('.controls-demo');
+  const targets = demo.locator(
+    [
+      '.atonota-button',
+      '.ant-input-affix-wrapper',
+      '.ant-input-number',
+      '.ant-select-selector',
+      'a.atonota-link',
+      '.ant-checkbox-wrapper',
+      '.ant-radio-wrapper',
+      '.ant-radio-button-wrapper',
+      '.ant-switch',
+      '.ant-segmented-item',
+    ].join(', '),
+  );
+  const count = await targets.count();
+  expect(count).toBeGreaterThan(20);
+  for (let index = 0; index < count; index += 1) {
+    const target = targets.nth(index);
+    const label = await target.evaluate((node) => `${node.className} ${node.textContent ?? ''}`);
+    const area = await hitBox(target);
+    expect.soft(area.height, label).toBeGreaterThanOrEqual(48);
+    expect.soft(area.width, label).toBeGreaterThanOrEqual(48);
+  }
+});
+
+test('select is the branded antd select and works with keyboard, pointer and touch', async ({
+  page,
+  hasTouch,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('select')).toHaveCount(0);
+  const row = page.getByTestId('row-middle');
+  const combobox = row.getByRole('combobox');
+  const selector = row.locator('.ant-select-selector');
+  const popup = page.locator('.atonota-select-popup:not(.ant-select-dropdown-hidden)');
+
+  await keyboardFocus(page, combobox);
+  await page.keyboard.press('ArrowDown');
+  await expect(popup).toBeVisible();
+  const active = popup.locator('.ant-select-item-option-active');
+  await expect(active).toHaveText('Açık');
+  await page.keyboard.press('ArrowDown');
+  await expect(active).toHaveText('Kapalı');
+  await page.keyboard.press('Enter');
+  await expect(popup).toBeHidden();
+  await expect(selector).toHaveText('Kapalı');
+
+  await selector.click();
+  await expect(popup).toBeVisible();
+  await popup.getByText('Açık', { exact: true }).click();
+  await expect(selector).toHaveText('Açık');
+  await expect(popup).toBeHidden();
+
+  if (hasTouch) {
+    await selector.tap();
+    await expect(popup).toBeVisible();
+    await popup.getByText('Kapalı', { exact: true }).tap();
+    await expect(selector).toHaveText('Kapalı');
+  }
+});
+
+test('demo page does not overflow horizontally', async ({ page }) => {
+  const sizes = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+  }));
+  expect(sizes.scroll).toBeLessThanOrEqual(sizes.client);
+});
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`axe finds no violations in ${scheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', scheme);
+    const result = await new AxeBuilder({ page })
+      .include('.controls-demo')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
+      .analyze();
+    expect(result.violations.map((violation) => violation.id)).toEqual([]);
+  });
+}
 
 test('forced colors outlines the focused control only in keyboard mode', async ({
   page,
@@ -443,11 +652,11 @@ test('radio button label shows the keyboard focus underline without a ring', asy
   await expect(label).not.toHaveCSS('box-shadow', /0px -2px 0px 0px/);
 });
 
-test('radio uses the 32 px card style from the source decision', async ({ page }) => {
+test('radio uses the 32 px card style from the source decision', async ({ page, hasTouch }) => {
   const group = page.getByTestId('radio-cards');
   const week = group.locator('.ant-radio-wrapper', { hasText: 'Haftalık' });
   const month = group.locator('.ant-radio-wrapper', { hasText: 'Aylık' });
-  await expect(week).toHaveCSS('height', '32px');
+  await expect(week).toHaveCSS('height', hasTouch ? '48px' : '32px');
   await expect(week).toHaveCSS('border-top-style', 'solid');
   await expect(week).toHaveCSS('border-top-width', '1px');
   await expect(week).toHaveCSS('border-radius', '5px');
