@@ -85,6 +85,8 @@ function formatScalarReadOnly(value: unknown, locale: RecordLocale): string {
 export interface CatalogFieldProps {
   field: DocField;
   value: unknown;
+  /** Presentation only: the underlying record value stays available to rules and saving. */
+  readOnlyDisplayValue?: string | undefined;
   doc: Readonly<Record<string, unknown>>;
   parentDoc?: Readonly<Record<string, unknown>> | undefined;
   doctype: string;
@@ -99,6 +101,7 @@ export interface CatalogFieldProps {
   isDirty?: boolean | undefined;
   isSubmitting?: boolean | undefined;
   error?: string | undefined;
+  sourceNote?: string | undefined;
   compactCell?: boolean | undefined;
   onChange: (fieldname: string, nextValue: unknown) => void;
   onFieldAction?: ((field: DocField) => void) | undefined;
@@ -122,6 +125,8 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
     isDirty,
     isSubmitting = false,
     error,
+    sourceNote,
+    readOnlyDisplayValue,
     compactCell = false,
     onChange,
     onFieldAction,
@@ -218,6 +223,19 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
   }
 
   const renderControl = (a11y: FieldControlA11yProps): ReactNode => {
+    if (state.readOnly && readOnlyDisplayValue !== undefined) {
+      return (
+        <Input
+          id={a11y.controlId}
+          aria-labelledby={a11y.labelId}
+          aria-describedby={a11y.ariaDescribedBy}
+          aria-invalid={a11y.ariaInvalid}
+          size={compactCell ? 'small' : 'middle'}
+          readOnly
+          value={readOnlyDisplayValue}
+        />
+      );
+    }
     const strVal =
       typeof value === 'string'
         ? value
@@ -232,6 +250,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
             id={a11y.controlId}
             role="textbox"
             aria-readonly="true"
+            aria-describedby={a11y.ariaDescribedBy}
             aria-labelledby={a11y.labelId}
             className="rv-readonly-box"
           >
@@ -653,6 +672,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
       required={state.required}
       isDirty={isDirty}
       error={error}
+      sourceNote={sourceNote}
       hideLabel={compactCell}
     >
       {renderControl}

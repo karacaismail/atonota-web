@@ -16,6 +16,7 @@ export interface FieldShellProps {
   required?: boolean | undefined;
   isDirty?: boolean | undefined;
   error?: string | undefined;
+  sourceNote?: string | undefined;
   hideLabel?: boolean | undefined;
   children: (a11y: FieldControlA11yProps) => ReactNode;
 }
@@ -27,6 +28,7 @@ export function FieldShell(props: FieldShellProps) {
     required = false,
     isDirty = false,
     error,
+    sourceNote,
     hideLabel = false,
     children,
   } = props;
@@ -35,6 +37,7 @@ export function FieldShell(props: FieldShellProps) {
   const labelId = `${controlId}-label`;
   const helpId = `${controlId}-help`;
   const errorId = `${controlId}-err`;
+  const sourceId = `${controlId}-source`;
 
   const describedIds: string[] = [];
   if (field.description) {
@@ -43,6 +46,7 @@ export function FieldShell(props: FieldShellProps) {
   if (error) {
     describedIds.push(errorId);
   }
+  if (sourceNote) describedIds.push(sourceId);
   const ariaDescribedBy = describedIds.length > 0 ? describedIds.join(' ') : undefined;
   const displayLabel = field.label ?? field.fieldname;
 
@@ -89,6 +93,11 @@ export function FieldShell(props: FieldShellProps) {
       {field.description ? (
         <p id={helpId} className="rv-field-help">
           {field.description}
+        </p>
+      ) : null}
+      {sourceNote ? (
+        <p id={sourceId} className="rv-field-help rv-field-source">
+          {sourceNote}
         </p>
       ) : null}
     </div>

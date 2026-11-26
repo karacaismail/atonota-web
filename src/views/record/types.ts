@@ -1,4 +1,10 @@
+import type { components } from '@/api/generated/hrms_tr';
+
 export type RecordLocale = 'tr' | 'en';
+export type NewRecordContext = components['schemas']['LeaveRequestContextResponse']['message'];
+export type PrefillSource = NonNullable<
+  NewRecordContext['sources'][keyof NewRecordContext['sources']]
+>;
 
 export type Sensitivity = 'standard' | 'restricted';
 
@@ -134,7 +140,12 @@ export type RecordScreenState =
   | { status: 'empty'; reason?: 'no_record' | 'not_found' | undefined }
   | { status: 'unauthorized'; reason: 'permission_denied' | 'session_expired' }
   | { status: 'error'; message: string; code: RecordErrorCode }
-  | { status: 'ready'; meta: DocTypeMeta; record: RecordDocument };
+  | {
+      status: 'ready';
+      meta: DocTypeMeta;
+      record: RecordDocument;
+      prefillSources?: Readonly<Record<string, PrefillSource>> | undefined;
+    };
 
 export interface RecordConflictInfo {
   message: string;
@@ -181,6 +192,13 @@ export interface RunDocActionParams {
 }
 
 export interface RecordDataAdapter {
+  /** Optional for existing adapters. Currently supported for Leave Application only. */
+  getNewRecordContext?:
+    | ((params: {
+        doctype: string;
+        signal?: AbortSignal | undefined;
+      }) => Promise<NewRecordContext | undefined>)
+    | undefined;
   getDocTypeMeta: (params: GetDocTypeMetaParams) => Promise<DocTypeMeta>;
   getRecord: (params: GetRecordParams) => Promise<RecordDocument>;
   saveRecord: (params: SaveRecordParams) => Promise<RecordDocument>;

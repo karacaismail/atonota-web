@@ -1,6 +1,7 @@
 import { type ApiClient, ApiError, type DocumentRequest, type DocumentResponse } from '@/api';
 
 import { formatRecordMessage } from './messages';
+import { validateNewRecordContext } from './prefill';
 import {
   SchemaValidationError,
   validateDocTypeMeta,
@@ -234,6 +235,27 @@ export function createFrappeRecordAdapter(config: FrappeRecordAdapterConfig): Re
   }
 
   return {
+    async getNewRecordContext(params) {
+      if (params.doctype !== 'Leave Application') return undefined;
+      const result = await requestJsonWithMeta(
+        '/api/method/hrms_tr.api.get_leave_request_context',
+        {
+          method: 'GET',
+          externalSignal: params.signal,
+        },
+      );
+      try {
+        return validateNewRecordContext(result.body);
+      } catch (err) {
+        if (err instanceof SchemaValidationError) {
+          throw new RecordApiError({
+            code: 'invalid_response',
+            message: formatRecordMessage(locale, 'invalidServerResponse'),
+          });
+        }
+        throw err;
+      }
+    },
     async getDocTypeMeta(params: GetDocTypeMetaParams): Promise<DocTypeMeta> {
       const cacheKey = `${params.doctype}::${params.language ?? ''}`;
       const cached = metaCache.get(cacheKey);

@@ -24,6 +24,7 @@ import { CatalogField } from './catalog';
 import { CATALOG_VERSION } from './catalogRegistry';
 import { buildFormLayout, isLayoutBreakFieldType, type LayoutSection } from './layout';
 import { formatRecordMessage } from './messages';
+import { applyNewRecordContext, formatLeaveBalance, prefillSourceNote } from './prefill';
 import { RecordErrorBoundary } from './RecordErrorBoundary';
 import { RecordNavigator } from './RecordNavigator';
 import { RecordLinkProvider, type RecordLinkRenderer } from './recordLink';
@@ -47,6 +48,7 @@ import type {
   RecordDataAdapter,
   RecordDocument,
   RecordLocale,
+  PrefillSource,
   RecordScreenState,
   SiteFormatting,
 } from './types';
@@ -209,6 +211,8 @@ function RecordSectionCard(props: {
   onToggleCollapse: () => void;
   effectiveDoc: Readonly<Record<string, unknown>>;
   baseRecord: Readonly<Record<string, unknown>>;
+  prefillSources: Readonly<Record<string, PrefillSource>> | undefined;
+  draftEdits: Readonly<Record<string, unknown>>;
   doctype: string;
   meta: DocTypeMeta;
   adapter: RecordDataAdapter;
@@ -228,6 +232,8 @@ function RecordSectionCard(props: {
     onToggleCollapse,
     effectiveDoc,
     baseRecord,
+    prefillSources,
+    draftEdits,
     doctype,
     meta,
     adapter,
@@ -284,6 +290,13 @@ function RecordSectionCard(props: {
                   key={field.fieldname}
                   field={field}
                   value={effectiveDoc[field.fieldname]}
+                  readOnlyDisplayValue={
+                    !isExistingRecord &&
+                    doctype === 'Leave Application' &&
+                    field.fieldname === 'leave_balance'
+                      ? formatLeaveBalance(effectiveDoc[field.fieldname], locale)
+                      : undefined
+                  }
                   doc={effectiveDoc}
                   doctype={doctype}
                   meta={meta}
@@ -297,6 +310,11 @@ function RecordSectionCard(props: {
                   isDirty={dirtySet.has(field.fieldname)}
                   isSubmitting={isSaving}
                   error={fieldErrors[field.fieldname]}
+                  sourceNote={
+                    field.fieldname in draftEdits
+                      ? undefined
+                      : prefillSourceNote(prefillSources?.[field.fieldname], locale)
+                  }
                   onChange={onFieldChange}
                   onFieldAction={onFieldAction}
                 />
@@ -401,7 +419,22 @@ function RecordViewBody(props: RecordViewBodyProps) {
         });
 
         if (createMode || !name) {
-          const meta = await metaPromise;
+          const loadContext = async () => {
+            try {
+              return await adapter.getNewRecordContext?.({ doctype, signal: controller.signal });
+            } catch (err) {
+              // Context is optional. Invalid responses and expired sessions keep their error flow.
+              if (
+                err instanceof RecordApiError &&
+                err.code !== 'invalid_response' &&
+                err.code !== 'session_expired'
+              ) {
+                return undefined;
+              }
+              throw err;
+            }
+          };
+          const [meta, context] = await Promise.all([metaPromise, loadContext()]);
           if (controller.signal.aborted || currentSeq !== requestSeqRef.current) {
             return;
           }
@@ -415,8 +448,7 @@ function RecordViewBody(props: RecordViewBodyProps) {
           }
           setScreenState({
             status: 'ready',
-            meta,
-            record: buildInitialNewRecord(meta),
+            ...applyNewRecordContext(meta, buildInitialNewRecord(meta), context),
           });
           return;
         }
@@ -863,6 +895,8 @@ function RecordViewBody(props: RecordViewBodyProps) {
         }
         effectiveDoc={effectiveDoc}
         baseRecord={record}
+        prefillSources={screenState.prefillSources}
+        draftEdits={draftEdits}
         doctype={doctype}
         meta={meta}
         adapter={adapter}

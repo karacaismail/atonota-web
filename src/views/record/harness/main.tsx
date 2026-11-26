@@ -9,7 +9,8 @@ import '@fontsource/jetbrains-mono/400.css';
 
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { LEAVE_META } from './leaveFixture';
+import { EMPTY_LEAVE_CONTEXT, LEAVE_CONTEXT, LEAVE_META } from './leaveFixture';
+import { createFrappeRecordAdapter } from '../adapter';
 
 import {
   type DocTypeMeta,
@@ -237,11 +238,48 @@ export function HarnessApp() {
   const params = new URLSearchParams(window.location.search);
   const themeMode = params.get('theme') === 'dark' ? 'dark' : 'light';
   const scenario = params.get('scenario') ?? 'ready';
+  const isLeave = scenario === 'leave' || scenario === 'leave-prefill';
+  // Exercise the production mapper with a fake shared client. No network request is made.
+  const contextAdapter = createFrappeRecordAdapter({
+    api: {
+      frappeDocument: async (request) => {
+        if (
+          request.method !== 'GET' ||
+          request.path !== '/api/method/hrms_tr.api.get_leave_request_context'
+        ) {
+          throw new Error('Unexpected harness request');
+        }
+        const context = params.get('context');
+        if (context === 'network') {
+          throw new RecordApiError({ code: 'network', message: 'Context request failed' });
+        }
+        if (context === 'forbidden' || context === 'unauthenticated') {
+          throw new RecordApiError({
+            code: 'unauthorized',
+            status: context === 'forbidden' ? 403 : 401,
+            message: 'Context request failed',
+          });
+        }
+        if (context === 'validation') {
+          throw new RecordApiError({ code: 'validation', status: 417, message: 'Invalid request' });
+        }
+        const message =
+          context === 'empty'
+            ? EMPTY_LEAVE_CONTEXT
+            : context === 'zero'
+              ? { ...LEAVE_CONTEXT, leave_balance: 0 }
+              : LEAVE_CONTEXT;
+        return { ok: true, status: 200, etag: undefined, body: { message } };
+      },
+    },
+  });
   const [linkFailOnce, setLinkFailOnce] = useState(params.get('linkError') === '1');
   const [currentIndex, setCurrentIndex] = useState(3);
 
   const adapter: RecordDataAdapter = {
-    getDocTypeMeta: async () => (scenario === 'leave' ? LEAVE_META : HARNESS_META),
+    getDocTypeMeta: async () => (isLeave ? LEAVE_META : HARNESS_META),
+    getNewRecordContext:
+      scenario === 'leave-prefill' ? contextAdapter.getNewRecordContext : undefined,
     getRecord: async () => {
       if (scenario === 'error') {
         throw new RecordApiError({
@@ -281,7 +319,7 @@ export function HarnessApp() {
 
   return (
     <main>
-      {scenario === 'leave' ? (
+      {isLeave ? (
         <RecordView
           doctype="Leave Application"
           title="Yeni izin talebi"
