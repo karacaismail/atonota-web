@@ -313,7 +313,7 @@ function Toolbar(p: PageHeaderProps) {
             value={p.search ?? ''}
             onChange={(e) => p.onSearchChange?.(e.target.value)}
           />
-          <Button icon={<Funnel aria-hidden="true" />}>
+          <Button className="shell-hd-filter" icon={<Funnel aria-hidden="true" />}>
             {t.header.filter}
             {filters.length > 0 && <span className="shell-hd-badge">{filters.length}</span>}
           </Button>

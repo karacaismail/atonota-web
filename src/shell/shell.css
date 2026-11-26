@@ -482,7 +482,7 @@ html:has(.shell[data-layout='compact']) {
   padding: 0 var(--shell-space-sm);
   border-radius: var(--shell-radius);
   background: var(--shell-bg-e);
-  color: var(--shell-tx2);
+  color: var(--color-text);
   font-size: var(--shell-fs-min);
   font-variant-numeric: tabular-nums;
   font-weight: 500;
@@ -490,9 +490,9 @@ html:has(.shell[data-layout='compact']) {
   text-align: center;
 }
 
-.shell-item[aria-current='page'] .shell-badge {
-  background: var(--shell-pri);
-  color: var(--shell-bg);
+.shell-item[aria-current='page'] .shell-badge,
+.shell-item[data-active='true'] .shell-badge {
+  background: var(--color-tint);
 }
 
 .shell-chev {
@@ -1285,6 +1285,40 @@ html:has(.shell[data-layout='compact']) {
   justify-content: center;
   min-width: var(--shell-tag-h);
   font-size: var(--shell-item-icon);
+}
+
+/* Dokunma katmanı büyür. Kontrollerin görünen boyutu aynı kalır. */
+@media (any-pointer: coarse) {
+  .shell-iconbtn::before,
+  .shell-hd-search::after,
+  .shell-hd-filter::after,
+  .shell-hd-vsw .ant-segmented-item::before,
+  .shell-cmd-box .ant-segmented-item::before {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: max(100%, var(--hit-target));
+    height: max(100%, var(--hit-target));
+    transform: translate(-50%, -50%);
+  }
+
+  /* Kayan kutu, dokunma katmanının üstünü ve altını kırpmaz. */
+  .shell-hd-vsw {
+    padding: var(--shell-space-md) var(--shell-space-xs);
+    /* WebKit kaydırma çubuğu, son sekmenin dokunma alanını örtmesin. */
+    padding-bottom: var(--shell-space-2xl);
+    scroll-padding-inline: var(--shell-space-xs);
+  }
+
+  .shell-hd-vsw .ant-segmented,
+  .shell-cmd-box .ant-segmented {
+    overflow: visible;
+  }
+
+  /* Yan yana duran hedefler birbirinin dokunma alanını örtmez. */
+  .shell-hd-vsw .ant-segmented-group {
+    column-gap: var(--shell-space-xs);
+  }
 }
 
 .shell-hd-pager {

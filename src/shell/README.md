@@ -250,8 +250,26 @@ Birim testleri `npm test` ile koşar.
 
 Tarayıcı testleri `src/shell/e2e/` klasöründedir. Testler kabuk deneme sayfasında koşar. Deneme sayfası derlenmiş çıktıdır. Geliştirme sunucusu tembel sayfada sayfayı yeniden yüklüyordu. Bu da testleri kararsız yapıyordu.
 
-Kabuğun ayrı Playwright ayarı kaldırıldı. Testleri tek test kapısı koşacak. Kapıyı `foundation` işi kuracak. Kök ayar bu klasörü okumalı ve deneme sayfasını sunmalı.
+Kök Playwright ayarı bu klasörün testlerini çalıştırır. `npm run test:e2e -- src/shell/e2e/` komutu kabuk testlerini başlatır.
 
 Matris kök ayarla aynıdır: Chromium ve WebKit, iPhone 13 profili. Firefox koşulmaz.
 
 Deneme sayfası `harness/` klasöründedir. Tema geçicidir. `?tema=acik` adresi açık temayı açar. `?yol=/satis/teklif/TEK-0003` adresi kabuğu bu yolda açar. Deneme sayfasında kayıt bağlantısı yoktur. Bu yüzden kayıt adresi örnek formu çizer. Örnek form testi bu yolu kullanır.
+
+### Rozet ve dokunma alanı
+
+Rozet yazısı merkezi `--color-text` rengini kullanır. Seçili rozetin zemini `--color-tint` rengidir.
+Test, saydam zeminleri ve kayan fare üstü zeminini birlikte hesaplar.
+Her durumda yazı kontrastı en az 4,5:1 olmalıdır.
+
+Dokunmatik giriş varsa hedef alan `--hit-target` değerini kullanır.
+Menü, arama, filtre ve sekmelerin görünen boyutu korunur.
+Sekmelerin görünmez dokunma katmanı `::before` üzerindedir.
+Ant Design, `::after` katmanını fare üstü görünümü için kullanır.
+Görünüm sekmeleri arasındaki boşluk, dokunma alanlarının çakışmasını önler.
+Kaydırma kutusundaki boşluk, bu alanların kırpılmasını önler.
+
+`npm run test:e2e -- src/shell/e2e/hit-contrast.spec.ts` komutu bu kuralları sınar.
+Test, gerçek dokunma noktalarını ve dış kenardan etkinleşmeyi kontrol eder.
+WebKit'in 320 piksel projesinde dokunma ayrıca açılır.
+Ekran genişliği tek başına dokunmatik giriş anlamına gelmez.
