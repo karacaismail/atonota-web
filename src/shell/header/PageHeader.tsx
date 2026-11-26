@@ -22,6 +22,7 @@ import { shellTokens } from '../tokens';
 import { viewIcons } from './viewIcons';
 
 export type HeaderState =
+  | { kind: 'none' }
   | { kind: 'normal'; syncedAt: string }
   | { kind: 'live'; secondsAgo: number }
   | { kind: 'loading' }
@@ -59,6 +60,8 @@ export interface PageHeaderProps {
   savedViews?: { value: string; label: string }[];
   savedView?: string;
   onSavedViewChange?: (v: string) => void;
+  /** Arama, filtre ve görünüm türü çubuğu. Varsayılan açıktır. Ana sayfa çubuğu çizmez. */
+  tools?: boolean;
 }
 
 /**
@@ -143,7 +146,7 @@ export function PageHeader(p: PageHeaderProps) {
           </div>
         )}
 
-        <Toolbar {...p} />
+        {p.tools !== false && <Toolbar {...p} />}
       </header>
     </>
   );
@@ -151,6 +154,8 @@ export function PageHeader(p: PageHeaderProps) {
 
 function StateLine({ state }: { state: HeaderState }) {
   const s = t.header.state;
+  // Durum satırı yoksa boş "Kayıt yok" yazılmaz. Sayfa durumu gövdede kendisi anlatır.
+  if (state.kind === 'none') return null;
   let body: React.ReactNode;
   switch (state.kind) {
     case 'normal':

@@ -5,6 +5,8 @@ import type { AgentSource, AgentTransport } from '@/ai/agent/types';
 import type { ModuleEnvironment } from '@/modules';
 import type { CollectionDefinition, CollectionSource } from '@/views/collection';
 
+import type { ShellHomeData } from './home-data';
+
 /** Liste rotasının adres parçaları. Eşleme sağlayıcının işidir. */
 export interface CollectionAddress {
   module: string;
@@ -132,6 +134,11 @@ export interface ShellViewData {
   signOut?: () => Promise<void>;
   /** Modül sayfalarının ortamı. Kabuk bunu `ModuleProvider` ile verir. */
   modules?: ModuleEnvironment;
+  /**
+   * Ana sayfanın (Bekleyenler) bağlantısı. Yoksa ana sayfa modül ortamının bağlantısını kullanır.
+   * İkisi de yoksa ana sayfa bağlantının kurulmadığını yazar.
+   */
+  home?: ShellHomeData;
 }
 
 /** AI Studio taşıyıcısı ve ekranda yazan kaynak adı (AX-7). */

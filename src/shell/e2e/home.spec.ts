@@ -11,10 +11,10 @@ const SCENARIO_KEY = 'atonota.mock-senaryo';
 
 async function open(page: Page, scenario?: string) {
   if (scenario) {
-    await page.addInitScript(
-      ([key, value]) => sessionStorage.setItem(key!, value!),
-      [SCENARIO_KEY, scenario],
-    );
+    await page.addInitScript(({ key, value }) => sessionStorage.setItem(key, value), {
+      key: SCENARIO_KEY,
+      value: scenario,
+    });
   }
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Bekleyenler' })).toBeVisible();
@@ -165,7 +165,7 @@ test.describe('ana sayfa: Bekleyenler', () => {
         const cs = getComputedStyle(el);
         if (cs.position === 'absolute' && cs.clip === 'rect(0px, 0px, 0px, 0px)') continue;
         sizes.push(Number.parseFloat(cs.fontSize));
-        fonts.add(cs.fontFamily.split(',')[0]!.replace(/['"]/g, '').trim());
+        fonts.add(cs.fontFamily.split(',')[0]?.replace(/['"]/g, '').trim() ?? '');
       }
       const meta = root.querySelector('.shell-home-who');
       return {
@@ -192,18 +192,12 @@ test.describe('ana sayfa: Bekleyenler', () => {
     await expect(approve).toBeFocused();
     const s = await approve.evaluate((el) => {
       const cs = getComputedStyle(el);
-      const after = getComputedStyle(el, '::after');
-      return {
-        outline: cs.outlineStyle,
-        shadow: cs.boxShadow,
-        afterOpacity: after.opacity,
-        afterHeight: after.height,
-      };
+      return { outline: cs.outlineStyle, shadow: cs.boxShadow };
     });
+    // Merkezi gösterge alttaki iç çizgidir (`src/design/css-variables.ts`). Halka yoktur.
     expect(s.outline).toBe('none');
-    expect(s.shadow).toBe('none');
-    expect(s.afterOpacity).toBe('1');
-    expect(Number.parseFloat(s.afterHeight)).toBeGreaterThan(0);
+    expect(s.shadow).toMatch(/inset/);
+    expect(s.shadow).not.toMatch(/0px 0px 0px [1-9]/);
   });
 
   test('kavisli vurgu kenarı yoktur', async ({ page }) => {
