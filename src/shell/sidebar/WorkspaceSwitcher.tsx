@@ -4,7 +4,6 @@ import { Dropdown } from 'antd';
 import type { KeyboardEvent } from 'react';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 
-import { useFocusDim } from '../focus-dim';
 import { t } from '../messages';
 import type { ShellWorkspace, ShellWorkspaceData } from '../view-data';
 
@@ -115,7 +114,6 @@ function WorkspaceMenu({ rail, data }: { rail: boolean; data: ShellWorkspaceData
   const menuId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const pendingFocus = useRef<FocusTarget | null>(null);
-  useFocusDim(open);
 
   // Liste klavyeyle açıldıysa çizilince odak istenen öğeye gider.
   useEffect(() => {

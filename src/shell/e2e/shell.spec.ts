@@ -63,7 +63,8 @@ test.describe('klavye ile flyout', () => {
     await parent.focus();
     const fly = page.getByRole('group', { name: 'Satış' });
     await expect(fly).toBeVisible();
-    await expect(page.locator('body')).toHaveAttribute('data-focus-dim', 'on');
+    // Odak perdesi yalnız iletişim kutusundadır. Alt menü perde açmaz.
+    await expect(page.locator('body')).not.toHaveAttribute('data-focus-dim', 'on');
 
     // F1: sidebar sağ kenarına 8 px boşlukla bitişir.
     // F6 hareketi bitince ölçülür.

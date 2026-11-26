@@ -3,7 +3,6 @@ import { Tooltip } from 'antd';
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
-import { useFocusDim } from '../focus-dim';
 import type { QuickAction } from '../nav';
 import { groupNavigation } from '../nav';
 import { isPathActive } from '../navMatch';
@@ -75,7 +74,6 @@ export function Sidebar({
   const navigate = useNavigate();
   const baseId = useId();
 
-  useFocusDim(open !== null && !compact);
   const { hostRef: glideRef, state: glideState, hostProps: glideProps } = useGlide();
 
   const clearTimers = () => {

@@ -242,6 +242,22 @@ Bu uç OpenAPI sözleşmesinde yoktur. API istemcisi OpenAPI sözleşmesinden ü
 - Arka uçta panel özeti ucu yoktur.
 - Canlı ana sayfa "Panel özeti henüz yok." yazar. Örnek ajan ve uydurma eşitleme saati gösterilmez.
 
+## Yardımcı panel
+
+Yardımcı panelin yeri kabuktadır. Panelin içeriği `ai-studio` işinindir. İçerik `AppShell` bileşenine `assistant` özelliğiyle verilir. İçerik yoksa kısa bir not görünür.
+
+- Kimlik şeridinde "Asistan" düğmesi vardır. Düğme paneli açar ve kapatır.
+- Panel tıklama, dokunma, Enter ve Space ile açılır. Fare üstüne gelince panel açılmaz.
+- Geniş ekranda panel sağdaki ızgara sütunudur. Genişliği `--shell-assist-w` tokenıdır. Sayfa içeriği daralır, örtülmez.
+- Telefon kabuğunda panel alttan tam boy açılan iletişim kutusudur. Geri kalan kabuk etkileşime kapanır.
+- Escape ve kapatma düğmesi paneli kapatır. Odak paneli açan düğmeye döner.
+- Başka bir düğme de paneli açabilir. Düğme `useAssistPanel()` kancasını kullanır. Örneğin `toggle(e.currentTarget)`. Panel kapanınca odak o düğmeye döner.
+- Reduced motion tercihinde panel hareketsiz açılır.
+
+## Odak perdesi yalnız iletişim kutusundadır
+
+Odak perdesini yalnız iletişim kutusu açar. Menü, alt menü paneli, çalışma alanı listesi, yardımcı panel ve sayfa perde açmaz. Telefon çekmecesi kendi arka zeminini kullanır.
+
 ## Geçici bağlantılar
 
 `foundation` işi iki parçayı henüz `main` dalına koymadı. Kabuk bu parçaları geçici olarak kendisi kurar.
