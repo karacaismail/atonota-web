@@ -1,9 +1,9 @@
+import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page } from '@playwright/test';
 import { expect, test } from '../../../../tests/setup/playwright-fixtures';
 
 const FORM = '/src/views/record/harness/?scenario=leave&assist=1';
-const SHOTS = '/Users/w6x/Documents/frappesetup/.pane/scratch/orkestrator/ekran';
 
 /** Safari reaches buttons with Option+Tab; plain Tab skips them (macOS keyboard setting). */
 async function tabTo(page: Page, target: Locator, key = 'Tab') {
@@ -166,6 +166,9 @@ test('form with focused date is readable, accessible and does not overflow', asy
     await expect(date).toBeFocused();
     // Full-page capture of a sticky header is only correct from the top of the page.
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.screenshot({ path: `${SHOTS}/${name}`, fullPage: true });
+    // SHOT_DIR yoksa görüntü testin kendi çıktı klasörüne yazılır.
+    const shotDir = process.env['SHOT_DIR'];
+    const path = shotDir ? join(shotDir, name) : testInfo.outputPath(name);
+    await page.screenshot({ path, fullPage: true });
   }
 });
