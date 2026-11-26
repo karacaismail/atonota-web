@@ -13,6 +13,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -178,6 +179,8 @@ export interface RecordNavigatorConfig {
 
 export interface RecordViewProps {
   doctype: string;
+  title?: string | undefined;
+  saveActionLabel?: string | undefined;
   name?: string | undefined;
   createMode?: boolean | undefined;
   /**
@@ -239,15 +242,19 @@ function RecordSectionCard(props: {
     onFieldAction,
   } = props;
 
+  const headingId = useId();
+  const sectionLabel = section.label?.trim();
   const gridStyle = {
     '--rv-section-cols': String(section.effectiveColumnCount),
   } as CSSProperties;
 
   return (
-    <section className="rv-section-card" aria-label={section.label ?? meta.schema.name}>
-      {section.label ? (
+    <section className="rv-section-card" aria-labelledby={sectionLabel ? headingId : undefined}>
+      {sectionLabel ? (
         <div className="rv-section-header">
-          <h2 className="rv-section-title">{section.label}</h2>
+          <h2 id={headingId} className="rv-section-title">
+            {sectionLabel}
+          </h2>
           {section.collapsible ? (
             <Button
               size="small"
@@ -255,7 +262,7 @@ function RecordSectionCard(props: {
               icon={collapsed ? <CaretRight weight="regular" /> : <CaretDown weight="regular" />}
               aria-expanded={!collapsed}
               aria-label={formatRecordMessage(locale, 'sectionCollapseToggle', {
-                label: section.label,
+                label: sectionLabel,
               })}
               onClick={onToggleCollapse}
             />
@@ -309,6 +316,8 @@ interface RecordViewBodyProps extends RecordViewProps {
 function RecordViewBody(props: RecordViewBodyProps) {
   const {
     doctype,
+    title,
+    saveActionLabel,
     name,
     createMode = false,
     adapter,
@@ -332,6 +341,39 @@ function RecordViewBody(props: RecordViewBodyProps) {
   // without calling setState synchronously inside useEffect.
   const [draftEdits, setDraftEdits] = useState<Record<string, unknown>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [validationAttempt, setValidationAttempt] = useState({ fieldname: '', sequence: 0 });
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form || !validationAttempt.fieldname) return;
+    // Ant Design mounts and reveals tab panels after the parent's commit. Wait for that
+    // DOM change, then disconnect. No timer or animation duration controls focus.
+    const focusInvalidField = () => {
+      const field = Array.from(
+        form.querySelectorAll<HTMLElement>('.rv-field[data-fieldname]'),
+      ).find((element) => element.dataset['fieldname'] === validationAttempt.fieldname);
+      const control = field?.querySelector<HTMLElement>(
+        'input[aria-invalid="true"], textarea[aria-invalid="true"], button[aria-invalid="true"], [aria-invalid="true"][tabindex]:not([tabindex="-1"])',
+      );
+      if (!control || control.closest('[hidden], [aria-hidden="true"], .ant-tabs-tabpane-hidden'))
+        return false;
+      control.focus();
+      if (document.activeElement !== control) return false;
+      field?.scrollIntoView?.({ block: 'center', behavior: 'instant' });
+      return true;
+    };
+    if (focusInvalidField()) return;
+    const observer = new MutationObserver(() => {
+      if (focusInvalidField()) observer.disconnect();
+    });
+    observer.observe(form, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'aria-invalid'],
+    });
+    return () => observer.disconnect();
+  }, [validationAttempt]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [conflict, setConflict] = useState<RecordConflictInfo | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
@@ -522,12 +564,43 @@ function RecordViewBody(props: RecordViewBodyProps) {
     });
   }, [effectiveDoc, isPhoneViewport, locale, readyMeta]);
 
+  const showValidationErrors = useCallback(
+    (errors: Record<string, string>) => {
+      setFieldErrors(errors);
+      for (const tab of layout.tabs) {
+        for (const section of tab.sections) {
+          const firstInvalid = section.columns
+            .flatMap((column) => column.fields)
+            .find((field) => errors[field.fieldname]);
+          if (!firstInvalid) continue;
+          setActiveTabKey(tab.key);
+          setCollapsedSections((previous) => ({ ...previous, [section.key]: false }));
+          setValidationAttempt((previous) => ({
+            fieldname: firstInvalid.fieldname,
+            sequence: previous.sequence + 1,
+          }));
+          return;
+        }
+      }
+      setValidationAttempt((previous) => ({ fieldname: '', sequence: previous.sequence + 1 }));
+    },
+    [layout],
+  );
   const handleSave = useCallback(async () => {
     if (screenState.status !== 'ready' || savingLockRef.current) {
       return;
     }
     const { meta, record } = screenState;
     // Review 3 Finding 2: Once saved, record.name is populated so the view exits new-record mode.
+    if (
+      record.docstatus === 1 ||
+      record.docstatus === 2 ||
+      !meta.schema.fields.some(
+        (field) => !isLayoutBreakFieldType(field.fieldtype) && !field.read_only,
+      )
+    ) {
+      return;
+    }
     const isNewRecord = record.name.length === 0;
     if (!isNewRecord && dirtyFields.length === 0) {
       return;
@@ -539,7 +612,7 @@ function RecordViewBody(props: RecordViewBodyProps) {
     });
 
     if (Object.keys(validationErrors).length > 0) {
-      setFieldErrors(validationErrors);
+      showValidationErrors(validationErrors);
       return;
     }
 
@@ -628,7 +701,7 @@ function RecordViewBody(props: RecordViewBodyProps) {
           });
         } else if (err.code === 'validation') {
           if (err.fieldErrors) {
-            setFieldErrors({ ...err.fieldErrors });
+            showValidationErrors({ ...err.fieldErrors });
           }
           setActionError(err.message);
         } else if (err.code === 'invalid_response') {
@@ -651,7 +724,16 @@ function RecordViewBody(props: RecordViewBodyProps) {
       savingLockRef.current = false;
       setIsSaving(false);
     }
-  }, [adapter, dirtyFields, doctype, effectiveDoc, locale, onSaved, screenState]);
+  }, [
+    adapter,
+    dirtyFields,
+    doctype,
+    effectiveDoc,
+    locale,
+    onSaved,
+    screenState,
+    showValidationErrors,
+  ]);
 
   const handleFieldAction = useCallback(
     async (field: DocField) => {
@@ -731,11 +813,12 @@ function RecordViewBody(props: RecordViewBodyProps) {
   const titleField = meta.schema.title_field;
   const rawTitle = titleField ? effectiveDoc[titleField] : undefined;
   const displayTitle =
-    typeof rawTitle === 'string' && rawTitle.trim().length > 0
+    title ??
+    (typeof rawTitle === 'string' && rawTitle.trim().length > 0
       ? rawTitle.trim()
       : !isNewRecord
         ? record.name
-        : meta.schema.name;
+        : meta.schema.name);
 
   const isRecordReadOnly = record.docstatus === 1 || record.docstatus === 2;
   const hasWritableFields = meta.schema.fields.some(
@@ -798,7 +881,14 @@ function RecordViewBody(props: RecordViewBodyProps) {
     ));
 
   return (
-    <div>
+    <form
+      ref={formRef}
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        void handleSave();
+      }}
+    >
       <header className="rv-header">
         {crumbItems.length > 0 ? (
           <nav
@@ -841,14 +931,14 @@ function RecordViewBody(props: RecordViewBodyProps) {
               <Button
                 size="middle"
                 type="primary"
+                htmlType="submit"
                 icon={<FloppyDisk weight="regular" />}
                 loading={isSaving}
                 disabled={isSaving || (!isDirty && !isNewRecord)}
-                onClick={() => {
-                  void handleSave();
-                }}
               >
-                {formatRecordMessage(locale, isSaving ? 'savingAction' : 'saveAction')}
+                {isSaving
+                  ? formatRecordMessage(locale, 'savingAction')
+                  : (saveActionLabel ?? formatRecordMessage(locale, 'saveAction'))}
               </Button>
             ) : null}
           </div>
@@ -935,11 +1025,15 @@ function RecordViewBody(props: RecordViewBodyProps) {
           </div>
         ) : null}
 
-        {Object.keys(fieldErrors).length > 0 ? (
-          <div className="rv-banner rv-banner--error" role="alert">
-            <strong>{formatRecordMessage(locale, 'validationSummaryTitle')}</strong>
-          </div>
-        ) : null}
+        <div role="status" aria-live="polite" aria-atomic="true">
+          {Object.keys(fieldErrors).length > 0 ? (
+            <p key={validationAttempt.sequence} className="rv-banner rv-banner--error">
+              {formatRecordMessage(locale, 'validationErrorCount', {
+                count: Object.keys(fieldErrors).length,
+              })}
+            </p>
+          ) : null}
+        </div>
 
         {actionError ? (
           <div className="rv-banner rv-banner--error" role="alert">
@@ -965,7 +1059,7 @@ function RecordViewBody(props: RecordViewBodyProps) {
           ))
         )}
       </div>
-    </div>
+    </form>
   );
 }
 

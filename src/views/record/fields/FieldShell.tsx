@@ -81,15 +81,14 @@ export function FieldShell(props: FieldShellProps) {
         ariaInvalid: Boolean(error),
       })}
 
+      {error ? (
+        <p id={errorId} className="rv-field-error">
+          {error}
+        </p>
+      ) : null}
       {field.description ? (
         <p id={helpId} className="rv-field-help">
           {field.description}
-        </p>
-      ) : null}
-
-      {error ? (
-        <p id={errorId} className="rv-field-error" role="alert">
-          {error}
         </p>
       ) : null}
     </div>

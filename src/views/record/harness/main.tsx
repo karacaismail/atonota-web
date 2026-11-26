@@ -9,6 +9,7 @@ import '@fontsource/jetbrains-mono/400.css';
 
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { LEAVE_META } from './leaveFixture';
 
 import {
   type DocTypeMeta,
@@ -240,7 +241,7 @@ export function HarnessApp() {
   const [currentIndex, setCurrentIndex] = useState(3);
 
   const adapter: RecordDataAdapter = {
-    getDocTypeMeta: async () => HARNESS_META,
+    getDocTypeMeta: async () => (scenario === 'leave' ? LEAVE_META : HARNESS_META),
     getRecord: async () => {
       if (scenario === 'error') {
         throw new RecordApiError({
@@ -280,18 +281,31 @@ export function HarnessApp() {
 
   return (
     <main>
-      <RecordView
-        doctype="Expense Claim"
-        {...(scenario === 'empty' ? {} : { name: `HR-EXP-000${currentIndex}` })}
-        adapter={adapter}
-        themeMode={themeMode}
-        locale="tr"
-        navigator={{
-          currentIndex,
-          totalCount: 1284,
-          onNavigate: (next) => setCurrentIndex(next),
-        }}
-      />
+      {scenario === 'leave' ? (
+        <RecordView
+          doctype="Leave Application"
+          title="Yeni izin talebi"
+          saveActionLabel="Talebi gönder"
+          createMode
+          adapter={adapter}
+          themeMode={themeMode}
+          locale="tr"
+          breadcrumbs={[]}
+        />
+      ) : (
+        <RecordView
+          doctype="Expense Claim"
+          {...(scenario === 'empty' ? {} : { name: `HR-EXP-000${currentIndex}` })}
+          adapter={adapter}
+          themeMode={themeMode}
+          locale="tr"
+          navigator={{
+            currentIndex,
+            totalCount: 1284,
+            onNavigate: (next) => setCurrentIndex(next),
+          }}
+        />
+      )}
     </main>
   );
 }
