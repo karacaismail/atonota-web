@@ -48,6 +48,13 @@ async function send(user: ReturnType<typeof setupUser>, text: string) {
   await user.click(screen.getByRole('button', { name: 'Mesajı gönder' }));
 }
 
+/** Kip etiketine tıklar. antd radyo girişi görünmezdir; kullanıcı etikete basar. */
+async function pickMode(user: ReturnType<typeof setupUser>, name: string) {
+  const label = screen.getByRole('radio', { name }).closest('label');
+  if (!label) throw new Error(`${name} etiketi yok`);
+  await user.click(label);
+}
+
 /** Sahte akış: test bitince durur. */
 function demo(): AgentTransport {
   const base = createFlowDemoTransport({ delayMs: 1 });
@@ -99,7 +106,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
     const user = setupUser();
     const m = manual();
     render(<AiStudio transport={m.transport} source={MOCK_SOURCE} />);
-    await user.click(screen.getByRole('radio', { name: 'İşlem yap' }));
+    await pickMode(user, 'İşlem yap');
     await send(user, 'Sipariş SO-0041 iptal et');
     await waitFor(() => expect(m.requests).toHaveLength(1));
     expect((m.requests[0] as AgentRequest & { mode?: string }).mode).toBe('act');
@@ -160,7 +167,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
   it('plan adımında kapsam şeridi, onay adımında onay kartı görünür', async () => {
     const user = setupUser();
     render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
-    await user.click(screen.getByRole('radio', { name: 'İşlem yap' }));
+    await pickMode(user, 'İşlem yap');
     await send(user, 'SO-0041 siparişinin teslim tarihini bir gün ileri al');
     const log = screen.getByRole('log');
     await waitFor(() => expect(log.querySelector('[data-genui="confirm"]')).not.toBeNull());
@@ -180,7 +187,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
   it('onaydan sonra uygulama adımında sonuç yüzeyi görünür', async () => {
     const user = setupUser();
     render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
-    await user.click(screen.getByRole('radio', { name: 'İşlem yap' }));
+    await pickMode(user, 'İşlem yap');
     await send(user, 'SO-0041 siparişinin teslim tarihini bir gün ileri al');
     const log = screen.getByRole('log');
     await waitFor(() => expect(log.querySelector('[data-genui="confirm"]')).not.toBeNull());
@@ -202,7 +209,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
   it('R3 önerisinde ad yanlış yazılınca "Onayla" kapalı kalır', async () => {
     const user = setupUser();
     render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
-    await user.click(screen.getByRole('radio', { name: 'İşlem yap' }));
+    await pickMode(user, 'İşlem yap');
     await send(user, 'SO-0041 siparişini iptal et');
     const log = screen.getByRole('log');
     await waitFor(() => expect(log.querySelector('[data-risk="R3"]')).not.toBeNull());
@@ -221,7 +228,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
     const user = setupUser();
     const { container } = render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
     expect(container.querySelector('svg.owl, .owl')).toBeNull();
-    await user.click(screen.getByRole('radio', { name: 'İşlem yap' }));
+    await pickMode(user, 'İşlem yap');
     await send(user, 'SO-0041 siparişinin teslim tarihini bir gün ileri al');
     const log = screen.getByRole('log');
     await waitFor(() => expect(log.querySelector('[data-genui="confirm"]')).not.toBeNull());

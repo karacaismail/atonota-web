@@ -21,6 +21,14 @@ async function ask(page: Page, text: string) {
   await page.getByRole('button', { name: 'Mesajı gönder' }).click();
 }
 
+/** Kip etiketine basar. antd radyo girişi görünmezdir; kullanıcı etikete basar. */
+async function pickAct(page: Page) {
+  await page.locator('.ai-mode label').filter({ hasText: ACT }).click();
+  await expect(
+    page.getByRole('region', { name: 'AI Studio' }).getByRole('radio', { name: ACT }),
+  ).toBeChecked();
+}
+
 async function horizontalOverflow(page: Page) {
   return page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -42,7 +50,7 @@ test.describe('Yardımcı akışı', () => {
   test('sunucu olayı gelmeden araç olayı görünmez', async ({ page }) => {
     // Sahte sunucu her olaydan önce 1,5 saniye bekler. İlk olay gelmeden liste yoktur.
     await open(page, '?gecikme=1500');
-    await page.getByRole('radio', { name: ACT }).check();
+    await pickAct(page);
     await ask(page, R1_TEXT);
     const log = page.getByRole('log');
     await expect(page.getByRole('button', { name: 'Yanıtı durdur' })).toBeVisible();
@@ -54,7 +62,7 @@ test.describe('Yardımcı akışı', () => {
 
   test('R3 önerisinde ad yanlış yazılınca "Onayla" kapalı kalır', async ({ page }) => {
     await open(page);
-    await page.getByRole('radio', { name: ACT }).check();
+    await pickAct(page);
     await ask(page, R3_TEXT);
     const card = page.locator('[data-genui="confirm"][data-risk="R3"]');
     await expect(card).toBeVisible({ timeout: 15_000 });
@@ -67,10 +75,10 @@ test.describe('Yardımcı akışı', () => {
     await expect(approve).toBeEnabled();
   });
 
-  test('ekranda "Geri al", baykuş, alan düğmesi ve yüzde yoktur', async ({ page }) => {
+  test('ekranda "Geri al", baykuş ve yüzde yoktur', async ({ page }) => {
     await open(page);
     await expect(page.locator('svg.owl, .owl')).toHaveCount(0);
-    await page.getByRole('radio', { name: ACT }).check();
+    await pickAct(page);
     await ask(page, R1_TEXT);
     const card = page.locator('[data-genui="confirm"]');
     await expect(card).toBeVisible({ timeout: 15_000 });
@@ -85,23 +93,25 @@ test.describe('Yardımcı akışı', () => {
   test('akışla sayfa yatay taşmaz ve axe hata vermez', async ({ page }) => {
     await open(page);
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
-    await page.getByRole('radio', { name: ACT }).check();
+    await pickAct(page);
     await ask(page, R3_TEXT);
     await expect(page.locator('[data-genui="confirm"]')).toBeVisible({ timeout: 15_000 });
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
     await settle(page);
     const result = await new AxeBuilder({ page }).include('.ai-studio').analyze();
-    expect(result.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+    expect(
+      result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
+    ).toEqual([]);
   });
 
   test('kip klavyeyle seçilir ve onay klavyeyle verilir', async ({ page }) => {
     await open(page);
-    const ask0 = page.getByRole('radio', { name: 'Sor' });
-    await ask0.focus();
+    const studio = page.getByRole('region', { name: 'AI Studio' });
+    await studio.getByRole('radio', { name: 'Sor' }).focus();
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('radio', { name: ACT })).toBeChecked();
+    await expect(studio.getByRole('radio', { name: ACT })).toBeChecked();
     await page.getByRole('textbox', { name: 'Asistana mesaj yazın' }).fill(R1_TEXT);
     await page.keyboard.press('Enter');
     const card = page.locator('[data-genui="confirm"]');
@@ -118,7 +128,9 @@ test.describe('Yardımcı akışı', () => {
     const box = await radio.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
     await radio.tap();
-    await expect(page.getByRole('radio', { name: ACT })).toBeChecked();
+    await expect(
+      page.getByRole('region', { name: 'AI Studio' }).getByRole('radio', { name: ACT }),
+    ).toBeChecked();
     await ask(page, R1_TEXT);
     const card = page.locator('[data-genui="confirm"]');
     await expect(card).toBeVisible({ timeout: 15_000 });

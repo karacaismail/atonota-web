@@ -211,22 +211,6 @@ test.describe('AI Studio', () => {
     expect(ring.outline).toBe('none');
   });
 
-  test('azaltılmış harekette baykuş durur', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await open(page);
-    const owl = page.locator('svg.owl').first();
-    await expect(owl).toHaveClass(/is-still/);
-    await expect(page.locator('svg.owl animateMotion')).toHaveCount(0);
-  });
-
-  test('hareket açıkken baykuş parçacıkları döner', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await open(page);
-    const owl = page.locator('svg.owl').first();
-    expect(await owl.evaluate((el) => getComputedStyle(el).animationName)).toBe('owl-float');
-    expect(await owl.locator('animateMotion').count()).toBe(3);
-  });
-
   test('form alanı odakta kenarını boyamaz, yalnız tek kenar göstergesi kullanır', async ({
     page,
   }) => {
