@@ -36,6 +36,7 @@ export function useGenuiVars(): CSSProperties {
         '--ai-success-bg': token.colorSuccessBg,
         '--ai-error': token.colorError,
         '--ai-error-bg': token.colorErrorBg,
+        '--ai-error-border': token.colorErrorBorder,
         '--ai-warning': token.colorWarning,
         '--ai-warning-bg': token.colorWarningBg,
         '--ai-warning-border': token.colorWarningBorder,

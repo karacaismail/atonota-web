@@ -187,7 +187,8 @@
 }
 
 .genui-changes thead th {
-  color: var(--ai-text-3);
+  /* Onay kartının uyarı zemininde üçüncül renk 4,5:1 karşıtlığı tutmaz. */
+  color: var(--ai-text-2);
   font-size: var(--font-min);
   font-weight: 600;
   border-bottom: 1px solid var(--ai-border);
@@ -221,6 +222,69 @@
   background: var(--ai-warning-bg);
 }
 
+.genui-confirm.is-r3 {
+  border-color: var(--ai-error-border);
+  background: var(--ai-error-bg);
+}
+
+.genui-confirm.is-r3 .genui-warn {
+  color: var(--ai-error);
+}
+
+/* Risk düzeyi ve hedef kayıt. Etiket solda, değer sağda durur. */
+.genui-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ai-gap-xs) var(--ai-gap);
+  margin: 0;
+  font-size: var(--font-min);
+}
+
+.genui-facts dt {
+  color: var(--ai-text-2);
+}
+
+.genui-facts dd {
+  min-width: 0;
+  margin: 0;
+}
+
+/* Risk rozeti. Yazı ana metin rengindedir. Böylece her zeminde karşıtlık korunur. */
+.genui-risk {
+  display: inline-block;
+  padding: 0 var(--ai-gap-sm);
+  border-radius: var(--radius);
+  background: var(--ai-bg-c);
+  color: var(--ai-text);
+  font-weight: 600;
+}
+
+.genui-type {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-xs);
+}
+
+/*
+ * Onay kartının kontrolleri dokunma alanı tokenını karşılar.
+ * İnce işaretçide en az 44 px, dokunmatik ekranda en az 48 px olur.
+ */
+.genui-confirm .genui-actions .ant-btn,
+.genui-done .genui-undo,
+.genui-confirm .genui-type .ant-input,
+.genui-confirm .genui-check {
+  min-height: var(--hit-target);
+}
+
+.genui-confirm .genui-check {
+  align-items: center;
+}
+
+.genui-done .genui-undo {
+  margin-left: auto;
+}
+
 .genui-warn {
   display: inline-flex;
   flex-shrink: 0;
@@ -251,6 +315,7 @@
 
 .genui-done {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--ai-gap-sm);
 }
