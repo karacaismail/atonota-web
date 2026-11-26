@@ -10,6 +10,7 @@ import { RESELLER_LINK_DOCTYPE } from '@/modules';
 import { type ShellAccess, ShellAccessContext } from '../access';
 import { FocusDimProvider } from '../focus-dim';
 import { isDarkColor } from '../focus-dim/isDarkColor';
+import { WorkspaceIdentity } from '../header/WorkspaceIdentity';
 import { t } from '../messages';
 import type { QuickAction } from '../nav';
 import {
@@ -30,9 +31,11 @@ import {
 } from '../sampleData';
 import type { SidebarVariant } from '../sidebar/Sidebar';
 import { Sidebar } from '../sidebar/Sidebar';
+import type { CommandMode } from '../sidebar/CommandBox';
 import { shellCssVars } from '../tokens';
 import type { AccountKind, ShellCredit, ShellWorkspaceData } from '../view-data';
 import { useViewData } from '../view-data';
+import { workspaceText } from '../workspaceMessages';
 import { useCompactLayout } from './useMedia';
 
 const STORAGE_KEY = 'atonota.shell.sidebar';
@@ -73,6 +76,8 @@ function useThemeVars(): CSSProperties {
     '--shell-warn': token.colorWarning,
     '--shell-err': token.colorError,
     '--shell-err-bg': token.colorErrorBg,
+    '--shell-test-bg': token.colorWarningBg,
+    '--shell-live-bg': token.colorSuccessBg,
     '--shell-mono': token.fontFamilyCode,
     '--shell-shadow': token.boxShadowSecondary,
     '--shell-foot': dark ? 'var(--shell-foot-dark)' : 'var(--shell-foot-light)',
@@ -231,17 +236,37 @@ export function AppShell({ children }: AppShellProps) {
   const compact = useCompactLayout();
   const [variant, setVariant] = useState<SidebarVariant>(readVariant);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [commandMode, setCommandMode] = useState<CommandMode>('ask');
   const menuBtn = useRef<HTMLButtonElement>(null);
-  const drawerRef = useRef<HTMLElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const topRef = useRef<HTMLElement>(null);
   const vars = useThemeVars();
   const { access, accountKindFailed, nav, agents, quickActions, demo } = useShellNav();
   const liveWorkspaces = useViewData()?.workspaces;
+  const moduleEnvironment = useViewData()?.modules?.mode;
   const workspaces = demo ? DEMO_WORKSPACES : liveWorkspaces;
   const credit = useShellCredit(demo);
   const isDrawer = compact;
   const modalOpen = isDrawer && drawerOpen;
+  // A wrapping identity strip has no fixed height. Keep focused content below it.
+  useLayoutEffect(() => {
+    const header = topRef.current;
+    if (!isDrawer || !header) return undefined;
+    const root = document.documentElement;
+    const property = '--shell-identity-height';
+    const previous = root.style.getPropertyValue(property);
+    const measure = () =>
+      root.style.setProperty(property, `${header.getBoundingClientRect().height}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => {
+      observer.disconnect();
+      if (previous) root.style.setProperty(property, previous);
+      else root.style.removeProperty(property);
+    };
+  }, [isDrawer]);
 
   const changeVariant = (v: SidebarVariant) => {
     setVariant(v);
@@ -295,8 +320,8 @@ export function AppShell({ children }: AppShellProps) {
         data-layout={isDrawer ? 'compact' : 'wide'}
         data-variant={variant}
       >
-        {isDrawer && (
-          <header ref={topRef} className="shell-topbar">
+        <header ref={topRef} className="shell-identity" aria-label={workspaceText.identity}>
+          {isDrawer && (
             <button
               ref={menuBtn}
               type="button"
@@ -308,12 +333,13 @@ export function AppShell({ children }: AppShellProps) {
             >
               <List aria-hidden="true" />
             </button>
-            <span className="shell-logo" aria-hidden="true">
-              A
-            </span>
-            {ws && <span className="shell-topbar-t">{ws.name}</span>}
-          </header>
-        )}
+          )}
+          <WorkspaceIdentity
+            tenant={ws?.name}
+            environment={demo ? 'example' : moduleEnvironment}
+            mode={commandMode}
+          />
+        </header>
         {isDrawer && (
           <div
             className="shell-backdrop"
@@ -322,14 +348,14 @@ export function AppShell({ children }: AppShellProps) {
             onClick={closeDrawer}
           />
         )}
-        <aside
+        <div
           ref={drawerRef}
           id="shell-drawer"
           className="shell-aside"
           data-open={isDrawer ? (drawerOpen ? 'true' : 'false') : undefined}
           {...(isDrawer
             ? { role: 'dialog', 'aria-modal': drawerOpen, 'aria-label': t.nav.drawer }
-            : {})}
+            : { role: 'complementary' })}
         >
           {isDrawer && (
             <button
@@ -352,8 +378,11 @@ export function AppShell({ children }: AppShellProps) {
             credit={credit}
             compact={isDrawer}
             onNavigate={isDrawer ? closeDrawer : undefined}
+            grouped={!demo}
+            commandMode={commandMode}
+            onCommandModeChange={setCommandMode}
           />
-        </aside>
+        </div>
         <main ref={mainRef} className="shell-main" id="main">
           {accountKindFailed && (
             <div className="shell-hd-err" role="alert">

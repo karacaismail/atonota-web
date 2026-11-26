@@ -7,20 +7,32 @@ import { t } from '../messages';
 import type { QuickAction } from '../nav';
 import { routes } from '../paths';
 
-type Mode = 'ask' | 'do' | 'search';
+export type CommandMode = 'ask' | 'do' | 'search';
 
 interface CommandBoxProps {
   /** Hızlı eylemler. Liste boşsa bölüm çizilmez. Uydurma öneri gösterilmez. */
   actions?: readonly QuickAction[];
   onSubmitted?: () => void;
+  mode?: CommandMode | undefined;
+  onModeChange?: ((mode: CommandMode) => void) | undefined;
 }
 
 /**
  * Komut alanı. Gönderilen istek asistan sayfasına gider.
  * Bu sürümde yanıt üretilmez. Sahte yanıt gösterilmez.
  */
-export function CommandBox({ actions = [], onSubmitted }: CommandBoxProps) {
-  const [mode, setMode] = useState<Mode>('ask');
+export function CommandBox({
+  actions = [],
+  onSubmitted,
+  mode: controlledMode,
+  onModeChange,
+}: CommandBoxProps) {
+  const [localMode, setLocalMode] = useState<CommandMode>('ask');
+  const mode = controlledMode ?? localMode;
+  const setMode = (next: CommandMode) => {
+    setLocalMode(next);
+    onModeChange?.(next);
+  };
   const [value, setValue] = useState('');
   const navigate = useNavigate();
 
@@ -47,7 +59,7 @@ export function CommandBox({ actions = [], onSubmitted }: CommandBoxProps) {
     <XProvider>
       <section className="shell-cmd" aria-label={t.command.label}>
         <div className="shell-cmd-box">
-          <Segmented<Mode>
+          <Segmented<CommandMode>
             size="small"
             block
             aria-label={t.command.modeLabel}

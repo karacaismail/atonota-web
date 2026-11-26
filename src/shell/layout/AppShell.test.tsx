@@ -1,7 +1,7 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ant-design/x', () => import('../testing/antdXMock'));
 
@@ -10,6 +10,17 @@ import { ViewDataProvider } from '../view-data';
 import { AppShell } from './AppShell';
 
 const original = window.matchMedia;
+beforeEach(() => {
+  // jsdom has no layout observer. Real strip measurements are covered in Playwright.
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+    },
+  );
+});
 
 function mockCompact(compact: boolean) {
   window.matchMedia = (query: string) =>
@@ -28,6 +39,7 @@ function mockCompact(compact: boolean) {
 afterEach(() => {
   window.matchMedia = original;
   localStorage.clear();
+  vi.unstubAllGlobals();
 });
 
 function renderShell(viewData: ShellViewData | null = null) {
@@ -43,6 +55,69 @@ function renderShell(viewData: ShellViewData | null = null) {
 }
 
 describe('AppShell', () => {
+  it.each([
+    ['example', 'Deneme'],
+    ['live', 'Canlı'],
+  ] as const)('labels the supplied %s environment', (mode, label) => {
+    mockCompact(false);
+    renderShell({ modules: { tenant: 'example.test', user: 'example', mode } });
+    expect(screen.getByRole('banner', { name: 'Kimlik şeridi' })).toHaveTextContent(label);
+  });
+  it.each([true, false])('shows tenant, environment and command mode (compact: %s)', (compact) => {
+    mockCompact(compact);
+    renderShell({
+      workspaces: { current: 'example', items: [{ id: 'example', name: 'Örnek Şirket' }] },
+    });
+    const identity = screen.getByRole('banner', { name: 'Kimlik şeridi' });
+    expect(identity).toHaveTextContent('KiracıÖrnek Şirket');
+    expect(identity).toHaveTextContent('OrtamDoğrulanıyor');
+    expect(identity).toHaveTextContent('KipSor');
+  });
+
+  it('updates the identity mode from the actual command selection', async () => {
+    mockCompact(false);
+    renderShell();
+    const user = userEvent.setup();
+    await user.click(screen.getByText('Ara', { selector: '.ant-segmented-item-label' }));
+    expect(screen.getByRole('banner', { name: 'Kimlik şeridi' })).toHaveTextContent('KipAra');
+    await user.click(screen.getByRole('button', { name: 'Dar görünüme geç' }));
+    expect(screen.getByRole('banner', { name: 'Kimlik şeridi' })).toHaveTextContent('KipAra');
+  });
+
+  it('renders only nonempty task headings and keeps permitted links keyboard reachable', async () => {
+    mockCompact(false);
+    renderShell({
+      navigation: {
+        loadSidebars: vi.fn().mockResolvedValue([]),
+        loadReadable: vi.fn().mockResolvedValue(new Set(['Leave Application'])),
+      },
+    });
+    const navigation = screen.getByRole('navigation', { name: 'Ana gezinme' });
+    expect(
+      await within(navigation).findByRole('heading', { name: 'İnsan kaynakları' }),
+    ).toBeInTheDocument();
+    expect(
+      within(navigation).getByRole('heading', { name: 'Bakmak ve onaylamak' }),
+    ).toBeInTheDocument();
+    expect(within(navigation).getByRole('heading', { name: 'Yönetim' })).toBeInTheDocument();
+    const user = userEvent.setup();
+    const menuLinks = within(navigation).getAllByRole('link');
+    act(() => menuLinks[0]?.focus());
+    for (const link of menuLinks.slice(1)) {
+      await user.tab();
+      expect(link).toHaveFocus();
+    }
+    for (const link of menuLinks.slice(0, -1).reverse()) {
+      await user.tab({ shift: true });
+      expect(link).toHaveFocus();
+    }
+  });
+
+  it('omits the people heading when every people page is denied', () => {
+    mockCompact(false);
+    renderShell();
+    expect(screen.queryByRole('heading', { name: 'İnsan kaynakları' })).not.toBeInTheDocument();
+  });
   it('menüde örnek grup, uydurma sayı ve örnek ajan yoktur (Ö2)', () => {
     mockCompact(false);
     renderShell();
@@ -63,7 +138,7 @@ describe('AppShell', () => {
       },
     ]);
     renderShell({ navigation: { loadSidebars } });
-    expect(await screen.findByRole('button', { name: 'Satış' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Teklifler' })).toBeInTheDocument();
     expect(loadSidebars).toHaveBeenCalledWith(expect.any(AbortSignal));
   });
 
@@ -225,7 +300,10 @@ describe('AppShell örnek veri yok', () => {
     renderShell({
       workspaces: { items: [{ id: 'site', name: 'site.example.test' }], current: 'site' },
     });
-    expect(screen.getByText('site.example.test')).toBeInTheDocument();
+    expect(document.querySelector('.shell-ws')).toHaveTextContent('site.example.test');
+    expect(screen.getByRole('banner', { name: 'Kimlik şeridi' })).toHaveTextContent(
+      'site.example.test',
+    );
     expect(screen.queryByRole('button', { name: /site\.example\.test/ })).not.toBeInTheDocument();
     expect(document.querySelector('[aria-haspopup="menu"]')).toBeNull();
   });

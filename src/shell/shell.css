@@ -40,6 +40,8 @@
   --shell-skel-h: 10px;
   --shell-lh-tight: 18px;
   --shell-lh-dense: 16px;
+  --shell-hit: 48px;
+  --shell-z-topbar: 10;
 
   /* Yerleşim eşikleri. İçerik okunur kalsın diye seçildi. */
   --shell-drawer-gap: 32px;
@@ -57,7 +59,7 @@
      sayfanın `.glide`, iskelet ve dönme kurallarından gelir. Solma eğrisi genel S eğrisidir;
      kaynaktaki anahtar sözcük eğrisi merkezi eğriyle değiştirildi. */
   --shell-glide-dur: var(--motion-duration-glide);
-  --shell-glide-ease: var(--motion-easing-glide);
+  --shell-glide-ease: var(--motion-easing-standard);
   --shell-glide-fade-dur: var(--motion-duration-glide-fade);
   --shell-glide-fade-ease: var(--motion-easing-standard);
   --shell-skel-dur: var(--motion-duration-skeleton);
@@ -128,23 +130,31 @@
   pointer-events: none;
 }
 
-.shell-item:focus-visible::after,
-.shell-ws:focus-visible::after,
-.shell-tg:focus-visible::after,
-.shell-iconbtn:focus-visible::after,
-.shell-fly-ai:focus-visible::after,
-.shell-kb-card:focus-visible::after {
+html[data-focus-mode='keyboard'] .shell-item:focus-visible::after,
+html[data-focus-mode='keyboard'] .shell-ws:focus-visible::after,
+html[data-focus-mode='keyboard'] .shell-tg:focus-visible::after,
+html[data-focus-mode='keyboard'] .shell-iconbtn:focus-visible::after,
+html[data-focus-mode='keyboard'] .shell-fly-ai:focus-visible::after,
+html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible::after {
   opacity: 1;
 }
 
 @media (forced-colors: active) {
-  .shell-item:focus-visible,
-  .shell-ws:focus-visible,
-  .shell-tg:focus-visible,
-  .shell-iconbtn:focus-visible,
-  .shell-fly-ai:focus-visible,
-  .shell-kb-card:focus-visible {
+  html[data-focus-mode='keyboard'] .shell-item:focus-visible,
+  html[data-focus-mode='keyboard'] .shell-ws:focus-visible,
+  html[data-focus-mode='keyboard'] .shell-tg:focus-visible,
+  html[data-focus-mode='keyboard'] .shell-iconbtn:focus-visible,
+  html[data-focus-mode='keyboard'] .shell-fly-ai:focus-visible,
+  html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible {
     outline: var(--shell-focus-line) solid CanvasText;
+  }
+  .shell-item::after,
+  .shell-ws::after,
+  .shell-tg::after,
+  .shell-iconbtn::after,
+  .shell-fly-ai::after,
+  .shell-kb-card::after {
+    display: none;
   }
 }
 
@@ -152,12 +162,14 @@
 .shell[data-layout='wide'] {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100dvh;
   overflow: hidden;
 }
 
 .shell[data-layout='wide'] .shell-aside {
-  height: 100dvh;
+  height: 100%;
+  min-height: 0;
   width: var(--shell-sb-w);
   transition: width var(--shell-rail-dur) var(--shell-ease);
 }
@@ -170,7 +182,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  height: 100dvh;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -188,13 +201,92 @@
 }
 
 /* ---------- Yerleşim: telefon kabuğu ---------- */
+.shell-identity {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shell-space-md);
+  padding: var(--shell-space-md) var(--shell-gutter);
+  padding-inline: max(var(--shell-gutter), env(safe-area-inset-left))
+    max(var(--shell-gutter), env(safe-area-inset-right));
+  background: var(--shell-bg-c);
+}
+
+.shell-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--shell-space-md);
+  margin-inline-end: auto;
+  font-weight: var(--shell-item-fw);
+}
+
+.shell-identity-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shell-space-md);
+  margin: 0;
+  min-width: 0;
+  max-width: 100%;
+  font-size: var(--shell-fs-min);
+}
+
+.shell-identity-fields > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--shell-space-xs);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--shell-space-xs) var(--shell-space-md);
+  border-radius: var(--shell-radius);
+  background: var(--shell-bg-e);
+}
+
+.shell-identity-fields dt {
+  color: var(--shell-tx2);
+}
+
+.shell-identity-fields dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: break-word;
+  font-weight: var(--shell-item-fw);
+}
+
+.shell-identity-fields [data-environment='example'] {
+  background: var(--shell-test-bg);
+}
+
+.shell-identity-fields [data-environment='live'] {
+  background: var(--shell-live-bg);
+}
+
+.shell[data-layout='compact'] .shell-identity-fields {
+  flex-basis: 100%;
+}
+
+.shell-sb[data-compact='true'] .shell-item {
+  min-height: var(--shell-hit);
+}
+
+.shell[data-layout='compact'] .shell-identity {
+  position: sticky;
+  top: 0;
+  z-index: var(--shell-z-topbar);
+}
+
+.shell-cmd :is(.ant-segmented, .ant-sender, textarea, .ant-btn) {
+  font-size: var(--shell-fs-min);
+}
+
 .shell[data-layout='compact'] .shell-main {
   min-width: 0;
 }
 
-/* Ö6: yapışkan üst çubuk odaklanan öğeyi örtmez. Belge kayar; kaydırma payı çubuğun token yüksekliğidir. */
+/* The observed strip height includes wrapping and enlarged text. */
 html:has(.shell[data-layout='compact']) {
-  scroll-padding-top: var(--topbar-height);
+  scroll-padding-top: var(--shell-identity-height, var(--topbar-height));
 }
 
 .shell-topbar {
@@ -309,8 +401,7 @@ html:has(.shell[data-layout='compact']) {
   height: 100%;
   min-width: 0;
   padding: var(--shell-pad);
-  background: var(--shell-bg);
-  box-shadow: inset calc(-1 * var(--shell-hairline)) 0 0 var(--shell-bd);
+  background: var(--shell-bg-c);
   overflow: hidden;
 }
 

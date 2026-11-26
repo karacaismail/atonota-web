@@ -159,7 +159,7 @@ test.describe('Ö6: yapışkan üst çubuk odaklanan öğeyi örtmez', () => {
     await box.focus();
     await expect(box).toBeFocused();
     const top = await page.evaluate(() => {
-      const bar = document.querySelector('.shell-topbar')?.getBoundingClientRect();
+      const bar = document.querySelector('.shell-identity')?.getBoundingClientRect();
       return bar?.bottom ?? 0;
     });
     const target = await box.evaluate(
@@ -168,21 +168,21 @@ test.describe('Ö6: yapışkan üst çubuk odaklanan öğeyi örtmez', () => {
     expect(target).toBeGreaterThanOrEqual(top);
   });
 
-  test('kaydırma payı üst çubuğun token yüksekliğidir', async ({ page }) => {
+  test('kaydırma payı kimlik şeridinin ölçülen yüksekliğidir', async ({ page }) => {
     test.skip(!isCompact(page), 'üst çubuk yalnız telefon kabuğunda');
     await page.goto(LIST);
-    await expect(page.locator('.shell-topbar')).toBeVisible();
+    await expect(page.locator('.shell-identity')).toBeVisible();
     const { padding, bar, token } = await page.evaluate(() => {
       const root = document.documentElement;
       return {
         padding: getComputedStyle(root).scrollPaddingTop,
-        bar: document.querySelector('.shell-topbar')?.getBoundingClientRect().height ?? 0,
-        token: getComputedStyle(root).getPropertyValue('--topbar-height').trim(),
+        bar: document.querySelector('.shell-identity')?.getBoundingClientRect().height ?? 0,
+        token: getComputedStyle(root).getPropertyValue('--shell-identity-height').trim(),
       };
     });
-    expect(token).toMatch(/^\d+px$/);
+    expect(token).toMatch(/^\d+(\.\d+)?px$/);
     expect(padding).toBe(token);
-    expect(Math.round(bar)).toBe(Number.parseInt(token, 10));
+    expect(bar).toBeCloseTo(Number.parseFloat(token), 1);
   });
 });
 
