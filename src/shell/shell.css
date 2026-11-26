@@ -1580,8 +1580,29 @@ html:has(.shell[data-layout='compact']) {
   font-size: var(--shell-item-icon);
 }
 
-/* Dokunma katmanı büyür. Kontrollerin görünen boyutu aynı kalır. */
+/* Dokunma alanları ortak ölçüyü kullanır. */
 @media (any-pointer: coarse) {
+  /* Menü hedefleri ayrı satırlarda büyür. Komşu hedefler üst üste binmez. */
+  .shell-item,
+  .shell-tg {
+    min-height: max(var(--shell-item-h), var(--hit-target));
+    min-width: var(--hit-target);
+  }
+
+  /* WebKit kaydırma çubuğu, dar menünün dokunma alanını örtmesin. */
+  .shell[data-layout='wide'][data-variant='rail'] .shell-aside {
+    min-width: calc(var(--hit-target) + 2 * var(--shell-space-2xl));
+  }
+
+  .shell-sb[data-variant='rail'] {
+    padding-inline: var(--shell-space-2xl);
+  }
+
+  .shell-sb[data-variant='rail'] .shell-sb-scroll {
+    margin-inline: calc(-1 * var(--shell-space-2xl));
+    padding-inline: var(--shell-space-2xl);
+  }
+
   .shell-iconbtn::before,
   .shell-hd-search::after,
   .shell-hd-filter::after,
