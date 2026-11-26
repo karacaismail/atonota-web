@@ -18,4 +18,6 @@ export type {
   ShellWorkspaceData,
 } from './context';
 export { createShellModuleEnvironment } from './modules';
+export { HomeDataError } from './home-data';
+export type { HomeDecisionTarget, ShellHomeData } from './home-data';
 export type { ShellModuleEnvironmentInput } from './modules';

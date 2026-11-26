@@ -77,6 +77,11 @@
   margin: 0;
 }
 
+/* Kaynak etiketi okunur olmalı. Uyarı rengi yalnız zeminde kalır, yazı ana metin rengidir. */
+.ai-scope .ant-tag.ant-tag-warning {
+  color: var(--ai-text);
+}
+
 .ai-log {
   flex: 1 1 auto;
   min-height: 0;
@@ -147,34 +152,124 @@
   }
 }
 
-.ai-think {
-  padding: var(--ai-gap-xs) var(--ai-gap-sm);
-  border: 1px solid var(--ai-border);
-  border-radius: var(--radius);
-  background: var(--ai-bg);
-}
-
-.ai-think summary {
-  display: flex;
-  align-items: center;
-  gap: var(--ai-gap-xs);
-  color: var(--ai-text-2);
-  cursor: pointer;
-  list-style: none;
-}
-
-.ai-think summary::-webkit-details-marker {
-  display: none;
-}
-
-.ai-think summary svg,
 .ai-panel-h svg {
   flex-shrink: 0;
   color: var(--color-primary);
 }
 
-.ai-think .ant-thought-chain {
-  margin-top: var(--ai-gap-sm);
+/*
+ * Akış adımları (AJA-1159). Özet satırı her zaman görünür, liste kapalı başlar.
+ * Ayrım boşlukla kurulur. Durum renkle değil yazıyla anlatılır.
+ */
+.ai-flow {
+  padding: var(--ai-gap-xs) var(--ai-gap);
+  border-bottom: 1px solid var(--ai-border);
+  background: var(--ai-bg);
+}
+
+.ai-flow summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ai-gap-sm);
+  min-height: var(--hit-target);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ai-flow summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-flow-sum {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--ai-gap);
+  row-gap: var(--ai-gap-xs);
+  min-width: 0;
+}
+
+.ai-flow-mode {
+  color: var(--ai-text-2);
+}
+
+.ai-flow-caret {
+  flex-shrink: 0;
+  color: var(--ai-text-2);
+}
+
+.ai-flow[open] .ai-flow-caret {
+  transform: rotate(180deg);
+}
+
+.ai-flow-list {
+  display: grid;
+  gap: var(--ai-gap-xs);
+  margin: 0;
+  padding: var(--ai-gap-xs) 0 var(--ai-gap-sm);
+  list-style: none;
+  counter-reset: ai-flow;
+}
+
+.ai-flow-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  column-gap: var(--ai-gap);
+  counter-increment: ai-flow;
+}
+
+.ai-flow-name::before {
+  content: counter(ai-flow) '. ';
+}
+
+.ai-flow-list li.is-current .ai-flow-name {
+  font-weight: 600;
+}
+
+.ai-flow-state,
+.ai-flow-list li.is-absent .ai-flow-name {
+  color: var(--ai-text-2);
+}
+
+/* Yanıtın içindeki adım bölümleri: başlık ve onaylı yüzey. */
+.ai-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap-xs);
+  min-width: 0;
+}
+
+.ai-step-h {
+  margin: 0;
+  font-size: var(--font-default);
+  font-weight: 600;
+}
+
+/* Kip seçici. Dar ekranda düğmeler satıra sarılır; her düğme dokunma alanını karşılar. */
+.ai-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ai-gap-sm);
+}
+
+.ai-mode-legend {
+  color: var(--ai-text-2);
+}
+
+.ai-mode .ant-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: var(--ai-gap-xs);
+}
+
+.ai-mode .ant-radio-button-wrapper {
+  display: inline-flex;
+  align-items: center;
+  height: auto;
+  min-height: var(--hit-target);
+  line-height: normal;
 }
 
 .ai-note {
@@ -220,7 +315,7 @@
 
 .ai-hint {
   margin: 0;
-  color: var(--ai-text-3);
+  color: var(--ai-text-2);
   font-size: var(--font-min);
   text-align: center;
 }
@@ -264,7 +359,7 @@
 }
 
 .ai-facts dt {
-  color: var(--ai-text-3);
+  color: var(--ai-text-2);
 }
 
 .ai-facts dd {

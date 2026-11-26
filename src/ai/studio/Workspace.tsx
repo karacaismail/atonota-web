@@ -1,9 +1,10 @@
-import { ThoughtChain } from '@ant-design/x';
 import { Paperclip, ShieldCheck, Wrench } from '@phosphor-icons/react';
 import { Tag } from 'antd';
 
+import { GenUI } from '@/genui';
+
 import type { AgentSource, AgentStep } from '../agent';
-import { SIMULATED_TOOLS_NOTE, toChainItems } from './chain';
+import { SIMULATED_TOOLS_NOTE, toEventsBlock } from './chain';
 
 export const FILE_NAME_ONLY_NOTE = 'Yalnız dosya adı gönderilir. Dosya içeriği okunmaz.';
 
@@ -20,17 +21,19 @@ export function Workspace({
   files: string[];
   source: AgentSource;
 }) {
+  const events = toEventsBlock(steps);
   return (
     <aside className="ai-workspace" aria-label="Çalışma alanı">
       <section>
         <h2 className="ai-panel-h">
           <Wrench aria-hidden />
-          Araç işlemleri
+          Son yanıtın araç olayları
         </h2>
-        {steps.length > 0 ? (
+        {events ? (
           <>
             {source.simulated && <p className="ai-note">{SIMULATED_TOOLS_NOTE}</p>}
-            <ThoughtChain size="small" items={toChainItems(steps)} />
+            {/* Salt okunur yüzeydir. Eylem üretmez. */}
+            <GenUI blocks={[events]} onAction={() => 'busy'} />
           </>
         ) : (
           <p className="ai-note">Henüz araç işlemi yok. Listeyi yalnız sunucu gönderir.</p>

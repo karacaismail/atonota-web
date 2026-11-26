@@ -29,7 +29,10 @@ import {
   sampleResellerCustomers,
   SAMPLE_COLLECTION_DOCTYPE,
   sampleCollection,
+  sampleHomeCounts,
+  sampleHomeProblems,
   sampleLeaves,
+  sampleRecentChanges,
   SAMPLE_CSRF_TOKEN,
   SAMPLE_DOCTYPE_ETAG,
   SAMPLE_USER,
@@ -86,6 +89,14 @@ export const mockState: {
   signedIn: boolean;
   proposals: Map<string, ReturnType<typeof sampleProposal>>;
   leaves: Map<string, (typeof sampleLeaves)[number]>;
+  /** Ana sayfa özeti. `failure` doğruysa özet ucu 500 verir. */
+  home: {
+    failure: boolean;
+    /** Doğruysa özet, bekleyen taleplere eski bir sürüm yazar. Onay ve ret çakışma alır. */
+    staleVersions: boolean;
+    problems: (typeof sampleHomeProblems)[number][];
+    recentChanges: (typeof sampleRecentChanges)[number][];
+  };
   /** `Örnek Kayıt` türünün kayıtları. Liste, kayıt okuma ve kaydetme aynı veriyi kullanır. */
   records: Map<string, CollectionRow>;
   installations: { installation_id: string; scope: 'mobile' | 'pwa'; revoked: boolean }[];
@@ -127,6 +138,7 @@ export const mockState: {
   signedIn: true,
   proposals: new Map<string, ReturnType<typeof sampleProposal>>(),
   leaves: new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }])),
+  home: sampleHome(),
   records: sampleRecords(),
   installations: sampleInstallations.map((item) => ({ ...item })),
 };
@@ -149,6 +161,62 @@ function linkedAccounts() {
   return { providers, local_sign_in_methods: mockState.localSignInMethods };
 }
 
+function sampleHome(): (typeof mockState)['home'] {
+  return {
+    failure: false,
+    staleVersions: false,
+    problems: structuredClone(sampleHomeProblems),
+    recentChanges: structuredClone(sampleRecentChanges),
+  };
+}
+
+const STALE_VERSION = '2000-01-01 00:00:00.000000';
+
+/** Kararı son değişikliklere en başa yazar. Liste sözleşmedeki gibi en çok 5 öğe tutar. */
+function recordLeaveChange(
+  leave: (typeof sampleLeaves)[number],
+  action: 'approved' | 'rejected' | 'cancelled',
+  at: string,
+): void {
+  mockState.home.recentChanges = [
+    {
+      name: leave.name,
+      employee_name: leave.employee_name ?? null,
+      actor: 'Örnek Kişi',
+      action,
+      at,
+    },
+    ...mockState.home.recentChanges.filter((item) => item.name !== leave.name),
+  ].slice(0, 5);
+}
+
+function homeSummary() {
+  const pending = [...mockState.leaves.values()]
+    .filter((leave) => leave.status === 'Open' && leave.docstatus === 0)
+    .sort((a, b) => (a.from_date ?? '').localeCompare(b.from_date ?? ''))
+    .map((leave) => ({
+      name: leave.name,
+      version: mockState.home.staleVersions ? STALE_VERSION : (leave.modified ?? ''),
+      employee_name: leave.employee_name ?? null,
+      leave_type: leave.leave_type ?? null,
+      from_date: leave.from_date ?? null,
+      to_date: leave.to_date ?? null,
+      total_leave_days: leave.total_leave_days ?? null,
+      leave_balance: leave.leave_balance ?? null,
+    }));
+  return {
+    pending_approvals: pending,
+    problems: mockState.home.problems,
+    recent_changes: mockState.home.recentChanges,
+    counts: {
+      pending_approvals: pending.length,
+      on_leave_today: sampleHomeCounts.on_leave_today,
+      opened_this_month: sampleHomeCounts.opened_this_month,
+      problems: mockState.home.problems.length,
+    },
+  };
+}
+
 function sampleRecords(): Map<string, CollectionRow> {
   return new Map(sampleCollection.map((row) => [row.name, { ...row }]));
 }
@@ -162,6 +230,7 @@ export function resetMockState(): void {
   mockState.localSignInMethods = SAMPLE_LOCAL_SIGN_IN_METHODS;
   mockState.proposals.clear();
   mockState.leaves = new Map(sampleLeaves.map((leave) => [leave.name, { ...leave }]));
+  mockState.home = sampleHome();
   mockState.records = sampleRecords();
   recordLinks.clear();
   mockState.installations = sampleInstallations.map((item) => ({ ...item }));
@@ -931,13 +1000,33 @@ export const handlers = [
     if (body.version !== leave.modified) return frappeError(417, 'TimestampMismatchError');
     if (leave.docstatus !== 0 || leave.status !== 'Open')
       return frappeError(417, 'ValidationError');
-    mockState.leaves.set(leave.name, {
-      ...leave,
-      status: 'Approved',
-      docstatus: 1,
-      modified: nextVersion(),
-    });
+    const modified = nextVersion();
+    mockState.leaves.set(leave.name, { ...leave, status: 'Approved', docstatus: 1, modified });
+    recordLeaveChange(leave, 'approved', modified);
     return message({ name: leave.name });
+  }),
+
+  // Ret, onayla aynı kurala uyar. HRMS reddedilen başvuruyu "Rejected" durumuyla gönderir.
+  http.post('*/api/method/hrms_tr.api.reject_leave', async ({ request }) => {
+    const denied = guard(request, { write: true });
+    if (denied) return denied;
+    const body = (await request.json()) as { name?: string; version?: string };
+    const leave = mockState.leaves.get(body.name ?? '');
+    if (!leave) return frappeError(404, 'DoesNotExistError');
+    if (body.version !== leave.modified) return frappeError(417, 'TimestampMismatchError');
+    if (leave.docstatus !== 0 || leave.status !== 'Open')
+      return frappeError(417, 'ValidationError');
+    const modified = nextVersion();
+    mockState.leaves.set(leave.name, { ...leave, status: 'Rejected', docstatus: 1, modified });
+    recordLeaveChange(leave, 'rejected', modified);
+    return message({ name: leave.name });
+  }),
+
+  http.get('*/api/method/hrms_tr.api.get_home_summary', ({ request }) => {
+    const denied = guard(request, { write: false });
+    if (denied) return denied;
+    if (mockState.home.failure) return frappeError(500, 'Exception');
+    return message(homeSummary() as JsonBodyType);
   }),
 
   http.post('*/api/method/hrms_tr.api.cancel_leave', async ({ request }) => {
@@ -948,12 +1037,9 @@ export const handlers = [
     if (!leave) return frappeError(404, 'DoesNotExistError');
     if (body.version !== leave.modified) return frappeError(417, 'TimestampMismatchError');
     if (leave.docstatus !== 1) return frappeError(417, 'ValidationError');
-    mockState.leaves.set(leave.name, {
-      ...leave,
-      status: 'Cancelled',
-      docstatus: 2,
-      modified: nextVersion(),
-    });
+    const modified = nextVersion();
+    mockState.leaves.set(leave.name, { ...leave, status: 'Cancelled', docstatus: 2, modified });
+    recordLeaveChange(leave, 'cancelled', modified);
     return message({ name: leave.name });
   }),
 

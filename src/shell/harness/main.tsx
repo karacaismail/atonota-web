@@ -22,6 +22,7 @@ import { sampleDefinition } from '@/views/collection/sample';
 
 import { ShellApp } from '../ShellApp';
 import { hexToRgba } from '../tokens';
+import { createShellHomeData } from '../view-data/home-client';
 
 const light = new URLSearchParams(window.location.search).get('tema') === 'acik';
 const base = config.derived.antdTheme;
@@ -53,16 +54,17 @@ const buttonTokens = light
 // Deneme sayfası views-collection örnek tanımını kullanır. Her adres aynı örnek tanımı
 // gösterir. Kayıtlar ortak sahte sunucudan (MSW) gelir. Gerçek bağlantıyı uygulama girişi kurar.
 const mocks = await startApiMocks();
+const harnessApi = createApiClient({
+  config: readApiConfig({}, window.location.origin),
+  csrf: createCsrfStore(mocks.active ? SAMPLE_CSRF_TOKEN : undefined),
+});
 const harnessViewData = {
   collection: {
     loadDefinition: () => Promise.resolve(sampleDefinition),
-    source: createApiSource(
-      createApiClient({
-        config: readApiConfig({}, window.location.origin),
-        csrf: createCsrfStore(mocks.active ? SAMPLE_CSRF_TOKEN : undefined),
-      }),
-    ),
+    source: createApiSource(harnessApi),
   },
+  // Ana sayfa (Bekleyenler) aynı sahte sunucuya bağlanır.
+  home: createShellHomeData(harnessApi),
 };
 
 // Deneme sayfası kabuğu istenen adreste açar. Örnek: `?yol=/satis/teklif/TEK-0003`.

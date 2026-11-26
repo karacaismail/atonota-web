@@ -48,7 +48,7 @@ test('sayfa yenilenince ve ikinci sayfa açılınca panel yine açılır', async
   await expect(page.getByRole('status').filter({ hasText: 'Örnek veri' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('status').filter({ hasText: 'Örnek veri' })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ana sayfa' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Bekleyenler' })).toBeVisible();
   await page.goto('/account');
   await expect(page.getByRole('heading', { level: 1, name: 'Hesap', exact: true })).toBeVisible();
   await page.reload();
