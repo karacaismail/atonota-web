@@ -1,4 +1,4 @@
-import { Check, X } from '@phosphor-icons/react';
+import { Check, Clock, Warning, X } from '@phosphor-icons/react';
 import { Button } from 'antd';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -194,6 +194,7 @@ function HomeSections({ data, home }: { data: HomeSummary; home: ShellHomeData }
       <div className="shell-home-pair">
         <section className="shell-home-sec" aria-labelledby={problemsId}>
           <h2 id={problemsId} className="shell-home-h">
+            <Warning className="shell-home-ic" data-tone="warn" aria-hidden="true" />
             {m.problemsTitle}
           </h2>
           {data.problems.length > 0 ? (
@@ -227,8 +228,11 @@ function HomeSections({ data, home }: { data: HomeSummary; home: ShellHomeData }
             <ul className="shell-home-list">
               {data.recent_changes.map((change) => (
                 <li key={`${change.name}-${change.at}`} className="shell-home-recent">
-                  <span>{recentText(change)}</span>
-                  <small className="shell-home-meta">{formatMoment(change.at)}</small>
+                  <Clock className="shell-home-ic" aria-hidden="true" />
+                  <span className="shell-home-recent-text">
+                    <span>{recentText(change)}</span>
+                    <small className="shell-home-meta">{formatMoment(change.at)}</small>
+                  </span>
                 </li>
               ))}
             </ul>

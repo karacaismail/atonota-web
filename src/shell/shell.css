@@ -1555,7 +1555,30 @@ html:has(.shell[data-layout='compact']) {
 }
 
 .shell-home-recent {
+  flex-wrap: nowrap;
+}
+
+.shell-home-recent-text {
+  display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+/* Süs simgesi (taslak AJA-880): ölçü menü simgesi tokenından gelir. Ekran okuyucu okumaz. */
+.shell-home-ic {
+  flex: none;
+  font-size: var(--shell-item-icon);
+  align-self: center;
+}
+
+.shell-home-ic[data-tone='warn'] {
+  color: var(--shell-warn);
+}
+
+.shell-home-h:has(> .shell-home-ic) {
+  display: flex;
+  gap: var(--shell-space-md);
+  align-items: center;
 }
 
 .shell-home-pair {
