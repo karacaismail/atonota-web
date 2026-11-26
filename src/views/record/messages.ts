@@ -49,6 +49,7 @@ export const RECORD_MESSAGES = {
     unsupportedFieldDescription:
       'This field type is not in the approved catalog for this version and is protected as read-only.',
     validationSummaryTitle: 'Please check the highlighted fields.',
+    validationErrorCount: '{count} fields have errors.',
     validationRequired: '{label} is required.',
     validationInteger: '{label} must be a whole number.',
     validationNumber: '{label} must be a valid number.',
@@ -153,6 +154,7 @@ export const RECORD_MESSAGES = {
     unsupportedFieldDescription:
       'Bu alan türü kurulu katalog sürümünde yer almıyor ve güvenli salt okunur görünümde korunuyor.',
     validationSummaryTitle: 'Lütfen işaretli alanları kontrol edin.',
+    validationErrorCount: '{count} alanda hata var.',
     validationRequired: '{label} alanı zorunludur.',
     validationInteger: '{label} alanı tam sayı olmalıdır.',
     validationNumber: '{label} alanı geçerli bir sayı olmalıdır.',

@@ -12,6 +12,7 @@
   min-width: 0;
   background-color: var(--rv-color-bg);
   color: var(--rv-color-text);
+  font-family: var(--rv-font-ui);
   font-size: var(--rv-font-body);
   line-height: var(--rv-font-body-lh);
 }
@@ -71,7 +72,9 @@
 .rv-root[data-rv-kbd='true'] .ant-rate .ant-rate-star > div:focus-visible,
 .rv-root[data-rv-kbd='true'] .ant-color-picker-trigger.ant-color-picker-trigger:focus-visible {
   outline: none;
-  box-shadow: inset 0 calc(var(--rv-focus-line-size) * -1) 0 0 var(--rv-color-primary);
+  box-shadow: inset 0 calc(var(--rv-focus-line-size) * -1) 0 0 var(--rv-focus-color);
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
 }
 
 .rv-root[data-rv-kbd='true'] .ant-input.ant-input-outlined:focus,
@@ -87,7 +90,9 @@
   outline: none;
   box-shadow:
     var(--rv-shadow-input),
-    inset 0 calc(var(--rv-focus-line-size) * -1) 0 0 var(--rv-color-primary);
+    inset 0 calc(var(--rv-focus-line-size) * -1) 0 0 var(--rv-focus-color);
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
 }
 
 .rv-root[data-rv-kbd='true'] .ant-input-affix-wrapper .ant-input.ant-input-outlined:focus,
@@ -265,7 +270,6 @@
 .rv-section-card {
   border-radius: var(--rv-card-radius);
   background-color: var(--rv-color-panel);
-  box-shadow: var(--rv-shadow-card);
   padding: var(--rv-space-md);
   min-width: 0;
 }
@@ -280,8 +284,8 @@
 
 .rv-section-title {
   margin: 0;
-  font-size: var(--rv-font-control-md);
-  line-height: var(--rv-font-control-md-lh);
+  font-size: var(--rv-font-section);
+  line-height: var(--rv-font-section-lh);
   font-weight: var(--rv-font-weight-lg);
 }
 
@@ -655,5 +659,15 @@
 @media (prefers-reduced-motion: reduce) {
   .rv-header {
     transition: none;
+  }
+}
+
+/* The visible controls retain their central size tokens; touch surfaces need room. */
+.rv-root[data-rv-viewport='phone'] :is(.ant-btn, .ant-input, .ant-select, .ant-select-selector) {
+  min-height: var(--rv-hit-target);
+}
+@media (any-pointer: coarse) {
+  .rv-root :is(.ant-btn, .ant-input, .ant-select, .ant-select-selector) {
+    min-height: var(--rv-hit-target);
   }
 }

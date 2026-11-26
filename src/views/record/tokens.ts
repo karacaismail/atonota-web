@@ -10,6 +10,7 @@
 import controlSizeConfig from '@design-source/control-size-config.json';
 import { theme as antdTheme, type ThemeConfig } from 'antd';
 import type { CSSProperties } from 'react';
+import { danger, focusIndicator, hitTarget } from '@/design/tokens';
 
 export type RecordThemeMode = 'light' | 'dark';
 
@@ -106,6 +107,7 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
           : {}),
       },
       Input: {
+        activeBorderColor: isDark ? darkPalette.border : BASE_ANTD_TOKENS.colorBorder,
         controlHeight: sizes.md.input.height,
         controlHeightSM: sizes.sm.input.height,
         controlHeightLG: sizes.lg.input.height,
@@ -123,6 +125,7 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
           : {}),
       },
       InputNumber: {
+        activeBorderColor: isDark ? darkPalette.border : BASE_ANTD_TOKENS.colorBorder,
         controlHeight: sizes.md.input.height,
         controlHeightSM: sizes.sm.input.height,
         controlHeightLG: sizes.lg.input.height,
@@ -138,6 +141,7 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
           : {}),
       },
       Select: {
+        activeBorderColor: isDark ? darkPalette.border : BASE_ANTD_TOKENS.colorBorder,
         controlHeight: sizes.md.input.height,
         controlHeightSM: sizes.sm.input.height,
         controlHeightLG: sizes.lg.input.height,
@@ -194,7 +198,8 @@ export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
     '--rv-color-border-secondary': resolved.colorBorderSecondary,
     '--rv-color-text': resolved.colorText,
     '--rv-color-text-secondary': resolved.colorTextSecondary,
-    '--rv-color-danger': resolved.colorErrorText,
+    '--rv-color-danger': danger[mode].color,
+    '--rv-focus-color': focusIndicator[mode].color,
     '--rv-color-danger-bg': resolved.colorErrorBg,
     '--rv-color-warning': resolved.colorWarningText,
     '--rv-color-warning-bg': resolved.colorWarningBg,
@@ -217,15 +222,19 @@ export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
     '--rv-pill-danger-fg': resolved.colorErrorText,
     '--rv-pill-danger-bg': resolved.colorErrorBg,
     '--rv-font-min': `${typo.min}px`,
+    '--rv-font-ui': resolved.fontFamily,
+    '--rv-font-section': `${typo.headings.h2}px`,
+    '--rv-font-section-lh': `${typo.headings.h2 + lineHeightDelta}px`,
+    '--rv-hit-target': `${hitTarget.coarse}px`,
     '--rv-font-min-lh': `${typo.min + lineHeightDelta}px`,
     '--rv-font-body': `${typo.default}px`,
     '--rv-font-body-lh': `${typo.default + lineHeightDelta}px`,
     '--rv-font-control-md': `${sizes.md.input.fontSize}px`,
     '--rv-font-control-md-lh': `${sizes.md.input.fontSize + lineHeightDelta}px`,
-    '--rv-font-title': `${headerCfg.titleSize}px`,
-    '--rv-font-title-lh': `${headerCfg.titleLineHeight}px`,
-    '--rv-font-title-mobile': `${sizes.lg.button.fontSize}px`,
-    '--rv-font-title-mobile-lh': `${sizes.lg.button.fontSize + lineHeightDelta}px`,
+    '--rv-font-title': `${typo.headings.h1}px`,
+    '--rv-font-title-lh': `${typo.headings.h1 + lineHeightDelta}px`,
+    '--rv-font-title-mobile': `${typo.headings.h1}px`,
+    '--rv-font-title-mobile-lh': `${typo.headings.h1 + lineHeightDelta}px`,
     '--rv-font-weight-sm': String(controlSizeConfig.fontWeight.sm),
     '--rv-font-weight-md': String(controlSizeConfig.fontWeight.md),
     '--rv-font-weight-lg': String(controlSizeConfig.fontWeight.lg),
