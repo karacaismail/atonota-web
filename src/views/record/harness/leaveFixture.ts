@@ -3,12 +3,12 @@ import type { DocField, DocTypeMeta, NewRecordContext } from '../types';
 export const LEAVE_CONTEXT: NewRecordContext = {
   employee: 'HR-EMP-TEST-01',
   employee_name: 'Örnek Kişi 1',
-  leave_type: 'Annual Leave',
+  leave_type: 'Allocated Leave',
   leave_balance: 8.5,
   sources: {
     employee: 'Employee',
     employee_name: 'Employee',
-    leave_type: 'Leave Type',
+    leave_type: 'Leave Allocation',
     leave_balance: 'Leave Ledger Entry',
   },
 };
@@ -59,7 +59,7 @@ export const LEAVE_META: DocTypeMeta = {
       field('leave_type', 'Select', 'İzin türü', 'select', {
         reqd: true,
         choices: [
-          { value: 'Annual Leave', label: 'Yıllık izin' },
+          { value: 'Allocated Leave', label: 'Yıllık izin' },
           { value: 'Casual Leave', label: 'Mazeret izni' },
           { value: 'Sick Leave', label: 'Raporlu izin' },
           { value: 'Unpaid Leave', label: 'Ücretsiz izin' },

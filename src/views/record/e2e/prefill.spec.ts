@@ -71,7 +71,7 @@ test('missing data stays empty and zero remains a sourced value', async ({ page 
   );
 });
 
-test('a null leave type stays empty until the user selects it', async ({ page }) => {
+test('a null leave type stays empty until the user selects it', async ({ page }, testInfo) => {
   await page.goto(`${FORM}&context=no-allocation`);
   await expect(page.getByLabel('Ad', { exact: true })).toHaveValue('Örnek Kişi 1');
   await expect(page.getByLabel('Kalan yıllık izin')).toHaveValue('');
@@ -80,7 +80,9 @@ test('a null leave type stays empty until the user selects it', async ({ page })
   await expect(
     page.locator('[data-fieldname="leave_type"] .ant-select-selection-item'),
   ).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('empty-leave-type.png'), fullPage: true });
   await page.locator('[data-fieldname="leave_type"] .ant-select-selector').click();
+  await expect(page.locator('.ant-select-dropdown')).toBeVisible();
   await expect(page.locator('.ant-select-item-option-active')).toHaveText('Yıllık izin');
   await type.press('ArrowDown');
   await type.press('Enter');
@@ -116,6 +118,7 @@ test('changing a prefilled choice removes its source and resize retains the draf
   await expect(type).toHaveAccessibleDescription('Size ayrılan izin hakkından geldi.');
   await page.locator('[data-fieldname="leave_type"] .ant-select-selector').click();
   await expect(type).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('.ant-select-dropdown')).toBeVisible();
   await expect(page.locator('.ant-select-item-option-active')).toHaveText('Yıllık izin');
   await type.press('ArrowDown');
   await expect(page.locator('.ant-select-item-option-active')).toHaveText('Mazeret izni');

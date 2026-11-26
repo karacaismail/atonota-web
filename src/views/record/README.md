@@ -26,7 +26,11 @@ Adaptör, ortak API istemcisini kullanır.
 API, uygulamanın sunucuyla konuştuğu yoldur.
 İstek yolu `GET /api/method/hrms_tr.api.get_leave_request_context` olur.
 İstekte başka bir kişi seçilmez.
-Sunucu varsayılan yıllık izin türünü belirler.
+Sunucu, kişiye bugün ayrılan izin haklarına bakar.
+Tek izin türü varsa sunucu o türü seçer.
+Bu türün kaynağı `Leave Allocation` olur.
+İzin hakkı yoksa veya türler farklıysa tür ve bakiye boş kalır.
+Kullanıcı izin türünü kendisi seçebilir.
 
 `getNewRecordContext` yöntemi yeni kayıt bilgisini getirir.
 Bu yöntem yalnız yeni izin talebinde veri döner.
@@ -93,6 +97,8 @@ Bu ekran, ortak API istemcisini sahte bir istemciyle değiştirir.
 Ekran, üretimde kullanılan yanıt denetimini çalıştırır.
 Adrese `&context=empty` eklenirse bilgiler boş gelir.
 Adrese `&context=zero` eklenirse bakiye sıfır gelir.
+Adrese `&context=no-allocation` eklenirse izin türü ve bakiye boş gelir.
+Bu denemede kişinin adı dolu kalır.
 Adrese `&context=network` eklenirse ön bilgi isteği ağ hatası verir.
 Adrese `&context=forbidden` eklenirse ön bilgi isteği 403 hatası verir.
 Adrese `&context=unauthenticated` eklenirse ön bilgi isteği 401 hatası verir.

@@ -12,7 +12,7 @@ type Context = components['schemas']['LeaveRequestContextResponse']['message'];
 const context: Context = {
   employee: 'HR-EMP-TEST-01',
   employee_name: 'Örnek Kişi 1',
-  leave_type: 'Annual Leave',
+  leave_type: 'Allocated Leave',
   leave_balance: 8.5,
   sources: {
     employee: 'Employee',
@@ -127,7 +127,7 @@ describe('new record prefill', () => {
     expect(screen.queryByText('İzin kayıtlarından hesaplandı.')).not.toBeInTheDocument();
     await userEvent.click(type);
     await userEvent.click(await screen.findByText('Mazeret izni'));
-    expect(typeField.getByText('Mazeret izni')).toBeVisible();
+    expect(typeField.getByTitle('Mazeret izni')).toBeVisible();
     expect(type).not.toHaveAccessibleDescription();
     fireEvent.change(screen.getByLabelText(/Başlangıç tarihi/), {
       target: { value: '2026-11-27' },
@@ -335,7 +335,7 @@ describe('new record prefill', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           employee_name: 'Örnek Kişi 1',
-          leave_type: 'Annual Leave',
+          leave_type: 'Allocated Leave',
         }),
       }),
     );

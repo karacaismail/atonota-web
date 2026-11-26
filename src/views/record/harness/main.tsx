@@ -268,7 +268,14 @@ export function HarnessApp() {
             ? EMPTY_LEAVE_CONTEXT
             : context === 'zero'
               ? { ...LEAVE_CONTEXT, leave_balance: 0 }
-              : LEAVE_CONTEXT;
+              : context === 'no-allocation'
+                ? {
+                    ...LEAVE_CONTEXT,
+                    leave_type: null,
+                    leave_balance: null,
+                    sources: { ...LEAVE_CONTEXT.sources, leave_type: null, leave_balance: null },
+                  }
+                : LEAVE_CONTEXT;
         return { ok: true, status: 200, etag: undefined, body: { message } };
       },
     },

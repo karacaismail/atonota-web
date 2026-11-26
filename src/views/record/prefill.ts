@@ -9,10 +9,10 @@ import type {
 } from './types';
 
 const LEAVE_SOURCES = {
-  employee: 'Employee',
-  employee_name: 'Employee',
-  leave_type: 'Leave Type',
-  leave_balance: 'Leave Ledger Entry',
+  employee: ['Employee'],
+  employee_name: ['Employee'],
+  leave_type: ['Leave Type', 'Leave Allocation'],
+  leave_balance: ['Leave Ledger Entry'],
 } as const;
 
 function object(value: unknown): Record<string, unknown> {
@@ -26,14 +26,17 @@ function object(value: unknown): Record<string, unknown> {
 export function validateNewRecordContext(input: unknown): NewRecordContext {
   const message = object(object(input)['message']);
   const sources = object(message['sources']);
-  for (const [field, expectedSource] of Object.entries(LEAVE_SOURCES)) {
+  for (const [field, expectedSources] of Object.entries(LEAVE_SOURCES)) {
     const value = message[field];
     const validValue =
       value === null ||
       (field === 'leave_balance'
         ? typeof value === 'number' && Number.isFinite(value)
         : typeof value === 'string' && value.trim().length > 0);
-    if (!validValue || (sources[field] !== null && sources[field] !== expectedSource)) {
+    if (
+      !validValue ||
+      (sources[field] !== null && !expectedSources.some((source) => sources[field] === source))
+    ) {
       throw new SchemaValidationError(
         'Invalid leave context value or source',
         `$.message.${field}`,
@@ -78,7 +81,9 @@ export function prefillSourceNote(source: PrefillSource | undefined, locale: Rec
       ? 'sourceEmployee'
       : source === 'Leave Type'
         ? 'sourceLeaveType'
-        : 'sourceLeaveBalance';
+        : source === 'Leave Allocation'
+          ? 'sourceLeaveAllocation'
+          : 'sourceLeaveBalance';
   return formatRecordMessage(locale, key);
 }
 
