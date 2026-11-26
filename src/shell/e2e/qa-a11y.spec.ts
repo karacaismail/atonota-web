@@ -72,7 +72,7 @@ test.describe('Ö1: metin bağlantısında klavye odağı görünür', () => {
 test.describe('Ö2: menü yalnız açılabilen sayfaları gösterir', () => {
   test('menüde örnek grup, örnek sayı ve örnek ajan yoktur', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1, name: 'Ana sayfa' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Bekleyenler' })).toBeVisible();
     await openMenu(page);
     const nav = page.getByRole('navigation', { name: 'Ana gezinme' });
     await expect(nav.getByRole('link', { name: 'Ana sayfa' })).toBeVisible();
@@ -205,7 +205,7 @@ test.describe('K1: menü bağlantılarının altı çizili değildir', () => {
     const link = page
       .getByRole('navigation', { name: 'Ana gezinme' })
       .getByRole('link', { name: 'Ana sayfa' });
-    await expect(page.getByRole('heading', { level: 1, name: 'Ana sayfa' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Bekleyenler' })).toBeVisible();
     await settle(page);
     await keyboardFocus(page, link);
     await expect(link).toHaveCSS('text-decoration-line', 'none');
