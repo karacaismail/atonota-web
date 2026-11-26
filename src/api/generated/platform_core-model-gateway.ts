@@ -66,6 +66,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/method/platform_core.api.model.create_file_job': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record a large PDF job
+     * @description Requires a signed-in session, access to the route and read access to the File record. Records the job and queues the page text step. No provider is called and nothing is charged. Read the chunk count and the cost estimate with file_job_status before the start (G-156).
+     */
+    post: operations['createFileJob'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/method/platform_core.api.model.file_job_status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Show the plan and the progress of a large file job
+     * @description Only the job owner, an AI Manager or a System Manager can read the job. After the text step the job is planned. The chunk count and the cost estimate are then known before any provider call. The estimate is null when a route price is unknown or the target currencies differ.
+     */
+    post: operations['fileJobStatus'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/method/platform_core.api.model.provider_catalog': {
     parameters: {
       query?: never;
@@ -146,6 +186,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/method/platform_core.api.model.retry_file_chunk': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Queue one failed chunk again
+     * @description Only the job owner, an AI Manager or a System Manager can retry a chunk. Only a failed chunk is queued again. Finished chunks are not sent again. The retry may incur a provider charge.
+     */
+    post: operations['retryFileChunk'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/method/platform_core.api.model.save_connection': {
     parameters: {
       query?: never;
@@ -160,6 +220,26 @@ export interface paths {
      * @description Requires an authenticated AI Manager or System Manager with create permission on the registry. Validates the fields against the provider definition. Creates the provider record on first use, a new account or uses an existing account, and always a new API connection. Writes secrets only to the encrypted password field. The response never returns a secret. Sends no provider request. The connection status starts as not_checked; call check_connection next. Each user may call this endpoint 10 times in 60 seconds; the next call answers 429 gateway_busy and saves nothing.
      */
     post: operations['saveProviderConnection'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/method/platform_core.api.model.start_file_job': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start a planned large file job
+     * @description Only the job owner, an AI Manager or a System Manager can start the job. The job must be planned. Every chunk is queued and later sent as a separate gateway call. Each call may incur provider charges.
+     */
+    post: operations['startFileJob'];
     delete?: never;
     options?: never;
     head?: never;
@@ -280,7 +360,11 @@ export interface components {
               | 'preview_invalid'
               | 'unknown_provider'
               | 'invalid_fields'
-              | 'catalog_unavailable';
+              | 'catalog_unavailable'
+              | 'unsupported_file'
+              | 'job_not_planned'
+              | 'chunk_not_found'
+              | 'chunk_not_failed';
             /** @description Names of the connection fields that failed validation */
             fields?: string[];
           };
@@ -304,6 +388,30 @@ export interface components {
        * @enum {unknown}
        */
       scope: 'account' | 'api';
+    };
+    FileJobReference: {
+      /** @description PLT AI File Job document name */
+      file_job: string;
+    };
+    FileJobStatus: {
+      chunk_count: number | null;
+      chunks: {
+        byte_count: number;
+        failure_code: string | null;
+        first_page: number;
+        index: number;
+        last_page: number;
+        /** @enum {unknown} */
+        status: 'planned' | 'queued' | 'running' | 'done' | 'failed';
+      }[];
+      currency: string | null;
+      /** @description Decimal text of the largest reservation over the route targets, or null when unknown. */
+      estimated_cost: string | null;
+      /** @description Why the text step or the job stopped, for example ocr_unavailable or file_too_large. */
+      failure_code: string | null;
+      name: string;
+      /** @enum {unknown} */
+      status: 'preparing' | 'planned' | 'queued' | 'running' | 'completed' | 'failed';
     };
     ProviderCatalog: {
       categories: {
@@ -413,6 +521,22 @@ export interface components {
         [name: string]: unknown;
       };
       content: {
+        'application/json': components['schemas']['Error'];
+      };
+    };
+    /** @description The large file job has no chunk with this index */
+    NotFound: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "message": {
+         *         "error": "chunk_not_found"
+         *       }
+         *     }
+         */
         'application/json': components['schemas']['Error'];
       };
     };
@@ -628,6 +752,123 @@ export interface operations {
       409: components['responses']['Conflict'];
       429: components['responses']['QuotaError'];
       503: components['responses']['Unavailable'];
+    };
+  };
+  createFileJob: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "route": "fixture-route",
+         *       "file": "fixture-file",
+         *       "instruction": "Summarize the fixture text.",
+         *       "limit": 256
+         *     }
+         */
+        'application/json': {
+          /** @description File document name of a PDF the caller can read */
+          file: string;
+          /** @description Instruction sent with every chunk. At most 16 KiB as UTF-8. */
+          instruction: string;
+          /**
+           * @description Output token limit of each chunk request
+           * @default 1024
+           */
+          limit?: number;
+          /** @description AI Route document name */
+          route: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Recorded job */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "message": {
+           *         "name": "fixture-job"
+           *       }
+           *     }
+           */
+          'application/json': {
+            message: {
+              /** @description PLT AI File Job document name */
+              name: string;
+            };
+          };
+        };
+      };
+      400: components['responses']['BadRequest'];
+      401: components['responses']['AuthenticationError'];
+      403: components['responses']['PermissionError'];
+      409: components['responses']['Conflict'];
+      503: components['responses']['Unavailable'];
+    };
+  };
+  fileJobStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "file_job": "fixture-job"
+         *     }
+         */
+        'application/json': components['schemas']['FileJobReference'];
+      };
+    };
+    responses: {
+      /** @description Job plan and chunk states. Chunk text is never returned. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "message": {
+           *         "name": "fixture-job",
+           *         "status": "planned",
+           *         "failure_code": null,
+           *         "chunk_count": 1,
+           *         "estimated_cost": "0.25",
+           *         "currency": "USD",
+           *         "chunks": [
+           *           {
+           *             "index": 0,
+           *             "first_page": 1,
+           *             "last_page": 2,
+           *             "byte_count": 900,
+           *             "status": "planned",
+           *             "failure_code": null
+           *           }
+           *         ]
+           *       }
+           *     }
+           */
+          'application/json': {
+            message: components['schemas']['FileJobStatus'];
+          };
+        };
+      };
+      400: components['responses']['BadRequest'];
+      401: components['responses']['AuthenticationError'];
+      403: components['responses']['PermissionError'];
     };
   };
   listProviderCatalog: {
@@ -867,6 +1108,60 @@ export interface operations {
       503: components['responses']['Unavailable'];
     };
   };
+  retryFileChunk: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "file_job": "fixture-job",
+         *       "chunk_index": 0
+         *     }
+         */
+        'application/json': {
+          chunk_index: number;
+          file_job: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Chunk queued again */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "message": {
+           *         "name": "fixture-job",
+           *         "chunk_index": 0,
+           *         "status": "queued"
+           *       }
+           *     }
+           */
+          'application/json': {
+            message: {
+              chunk_index: number;
+              name: string;
+              /** @constant */
+              status: 'queued';
+            };
+          };
+        };
+      };
+      400: components['responses']['BadRequest'];
+      401: components['responses']['AuthenticationError'];
+      403: components['responses']['PermissionError'];
+      404: components['responses']['NotFound'];
+      409: components['responses']['Conflict'];
+    };
+  };
   saveProviderConnection: {
     parameters: {
       query?: never;
@@ -908,6 +1203,53 @@ export interface operations {
       417: components['responses']['ValidationError'];
       429: components['responses']['Busy'];
       503: components['responses']['Unavailable'];
+    };
+  };
+  startFileJob: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "file_job": "fixture-job"
+         *     }
+         */
+        'application/json': components['schemas']['FileJobReference'];
+      };
+    };
+    responses: {
+      /** @description Chunks queued */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "message": {
+           *         "name": "fixture-job",
+           *         "status": "queued"
+           *       }
+           *     }
+           */
+          'application/json': {
+            message: {
+              name: string;
+              /** @constant */
+              status: 'queued';
+            };
+          };
+        };
+      };
+      400: components['responses']['BadRequest'];
+      401: components['responses']['AuthenticationError'];
+      403: components['responses']['PermissionError'];
+      409: components['responses']['Conflict'];
     };
   };
   testModelApi: {

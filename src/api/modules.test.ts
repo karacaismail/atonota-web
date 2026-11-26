@@ -151,6 +151,35 @@ describe('HRMS izin başvuruları', () => {
     );
   });
 
+  it('reddi sürümle ve CSRF başlığıyla gönderir ve başvuru "Rejected" olur', async () => {
+    const leave = sampleLeaves[0];
+    const result = await api().rejectLeave(leave?.name ?? '', leave?.modified ?? '');
+    expect(result).toEqual({ name: leave?.name });
+    const sent = requests.at(-1);
+    expect(sent?.method).toBe('POST');
+    expect(sent?.url.pathname).toBe('/api/method/hrms_tr.api.reject_leave');
+    expect(sent?.csrf).toBe(SAMPLE_CSRF_TOKEN);
+    expect(mockState.leaves.get(leave?.name ?? '')).toMatchObject({
+      status: 'Rejected',
+      docstatus: 1,
+    });
+  });
+
+  it('eski sürümle ret çakışma verir ve başvuru açık kalır', async () => {
+    const leave = sampleLeaves[0];
+    await expect(
+      api().rejectLeave(leave?.name ?? '', '2000-01-01 00:00:00.000000'),
+    ).rejects.toMatchObject({ kind: 'conflict', code: 'TimestampMismatchError' });
+    expect(mockState.leaves.get(leave?.name ?? '')).toMatchObject({ status: 'Open' });
+  });
+
+  it('onaylanmış başvuru reddedilemez', async () => {
+    const leave = sampleLeaves[1];
+    await expect(api().rejectLeave(leave?.name ?? '', leave?.modified ?? '')).rejects.toMatchObject(
+      { kind: 'invalid_request' },
+    );
+  });
+
   it('şemaya uymayan liste yanıtını reddeder', async () => {
     mockServer.use(
       http.get('*/api/resource/:doctype', () => HttpResponse.json({ data: [{ status: 'Open' }] })),
@@ -389,5 +418,130 @@ describe('Press hesap silme sayfası', () => {
   it('panel istemcisinde Press adresine giden metot yoktur', () => {
     const client = api() as Record<string, unknown>;
     expect(Object.keys(client).some((key) => /press|deletion/i.test(key))).toBe(false);
+  });
+});
+
+describe('ana sayfa özeti', () => {
+  it('dört parçayı sözleşmedeki yoldan okur', async () => {
+    const summary = await api().getHomeSummary();
+    const sent = requests.at(-1);
+    expect(sent?.method).toBe('GET');
+    expect(sent?.url.pathname).toBe('/api/method/hrms_tr.api.get_home_summary');
+    expect(Object.keys(summary).sort()).toEqual([
+      'counts',
+      'pending_approvals',
+      'problems',
+      'recent_changes',
+    ]);
+    expect(summary.pending_approvals.map((item) => item.name)).toEqual([sampleLeaves[0]?.name]);
+    expect(summary.pending_approvals[0]?.version).toBe(sampleLeaves[0]?.modified);
+    expect(summary.counts.pending_approvals).toBe(1);
+    expect(summary.counts.problems).toBe(summary.problems.length);
+    expect(summary.problems.length).toBeGreaterThan(0);
+    expect(summary.recent_changes.length).toBeGreaterThan(0);
+  });
+
+  it('özetteki sürümle ret yapılınca bekleyen talep listeden düşer', async () => {
+    const before = await api().getHomeSummary();
+    const item = before.pending_approvals[0];
+    await api().rejectLeave(item?.name ?? '', item?.version ?? '');
+    const after = await api().getHomeSummary();
+    expect(after.pending_approvals).toEqual([]);
+    expect(after.counts.pending_approvals).toBe(0);
+    expect(after.recent_changes[0]).toMatchObject({ name: item?.name, action: 'rejected' });
+  });
+
+  it('sahte veride yalnız "Örnek Kişi" adları vardır', async () => {
+    const summary = await api().getHomeSummary();
+    const names = [
+      ...summary.pending_approvals.map((item) => item.employee_name),
+      ...summary.recent_changes.flatMap((item) => [item.employee_name, item.actor]),
+      ...summary.problems.flatMap((item) =>
+        item.kind === 'overlap'
+          ? item.leaves.map((leave) => leave.employee_name)
+          : [item.employee_name],
+      ),
+    ];
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) expect(name).toMatch(/^Örnek Kişi( \d+)?$/);
+  });
+
+  const broken: [string, unknown][] = [
+    ['message yok', {}],
+    ['bir parça eksik', { pending_approvals: [], problems: [], recent_changes: [] }],
+    [
+      'sayı eksi',
+      {
+        pending_approvals: [],
+        problems: [],
+        recent_changes: [],
+        counts: { pending_approvals: -1, on_leave_today: 0, opened_this_month: 0, problems: 0 },
+      },
+    ],
+    [
+      'bilinmeyen sorun türü',
+      {
+        pending_approvals: [],
+        problems: [{ kind: 'baska', employee: 'X', employee_name: null }],
+        recent_changes: [],
+        counts: { pending_approvals: 0, on_leave_today: 0, opened_this_month: 0, problems: 1 },
+      },
+    ],
+    [
+      'bekleyen talepte sürüm yok',
+      {
+        pending_approvals: [
+          {
+            name: 'X',
+            employee_name: null,
+            leave_type: null,
+            from_date: null,
+            to_date: null,
+            total_leave_days: null,
+            leave_balance: null,
+          },
+        ],
+        problems: [],
+        recent_changes: [],
+        counts: { pending_approvals: 1, on_leave_today: 0, opened_this_month: 0, problems: 0 },
+      },
+    ],
+    [
+      'bilinmeyen değişiklik türü',
+      {
+        pending_approvals: [],
+        problems: [],
+        recent_changes: [
+          { name: 'X', employee_name: null, actor: 'Örnek Kişi', action: 'silindi', at: 'x' },
+        ],
+        counts: { pending_approvals: 0, on_leave_today: 0, opened_this_month: 0, problems: 0 },
+      },
+    ],
+    [
+      'çakışmada tek başvuru var',
+      {
+        pending_approvals: [],
+        problems: [
+          {
+            kind: 'overlap',
+            department: 'Örnek Ekip',
+            leaves: [
+              { name: 'X', employee_name: null, from_date: '2026-12-01', to_date: '2026-12-02' },
+            ],
+          },
+        ],
+        recent_changes: [],
+        counts: { pending_approvals: 0, on_leave_today: 0, opened_this_month: 0, problems: 1 },
+      },
+    ],
+  ];
+
+  it.each(broken)('bozuk yanıtta açık hata verir: %s', async (_label, body) => {
+    mockServer.use(
+      http.get('*/api/method/hrms_tr.api.get_home_summary', () =>
+        HttpResponse.json(_label === 'message yok' ? body : { message: body }),
+      ),
+    );
+    await expect(api().getHomeSummary()).rejects.toMatchObject({ kind: 'invalid_response' });
   });
 });
