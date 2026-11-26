@@ -172,6 +172,7 @@ export const SAMPLE_DOCTYPE_ETAG = '"ornek-etag-1"';
 export function sampleProposal(overrides: Partial<Proposal> = {}): Proposal {
   return {
     proposal_id: 'ornek-oneri-1',
+    source_proposal: null,
     status: 'pending',
     result: '',
     tool: 'plt_create_document',

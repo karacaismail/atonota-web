@@ -94,6 +94,32 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/method/hrms_tr.api.get_leave_request_context': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read the signed-in employee's defaults for a new leave application.
+     * @description Returns only the active Employee linked to the authenticated session user.
+     *     Employee and user selectors are unsupported and ignored by Frappe, including for administrators.
+     *     Missing employee, display name, leave type, allocation, or balance data is null.
+     *     Each available value has its source DocType in sources. Missing values have null sources.
+     *     HRMS calculates the balance for today's site date, through that date only.
+     *     Existing legacy balance routes remain blocked. This route does not create or change records.
+     *     POST and other non-GET methods are rejected with Frappe's 403 PermissionError.
+     */
+    get: operations['getLeaveRequestContext'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/method/hrms_tr.api.reject_leave': {
     parameters: {
       query?: never;
@@ -429,6 +455,42 @@ export interface components {
     LeaveName: {
       /** @description Leave application record name. */
       name: string;
+    };
+    LeaveRequestContextResponse: {
+      /** @description Available defaults for the signed-in employee. */
+      message: {
+        /** @description Active Employee record name linked to the session user, or null. */
+        employee: string | null;
+        /** @description Display name from that Employee record, or null. */
+        employee_name: string | null;
+        /** @description Remaining days from HRMS for today's site date, or null without balance data. */
+        leave_balance: number | null;
+        /** @description Explicit Leave Type or the single type allocated today. Null when employee or type is missing, or omitted type has no unique allocation. */
+        leave_type: string | null;
+        /** @description Source DocType for each available value. Null means the value is missing. */
+        sources: {
+          /**
+           * @description Employee record, or null when employee is missing.
+           * @enum {string|null}
+           */
+          employee: 'Employee' | null;
+          /**
+           * @description Employee record, or null when its display name is missing.
+           * @enum {string|null}
+           */
+          employee_name: 'Employee' | null;
+          /**
+           * @description Leave ledger records evaluated by HRMS, or null without balance data.
+           * @enum {string|null}
+           */
+          leave_balance: 'Leave Ledger Entry' | null;
+          /**
+           * @description Leave Type for an explicit name, Leave Allocation for the single allocated type, or null when no type was resolved.
+           * @enum {string|null}
+           */
+          leave_type: 'Leave Type' | 'Leave Allocation' | null;
+        };
+      };
     };
     PendingApproval: {
       /** @description Employee display name. */
@@ -850,6 +912,68 @@ export interface operations {
           /**
            * @example {
            *       "exc_type": "ValidationError"
+           *     }
+           */
+          'application/json': components['schemas']['FrappeError'];
+        };
+      };
+    };
+  };
+  getLeaveRequestContext: {
+    parameters: {
+      query?: {
+        /**
+         * @description Exact Leave Type record name. An explicit name is resolved from Leave Type.
+         *     If omitted, use the signed-in employee's submitted Leave Allocation records valid today.
+         *     Select the type only when those allocations contain exactly one distinct leave type.
+         *     The source is Leave Allocation. No allocation or multiple types yields null type and balance.
+         *     No translated-name matching or alternate leave type is inferred.
+         * @example Annual Leave
+         */
+        leave_type?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Available defaults and their sources. A missing allocation is null, not zero. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "message": {
+           *         "employee": "HR-EMP-TEST-01",
+           *         "employee_name": "Örnek Kişi 1",
+           *         "leave_type": "Annual Leave",
+           *         "leave_balance": 8.5,
+           *         "sources": {
+           *           "employee": "Employee",
+           *           "employee_name": "Employee",
+           *           "leave_type": "Leave Allocation",
+           *           "leave_balance": "Leave Ledger Entry"
+           *         }
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['LeaveRequestContextResponse'];
+        };
+      };
+      401: components['responses']['AuthenticationFailed'];
+      403: components['responses']['PermissionDenied'];
+      /** @description Invalid leave_type input. Empty strings, objects, and names over 140 characters are rejected. */
+      417: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "exc_type": "FrappeTypeError"
            *     }
            */
           'application/json': components['schemas']['FrappeError'];
