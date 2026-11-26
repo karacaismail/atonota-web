@@ -101,12 +101,16 @@ const CheckboxControl = forwardRef<CheckboxRef, CheckboxProps>(function Checkbox
 type CheckboxGroupProps<Value> = Parameters<typeof AntCheckbox.Group<Value>>[0];
 
 const CheckboxGroup = forwardRef(function CheckboxGroup<Value>(
-  props: CheckboxGroupProps<Value>,
+  { className, ...props }: CheckboxGroupProps<Value>,
   ref: ForwardedRef<HTMLDivElement>,
 ) {
   return (
     <Themed name="checkbox">
-      <AntCheckbox.Group<Value> {...props} ref={ref} />
+      <AntCheckbox.Group<Value>
+        {...props}
+        ref={ref}
+        className={classes('atonota-checkbox-group', className)}
+      />
     </Themed>
   );
 }) as <Value = unknown>(
