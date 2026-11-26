@@ -197,6 +197,9 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
     await waitFor(() => expect(log.querySelector('[data-genui="result"]')).not.toBeNull());
     const apply = within(log).getByRole('region', { name: 'Uygulama' });
     expect(apply.querySelector('[data-genui="result"]')).not.toBeNull();
+    // Onaydan sonraki araç olayı plan başlığına değil, uygulama adımına aittir.
+    expect(apply.querySelector('[data-genui="events"]')).not.toBeNull();
+    expect(within(log).getAllByRole('region', { name: 'Plan' })).toHaveLength(1);
     const flow = screen.getByRole('list', { name: 'Akış adımları' });
     await waitFor(() =>
       expect(within(flow).getByText('Uygulama').closest('li')).toHaveAttribute(

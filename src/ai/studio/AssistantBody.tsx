@@ -50,7 +50,7 @@ export function AssistantBody({
     <div className="ai-answer">
       {groups.map((group) => (
         <StepSection key={group.step} group={group}>
-          {group.step === 'plan' && simulated && message.steps.length > 0 && (
+          {simulated && group.blocks.some((block) => block.type === 'events') && (
             <p className="ai-note">{SIMULATED_TOOLS_NOTE}</p>
           )}
           <GenUI blocks={group.blocks} onAction={onAction} busy={busy} decisions={decisions} />

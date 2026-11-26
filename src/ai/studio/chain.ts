@@ -48,7 +48,7 @@ export interface StepGroup {
 
 /**
  * Yanıtın bloklarını akış adımlarına ayırır.
- * Plan adımı önce kapsam şeridini, sonra sunucu araç olaylarını taşır.
+ * Araç olayları yanıtın ilk adımında, o adımın yüzeylerinden sonra yer alır.
  * Adımsız bloklar (tablo, grafik, form) `rest` listesinde sırasını korur.
  */
 export function groupBySteps(
@@ -64,9 +64,11 @@ export function groupBySteps(
     if (step) add(step, block);
     else rest.push(block);
   }
-  const events = toEventsBlock(steps);
-  if (events) add('plan', events);
   const order: FlowStep[] = ['plan', 'preview', 'approval', 'apply'];
+  // Araç olayları bu yanıtın ilk adımına aittir. Yanıtta yüzey yoksa plan adımına girer.
+  // Örnek: onaydan sonraki yanıtta olay "Uygulama" başlığı altında görünür.
+  const events = toEventsBlock(steps);
+  if (events) add(order.find((step) => byStep.has(step)) ?? 'plan', events);
   const groups = order
     .filter((step) => byStep.has(step))
     .map((step) => ({ step, label: STEP_LABELS[step], blocks: byStep.get(step) ?? [] }));
