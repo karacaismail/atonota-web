@@ -9,12 +9,13 @@ for (const theme of ['light', 'dark']) {
   }, testInfo) => {
     await page.goto(`${FORM}&theme=${theme}`);
     const name = page.getByLabel('Ad', { exact: true });
-    await expect(name).toHaveValue('Örnek Kişi 1');
+    await expect(name).toHaveText('Örnek Kişi 1');
+    await expect(name).toHaveAttribute('aria-readonly', 'true');
     await expect(name).toHaveAccessibleDescription('Personel kaydından geldi.');
     const balance = page.getByLabel('Kalan yıllık izin');
     // Intl may separate the unit with a regular, nonbreaking or narrow nonbreaking space.
-    await expect(balance).toHaveValue(/^8,5[ \u00a0\u202f]gün$/);
-    await expect(balance).toHaveAttribute('readonly', '');
+    await expect(balance).toHaveText(/^8,5[ \u00a0\u202f]gün$/);
+    await expect(balance).toHaveAttribute('aria-readonly', 'true');
     await expect(balance).toHaveAccessibleDescription('İzin kayıtlarından hesaplandı.');
     await page.getByLabel('Açıklama').fill('Örnek açıklama');
     await expect(page.getByLabel('Açıklama')).toHaveAccessibleDescription(
@@ -56,11 +57,11 @@ for (const theme of ['light', 'dark']) {
 
 test('missing data stays empty and zero remains a sourced value', async ({ page }) => {
   await page.goto(`${FORM}&context=empty`);
-  await expect(page.getByLabel('Ad', { exact: true })).toHaveValue('');
-  await expect(page.getByLabel('Kalan yıllık izin')).toHaveValue('');
+  await expect(page.getByLabel('Ad', { exact: true })).toHaveText('—');
+  await expect(page.getByLabel('Kalan yıllık izin')).toHaveText('—');
   await expect(page.locator('.rv-field-source')).toHaveCount(0);
   await page.goto(`${FORM}&context=zero`);
-  await expect(page.getByLabel('Kalan yıllık izin')).toHaveValue(/^0[ \u00a0\u202f]gün$/);
+  await expect(page.getByLabel('Kalan yıllık izin')).toHaveText(/^0[ \u00a0\u202f]gün$/);
   await expect(page.getByLabel('Kalan yıllık izin')).toHaveAccessibleDescription(
     'İzin kayıtlarından hesaplandı.',
   );
@@ -68,8 +69,8 @@ test('missing data stays empty and zero remains a sourced value', async ({ page 
 for (const context of ['network', 'forbidden', 'unauthenticated', 'validation']) {
   test(`optional context failure keeps the new form usable (${context})`, async ({ page }) => {
     await page.goto(`${FORM}&context=${context}`);
-    await expect(page.getByLabel('Ad', { exact: true })).toHaveValue('');
-    await expect(page.getByLabel('Kalan yıllık izin')).toHaveValue('');
+    await expect(page.getByLabel('Ad', { exact: true })).toHaveText('—');
+    await expect(page.getByLabel('Kalan yıllık izin')).toHaveText('—');
     await expect(page.locator('.rv-field-source')).toHaveCount(0);
     await page.getByLabel('Açıklama').fill('İzin talebim.');
     await expect(page.getByLabel('Açıklama')).toHaveValue('İzin talebim.');

@@ -209,6 +209,11 @@ export interface RecordViewProps {
    * Form alanı değiştirmez. Verilmezse düğme görünmez.
    */
   onAssistField?: ((request: RecordAssistRequest) => void) | undefined;
+  /**
+   * Formdan kaydetmeden çıkar. Verilirse "Vazgeç" ve kaydetme düğmesi formun altında görünür.
+   * Kaydedilmemiş değişiklik varsa önce uyarı çıkar. Uygulama olayda önceki sayfaya döner.
+   */
+  onCancel?: (() => void) | undefined;
 }
 
 function RecordSectionCard(props: {
@@ -356,6 +361,7 @@ function RecordViewBody(props: RecordViewBodyProps) {
     onCreateNew,
     onSignIn,
     onAssistField,
+    onCancel,
     isPhoneViewport,
   } = props;
 
@@ -407,6 +413,7 @@ function RecordViewBody(props: RecordViewBodyProps) {
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [activeTabKey, setActiveTabKey] = useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExitPending, setIsExitPending] = useState(false);
 
   const requestSeqRef = useRef(0);
   const savingLockRef = useRef(false);
@@ -925,6 +932,46 @@ function RecordViewBody(props: RecordViewBodyProps) {
       />
     ));
 
+  const saveButton = canEdit ? (
+    <Button
+      size="middle"
+      type="primary"
+      htmlType="submit"
+      icon={<FloppyDisk weight="regular" />}
+      loading={isSaving}
+      disabled={isSaving || (!isDirty && !isNewRecord)}
+    >
+      {isSaving
+        ? formatRecordMessage(locale, 'savingAction')
+        : (saveActionLabel ?? formatRecordMessage(locale, 'saveAction'))}
+    </Button>
+  ) : null;
+
+  const renderActions = (atFormEnd: boolean) => (
+    <>
+      {atFormEnd ? (
+        <Button
+          size="middle"
+          disabled={isSaving}
+          onClick={() => {
+            if (isDirty) {
+              setIsExitPending(true);
+              return;
+            }
+            onCancel?.();
+          }}
+        >
+          {formatRecordMessage(locale, 'cancelAction')}
+        </Button>
+      ) : isDirty ? (
+        <Button size="middle" disabled={isSaving} onClick={handleDiscard}>
+          {formatRecordMessage(locale, 'discardAction')}
+        </Button>
+      ) : null}
+      {saveButton}
+    </>
+  );
+
   return (
     <form
       ref={formRef}
@@ -966,27 +1013,7 @@ function RecordViewBody(props: RecordViewBodyProps) {
             )}
           </div>
 
-          <div className="rv-header-actions">
-            {isDirty ? (
-              <Button size="middle" disabled={isSaving} onClick={handleDiscard}>
-                {formatRecordMessage(locale, 'discardAction')}
-              </Button>
-            ) : null}
-            {canEdit ? (
-              <Button
-                size="middle"
-                type="primary"
-                htmlType="submit"
-                icon={<FloppyDisk weight="regular" />}
-                loading={isSaving}
-                disabled={isSaving || (!isDirty && !isNewRecord)}
-              >
-                {isSaving
-                  ? formatRecordMessage(locale, 'savingAction')
-                  : (saveActionLabel ?? formatRecordMessage(locale, 'saveAction'))}
-              </Button>
-            ) : null}
-          </div>
+          {onCancel ? null : <div className="rv-header-actions">{renderActions(false)}</div>}
         </div>
 
         {navigatorCfg ? (
@@ -1103,6 +1130,33 @@ function RecordViewBody(props: RecordViewBodyProps) {
             </div>
           ))
         )}
+
+        {onCancel ? (
+          <div className="rv-form-actions">
+            {isExitPending && isDirty ? (
+              <div className="rv-unsaved-guard" role="alert">
+                <span>{formatRecordMessage(locale, 'unsavedExitPrompt')}</span>
+                <div className="rv-banner-actions">
+                  <Button size="middle" onClick={() => setIsExitPending(false)}>
+                    {formatRecordMessage(locale, 'unsavedNavigationStay')}
+                  </Button>
+                  <Button
+                    size="middle"
+                    danger
+                    onClick={() => {
+                      setIsExitPending(false);
+                      handleDiscard();
+                      onCancel();
+                    }}
+                  >
+                    {formatRecordMessage(locale, 'unsavedExitConfirm')}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            <div className="rv-form-actions-row">{renderActions(true)}</div>
+          </div>
+        ) : null}
       </div>
     </form>
   );

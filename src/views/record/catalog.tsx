@@ -1,6 +1,7 @@
 import { CalendarBlank, Clock, Sparkle, WarningCircle } from '@phosphor-icons/react';
 import { Button, Checkbox, Input, InputNumber, Select } from 'antd';
-import type { ReactNode } from 'react';
+import type { InputRef } from 'antd';
+import { type ReactNode, useRef } from 'react';
 
 import { CATALOG_VERSION, resolveCatalogEntry } from './catalogRegistry';
 import { evaluateFieldState, isFrappeTruthy } from './conditions';
@@ -81,6 +82,71 @@ function formatScalarReadOnly(value: unknown, locale: RecordLocale): string {
     return String(value);
   }
   return JSON.stringify(value);
+}
+
+/** A locked value shown as plain text. The label names it; the note below describes it. */
+function ReadOnlyText({ a11y, text }: { a11y: FieldControlA11yProps; text: string }) {
+  return (
+    <div
+      id={a11y.controlId}
+      role="textbox"
+      aria-readonly="true"
+      aria-labelledby={a11y.labelId}
+      aria-describedby={a11y.ariaDescribedBy}
+      className="rv-readonly-box"
+    >
+      {text}
+    </div>
+  );
+}
+
+interface PickerInputProps {
+  a11y: FieldControlA11yProps;
+  compact: boolean;
+  type: 'date' | 'datetime-local' | 'time';
+  icon: ReactNode;
+  readOnly: boolean;
+  value: string;
+  onChange: (next: string) => void;
+}
+
+/**
+ * Native date and time input with one icon. CSS hides Chromium's own picker icon; the token icon
+ * opens the native picker instead. An empty value is marked so WebKit's placeholder date (today)
+ * is drawn in the hint colour and does not look like a saved value.
+ */
+function PickerInput({ a11y, compact, type, icon, readOnly, value, onChange }: PickerInputProps) {
+  const inputRef = useRef<InputRef>(null);
+  const openPicker = () => {
+    const input = inputRef.current?.input;
+    if (!input || readOnly) return;
+    try {
+      input.showPicker();
+    } catch {
+      // Older engines have no picker API. Focus still lets the user type the date.
+    }
+  };
+  return (
+    <Input
+      ref={inputRef}
+      id={a11y.controlId}
+      aria-labelledby={a11y.labelId}
+      aria-describedby={a11y.ariaDescribedBy}
+      aria-invalid={a11y.ariaInvalid}
+      data-empty={value === '' ? 'true' : undefined}
+      size={compact ? 'small' : 'middle'}
+      type={type}
+      {...(type === 'date' ? {} : { step: 1 })}
+      suffix={
+        <span className="rv-picker-icon" aria-hidden="true" onClick={openPicker}>
+          {icon}
+        </span>
+      }
+      readOnly={readOnly}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
 }
 
 export interface CatalogFieldProps {
@@ -238,14 +304,9 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
   const renderControl = (a11y: FieldControlA11yProps): ReactNode => {
     if (state.readOnly && readOnlyDisplayValue !== undefined) {
       return (
-        <Input
-          id={a11y.controlId}
-          aria-labelledby={a11y.labelId}
-          aria-describedby={a11y.ariaDescribedBy}
-          aria-invalid={a11y.ariaInvalid}
-          size={compactCell ? 'small' : 'middle'}
-          readOnly
-          value={readOnlyDisplayValue}
+        <ReadOnlyText
+          a11y={a11y}
+          text={readOnlyDisplayValue || formatRecordMessage(locale, 'readOnlyEmpty')}
         />
       );
     }
@@ -258,21 +319,14 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
 
     switch (entry.canonicalType) {
       case 'Read Only':
-        return (
-          <div
-            id={a11y.controlId}
-            role="textbox"
-            aria-readonly="true"
-            aria-describedby={a11y.ariaDescribedBy}
-            aria-labelledby={a11y.labelId}
-            className="rv-readonly-box"
-          >
-            {formatScalarReadOnly(value, locale)}
-          </div>
-        );
+        return <ReadOnlyText a11y={a11y} text={formatScalarReadOnly(value, locale)} />;
 
       case 'Data':
       case 'Phone': {
+        if (state.readOnly) {
+          // The approved draft shows locked values as text, not as an editable-looking box.
+          return <ReadOnlyText a11y={a11y} text={formatScalarReadOnly(value, locale)} />;
+        }
         const htmlInputType =
           entry.canonicalType === 'Phone' || field.options === 'Phone'
             ? 'tel'
@@ -473,51 +527,40 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
 
       case 'Date':
         return (
-          <Input
-            id={a11y.controlId}
-            aria-labelledby={a11y.labelId}
-            aria-describedby={a11y.ariaDescribedBy}
-            aria-invalid={a11y.ariaInvalid}
-            size={compactCell ? 'small' : 'middle'}
+          <PickerInput
+            a11y={a11y}
+            compact={compactCell}
             type="date"
-            suffix={<CalendarBlank weight="regular" />}
+            icon={<CalendarBlank weight="regular" />}
             readOnly={state.readOnly}
             value={strVal}
-            onChange={(e) => onChange(field.fieldname, e.target.value)}
+            onChange={(next) => onChange(field.fieldname, next)}
           />
         );
 
       case 'Datetime':
         return (
-          <Input
-            id={a11y.controlId}
-            aria-labelledby={a11y.labelId}
-            aria-describedby={a11y.ariaDescribedBy}
-            aria-invalid={a11y.ariaInvalid}
-            size={compactCell ? 'small' : 'middle'}
+          <PickerInput
+            a11y={a11y}
+            compact={compactCell}
             type="datetime-local"
-            step={1}
-            suffix={<CalendarBlank weight="regular" />}
+            icon={<CalendarBlank weight="regular" />}
             readOnly={state.readOnly}
             value={toDatetimeLocalInput(value)}
-            onChange={(e) => onChange(field.fieldname, fromDatetimeLocalInput(e.target.value))}
+            onChange={(next) => onChange(field.fieldname, fromDatetimeLocalInput(next))}
           />
         );
 
       case 'Time':
         return (
-          <Input
-            id={a11y.controlId}
-            aria-labelledby={a11y.labelId}
-            aria-describedby={a11y.ariaDescribedBy}
-            aria-invalid={a11y.ariaInvalid}
-            size={compactCell ? 'small' : 'middle'}
+          <PickerInput
+            a11y={a11y}
+            compact={compactCell}
             type="time"
-            step={1}
-            suffix={<Clock weight="regular" />}
+            icon={<Clock weight="regular" />}
             readOnly={state.readOnly}
             value={strVal}
-            onChange={(e) => onChange(field.fieldname, e.target.value)}
+            onChange={(next) => onChange(field.fieldname, next)}
           />
         );
 

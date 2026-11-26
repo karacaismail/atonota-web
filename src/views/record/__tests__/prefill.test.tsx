@@ -75,11 +75,11 @@ describe('new record prefill', () => {
     mount(adapter);
     expect(await screen.findByLabelText('Ad')).toHaveValue('Örnek Kişi 1');
     expect(screen.getByLabelText('Ad')).toHaveAccessibleDescription('Personel kaydından geldi.');
-    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue('8,5 gün');
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveTextContent(/^8,5 gün$/);
     expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAccessibleDescription(
       'İzin kayıtlarından hesaplandı.',
     );
-    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAttribute('readonly');
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAttribute('aria-readonly', 'true');
     expect(screen.getByRole('combobox', { name: /İzin türü/ })).toHaveAccessibleDescription(
       'İzin türü kaydından geldi.',
     );
@@ -123,7 +123,7 @@ describe('new record prefill', () => {
     expect(await screen.findByLabelText('Ad')).toHaveValue('');
     expect(screen.queryByText('Personel kaydından geldi.')).not.toBeInTheDocument();
     const control = screen.getByLabelText('Kalan yıllık izin');
-    expect(control).toHaveValue(balance === null ? '' : '0 gün');
+    expect(control).toHaveTextContent(balance === null ? /^—$/ : /^0 gün$/);
     if (balance === null)
       expect(screen.queryByText('İzin kayıtlarından hesaplandı.')).not.toBeInTheDocument();
     else expect(control).toHaveAccessibleDescription('İzin kayıtlarından hesaplandı.');
@@ -133,7 +133,7 @@ describe('new record prefill', () => {
     const { adapter } = setup();
     mount({ ...adapter, getNewRecordContext: undefined });
     expect(await screen.findByLabelText('Ad')).toHaveValue('');
-    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue('');
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveTextContent(/^—$/);
     expect(screen.queryByText('Personel kaydından geldi.')).not.toBeInTheDocument();
   });
 
@@ -151,9 +151,10 @@ describe('new record prefill', () => {
         throw new RecordApiError({ code, status, message: 'Context request failed' });
       },
     });
-    expect(await screen.findByLabelText('Ad')).toHaveValue('');
-    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue('');
-    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAttribute('readonly');
+    // LEAVE_META locks the name, so both values read as empty text.
+    expect(await screen.findByLabelText('Ad')).toHaveTextContent(/^—$/);
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveTextContent(/^—$/);
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAttribute('aria-readonly', 'true');
     expect(document.querySelector('.rv-field-source')).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Açıklama'), { target: { value: 'İzin talebim.' } });
     expect(screen.getByLabelText('Açıklama')).toHaveValue('İzin talebim.');
@@ -219,8 +220,8 @@ describe('new record prefill', () => {
           adapter={{ ...adapter, getDocTypeMeta: async () => numericMeta }}
         />,
       );
-      expect(await screen.findByLabelText('Kalan yıllık izin')).toHaveValue('8.5 days');
-      expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAttribute('readonly');
+      expect(await screen.findByLabelText('Kalan yıllık izin')).toHaveTextContent(/^8\.5 days$/);
+      expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAttribute('aria-readonly', 'true');
     },
   );
 

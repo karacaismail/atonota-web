@@ -128,6 +128,26 @@
   color: var(--rv-color-text);
 }
 
+/*
+ * Chromium draws its own picker icon next to the token icon. The token icon opens the picker,
+ * so the native one is hidden and the field shows a single icon.
+ */
+.rv-root input[type='date']::-webkit-calendar-picker-indicator,
+.rv-root input[type='datetime-local']::-webkit-calendar-picker-indicator,
+.rv-root input[type='time']::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.rv-picker-icon {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+/* WebKit draws today's date in an empty field. The hint colour keeps it from looking filled. */
+.rv-root .ant-input[data-empty='true'] {
+  color: var(--rv-color-text-placeholder);
+}
+
 @media (forced-colors: active) {
   .rv-root[data-rv-kbd='true'] :focus-visible,
   .rv-root[data-rv-kbd='true'] .ant-input:focus,
@@ -240,6 +260,20 @@
 .rv-navigator-pos {
   white-space: nowrap;
   padding: 0 var(--rv-space-2xs);
+}
+
+/* Form actions close the form, as in the approved draft: "Vazgeç" then the main action. */
+.rv-form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rv-space-xs);
+}
+
+.rv-form-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--rv-space-xs);
 }
 
 .rv-unsaved-guard {
@@ -440,12 +474,14 @@
   color: var(--rv-color-danger);
 }
 
+/* Locked values read as text on a quiet surface (approved draft), not as an editable box. */
 .rv-readonly-box {
+  display: flex;
+  align-items: center;
   min-height: var(--rv-control-h-md);
-  padding: var(--rv-space-xs) var(--rv-space-sm);
+  padding: var(--rv-space-2xs) var(--rv-space-sm);
   border-radius: var(--rv-radius);
-  border: 1px solid var(--rv-color-border-secondary);
-  background-color: var(--rv-color-elevated);
+  background-color: var(--rv-color-bg);
   color: var(--rv-color-text);
   font-size: var(--rv-font-body);
   line-height: var(--rv-font-body-lh);

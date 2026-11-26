@@ -196,6 +196,8 @@ export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
     '--rv-color-border-secondary': resolved.colorBorderSecondary,
     '--rv-color-text': resolved.colorText,
     '--rv-color-text-secondary': resolved.colorTextSecondary,
+    // Empty controls use the same hint colour as antd placeholders (for example "Seçin").
+    '--rv-color-text-placeholder': resolved.colorTextPlaceholder,
     '--rv-color-danger': danger[mode].color,
     '--rv-focus-color': focusIndicator[mode].color,
     '--rv-color-danger-bg': resolved.colorErrorBg,

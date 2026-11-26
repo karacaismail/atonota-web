@@ -97,6 +97,67 @@ export interface ValidateDraftOptions {
   baseRecord?: Readonly<Record<string, unknown>> | undefined;
 }
 
+/** The user fills these fields by choosing, so the message says "seçin". Others say "yazın". */
+const CHOICE_FIELDTYPES: ReadonlySet<string> = new Set([
+  'Select',
+  'Autocomplete',
+  'Link',
+  'Dynamic Link',
+  'Table MultiSelect',
+]);
+
+const TR_VOWEL_HARMONY: Readonly<Record<string, string>> = {
+  a: 'ı',
+  ı: 'ı',
+  e: 'i',
+  i: 'i',
+  o: 'u',
+  u: 'u',
+  ö: 'ü',
+  ü: 'ü',
+};
+
+/**
+ * Builds the Turkish accusative of a label that ends with a vowel ("İzin türü" → "İzin türünü").
+ * A multi-word label that ends with ı, i, u or ü is a compound noun and takes "n". Other vowel
+ * endings take "y" ("Açıklama" → "Açıklamayı"). Consonant endings may change their last letter
+ * ("Renk" → "Rengi"), so they return undefined and the caller uses a sentence without a suffix.
+ */
+export function turkishAccusative(label: string): string | undefined {
+  const trimmed = label.trim();
+  const last = trimmed.slice(-1).toLocaleLowerCase('tr');
+  const harmony = TR_VOWEL_HARMONY[last];
+  if (!harmony) return undefined;
+  const isCompound = /\s/.test(trimmed) && 'ıiuü'.includes(last);
+  return `${trimmed}${isCompound ? 'n' : 'y'}${harmony}`;
+}
+
+function requiredMessage(field: DocField, label: string, locale: RecordLocale): string {
+  const isChoice = CHOICE_FIELDTYPES.has(field.fieldtype);
+  if (locale !== 'tr') {
+    return formatRecordMessage(
+      locale,
+      isChoice ? 'validationRequiredChoose' : 'validationRequiredEnter',
+      {
+        label,
+      },
+    );
+  }
+  const accusative = turkishAccusative(label);
+  if (accusative) {
+    return formatRecordMessage(
+      locale,
+      isChoice ? 'validationRequiredChoose' : 'validationRequiredEnter',
+      { label: accusative },
+    );
+  }
+  return formatRecordMessage(
+    locale,
+    isChoice ? 'validationRequiredChooseField' : 'validationRequiredEnterField',
+    { label },
+  );
+}
+
 export function validateRecordDraft(
   meta: DocTypeMeta,
   draftValues: Readonly<Record<string, unknown>>,
@@ -124,7 +185,7 @@ export function validateRecordDraft(
     const rawValue = draftValues[field.fieldname];
 
     if (state.required && !isFrappeTruthy(rawValue)) {
-      errors[field.fieldname] = formatRecordMessage(locale, 'validationRequired', { label });
+      errors[field.fieldname] = requiredMessage(field, label, locale);
       continue;
     }
 
