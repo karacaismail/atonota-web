@@ -1,0 +1,81 @@
+/**
+ * Altı yüzeyin örnek blokları. Deneme sayfası ve testler bu verileri kullanır.
+ * Veriler sunucudan gelmiş gibi ham nesnedir. Ekran onları şemadan geçirerek çizer.
+ * Adlar ve kayıtlar örnektir.
+ */
+export type RawBlock = { type: string } & Record<string, unknown>;
+
+export const SURFACE_SAMPLES: RawBlock[] = [
+  {
+    type: 'scope',
+    tenant: 'Örnek Şirket',
+    environment: 'Deneme',
+    mode: 'act',
+    scope: 'İnsan kaynakları, izin talepleri',
+  },
+  {
+    type: 'events',
+    items: [
+      {
+        id: 'e1',
+        tool: 'izin_talebi.oku',
+        summary: 'İZN-0041 okundu. Örnek olay.',
+        status: 'done',
+      },
+      {
+        id: 'e2',
+        tool: 'izin_bakiyesi.hesapla',
+        summary: 'Kalan izin 11 gün. Örnek olay.',
+        status: 'done',
+      },
+      {
+        id: 'e3',
+        tool: 'oneri.ac',
+        summary: 'Değişiklik önerisi açılıyor. Örnek olay.',
+        status: 'running',
+      },
+    ],
+  },
+  {
+    type: 'source',
+    items: [
+      { title: 'İzin talebi İZN-0041', url: '/hr/leave-application/IZN-0041' },
+      { title: 'Örnek Kişi 3 izin bakiyesi' },
+    ],
+  },
+  {
+    type: 'review',
+    summary: 'İZN-0041 talebinin bitiş tarihi bir gün öne alınır.',
+    risk: 'R1',
+    target: 'İzin talebi İZN-0041, Örnek Kişi 3',
+    reversible: 'Kendiliğinden geri alınmaz. Geri almak için yeni bir öneri açılır.',
+    changes: [
+      { field: 'Bitiş tarihi', before: '12 Aralık 2026', after: '11 Aralık 2026' },
+      { field: 'Gün sayısı', before: '5', after: '4' },
+    ],
+    sources: [{ title: 'İzin talebi İZN-0041', url: '/hr/leave-application/IZN-0041' }],
+  },
+  {
+    type: 'queue',
+    items: [
+      {
+        id: 'IZN-0041',
+        title: 'Örnek Kişi 3: Yıllık izin',
+        detail:
+          '8 Aralık 2026 Salı gününden 12 Aralık 2026 Cumartesi gününe kadar. 5 gün. Kalan izni 11 gün.',
+        risk: 'R1',
+      },
+      {
+        id: 'IZN-0042',
+        title: 'Örnek Kişi 5: Mazeret izni',
+        detail: '1 Aralık 2026 Salı günü. 1 gün. Kalan izni 4 gün.',
+        risk: 'R1',
+      },
+    ],
+  },
+  {
+    type: 'result',
+    outcome: 'succeeded',
+    summary: 'İZN-0041 talebinin bitiş tarihi 11 Aralık 2026 oldu. Örnek sonuçtur.',
+  },
+];

@@ -53,9 +53,22 @@ const samples: GenUIBlock[] = [
 const accept = () => vi.fn((): GenUIActionResult => 'accepted');
 
 describe('GenUI kaydı', () => {
-  it('altı blok türünü kayıtta tutar', () => {
+  it('altı blok ve altı yüzey türünü kayıtta tutar', () => {
     expect(Object.keys(GENUI_REGISTRY).sort()).toEqual(
-      ['chart', 'choices', 'confirm', 'form', 'kpis', 'table'].sort(),
+      [
+        'chart',
+        'choices',
+        'confirm',
+        'form',
+        'kpis',
+        'table',
+        'scope',
+        'events',
+        'source',
+        'review',
+        'queue',
+        'result',
+      ].sort(),
     );
   });
 
@@ -66,12 +79,11 @@ describe('GenUI kaydı', () => {
     expect(container.querySelector('[data-genui="json"]')).toBeNull();
   });
 
-  it('bilinmeyen türü güvenli JSON görünümüne düşürür', () => {
+  it('kayıtta olmayan türü hiç çizmez', () => {
     const blocks = parseBlocks([{ type: 'html', html: '<img src=x onerror=alert(1)>' }]);
     const { container } = render(<GenUI blocks={blocks} onAction={accept()} />);
-    const json = container.querySelector('[data-genui="json"]');
-    expect(json).not.toBeNull();
-    expect(json?.textContent).toContain('"type": "html"');
+    expect(container.querySelector('[data-genui]')).toBeNull();
+    expect(container.textContent).not.toContain('html');
     expect(container.querySelector('img')).toBeNull();
   });
 
