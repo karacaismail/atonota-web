@@ -117,6 +117,11 @@ describe('adımlar yalnız ileri gider', () => {
     expect(flow.step).toBe('apply');
   });
 
+  it('önizleme gelmeden onay adımı açılmaz', () => {
+    const flow = feed(setFlowMode(createFlow(), 'act'), step('plan'), step('approval'));
+    expect(flow.step).toBe('plan');
+  });
+
   it('onay yalnız onay adımında verilir', () => {
     const early = feed(setFlowMode(createFlow(), 'act'), step('plan'));
     expect(approveFlow(early).approved).toBe(false);
@@ -194,10 +199,12 @@ describe('güven yüzdesi ve iç düşünce taşınmaz', () => {
   });
 
   it('adım ve geri alma olaylarındaki fazla alanlar da atılır', () => {
-    expect(parseFlowEvent(JSON.stringify({ type: 'step', step: 'plan', confidence: 0.5 }))).toEqual({
-      type: 'step',
-      step: 'plan',
-    });
+    expect(parseFlowEvent(JSON.stringify({ type: 'step', step: 'plan', confidence: 0.5 }))).toEqual(
+      {
+        type: 'step',
+        step: 'plan',
+      },
+    );
     expect(
       parseFlowEvent(JSON.stringify({ type: 'undo', endpoint: '/api/undo/1', thought: 'x' })),
     ).toEqual({ type: 'undo', endpoint: '/api/undo/1' });
