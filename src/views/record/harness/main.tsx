@@ -10,6 +10,7 @@ import '@fontsource/jetbrains-mono/400.css';
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LEAVE_META } from './leaveFixture';
+import { CHECKBOX_META } from './checkboxFixture';
 
 import {
   type DocTypeMeta,
@@ -242,7 +243,8 @@ export function HarnessApp() {
   const [assistCalls, setAssistCalls] = useState(0);
 
   const adapter: RecordDataAdapter = {
-    getDocTypeMeta: async () => (scenario === 'leave' ? LEAVE_META : HARNESS_META),
+    getDocTypeMeta: async () =>
+      scenario === 'checkbox' ? CHECKBOX_META : scenario === 'leave' ? LEAVE_META : HARNESS_META,
     getRecord: async () => {
       if (scenario === 'error') {
         throw new RecordApiError({
@@ -282,7 +284,16 @@ export function HarnessApp() {
 
   return (
     <main data-assist-calls={assistCalls}>
-      {scenario === 'leave' ? (
+      {scenario === 'checkbox' ? (
+        <RecordView
+          doctype={CHECKBOX_META.schema.name}
+          createMode
+          adapter={adapter}
+          themeMode={themeMode}
+          locale="tr"
+          breadcrumbs={[]}
+        />
+      ) : scenario === 'leave' ? (
         <RecordView
           doctype="Leave Application"
           title="Yeni izin talebi"
