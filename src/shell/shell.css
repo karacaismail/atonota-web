@@ -56,6 +56,9 @@
   --shell-form-max: 560px;
   /* Yardımcı panelin geniş ekran genişliği. Onaylı taslakta 26rem'dir. */
   --shell-assist-w: 416px;
+  /* "Örnek veri" notunun görünen yüksekliği. Kabuk ölçer ve satır içi yazar. Not yoksa 0'dır. */
+  --shell-note-h: 0px;
+  --shell-zero: 0px;
 
   /* Hareket. Süre ve eğriler merkezi tokenlardır (src/design/motion.ts). Değerler kaynak örnek
      sayfanın `.glide`, iskelet ve dönme kurallarından gelir. Solma eğrisi genel S eğrisidir;
@@ -251,14 +254,17 @@ html[data-focus-mode='keyboard']
   overflow-wrap: break-word;
 }
 
-/* Telefonda panel alttan tam boy açılır. Kapanış hareketi bitince gizlenir. */
+/* Telefonda panel alttan açılır. Panel "Örnek veri" notunun altından ekranın altına uzanır.
+   `--shell-note-h` notun görünen yüksekliğidir. Kabuk ölçer.
+   Kapanış hareketi bitince panel gizlenir. */
 .shell[data-layout='compact'] .shell-assist {
   position: fixed;
-  inset: 0;
+  inset: var(--shell-note-h) 0 0 0;
   z-index: var(--shell-z-raised);
   overflow: auto;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+  overscroll-behavior: contain;
+  padding: max(var(--shell-zero), calc(env(safe-area-inset-top) - var(--shell-note-h)))
+    env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   transform: translateY(100%);
   visibility: hidden;
   transition:

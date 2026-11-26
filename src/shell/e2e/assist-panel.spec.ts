@@ -103,12 +103,23 @@ test.describe('yardımcı panel', () => {
     await settle(page);
     const box = await dialog.boundingBox();
     const vp = page.viewportSize();
-    expect(box && vp).toBeTruthy();
-    if (!box || !vp) return;
+    // Örnek veri notu kabuğun dışındadır. Panel notun altından başlar ve not görünür kalır.
+    const note = page.getByRole('status').filter({ hasText: 'Örnek veri' });
+    await expect(note).toBeVisible();
+    const noteBox = await note.boundingBox();
+    expect(box && vp && noteBox).toBeTruthy();
+    if (!box || !vp || !noteBox) return;
+    expect(noteBox.height).toBeGreaterThan(0);
     expect(Math.round(box.x)).toBe(0);
-    expect(Math.round(box.y)).toBe(0);
+    expect(Math.round(box.y)).toBe(Math.round(noteBox.y + noteBox.height));
     expect(Math.round(box.width)).toBe(vp.width);
-    expect(Math.round(box.height)).toBe(vp.height);
+    expect(Math.round(box.y + box.height)).toBe(vp.height);
+    // Notun üstünde başka öğe yoktur. Panel notu örtmez.
+    const topAtNote = await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x, y)?.closest('#shell-assist') === null,
+      [noteBox.x + noteBox.width / 2, noteBox.y + noteBox.height / 2] as const,
+    );
+    expect(topAtNote).toBe(true);
     expect(await dimOn(page)).toBe(false);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -152,6 +163,34 @@ test.describe('yardımcı panel', () => {
     expect(parts[0]).toContain('inset');
     expect(m.indicator).toBe('0');
     expect((await new AxeBuilder({ page }).include('.shell').analyze()).violations).toEqual([]);
+  });
+
+  test('kimlik şeridindeki düğmede çevreleyen halka yoktur', async ({ page }) => {
+    const trigger = await ready(page);
+    // Görünür odak modunu Tab açar. Sonra odak düğmeye doğrudan verilir.
+    await page.keyboard.press('Tab');
+    await trigger.focus();
+    await expect(trigger).toBeFocused();
+    await settle(page);
+    const m = await trigger.evaluate((btn) => {
+      const s = getComputedStyle(btn);
+      return {
+        mode: document.documentElement.dataset['focusMode'],
+        visible: btn.matches(':focus-visible'),
+        outline: s.outlineStyle,
+        shadow: s.boxShadow,
+        indicator: getComputedStyle(btn, '::after').opacity,
+      };
+    });
+    expect(m.mode).toBe('keyboard');
+    expect(m.visible).toBe(true);
+    expect(m.outline).toBe('none');
+    // Tek gösterge: alt kenarda iç gölge çizgisi. Halka ve ikinci alt çizgi yoktur.
+    const parts = splitShadows(m.shadow);
+    expect(parts).toHaveLength(1);
+    expect(parts.some(isRingShadow)).toBe(false);
+    expect(parts[0]).toContain('inset');
+    expect(m.indicator).toBe('0');
   });
 
   test('reduced motion tercihinde panel hareketsiz açılır', async ({ page }) => {

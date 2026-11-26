@@ -260,6 +260,24 @@ export function AppShell({ children, assistant }: AppShellProps) {
   const assistReturnFocus = useRef(false);
   // Telefonda panel tam boy iletişim kutusudur. Geri kalan kabuk etkileşime kapanır.
   const assistModal = isDrawer && assistOpen;
+  const shellRef = useRef<HTMLDivElement>(null);
+  // Telefon paneli "Örnek veri" notunu örtmez. Not kabuğun dışında ve üstündedir.
+  // Notun görünen yüksekliği kabuğun ekrandaki üst kenarıdır. Not yoksa değer 0 olur.
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    if (!assistModal || !shell) return undefined;
+    const property = '--shell-note-h';
+    const measure = () =>
+      shell.style.setProperty(property, `${Math.max(0, shell.getBoundingClientRect().top)}px`);
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, { passive: true });
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure);
+      shell.style.removeProperty(property);
+    };
+  }, [assistModal]);
   // A wrapping identity strip has no fixed height. Keep focused content below it.
   useLayoutEffect(() => {
     const header = topRef.current;
@@ -367,6 +385,7 @@ export function AppShell({ children, assistant }: AppShellProps) {
     <FocusDimProvider>
       <AssistPanelContext.Provider value={assistApi}>
         <div
+          ref={shellRef}
           className="shell"
           style={vars}
           data-layout={isDrawer ? 'compact' : 'wide'}
