@@ -172,10 +172,6 @@ export const SAMPLE_DOCTYPE_ETAG = '"ornek-etag-1"';
 export function sampleProposal(overrides: Partial<Proposal> = {}): Proposal {
   return {
     proposal_id: 'ornek-oneri-1',
-    risk_level: 'R1',
-    first_approved_at: null,
-    second_approver: null,
-    second_approved_at: null,
     source_proposal: null,
     status: 'pending',
     result: '',
