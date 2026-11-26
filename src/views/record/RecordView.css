@@ -106,6 +106,48 @@
   box-shadow: none;
 }
 
+/*
+ * WebKit draws its own rounded focus ring around the active date segment (month, day, year).
+ * Chromium fills the active segment with the system highlight blue. Both are removed.
+ * The wrapper underline above stays the single focus indicator.
+ * The active segment keeps a flat brand tint so the user sees the edited part.
+ * WebKit matches the segment with :focus. Chromium matches it only with :focus-within.
+ * The two rules stay separate, so one engine cannot drop the other's rule.
+ */
+.rv-root input[type='date']::-webkit-datetime-edit-month-field:focus,
+.rv-root input[type='date']::-webkit-datetime-edit-day-field:focus,
+.rv-root input[type='date']::-webkit-datetime-edit-year-field:focus,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-month-field:focus,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-day-field:focus,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-year-field:focus,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-hour-field:focus,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-minute-field:focus,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-second-field:focus,
+.rv-root input[type='time']::-webkit-datetime-edit-hour-field:focus,
+.rv-root input[type='time']::-webkit-datetime-edit-minute-field:focus,
+.rv-root input[type='time']::-webkit-datetime-edit-second-field:focus {
+  outline: none;
+  background-color: var(--rv-date-segment-bg);
+  color: var(--rv-color-text);
+}
+
+.rv-root input[type='date']::-webkit-datetime-edit-month-field:focus-within,
+.rv-root input[type='date']::-webkit-datetime-edit-day-field:focus-within,
+.rv-root input[type='date']::-webkit-datetime-edit-year-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-month-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-day-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-year-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-hour-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-minute-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-second-field:focus-within,
+.rv-root input[type='time']::-webkit-datetime-edit-hour-field:focus-within,
+.rv-root input[type='time']::-webkit-datetime-edit-minute-field:focus-within,
+.rv-root input[type='time']::-webkit-datetime-edit-second-field:focus-within {
+  outline: none;
+  background-color: var(--rv-date-segment-bg);
+  color: var(--rv-color-text);
+}
+
 @media (forced-colors: active) {
   .rv-root[data-rv-kbd='true'] :focus-visible,
   .rv-root[data-rv-kbd='true'] .ant-input:focus,
@@ -390,6 +432,25 @@
   font-size: var(--rv-font-min);
   line-height: var(--rv-font-min-lh);
   color: var(--rv-color-text-secondary);
+}
+
+/* Yardım metni solda, yardımcı düğmesi sağda durur. Dar ekranda düğme alt satıra geçer. */
+.rv-field-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rv-space-xs);
+}
+
+.rv-field-footer .rv-field-help {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rv-field-footer .rv-field-assist {
+  margin-inline-start: auto;
+  font-size: var(--rv-font-min);
 }
 
 .rv-field-error {
