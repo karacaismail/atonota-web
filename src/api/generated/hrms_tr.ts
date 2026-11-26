@@ -59,6 +59,11 @@ export interface paths {
      * Read the four parts of the home page for the signed-in user.
      * @description Every part counts and lists only the records the signed-in user can read.
      *     Lists hold at most 50 items. The counts count every matching record.
+     *     An overlap is two open or approved applications of one team that share at least one day.
+     *     The team is the department of the leave application.
+     *     An application without a department is never an overlap.
+     *     Only applications that end today or later count.
+     *     Two applications of the same employee also count.
      */
     get: operations['getHomeSummary'];
     put?: never;
