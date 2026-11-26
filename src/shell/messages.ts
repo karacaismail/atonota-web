@@ -102,6 +102,8 @@ export const t = {
     sample: 'Bu sayfadaki veriler örnektir.',
     homeEmpty: 'Panel özeti henüz yok. Menüden bir sayfa açın.',
     checkingAccess: 'Sayfa yetkiniz denetleniyor.',
+    accountKindError:
+      'Hesap türü denetlenemedi. Bayi sayfaları şimdilik gizli. Sayfayı yenileyip yeniden deneyin.',
     denied: 'Bu sayfayı açma yetkiniz yok. Yetki için yöneticinize başvurun.',
     noModuleEnvironment:
       'Modül bağlantısı kurulmadı. Uygulama girişi kabuğa modül ortamını vermeli.',

@@ -52,7 +52,16 @@ export interface ShellNavigationData {
    * Bağlantı yoksa menü yetki isteyen sayfayı göstermez.
    */
   loadReadable?: (doctypes: readonly string[], signal: AbortSignal) => Promise<ReadonlySet<string>>;
+  /**
+   * Hesabın bayi hesabı olup olmadığını sunucuya sorar (G-169, G-170, AJA-945).
+   * Bayi müşteri listesi ucu 200 dönerse hesap bayidir. Boş liste de bayi sayılır.
+   * Uç 403 dönerse hesap kiracı hesabıdır. Başka hata gelirse söz reddedilir.
+   */
+  loadAccountKind?: (signal: AbortSignal) => Promise<AccountKind>;
 }
+
+/** Hesap türü. `reseller` bayi hesabıdır, `tenant` kiracı hesabıdır. */
+export type AccountKind = 'reseller' | 'tenant';
 
 /** Kayıt rotasının adres parçaları. */
 export interface RecordAddress {

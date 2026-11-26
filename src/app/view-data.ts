@@ -59,6 +59,9 @@ function toShellSidebar(sidebar: BootstrapSidebar): ShellSidebar | null {
   return { id: sidebar.name, label: data.label?.trim() || sidebar.name, module, links };
 }
 
+/** Bayinin bağlı müşteri listesi. Uç yalnız bayi rollerine 200 döner (G-169, G-170). */
+const RESELLER_PROBE_PATH = '/api/method/platform_core.api.reseller.list_customers';
+
 // Kayıt görünümü kendi parçasında iner; yalnız kayıt rotası açılınca yüklenir.
 const RecordRoute = lazy(() => import('./RecordRoute'));
 
@@ -117,6 +120,18 @@ export function createShellViewData(
           ),
         );
         return new Set(results.filter((d): d is string => d !== null));
+      },
+      // Bayi hesabını müşteri listesi ucu tanır (AJA-945). Tanım ucu bağ türüne bayiye de 403 verir.
+      // 200 bayi demektir, boş liste de sayılır. 403 kiracı demektir. Başka hata iletilir.
+      async loadAccountKind(signal) {
+        const response = await api.frappeDocument({
+          method: 'GET',
+          path: RESELLER_PROBE_PATH,
+          signal,
+        });
+        if (response.ok) return 'reseller';
+        if (response.error.kind === 'forbidden' && response.error.status === 403) return 'tenant';
+        throw response.error;
       },
     },
     record: { Component: Record },

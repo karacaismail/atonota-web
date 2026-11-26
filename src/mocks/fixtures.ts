@@ -316,8 +316,12 @@ export const MENU_READABLE_DOCTYPES: readonly string[] = [
   'Leave Application',
 ];
 
-/** Bayi hesabının okuduğu tek modül türü (G-169). Kiracı hesabı bu türü okuyamaz. */
-export const RESELLER_READABLE_DOCTYPES: readonly string[] = ['Reseller Customer Link'];
+/**
+ * Bayi hesabının tanım ucunda okuduğu modül türleri. Liste boştur (AJA-945).
+ * Gerçek sunucu bağ türüne (`Reseller Customer Link`) bayiye de 403 verir.
+ * Panel bayi hesabını müşteri listesi ucuyla tanır (`list_customers`).
+ */
+export const RESELLER_READABLE_DOCTYPES: readonly string[] = [];
 
 /**
  * Dört panel rolünün sahte sunucu verisi (AJA-831). Senaryolar `scenarios.ts` dosyasındadır.

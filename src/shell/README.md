@@ -119,10 +119,15 @@ Kodda rol adı yoktur. Yetki bilgisi gelmezse menü yetki isteyen sayfayı göst
 
 Bayi rolleri yalnız "Hesap", "Site ve plan" ve "Müşteriler" gruplarını görür. Süzgeç yine `permittedNav` işlevidir.
 
-1. "Müşteriler" sayfası `Reseller Customer Link` türünü okumayı ister (`requires`). Kiracı hesabı bu türü okuyamaz.
-2. Kiracı sayfaları aynı türü `excludes` alanında yazar. Bu türü okuyan hesap bayi hesabıdır. Bayi bu sayfaları görmez.
-3. Modül sayfası menüyle aynı kuraldan geçer (`moduleAllowed`). Kural kapalıysa sayfada "Bu sayfayı açma yetkiniz yok" notu görünür.
-4. Sayfa içindeki yazma düğmeleri rollere bakar (`src/modules/access.ts`). Örneğin "Reseller Assistant" yeni müşteri isteği düğmesini görmez.
+1. "Müşteriler" sayfası `Reseller Customer Link` türünü ister (`requires`). Bu ad menüde bayi hesabının işaretidir.
+2. Kiracı sayfaları aynı adı `excludes` alanında yazar. Bayi bu sayfaları görmez.
+3. Kabuk bayi hesabını tanım ucuyla tanımaz. Tanım ucu bu türe bayiye de 403 verir (AJA-945).
+4. Kabuk bunun yerine `viewData.navigation.loadAccountKind` işlevini çağırır. İşlev bayi müşteri listesi ucunu (`platform_core.api.reseller.list_customers`) çağırır.
+5. Uç 200 dönerse hesap bayi hesabıdır. Boş liste de 200 sayılır. Kabuk o zaman `Reseller Customer Link` adını okunabilir sayar.
+6. Uç 403 dönerse hesap kiracı hesabıdır.
+7. Başka bir hata gelirse hesap bayi sayılmaz. Kabuk "Hesap türü denetlenemedi" notunu gösterir.
+8. Modül sayfası menüyle aynı kuraldan geçer (`moduleAllowed`). Kural kapalıysa sayfada "Bu sayfayı açma yetkiniz yok" notu görünür.
+9. Sayfa içindeki yazma düğmeleri rollere bakar (`src/modules/access.ts`). Örneğin "Reseller Assistant" yeni müşteri isteği düğmesini görmez.
 
 Süzgeç yalnız ekranı düzenler. Yetkiyi sunucu her istekte yine denetler.
 

@@ -1,6 +1,7 @@
 export { ViewDataProvider } from './ViewDataProvider';
 export { useViewData } from './useViewData';
 export type {
+  AccountKind,
   CollectionAddress,
   RecordAddress,
   ShellAccount,

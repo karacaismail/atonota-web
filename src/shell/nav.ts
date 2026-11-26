@@ -9,7 +9,7 @@
  */
 import { FileText, Rows } from '@phosphor-icons/react';
 
-import { moduleRegistrations } from '@/modules';
+import { moduleRegistrations, RESELLER_LINK_DOCTYPE } from '@/modules';
 
 import { routes } from './paths';
 import { isReservedSegment, menuEntries, routeRegistry } from './routes';
@@ -25,10 +25,14 @@ const moduleRules = new Map(
   ]),
 );
 
-/** Menünün sunucuya sorduğu bütün DocType adları: `requires` ve `excludes`. Her ad bir kez geçer. */
+/**
+ * Menünün tanım ucuna sorduğu DocType adları: `requires` ve `excludes`. Her ad bir kez geçer.
+ * Bayi bağ türü bu listede yoktur (AJA-945). Tanım ucu bu türe bayiye de 403 verir.
+ * Bayi hesabını müşteri listesi ucu tanır (`loadAccountKind`).
+ */
 export const requiredDocTypes: readonly string[] = [
   ...new Set(moduleRegistrations.flatMap((m) => [...(m.requires ?? []), ...(m.excludes ?? [])])),
-];
+].filter((doctype) => doctype !== RESELLER_LINK_DOCTYPE);
 
 export const routeNav: NavEntry[] = menuEntries(routeRegistry).map((r): NavEntry => {
   const { requires = [], excludes = [] } = moduleRules.get(r.path) ?? {};

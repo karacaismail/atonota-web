@@ -11,16 +11,17 @@ export interface ModuleRegistration {
   requires?: readonly string[];
   /**
    * Bu DocType adlarından biri okunabilirse sayfa menüde görünmez (G-169, G-170).
-   * Örnek: bayi hesabı `Reseller Customer Link` kaydını okur. Bu hesap kiracı sayfalarını görmez.
-   * Kararı yine sunucunun okuma yetkisi verir. Kodda rol adı yoktur.
+   * Örnek: bayi hesabında `Reseller Customer Link` okunabilir sayılır. Bu hesap kiracı sayfalarını görmez.
+   * Kararı sunucu verir: bayi müşteri listesi ucu (AJA-945). Kodda rol adı yoktur.
    */
   excludes?: readonly string[];
   /** The shell only calls load after navigation. Importing this registry loads no screen. */
   load: () => Promise<{ default: ComponentType }>;
 }
 /**
- * Bayiyi müşteri kiracısına bağlayan kayıt türü (G-169). Bayi hesabı yalnız kendi bağlarını okur.
- * Bu türü okuyabilen hesap bayi hesabıdır. Kiracı sayfaları bu hesaba görünmez.
+ * Bayiyi müşteri kiracısına bağlayan kayıt türü (G-169). Menüde bayi hesabının işaretidir.
+ * Kabuk bu türü tanım ucuna sormaz. Tanım ucu bu türe bayiye de 403 verir (AJA-945).
+ * Bayi müşteri listesi ucu 200 dönerse kabuk bu adı okunabilir sayar. Kiracı sayfaları bayiye görünmez.
  */
 export const RESELLER_LINK_DOCTYPE = 'Reseller Customer Link';
 /** Kiracı sayfaları bayi hesabında görünmez. */

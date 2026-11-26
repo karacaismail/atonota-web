@@ -1,10 +1,11 @@
-import { List, X } from '@phosphor-icons/react';
+import { List, WarningCircle, X } from '@phosphor-icons/react';
 import { theme } from 'antd';
 import type { CSSProperties, ReactNode } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { isDemoEnabled, isDemoPath } from '@/app/demo-mode';
+import { RESELLER_LINK_DOCTYPE } from '@/modules';
 
 import { type ShellAccess, ShellAccessContext } from '../access';
 import { FocusDimProvider } from '../focus-dim';
@@ -30,7 +31,7 @@ import {
 import type { SidebarVariant } from '../sidebar/Sidebar';
 import { Sidebar } from '../sidebar/Sidebar';
 import { shellCssVars } from '../tokens';
-import type { ShellCredit, ShellWorkspaceData } from '../view-data';
+import type { AccountKind, ShellCredit, ShellWorkspaceData } from '../view-data';
 import { useViewData } from '../view-data';
 import { useCompactLayout } from './useMedia';
 
@@ -91,6 +92,7 @@ const DEMO_ENABLED = isDemoEnabled(import.meta.env.MODE);
  */
 function useShellNav(): {
   access: ShellAccess;
+  accountKindFailed: boolean;
   nav: NavEntry[];
   agents: typeof sampleAgents;
   quickActions: QuickAction[];
@@ -106,6 +108,12 @@ function useShellNav(): {
   // Sayfa kapısı yanıtı bekler. Yanıtın hangi bağlantıdan geldiği saklanır.
   // Bağlantı ya da yetki ucu yoksa kapı beklemez ve boş kümeyle karar verir.
   const [probedFrom, setProbedFrom] = useState<unknown>(null);
+  // Bayi hesabı mı (AJA-945)? Karar müşteri listesi ucundan gelir. Yanıtın kaynağı da saklanır.
+  // Uç başka hata verirse hesap bayi sayılmaz. Kabuk bunun yerine hata notu gösterir.
+  const [accountKind, setAccountKind] = useState<{
+    from: unknown;
+    kind: AccountKind | 'failed';
+  } | null>(null);
   useEffect(() => {
     if (!navigation) return undefined;
     const ctrl = new AbortController();
@@ -123,14 +131,28 @@ function useShellNav(): {
         if (!ctrl.signal.aborted) setProbedFrom(navigation);
       },
     );
+    navigation.loadAccountKind?.(ctrl.signal).then(
+      (kind) => {
+        if (!ctrl.signal.aborted) setAccountKind({ from: navigation, kind });
+      },
+      () => {
+        if (!ctrl.signal.aborted) setAccountKind({ from: navigation, kind: 'failed' });
+      },
+    );
     return () => ctrl.abort();
   }, [navigation]);
+  const kind = navigation && accountKind?.from === navigation ? accountKind.kind : null;
   // Sunucunun sidebar grupları Frappe'nin izin süzgecinden geçmiştir (`resolve_sidebar`).
   // Gruptaki DocType'lar bu yüzden okunabilir sayılır. Modül sayfaları tanım ucuyla denenir.
+  // Bayi hesabında bağ türü okunabilir sayılır. Menü ve sayfa kapısı bu adı tek kuralla kullanır.
   const readable = useMemo(
     () =>
-      new Set([...probed, ...groups.flatMap((g) => g.children.flatMap((c) => c.requires ?? []))]),
-    [probed, groups],
+      new Set([
+        ...probed,
+        ...groups.flatMap((g) => g.children.flatMap((c) => c.requires ?? [])),
+        ...(kind === 'reseller' ? [RESELLER_LINK_DOCTYPE] : []),
+      ]),
+    [probed, groups, kind],
   );
   const permittedGroups = useMemo(
     () => permittedNav(groups, readable).filter((e): e is NavGroup => e.kind === 'group'),
@@ -146,10 +168,22 @@ function useShellNav(): {
     [demo, permittedGroups],
   );
   const access = useMemo(
-    () => ({ ready: !navigation?.loadReadable || probedFrom === navigation, readable }),
-    [navigation, probedFrom, readable],
+    () => ({
+      ready:
+        (!navigation?.loadReadable || probedFrom === navigation) &&
+        (!navigation?.loadAccountKind || kind !== null),
+      readable,
+    }),
+    [navigation, probedFrom, kind, readable],
   );
-  return { access, nav, agents: demo ? sampleAgents : [], quickActions, demo };
+  return {
+    access,
+    accountKindFailed: kind === 'failed',
+    nav,
+    agents: demo ? sampleAgents : [],
+    quickActions,
+    demo,
+  };
 }
 
 /** Deneme sayfasının örnek çalışma alanları. Canlı panelde kullanılmaz. */
@@ -202,7 +236,7 @@ export function AppShell({ children }: AppShellProps) {
   const mainRef = useRef<HTMLElement>(null);
   const topRef = useRef<HTMLElement>(null);
   const vars = useThemeVars();
-  const { access, nav, agents, quickActions, demo } = useShellNav();
+  const { access, accountKindFailed, nav, agents, quickActions, demo } = useShellNav();
   const liveWorkspaces = useViewData()?.workspaces;
   const workspaces = demo ? DEMO_WORKSPACES : liveWorkspaces;
   const credit = useShellCredit(demo);
@@ -321,6 +355,12 @@ export function AppShell({ children }: AppShellProps) {
           />
         </aside>
         <main ref={mainRef} className="shell-main" id="main">
+          {accountKindFailed && (
+            <div className="shell-hd-err" role="alert">
+              <WarningCircle aria-hidden="true" />
+              <span>{t.pages.accountKindError}</span>
+            </div>
+          )}
           <ShellAccessContext.Provider value={access}>{children}</ShellAccessContext.Provider>
         </main>
       </div>

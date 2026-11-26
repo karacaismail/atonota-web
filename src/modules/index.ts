@@ -1,4 +1,4 @@
-export { moduleRegistrations } from './registry';
+export { moduleRegistrations, RESELLER_LINK_DOCTYPE } from './registry';
 export type { ModuleRegistration } from './registry';
 export { createModuleClient } from './client';
 export { ModuleProvider } from './runtime';
