@@ -125,6 +125,11 @@ export default function FoundationPage() {
         marginInline: 'auto',
       }}
     >
+      <style>{`
+        .foundation-small-button.hit::after {
+          inset-block: calc((100% - var(--hit-target)) / 2);
+        }
+      `}</style>
       <Flex vertical gap="large">
         <Flex justify="space-between" align="center" wrap gap="small">
           <Typography.Title level={1} style={{ margin: 0 }}>
@@ -141,7 +146,7 @@ export default function FoundationPage() {
             Butonlar
           </Typography.Title>
           <Flex gap="middle" wrap align="center">
-            <Button size="small" data-testid="btn-sm">
+            <Button size="small" className="foundation-small-button" data-testid="btn-sm">
               Küçük
             </Button>
             <Button type="primary" data-testid="btn-md">
