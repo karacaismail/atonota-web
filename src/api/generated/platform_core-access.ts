@@ -105,9 +105,11 @@ export interface paths {
      *     The same value returns when the record does not exist. This way the endpoint does not reveal that a record exists.
      *     The `rules` list is empty in the response to an ordinary user.
      *
-     *     A Website User cannot call this endpoint: it is not on the shell's allow-list
-     *     (`website_user_allowed_methods`), because the answer can carry rule detail. Such a
-     *     request returns 403.
+     *     A Website User calls this endpoint only with the “Tenant Admin” role (G-62).
+     *     The endpoint is on the shell's allow-list (`website_user_allowed_methods`). The endpoint
+     *     itself returns 403 to a Website User without that role. A “Tenant Admin” asks only
+     *     about their own permission, as an ordinary user does. Rule detail goes only to the
+     *     “System Manager” role.
      *
      *     The “System Manager” role can also ask about another user.
      *     This role sees the rules one by one. It gets 404 when the record does not exist.
@@ -159,6 +161,84 @@ export interface paths {
     get: operations['getAccessSummary'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/platform_core.api.access.list_permission_logs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Returns a page of Permission Log rows, the newest first (G-62, G-98).
+     * @description Frappe writes a Permission Log row when a role profile, the roles of a user
+     *     or a permission row changes. The endpoint reads these rows. It changes no record.
+     *
+     *     Only the “System Manager” and “Tenant Admin” roles call this endpoint.
+     *     The endpoint is on the shell's allow-list (`website_user_allowed_methods`).
+     *     Every other caller gets 403. The document route of “Permission Log” stays closed
+     *     to the “Tenant Admin” role.
+     *     An unknown query field gets 400.
+     */
+    get: operations['listPermissionLogs'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/platform_core.api.access.list_role_permissions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Returns the role permission rows of a document type (G-62).
+     * @description The endpoint returns every permission row of the document type.
+     *     Stored rows (“Custom DocPerm”) win over the standard rows of the type.
+     *     `stored` is false when the type still uses its standard rows.
+     *     The endpoint does not change records.
+     *
+     *     Only the “System Manager” and “Tenant Admin” roles call this endpoint.
+     *     A Website User with the “Tenant Admin” role calls it too: it is on the shell's
+     *     allow-list (`website_user_allowed_methods`). Every other caller gets 403.
+     */
+    get: operations['listRolePermissions'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/platform_core.api.access.remove_role_permission': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Deletes the permission row of a role on a document type (G-62).
+     * @description **This endpoint changes the site settings.** The role loses the rights of that row at once.
+     *     When the type has no stored rows yet, its standard rows are copied first.
+     *
+     *     The callers and the 403 cases are the same as in `set_role_permission`.
+     *     The operation can be undone with `set_role_permission`.
+     */
+    post: operations['removeRolePermission'];
     delete?: never;
     options?: never;
     head?: never;
@@ -225,6 +305,41 @@ export interface paths {
      *     The endpoint does not start a paid job.
      */
     post: operations['setLevelAccess'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/platform_core.api.access.set_role_permission': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Creates or changes the permission row of a role on a document type (G-62).
+     * @description **This endpoint changes the site settings.** The row is kept in a “Custom DocPerm” record.
+     *     The effect starts at once.
+     *
+     *     When the type has no stored rows yet, its standard rows are copied first.
+     *     This way the other roles keep their permission.
+     *     Only the rights named in `permissions` change. The other rights of the row stay.
+     *
+     *     Only the “System Manager” and “Tenant Admin” roles call this endpoint.
+     *     A “Tenant Admin” gets 403 in these cases:
+     *     the role is a standard role (“Administrator”, “System Manager”, “Script Manager”,
+     *     “All”, “Guest”) or “Tenant Admin”;
+     *     the document type belongs to the `frappe` or `platform_core` application;
+     *     the document type is a single-record type or has a password field.
+     *
+     *     The operation can be undone. The same endpoint is called again with the old values.
+     *     The endpoint does not start a paid job.
+     */
+    post: operations['setRolePermission'];
     delete?: never;
     options?: never;
     head?: never;
@@ -299,6 +414,25 @@ export interface components {
       }[];
       /** @description The user whose permission is asked. */
       user: string;
+    };
+    PermissionLogRow: {
+      /** @description The time of the change in the site's time zone. */
+      changed_at: string;
+      /** @description The user who made the change. */
+      changed_by: string | null;
+      /** @description The changed fields, as `from` and `to` values. */
+      changes: Record<string, unknown>;
+      /** @description The document type the change is about. */
+      for_doctype: string;
+      /** @description The record the change is about. */
+      for_document: string;
+      name: string;
+      /** @description The changed record */
+      reference: string | null;
+      /** @description The type of the changed record */
+      reference_type: string | null;
+      /** @enum {string} */
+      status: 'Added' | 'Updated' | 'Removed';
     };
     /**
      * @description The “PLT Access Rule” record. The record is managed from the `/api/v2/document/PLT Access Rule` endpoint.
@@ -379,6 +513,15 @@ export interface components {
       scope: components['schemas']['Scope'];
       /** @description Short name of the rule. */
       title: string;
+    };
+    /** @description A permission row. Each right is 0 or 1. */
+    RolePermissionRow: {
+      /** @enum {integer} */
+      if_owner: 0 | 1;
+      permlevel: number;
+      role: string;
+    } & {
+      [key: string]: 0 | 1;
     };
     /**
      * @description The set of records that the rule selects for the user.
@@ -700,6 +843,172 @@ export interface operations {
       };
     };
   };
+  listPermissionLogs: {
+    parameters: {
+      query?: {
+        /** @description Only rows of this document type. For example `User` or `Role Profile`. */
+        for_doctype?: string;
+        /** @description Only rows of this record. */
+        for_document?: string;
+        /** @description The number of rows in the page. */
+        page_length?: number;
+        /** @description The number of rows to skip. */
+        start?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description A page of rows. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            message: {
+              /** @description True when a next page exists. */
+              has_more: boolean;
+              logs: components['schemas']['PermissionLogRow'][];
+              page_length: number;
+              start: number;
+            };
+          };
+        };
+      };
+      /** @description A query field is unknown, or a number is out of range. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components['responses']['SessionExpired'];
+      /** @description A guest request, or the caller has neither of the two manager roles. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  listRolePermissions: {
+    parameters: {
+      query: {
+        /** @description Name of the document type. */
+        doctype: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The permission rows of the type. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            message: {
+              doctype: string;
+              rows: components['schemas']['RolePermissionRow'][];
+              stored: boolean;
+            };
+          };
+        };
+      };
+      401: components['responses']['SessionExpired'];
+      /** @description A guest request, or the caller has neither of the two manager roles. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The document type does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The document type is a child table. */
+      417: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  removeRolePermission: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          doctype: string;
+          /**
+           * @default 0
+           * @enum {integer}
+           */
+          if_owner?: 0 | 1;
+          /** @default 0 */
+          permlevel?: number;
+          role: string;
+        };
+      };
+    };
+    responses: {
+      /** @description The key of the deleted row. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            message: {
+              doctype: string;
+              if_owner: number;
+              permlevel: number;
+              role: string;
+            };
+          };
+        };
+      };
+      401: components['responses']['SessionExpired'];
+      /** @description A guest request, a caller without the two manager roles, or a protected role or type. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The document type, the role or the row does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description A level outside 0 to 9, or a child table. */
+      417: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   setFieldLevel: {
     parameters: {
       query?: never;
@@ -826,6 +1135,70 @@ export interface operations {
        * @description The level is not between 1 and 9, or write was requested without read.
        *     A document type that holds the permission system also gets this response.
        */
+      417: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  setRolePermission: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          doctype: string;
+          /**
+           * @default 0
+           * @enum {integer}
+           */
+          if_owner?: 0 | 1;
+          /** @description Rights to set. A key is one of Frappe's rights, such as `read` or `write`. */
+          permissions: {
+            [key: string]: boolean;
+          };
+          /** @default 0 */
+          permlevel?: number;
+          role: string;
+        };
+      };
+    };
+    responses: {
+      /** @description The final permission row. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            message: components['schemas']['RolePermissionRow'] & {
+              doctype: string;
+            };
+          };
+        };
+      };
+      401: components['responses']['SessionExpired'];
+      /** @description A guest request, a caller without the two manager roles, or a protected role or type. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The document type or the role does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An unknown right, a level outside 0 to 9, a child table, or a row Frappe does not accept. */
       417: {
         headers: {
           [name: string]: unknown;

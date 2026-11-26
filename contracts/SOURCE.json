@@ -1,6 +1,6 @@
 {
   "repository": "frappesetup",
-  "commit": "b05a68168a6c4771ea3133053826d24094cd909b",
+  "commit": "04c112e0752234a98696353fcda619278702266f",
   "dirty": false,
   "commitSource": "git",
   "files": [
@@ -10,23 +10,27 @@
     },
     {
       "path": "openapi/identity_sync.openapi.yaml",
-      "sha256": "9b0768555831774c139a5dadd6808e47c700e7d34131e223d37d6409d3a12bba"
+      "sha256": "7651bb35f4ec572836aa9831ca57e8b8592e1a6189da6fbca4ef23220b46ff3c"
     },
     {
       "path": "openapi/platform_core-access.openapi.yaml",
-      "sha256": "1005a8e014020db1122fbdb98af521b1ec23556e4c635f6b6c5b6f6d99a0c994"
+      "sha256": "f6bdc43dc3ce637d77af5547faf0726d4d449f22a06bbef179287e13b685e6d3"
     },
     {
       "path": "openapi/platform_core-ai.openapi.yaml",
-      "sha256": "79c0d3b253b7630e8b5b0b25bc552a832ce323f558f148aa318ce26f7cb8af94"
+      "sha256": "5aee92e6a9d868ddfe5cf1b93decb37401adceb7774d8181e0d67f7da6a5d9d3"
     },
     {
       "path": "openapi/platform_core-collection.openapi.yaml",
       "sha256": "01c5ce007f894549a28cee034d29107d5395eabd1d3a72cca79138b1e67208cf"
     },
     {
+      "path": "openapi/platform_core-help.openapi.yaml",
+      "sha256": "0780c2f19c2ac91416fd49ace12910bd7643ec94fdd102e6e8f07e5e398509c7"
+    },
+    {
       "path": "openapi/platform_core-identity.openapi.yaml",
-      "sha256": "a06df5874b3c284d644d84e637e4eb873c2f82de5e8b39e5804c8d3816b880af"
+      "sha256": "271993d304b884a8c5df120814adc83174f34cfad90d2ae1fa99b5868367a656"
     },
     {
       "path": "openapi/platform_core-mobile.openapi.yaml",
@@ -34,19 +38,23 @@
     },
     {
       "path": "openapi/platform_core-model-gateway.openapi.yaml",
-      "sha256": "228cf58407c84175d6b74a89c99d7b86905d525b135d71698f64b7f2d29907f5"
+      "sha256": "b72bab744f593d115370f623660ec8d54cc17f4e65e42080eb16a0d856e4cc30"
+    },
+    {
+      "path": "openapi/platform_core-reseller.openapi.yaml",
+      "sha256": "c2a15dfd846249c78fac9d14d4a2d16404de94ef418825d07d53c1c3f8213648"
     },
     {
       "path": "openapi/platform_core-shell.openapi.yaml",
-      "sha256": "f97ff2258a17a0bec230817953788624bc8c5329ae5f938bcb727d202eea1ddf"
+      "sha256": "14a8521b56e80e57d0c060d6628aaa47e43eacacb5cf89e554be992d940ff91f"
     },
     {
       "path": "openapi/press_tr.openapi.yaml",
-      "sha256": "0308f1daec7cc27a67a4323cfad01a8c630b9619d63d72f4ae7b699b8be75ecd"
+      "sha256": "b5530bc4b06dacd8d84034595ce1317e6b1b9cd29291e20e833af2598659df34"
     },
     {
       "path": "docs/contracts.md",
-      "sha256": "7737c4ef00e1fe47dfae1648aff7d7aa3a819e2c246b449fc09e0ce398abe00f"
+      "sha256": "7d1dab931a2b115a04e6b2f86617abdaa5d43ef49514df3798a665cf234453ca"
     }
   ]
 }

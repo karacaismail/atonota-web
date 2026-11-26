@@ -15,9 +15,9 @@ Ayrıntılı istek ve yanıt biçimi `contracts/` klasöründeki OpenAPI dosyala
 
 ## 1. Marka
 
-- Kimlik markasının adı “Atonota”dır.
-- Düğme metni “Atonota ile oturum aç” olur.
-- Keycloak'ın üretimdeki adresi `https://id.atonota.net` olur (Proje kaydı O-1).
+- Kimlik ürününün adı “AtonotA Login”dir. Ad tam olarak böyle yazılır (Proje kaydı O-51).
+- Düğme metni “AtonotA Login ile oturum aç” olur.
+- Giriş adresi üretimde `https://api.login.atonota.net` olur. alpha, beta ve rc ortamlarında adres `https://api.login.<ortam>.atonota.net` olur (Proje kaydı O-51).
 - Kod marka adını ve alan adını ayardan okur. Kodda sabit yazmayın.
 
 ## 2. Keycloak
@@ -28,7 +28,7 @@ Ayrıntılı istek ve yanıt biçimi `contracts/` klasöründeki OpenAPI dosyala
 - Tarayıcının gördüğü adres `keycloak_public_url` ayarıdır.
 - Belirteçteki `iss` değeri `<keycloak_public_url>/realms/platform` olur.
 - Sunucu Keycloak'a başka adresten ulaşacaksa `keycloak_internal_url` ayarını kullanın. Bu ayar boşsa genel adres kullanılır.
-- Realm'in görünen adı “Atonota” olur. Giriş ve e-posta teması `atonota` adını taşır.
+- Realm'in görünen adı “AtonotA Login” olur. Realm adı, istemci kimlikleri ve tema adı değişmez. Giriş ve e-posta teması `atonota` adını taşır.
 - Tema Keycloak'ın kendi tema yapısıyla kurulur (Proje kaydı O-4).
 - Varsayılan dil Türkçedir. İkinci dil İngilizcedir.
 
@@ -43,13 +43,15 @@ Ayrıntılı istek ve yanıt biçimi `contracts/` klasöründeki OpenAPI dosyala
 | `site-tenant1-service` | Servis hesabı | İstemci kimlik bilgisi | Yok | Yok |
 | `identity-sync` | Servis hesabı | İstemci kimlik bilgisi | Yok | Yok |
 | `press-service` | Servis hesabı | İstemci kimlik bilgisi | Yok | Yok |
-| `mobile-app` | Açık istemci | Yetkilendirme kodu ve PKCE (S256) | `ATONOTA_MOBILE_REDIRECT_URI` | Yok |
+| `mobile-app` | Açık istemci | Yetkilendirme kodu ve PKCE (S256) | `ATONOTA_MOBILE_REDIRECT_URI` | `<kiracı adresi>/api/method/platform_core.api.keycloak_backchannel_logout` |
 | `account-console` | Açık istemci | Yetkilendirme kodu ve PKCE (S256) | Realm dosyasındaki Keycloak hesap sayfaları | Yok |
 
 - Dönüş adresini tam adresle kaydedin. Joker karakter kullanmayın.
 - Keycloak hesap ekranı kendi belirtecini kullanır. Bu belirtecin hedefi `account` olur.
 - `account-console` yalnız kullanıcıya verilmiş hesap rollerini taşır. İstemci yönetim rolü alamaz.
 - Çıkış bildiriminde “oturum gerekli” ayarını açın.
+- `mobile-app` istemcisi de çıkış bildirimi alır. Bu sayede telefon oturumu hemen kapanır. Telefon erişim anahtarının süresini beklemez (G-163).
+- Keycloak bir istemciye tek çıkış adresi verir. Bu adres `site-tenant1` sitesidir. Yeni kiracının telefon oturumu bu bildirimi almaz. O oturum en çok 300 saniye daha açık kalır.
 - Yeni kiracı için aynı biçimi kullanın. Örneğin `site-kiraci2` yazın.
 - Her kiracının iki istemcisi vardır. `site-<kiracı>` yalnız tarayıcı girişi içindir. Servis hesabı kapalıdır ve isteğe bağlı servis kapsamı taşımaz. `site-<kiracı>-service` yalnız servis hesabıdır. Tarayıcı akışı kapalıdır. Kiracının iki istemcisi içinde `aud-identity-sync` kapsamını yalnız servis istemcisi isteyebilir. Böylece tarayıcı girişi servis hedefli belirteç alamaz. Press'teki `press` ve `press-service` ayrımı da böyledir.
 - `agent-service`, `ops-bff` ve `site-ops` bu turda yoktur.
@@ -283,6 +285,7 @@ Açılan kullanıcının türü “Website User” olur (Proje kaydı D-5).
 | `press_tr.api.auth.get_login_url` | POST | Misafir, istek sınırlı | Keycloak giriş adresini üretir. |
 | `press_tr.api.auth.keycloak_callback` | GET | Misafir, `state` ve kod | Kodu belirteçle değiştirir. Kullanıcıyı `(iss, sub)` ile bulur. Takım yoksa açar (G-12). |
 | `press_tr.api.keycloak_backchannel_logout` | POST | Misafir, çıkış belirteci | Eşleşen Press oturumlarını kapatır. |
+| `press_tr.api.account.request_recovery` | POST | Misafir, yalnız e-posta adresi | Bağlı hesap varsa bir kurtarma inceleme kaydı açar. Kaydı yanıttan sonra bir arka plan işi açar. Yanıt süresi her adreste aynı kalır. Saatte 5 istek sınırı vardır. Her adrese aynı yanıtı verir (G-163). |
 | `press_tr.api.identity.ensure_team` | POST | Servis belirteci, `azp=identity-sync` | Takımı ve üyeliği hazırlar. Aynı istek iki kez gelirse aynı sonucu döner. |
 | `press_tr.api.identity.remove_team_member` | POST | Servis belirteci, `azp=identity-sync` | Üyeliği kaldırır. |
 | `press_tr.api.identity.anonymize_user` | POST | Servis belirteci, `azp=identity-sync` | Press kullanıcısını kapatır, API anahtarlarını geçersiz kılar ve kişiyi gösteren alanları anonim yapar. Fatura gibi iş kayıtları silinmez. |
@@ -325,7 +328,7 @@ Keycloak'taki “Organization” kaydı Press'teki “Team” kaydına karşıl�
 
 - Press de Frappe 16 üzerinde çalışır (Proje kaydı D-7). press-tr işi `on_social_login` kancasını kaynakta doğrular. Sonra kancayı ya da kendi dönüş ucunu seçer. Yukarıdaki dönüş adresi bu seçime göre değişebilir.
 - G-12'deki Press giriş, kayıt ve parola uçları 403 döner.
-- Press'te misafir için izin listesi uygulanır. Misafir yalnız listedeki yöntemleri çağırabilir. Liste şudur: `ping`, `press_tr.api.auth.get_login_url`, `press_tr.api.auth.keycloak_callback`, `press_tr.api.keycloak_backchannel_logout`. Öteki bütün yöntemler misafire 403 döner.
+- Press'te misafir için izin listesi uygulanır. Misafir yalnız listedeki yöntemleri çağırabilir. Liste şudur: `ping`, `press_tr.api.auth.get_login_url`, `press_tr.api.auth.keycloak_callback`, `press_tr.api.keycloak_backchannel_logout`, `press_tr.api.account.request_recovery`. Kurtarma isteği listededir, çünkü anahtarını kaybeden kişi giriş yapamaz. Bu yöntemin sıklık sınırı vardır ve her adrese aynı yanıtı verir (G-163). Öteki bütün yöntemler misafire 403 döner.
 - Denetim yöntemin adına değil, çağrılan işleve uygulanır. Böylece başka modülün içe aktardığı aynı işlev de kapanır. `/api/method`, `/api/v1/method`, `/api/v2/method` ve `cmd` biçimlerinin hepsi aynı denetimden geçer.
 - Takım üyeliği yalnız Keycloak kuruluşundan gelir. Press'in kendi takım davet ve davet kabul uçları kapanır.
 - G-12'deki yerel giriş, kayıt, parola, tek kullanımlık kodla giriş ve bağlantıyla giriş uçları her çağırana kapalıdır. Misafir de, oturum açmış kullanıcı da 403 alır. Denetim işlev nesnesiyle yapılır.
@@ -420,7 +423,7 @@ Ayarlar `site_config.json` dosyasında durur. Sır taşıyan ayar depoya girmez.
 | `keycloak_service_client_id` | `site-tenant1-service` ya da `press-service` | Servis belirteci için |
 | `keycloak_service_client_secret` | Sahte değer | Yalnız site ayarında ve `.env` dosyasında |
 | `mobile_allow_development_http` | Kapalı | Yalnız geliştirmede açılır. `developer_mode` da açık olmalıdır. Mobil iptal isteği yalnız yerel kimlik servisine HTTP ile gider. Keycloak belirteç adresi HTTPS kalır. |
-| `kimlik_marka_adi` | `Atonota` | Düğme metni bundan üretilir |
+| `kimlik_marka_adi` | `AtonotA Login` | Düğme metni bundan üretilir |
 | `platform_panel_url` | `http://kiraci1.localhost:<port>/panel` | Çıkıştan sonraki adres |
 | `hrms_tr_retention_days` | Ayar verilmez | Hukuk sorumlusu süreyi gün olarak belirler. |
 
@@ -536,6 +539,7 @@ Karar sitesinin AI bölümü de geçerlidir. Sayfalar `src/content/docs/ai-*.md`
 | `platform_core.api.ai.mcp_resource_metadata` | GET | Herkese açık | OAuth açıkken Keycloak adresini ve kapsamı bildirir. |
 | `platform_core.api.ai.issue_agent_token` | POST | İnsan oturumu | 300 saniyelik, 20 çağrılık aracı belirteci üretir. |
 | `platform_core.api.ai.list_proposals` | GET | İnsan oturumu | Kullanıcının önerilerini listeler. |
+| `platform_core.api.ai.list_second_approvals` | GET | İnsan oturumu | Kişinin ikinci onay verebileceği R3 önerileri listeler. |
 | `platform_core.api.ai.get_proposal` | GET | İnsan oturumu | Önerinin önizlemesini ve özetini döner. |
 | `platform_core.api.ai.approve_proposal` | POST | İnsan oturumu | Öneriyi onaylar ve yürütür. |
 | `platform_core.api.ai.reject_proposal` | POST | İnsan oturumu | Öneriyi reddeder. |
@@ -569,7 +573,7 @@ Karar sitesinin AI bölümü de geçerlidir. Sayfalar `src/content/docs/ai-*.md`
 
 #### Kullanım günlüğü temizliğinin modül arayüzü
 
-- “AI Usage Log” kaydının sahibi model geçididir. Temizlik işlevi `platform_core.model_gecidi.api.purge_usage_logs(*, dry_run=False, names=None)` olur.
+- “AI Usage Log” kaydının sahibi model geçididir. Temizlik işlevi `platform_core.model_gateway.api.purge_usage_logs(*, dry_run=False, names=None)` olur.
 - İşlev yetkiyi kendisi denetler. Yalnız “System Manager” çağırabilir. Öteki kullanıcı `frappe.PermissionError` alır.
 - Süre 365 gündür. Ayar bu süreyi değiştiremez. Kayıtlar O-32'ye göre kalıcı silinir.
 - `dry_run=True` iken işlev hiçbir kaydı silmez. `{"eligible": <sayı>, "deleted": 0, "names": [...]}` döner. `names` bu çalıştırmada silinecek kayıtların adlarıdır, en çok 500 tanedir.
@@ -607,7 +611,9 @@ Bütün DocType'lar `model_gateway` modülündedir. Her alan açıklama taşır 
 | `AI API` | Hesaba bağlı adres ve kimlik bilgisi | hesap, adres, kimlik türü, gizli anahtar, izinli modeller, dakika sınırları, öncelik, ağırlık, sağlık durumu, açık mı |
 | `AI Model` | Model ve yetenekleri | sağlayıcı, model kimliği, yetenekler, bağlam boyu, birim fiyatlar |
 | `AI Route` | İş türüne göre model sırası | ad, gereken yetenekler, seçme yolu, sıralı model ve API listesi, veri kısıtı |
-| `AI Usage Log` | Her çağrının kaydı | zaman, kullanıcı, yol, sağlayıcı, hesap, API, model, token sayıları, maliyet, süre, sonuç |
+| `AI Usage Log` | Her çağrının kaydı | zaman, kullanıcı, yol, sağlayıcı, hesap, API, model, token sayıları, maliyet, süre, sonuç, dosya işi, parça sırası |
+| `AI File Job` | Büyük dosya işi (G-156) | yol, kaynak dosya, talimat, çıktı sınırı, durum, parça sayısı, tahmini maliyet, parçalar |
+| `AI File Chunk` | Dosya işinin bir parçası | sıra, ilk ve son sayfa, metin, durum, hata kodu, sonuç |
 
 ### Bağdaştırıcılar
 
@@ -641,6 +647,36 @@ Kimlik türleri şunlardır: API anahtarı, taşıyıcı belirteç, OAuth istemc
 
 Dinlenme süresi önbellekte süreli değerdir. Süre dolunca aday kendiliğinden döner. Zamanlanmış iş yoktur (O-15).
 
+### Büyük dosya (G-156)
+
+Büyük PDF sağlayıcıya dosya olarak gitmez. İşin adımları şunlardır:
+
+1. Kullanıcı işi `create_file_job` işleviyle açar. Bu adımda sağlayıcı çağrılmaz.
+2. Kuyruk işi PDF metnini sayfa sayfa okur. Metni olmayan sayfa yazı tanıma adımına gider.
+3. Kuyruk işi metni sayfa sınırından parçalara böler. Parça boyunu yolun en küçük bağlam boyu belirler.
+4. Kullanıcı `file_job_status` ile parça sayısını ve tahmini maliyeti görür.
+5. Kullanıcı işi `start_file_job` ile başlatır. Her parça geçitten ayrı istek olarak gider.
+6. Başarısız parçayı kullanıcı `retry_file_chunk` ile tek başına yeniden kuyruğa koyar.
+
+- Tahmini maliyet her parça için yolun en pahalı hedefini sayar. Bir hedefin fiyatı bilinmiyorsa tahmin “bilinmiyor” olur. Para birimleri farklıysa da tahmin “bilinmiyor” olur.
+- Geçit her parçayı maskeler (G-90). Hesabı öncelik, ağırlık, dinlenme süresi, dakika sınırı ve bütçeye göre seçer.
+- Bir hesap 429 dönerse parça o hesabın başka API'sine gitmez. Parça başka bir hesaba gider.
+- Her deneme “AI Usage Log” kaydına dosya işi kimliği ve parça sırasıyla yazılır.
+- Yazı tanıma adımı `model_gateway_ocr` kancasıyla bağlanır. Kanca yoksa taranmış sayfalı iş `ocr_unavailable` koduyla durur.
+- İş kuyruk işidir. Zamanlanmış iş yoktur.
+- Her adımın bir HTTP ucu vardır (D-9). Uçlar aşağıdaki tabloda yazılıdır. Başka kullanıcının işini yalnız yönetici okuyabilir.
+
+Parça metni yalnız iş sürerken tutulur. Bekleyen metin için iki süre sınırı vardır:
+
+1. Bir iş en çok 24 saat “planned” durumunda kalır. Süre dolunca iş “failed” olur. Hata kodu `expired` olur.
+2. Bir parça en çok 1 saat “running” durumunda kalır. Süre dolunca parça “failed” olur. Hata kodu `worker_lost` olur. Sonra işin durumu yeniden hesaplanır.
+3. İki durumda da parçanın metni silinir.
+
+- Süreler saniye cinsinden site ayarından okunur. Ayarlar `model_gateway_file_planned_ttl` ve `model_gateway_file_running_ttl` adını taşır. Varsayılanlar 86400 ve 3600 saniyedir. Geçersiz ayar `invalid_setting` hatası verir.
+- Bu temizliği zamanlanmış iş yapmaz. Temizlik `create_file_job`, `start_file_job`, `retry_file_chunk` ve `file_job_status` işlevlerinin başında çalışır.
+- “System Manager” rolü temizliği `expire_file_jobs` işleviyle elle de başlatabilir. Başka rol bu işlevi çağıramaz.
+- `worker_lost` koduyla düşen parça `retry_file_chunk` ile yeniden denenebilir. Metin dosyadan yeniden kurulur.
+
 ### Güvenlik
 
 - Dış bağlantı (`external`) özel ağ adresine gidemez. Denetim bağlantı anında çözülen adrese yapılır.
@@ -664,3 +700,7 @@ Dinlenme süresi önbellekte süreli değerdir. Süre dolunca aday kendiliğinde
 | --- | --- | --- | --- |
 | `platform_core.api.model.complete` | POST | İnsan oturumu ya da API anahtarı | Ortak çağrıyı yapar. Yetki ve kota denetlenir. |
 | `platform_core.api.model.test_api` | POST | “AI Manager” rolü | Bir API'ye küçük deneme çağrısı yapar. Ücretlidir. |
+| `platform_core.api.model.create_file_job` | POST | İnsan oturumu | Büyük PDF işini açar. Yol ve dosya yetkisi denetlenir. Sağlayıcı çağrılmaz. |
+| `platform_core.api.model.file_job_status` | POST | İşin sahibi ya da yönetici | Parça planını, tahmini maliyeti ve parça durumlarını gösterir. Parça metnini dönmez. |
+| `platform_core.api.model.start_file_job` | POST | İşin sahibi ya da yönetici | Planlanmış işin parçalarını kuyruğa koyar. Her parça ücretli olabilir. |
+| `platform_core.api.model.retry_file_chunk` | POST | İşin sahibi ya da yönetici | Başarısız tek parçayı yeniden kuyruğa koyar. |

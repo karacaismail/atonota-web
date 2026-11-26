@@ -189,6 +189,10 @@ export function sampleProposal(overrides: Partial<Proposal> = {}): Proposal {
     created_at: '2026-11-23T11:50:00+00:00',
     result_document: null,
     error: null,
+    risk_level: 'R1',
+    first_approved_at: null,
+    second_approver: null,
+    second_approved_at: null,
     ...overrides,
   };
 }
