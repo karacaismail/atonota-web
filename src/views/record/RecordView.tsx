@@ -43,6 +43,7 @@ import {
 import type {
   DocField,
   DocTypeMeta,
+  RecordAssistRequest,
   RecordConflictInfo,
   RecordDataAdapter,
   RecordDocument,
@@ -201,6 +202,11 @@ export interface RecordViewProps {
    * bağlantısını verir. Verilmezse hedef kaydın adı düz metin olarak görünür.
    */
   renderRecordLink?: RecordLinkRenderer | undefined;
+  /**
+   * Uzun metin alanındaki "Yardımcıyla yaz" düğmesinin olayı. Uygulama yardımcı paneli açar.
+   * Form alanı değiştirmez. Verilmezse düğme görünmez.
+   */
+  onAssistField?: ((request: RecordAssistRequest) => void) | undefined;
 }
 
 function RecordSectionCard(props: {
@@ -221,6 +227,7 @@ function RecordSectionCard(props: {
   isSaving: boolean;
   onFieldChange: (fieldname: string, nextValue: unknown) => void;
   onFieldAction: (field: DocField) => void;
+  onAssistField?: ((request: RecordAssistRequest) => void) | undefined;
 }) {
   const {
     section,
@@ -240,6 +247,7 @@ function RecordSectionCard(props: {
     isSaving,
     onFieldChange,
     onFieldAction,
+    onAssistField,
   } = props;
 
   const headingId = useId();
@@ -299,6 +307,7 @@ function RecordSectionCard(props: {
                   error={fieldErrors[field.fieldname]}
                   onChange={onFieldChange}
                   onFieldAction={onFieldAction}
+                  onAssistField={onAssistField}
                 />
               ))}
             </div>
@@ -328,6 +337,7 @@ function RecordViewBody(props: RecordViewBodyProps) {
     onSaved,
     onCreateNew,
     onSignIn,
+    onAssistField,
     isPhoneViewport,
   } = props;
 
@@ -877,6 +887,7 @@ function RecordViewBody(props: RecordViewBodyProps) {
         onFieldAction={(f) => {
           void handleFieldAction(f);
         }}
+        onAssistField={onAssistField}
       />
     ));
 
