@@ -99,6 +99,7 @@ export interface CatalogFieldProps {
   isDirty?: boolean | undefined;
   isSubmitting?: boolean | undefined;
   error?: string | undefined;
+  sourceNote?: string | undefined;
   compactCell?: boolean | undefined;
   onChange: (fieldname: string, nextValue: unknown) => void;
   onFieldAction?: ((field: DocField) => void) | undefined;
@@ -122,6 +123,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
     isDirty,
     isSubmitting = false,
     error,
+    sourceNote,
     compactCell = false,
     onChange,
     onFieldAction,
@@ -232,6 +234,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
             id={a11y.controlId}
             role="textbox"
             aria-readonly="true"
+            aria-describedby={a11y.ariaDescribedBy}
             aria-labelledby={a11y.labelId}
             className="rv-readonly-box"
           >
@@ -653,6 +656,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
       required={state.required}
       isDirty={isDirty}
       error={error}
+      sourceNote={sourceNote}
       hideLabel={compactCell}
     >
       {renderControl}

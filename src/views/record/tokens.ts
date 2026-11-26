@@ -10,7 +10,7 @@
 import controlSizeConfig from '@design-source/control-size-config.json';
 import { theme as antdTheme, type ThemeConfig } from 'antd';
 import type { CSSProperties } from 'react';
-import { danger, focusIndicator, hitTarget } from '@/design/tokens';
+import { danger, focusIndicator, hitTarget, primary as accessiblePrimary } from '@/design/tokens';
 
 export type RecordThemeMode = 'light' | 'dark';
 
@@ -88,9 +88,7 @@ export function buildRecordAntdTheme(mode: RecordThemeMode): ThemeConfig {
         contentFontSizeSM: sizes.sm.button.fontSize,
         contentFontSizeLG: sizes.lg.button.fontSize,
         fontWeight: controlSizeConfig.fontWeight.md,
-        primaryColor: isDark
-          ? hexToRgba(primary.dark.text, primary.dark.opacity)
-          : hexToRgba(primary.light.text, primary.light.opacity),
+        primaryColor: accessiblePrimary[mode].text,
         primaryShadow: isDark ? DARK_SHADOWS.button : LIGHT_SHADOWS.button,
         defaultShadow: isDark ? DARK_SHADOWS.button : LIGHT_SHADOWS.button,
         dangerShadow: isDark ? DARK_SHADOWS.button : LIGHT_SHADOWS.button,
@@ -204,15 +202,11 @@ export function buildRecordCssVariables(mode: RecordThemeMode): CSSProperties {
     '--rv-color-warning': resolved.colorWarningText,
     '--rv-color-warning-bg': resolved.colorWarningBg,
     '--rv-color-dirty-dot': resolved.colorWarning,
-    '--rv-btn-primary-fg': isDark
-      ? hexToRgba(primary.dark.text, primary.dark.opacity)
-      : hexToRgba(primary.light.text, primary.light.opacity),
-    '--rv-btn-primary-hover-fg': isDark
-      ? hexToRgba(primary.dark.text, primary.dark.hoverOpacity)
-      : hexToRgba(primary.light.text, primary.light.hoverOpacity),
-    '--rv-btn-primary-dark-bg': hexToRgba(primary.color, primary.dark.background),
-    '--rv-btn-primary-dark-hover-bg': hexToRgba(primary.color, primary.dark.hoverBackground),
-    '--rv-btn-primary-dark-active-bg': hexToRgba(primary.color, primary.dark.activeBackground),
+    '--rv-btn-primary-fg': accessiblePrimary[mode].text,
+    '--rv-btn-primary-hover-fg': accessiblePrimary[mode].textHover,
+    '--rv-btn-primary-dark-bg': accessiblePrimary.dark.background,
+    '--rv-btn-primary-dark-hover-bg': accessiblePrimary.dark.backgroundHover,
+    '--rv-btn-primary-dark-active-bg': accessiblePrimary.dark.backgroundActive,
     '--rv-pill-primary-fg': isDark ? primary.hover : hexToRgba(primary.light.text, 1),
     '--rv-pill-primary-bg': hexToRgba(primary.color, primary.dark.background),
     '--rv-pill-success-fg': resolved.colorSuccessText,

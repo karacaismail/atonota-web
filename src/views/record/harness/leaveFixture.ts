@@ -1,4 +1,25 @@
-import type { DocField, DocTypeMeta } from '../types';
+import type { DocField, DocTypeMeta, NewRecordContext } from '../types';
+
+export const LEAVE_CONTEXT: NewRecordContext = {
+  employee: 'HR-EMP-TEST-01',
+  employee_name: 'Örnek Kişi 1',
+  leave_type: 'Annual Leave',
+  leave_balance: 8.5,
+  sources: {
+    employee: 'Employee',
+    employee_name: 'Employee',
+    leave_type: 'Leave Type',
+    leave_balance: 'Leave Ledger Entry',
+  },
+};
+
+export const EMPTY_LEAVE_CONTEXT: NewRecordContext = {
+  employee: null,
+  employee_name: null,
+  leave_type: null,
+  leave_balance: null,
+  sources: { employee: null, employee_name: null, leave_type: null, leave_balance: null },
+};
 
 const field = (
   fieldname: string,
@@ -29,14 +50,10 @@ export const LEAVE_META: DocTypeMeta = {
       field('person_section', 'Section Break', 'Kişi bilgisi', 'section'),
       field('employee_name', 'Data', 'Ad', 'input', {
         read_only: true,
-        default: 'Örnek Kişi 1',
-        description: 'Personel kaydından geldi.',
       }),
       field('person_column', 'Column Break', '', 'column'),
       field('leave_balance', 'Data', 'Kalan yıllık izin', 'input', {
         read_only: true,
-        default: '14 gün',
-        description: 'İzin kayıtlarından hesaplandı.',
       }),
       field('leave_section', 'Section Break', 'İzin bilgisi', 'section'),
       field('leave_type', 'Select', 'İzin türü', 'select', {

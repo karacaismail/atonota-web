@@ -1,0 +1,211 @@
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import type { components } from '@/api/generated/hrms_tr';
+import type { DocumentRequest } from '@/api';
+import { createFrappeRecordAdapter } from '../adapter';
+import { RecordView } from '../RecordView';
+import { LEAVE_META } from '../harness/leaveFixture';
+import type { DocTypeMeta, RecordDataAdapter } from '../types';
+
+type Context = components['schemas']['LeaveRequestContextResponse']['message'];
+const context: Context = {
+  employee: 'HR-EMP-TEST-01',
+  employee_name: 'Örnek Kişi 1',
+  leave_type: 'Annual Leave',
+  leave_balance: 8.5,
+  sources: {
+    employee: 'Employee',
+    employee_name: 'Employee',
+    leave_type: 'Leave Type',
+    leave_balance: 'Leave Ledger Entry',
+  },
+};
+const emptyContext: Context = {
+  employee: null,
+  employee_name: null,
+  leave_type: null,
+  leave_balance: null,
+  sources: { employee: null, employee_name: null, leave_type: null, leave_balance: null },
+};
+const meta: DocTypeMeta = {
+  ...LEAVE_META,
+  schema: {
+    ...LEAVE_META.schema,
+    fields: LEAVE_META.schema.fields.map((field) => ({
+      ...field,
+      default: undefined,
+      description:
+        field.fieldname === 'employee_name' || field.fieldname === 'leave_balance'
+          ? undefined
+          : field.description,
+      // The context must protect calculated values even if metadata is writable.
+      read_only: false,
+    })),
+  },
+};
+function setup(body: unknown = { message: context }) {
+  const frappeDocument = vi.fn(async (_request: DocumentRequest) => ({
+    ok: true as const,
+    status: 200,
+    body,
+    etag: undefined,
+  }));
+  const real = createFrappeRecordAdapter({ api: { frappeDocument } });
+  const adapter: RecordDataAdapter = {
+    ...real,
+    getDocTypeMeta: vi.fn(async () => meta),
+    getRecord: vi.fn(async () => ({
+      name: 'SAMPLE-LEAVE-1',
+      employee_name: 'Örnek Kişi 2',
+      leave_balance: '3',
+    })),
+    saveRecord: vi.fn(async (params) => ({ name: 'SAMPLE-LEAVE-1', ...params.data })),
+    searchLink: vi.fn(async () => []),
+  };
+  return { adapter, frappeDocument };
+}
+function mount(adapter: RecordDataAdapter) {
+  return render(<RecordView doctype="Leave Application" createMode adapter={adapter} />);
+}
+
+describe('new record prefill', () => {
+  it('loads session defaults through the shared client and links both source notes', async () => {
+    const { adapter, frappeDocument } = setup();
+    mount(adapter);
+    expect(await screen.findByLabelText('Ad')).toHaveValue('Örnek Kişi 1');
+    expect(screen.getByLabelText('Ad')).toHaveAccessibleDescription('Personel kaydından geldi.');
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue('8.5');
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAccessibleDescription(
+      'İzin kayıtlarından hesaplandı.',
+    );
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAttribute('readonly');
+    expect(screen.getByRole('combobox', { name: /İzin türü/ })).toHaveAccessibleDescription(
+      'İzin türü kaydından geldi.',
+    );
+    expect(frappeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'GET',
+        path: '/api/method/hrms_tr.api.get_leave_request_context',
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(frappeDocument.mock.calls[0]?.[0]).not.toHaveProperty('query');
+    expect(adapter.getRecord).not.toHaveBeenCalled();
+  });
+
+  it('removes provenance after a user edit, even when the user retypes the same value', async () => {
+    const { adapter } = setup();
+    mount(adapter);
+    const name = await screen.findByLabelText('Ad');
+    fireEvent.change(name, { target: { value: 'Örnek Kişi 2' } });
+    expect(name).not.toHaveAccessibleDescription('Personel kaydından geldi.');
+    fireEvent.change(name, { target: { value: 'Örnek Kişi 1' } });
+    expect(screen.queryByText('Personel kaydından geldi.')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Açıklama'), { target: { value: 'Örnek açıklama' } });
+    expect(screen.getByLabelText('Açıklama')).toHaveAccessibleDescription(
+      'Yöneticiniz bu metni okur.',
+    );
+  });
+
+  it.each([null, 0])('distinguishes a missing balance from zero (%s)', async (balance) => {
+    const { adapter } = setup({
+      message: {
+        ...emptyContext,
+        leave_balance: balance,
+        sources: {
+          ...emptyContext.sources,
+          leave_balance: balance === null ? null : 'Leave Ledger Entry',
+        },
+      },
+    });
+    mount(adapter);
+    expect(await screen.findByLabelText('Ad')).toHaveValue('');
+    expect(screen.queryByText('Personel kaydından geldi.')).not.toBeInTheDocument();
+    const control = screen.getByLabelText('Kalan yıllık izin');
+    expect(control).toHaveValue(balance === null ? '' : '0');
+    if (balance === null)
+      expect(screen.queryByText('İzin kayıtlarından hesaplandı.')).not.toBeInTheDocument();
+    else expect(control).toHaveAccessibleDescription('İzin kayıtlarından hesaplandı.');
+  });
+
+  it('leaves fields empty when the adapter has no context operation', async () => {
+    const { adapter } = setup();
+    mount({ ...adapter, getNewRecordContext: undefined });
+    expect(await screen.findByLabelText('Ad')).toHaveValue('');
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue('');
+    expect(screen.queryByText('Personel kaydından geldi.')).not.toBeInTheDocument();
+  });
+
+  it('does not prefill an existing record', async () => {
+    const { adapter, frappeDocument } = setup();
+    render(<RecordView doctype="Leave Application" name="SAMPLE-LEAVE-1" adapter={adapter} />);
+    expect(await screen.findByLabelText('Ad')).toHaveValue('Örnek Kişi 2');
+    expect(frappeDocument).not.toHaveBeenCalled();
+    expect(screen.queryByText('Personel kaydından geldi.')).not.toBeInTheDocument();
+  });
+
+  it('ignores a late context response after switching records', async () => {
+    const { adapter } = setup();
+    let resolve!: (value: undefined) => void;
+    const pending = new Promise<undefined>((done) => {
+      resolve = done;
+    });
+    const getNewRecordContext = vi.fn(() => pending);
+    const delayed = { ...adapter, getNewRecordContext };
+    const view = mount(delayed);
+    await waitFor(() => expect(getNewRecordContext).toHaveBeenCalled());
+    view.rerender(
+      <RecordView doctype="Leave Application" name="SAMPLE-LEAVE-1" adapter={delayed} />,
+    );
+    expect(await screen.findByLabelText('Ad')).toHaveValue('Örnek Kişi 2');
+    await act(async () => resolve(undefined));
+    expect(screen.getByLabelText('Ad')).toHaveValue('Örnek Kişi 2');
+  });
+
+  it('preserves values while submitting but never writes the computed balance', async () => {
+    const { adapter } = setup();
+    mount(adapter);
+    await screen.findByLabelText('Ad');
+    fireEvent.change(screen.getByLabelText(/Başlangıç tarihi/), {
+      target: { value: '2026-11-27' },
+    });
+    fireEvent.change(screen.getByLabelText(/Bitiş tarihi/), { target: { value: '2026-11-28' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+    expect(adapter.saveRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          employee_name: 'Örnek Kişi 1',
+          leave_type: 'Annual Leave',
+        }),
+      }),
+    );
+    expect(vi.mocked(adapter.saveRecord).mock.calls[0]?.[0].data).not.toHaveProperty(
+      'leave_balance',
+    );
+    expect(screen.queryByText('Personel kaydından geldi.')).not.toBeInTheDocument();
+  });
+});
+
+describe('prefill response validation', () => {
+  it.each([
+    {},
+    { message: { ...context, leave_balance: '8.5' } },
+    { message: { ...context, leave_balance: Number.NaN } },
+    { message: { ...context, sources: { ...context.sources, employee_name: 'Other' } } },
+  ])('rejects invalid context without inventing defaults', async (body) => {
+    const { adapter } = setup(body);
+    mount(adapter);
+    expect(await screen.findByText('Sunucu yanıtı beklenen sözleşmeyle uyuşmadı.')).toBeVisible();
+    expect(screen.queryByLabelText('Ad')).not.toBeInTheDocument();
+  });
+
+  it('does not fill a value whose source is null', async () => {
+    const { adapter } = setup({
+      message: { ...context, sources: { ...context.sources, employee_name: null } },
+    });
+    mount(adapter);
+    expect(await screen.findByLabelText('Ad')).toHaveValue('');
+    expect(screen.queryByText('Personel kaydından geldi.')).not.toBeInTheDocument();
+  });
+});

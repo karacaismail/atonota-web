@@ -18,11 +18,46 @@ Gönderim düğmesinin yazısı `saveActionLabel` özelliğiyle verilebilir.
 Bu özellikler verilmezse önceki başlık ve düğme yazısı korunur.
 Salt okunur kayıt, form gönderimiyle kaydedilemez.
 
+## Yeni kayıt bilgileri
+
+Form, yeni izin talebinde kişinin bilgilerini adaptörden alır.
+Adaptör, sunucudan gelen bilgiyi forma aktarır.
+Adaptör, ortak API istemcisini kullanır.
+API, uygulamanın sunucuyla konuştuğu yoldur.
+İstek yolu `GET /api/method/hrms_tr.api.get_leave_request_context` olur.
+İstekte başka bir kişi seçilmez.
+Sunucu varsayılan yıllık izin türünü belirler.
+
+`getNewRecordContext` yöntemi yeni kayıt bilgisini getirir.
+Bu yöntem yalnız yeni izin talebinde veri döner.
+Diğer adaptörlerde bu yöntem bulunmayabilir.
+Bu durumda form, kişiye ait alanları boş bırakır.
+
+Form, yalnız alan tanımında bulunan bilgileri doldurur.
+Kaynağı veya değeri eksik alan boş kalır.
+Gerçek sıfır bakiye ekranda `0` olur.
+Sistem, eski başvurudan bakiye kopyalamaz.
+Hesaplanan bakiye değiştirilemez. Form bu değeri kaydetme isteğine eklemez.
+
+Dolan alanın altında kaynak notu görünür.
+Alan, nota `aria-describedby` ile bağlanır.
+Kullanıcı alanı değiştirince kaynak notu kalkar.
+Kullanıcı eski değeri tekrar yazsa da not geri gelmez.
+Kullanıcı değişiklikleri geri alırsa sistemin kaynak notu yeniden görünür.
+Form kaydedilince yeni kayıt kaynak notları kalkar.
+
+Geçersiz sunucu yanıtında form hata gösterir.
+Kullanıcı bu ekrandan yeniden deneyebilir.
+Kayıt değişince bekleyen istek iptal edilir.
+Geciken yanıt, yeni kaydı değiştirmez.
+
 ## Görünüm
 
 Form, Outfit yazı tipini kullanır. Renkler ve ölçüler merkezi tokenlardan gelir.
 Token, ortak kullanılan tasarım değeridir.
 Hata rengi, ortak `danger` tokenından gelir.
+Düğme renkleri, ortak `primary` tokenından gelir.
+Kaydedilmemiş değişiklik yazısı, gövde metni rengini kullanır.
 Telefonda kontrol yüksekliği en az 48 CSS px olur.
 En küçük metin 14 CSS px olur. Gövde metni 16 CSS px olur.
 Klavye odağı alt çizgiyle gösterilir. Odaklanınca alanın çevresindeki kenarlık renk değiştirmez.
@@ -40,6 +75,17 @@ Ekranın yolu şöyledir:
 /src/views/record/harness/?scenario=leave
 ```
 
+Yeni kayıt bilgilerini deneyen ekranın yolu şöyledir:
+
+```text
+/src/views/record/harness/?scenario=leave-prefill
+```
+
+Bu ekran, ortak API istemcisini sahte bir istemciyle değiştirir.
+Ekran, üretimde kullanılan yanıt denetimini çalıştırır.
+Adrese `&context=empty` eklenirse bilgiler boş gelir.
+Adrese `&context=zero` eklenirse bakiye sıfır gelir.
+
 ## Kontroller
 
 Komutları depo kökünde çalıştırın.
@@ -52,7 +98,9 @@ npm run build
 E2E_PORT=4286 npm run test:e2e -- src/views/record/e2e --workers=2
 ```
 
-Yeni davranış testleri `__tests__/form-validation.test.tsx` dosyasındadır.
+Bölüm ve hata testleri `__tests__/form-validation.test.tsx` dosyasındadır.
+Yeni kayıt testleri `__tests__/prefill.test.tsx` dosyasındadır.
+Yeni kayıt tarayıcı testleri `e2e/prefill.spec.ts` dosyasındadır.
 Tarayıcı testleri `e2e/form-validation.spec.ts` dosyasındadır.
 Testler gerçek sunucu isteklerini engelleyen ortak test düzenini kullanır.
 Tarayıcı kapsamı Chromium ve WebKit olur. Firefox çalıştırılmaz.
