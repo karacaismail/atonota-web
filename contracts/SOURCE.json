@@ -1,12 +1,12 @@
 {
   "repository": "frappesetup",
-  "commit": "de6536105412376a5af5af7108c40c1e2e984176",
+  "commit": "6dd4bc7a8ca5c7a4bb8e99ea0a4aadb7fc765fa8",
   "dirty": false,
   "commitSource": "git",
   "files": [
     {
       "path": "openapi/hrms_tr.openapi.yaml",
-      "sha256": "d81a071d6e603ed1bfc857b19f8a5598a4092c9b426dec38b1e822b3b330d5ab"
+      "sha256": "1477a683788df30af44593d4409ada1e9da9c9bad492ba1a040f3038592c8b8a"
     },
     {
       "path": "openapi/identity_sync.openapi.yaml",
@@ -18,11 +18,15 @@
     },
     {
       "path": "openapi/platform_core-ai.openapi.yaml",
-      "sha256": "79c0d3b253b7630e8b5b0b25bc552a832ce323f558f148aa318ce26f7cb8af94"
+      "sha256": "5aee92e6a9d868ddfe5cf1b93decb37401adceb7774d8181e0d67f7da6a5d9d3"
     },
     {
       "path": "openapi/platform_core-collection.openapi.yaml",
       "sha256": "01c5ce007f894549a28cee034d29107d5395eabd1d3a72cca79138b1e67208cf"
+    },
+    {
+      "path": "openapi/platform_core-help.openapi.yaml",
+      "sha256": "0780c2f19c2ac91416fd49ace12910bd7643ec94fdd102e6e8f07e5e398509c7"
     },
     {
       "path": "openapi/platform_core-identity.openapi.yaml",
@@ -50,7 +54,7 @@
     },
     {
       "path": "docs/contracts.md",
-      "sha256": "689dbdd3bbf4b7c7b1ebda34b25e83cfd38520adad3887c1fdcfa7038f72a1aa"
+      "sha256": "7d1dab931a2b115a04e6b2f86617abdaa5d43ef49514df3798a665cf234453ca"
     }
   ]
 }
