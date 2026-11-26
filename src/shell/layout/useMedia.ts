@@ -5,6 +5,8 @@ import { useSyncExternalStore } from 'react';
  * Yatay telefon kısa yüksekliği yüzünden telefon kabuğunda kalır.
  */
 export const COMPACT_QUERY = '(max-width: 767px), (max-height: 499px)';
+/** Yatay telefon sorgusu. `shell.css` içindeki yatay telefon bölümüyle aynıdır. */
+export const LANDSCAPE_PHONE_QUERY = '(orientation: landscape) and (max-height: 499px)';
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 export function useMedia(query: string): boolean {

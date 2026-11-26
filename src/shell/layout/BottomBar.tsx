@@ -5,6 +5,7 @@ import { NavLink } from 'react-router-dom';
 
 import { t } from '../messages';
 import { routes } from '../paths';
+import { LANDSCAPE_PHONE_QUERY } from './useMedia';
 import { useVirtualKeyboard } from './useVirtualKeyboard';
 
 interface BottomBarProps {
@@ -37,21 +38,30 @@ export const BottomBar = forwardRef<HTMLElement, BottomBarProps>(function Bottom
     // Kabuğun üstünde başka bir not olabilir. Örnek: sahte sunucunun "Örnek veri" notu.
     // Yatay telefonda sol çubuk kabuğun üst kenarından başlar ve bu notu örtmez.
     const shell = el.parentElement;
+    const measureTop = () => {
+      const top = Math.max(0, shell?.getBoundingClientRect().top ?? 0);
+      root.style.setProperty('--shell-bar-top', `${top}px`);
+    };
     const measure = () => {
       const r = el.getBoundingClientRect();
-      const top = Math.max(0, shell?.getBoundingClientRect().top ?? 0);
       root.style.setProperty('--shell-bar-block', `${r.height}px`);
       root.style.setProperty('--shell-bar-inline', `${r.width}px`);
-      root.style.setProperty('--shell-bar-top', `${top}px`);
+      measureTop();
+    };
+    // Kaydırma yalnız çubuğun üst kenarını değiştirir. Üst kenar yalnız yatay telefonda kullanılır.
+    // Bu yüzden kaydırmada yalnız yatay telefonda ve yalnız bu değer ölçülür.
+    const landscape = window.matchMedia(LANDSCAPE_PHONE_QUERY);
+    const onScroll = () => {
+      if (landscape.matches) measureTop();
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     if (shell) observer.observe(shell);
-    window.addEventListener('scroll', measure, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       observer.disconnect();
-      window.removeEventListener('scroll', measure);
+      window.removeEventListener('scroll', onScroll);
       root.style.removeProperty('--shell-bar-block');
       root.style.removeProperty('--shell-bar-inline');
       root.style.removeProperty('--shell-bar-top');

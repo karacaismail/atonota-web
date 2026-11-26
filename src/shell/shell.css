@@ -424,8 +424,13 @@ html:has(.shell[data-layout='compact']) {
   box-shadow: 0 calc(-1 * var(--shell-hairline)) 0 var(--shell-bd);
 }
 
-.shell-bar[data-keyboard='open'] {
-  display: none;
+/* Sanal klavye açılınca çubuk yalnız dikey telefonda gizlenir. Kaynak: onaylı taslak,
+   `body.kbd-open .bottombar` kuralı dikey telefon bölümündedir. Yatay telefonda sol çubuk
+   yerinde kalır. Böylece kabuğun sol payı sıfırlanmaz ve sayfa sola kaymaz. */
+@media not ((orientation: landscape) and (max-height: 499px)) {
+  .shell-bar[data-keyboard='open'] {
+    display: none;
+  }
 }
 
 .shell-bar-item {

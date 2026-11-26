@@ -37,6 +37,28 @@ async function settle(page: Page) {
   });
 }
 
+// Görünür alanın yüksekliği küçülür. Sanal klavye tarayıcıda böyle görünür.
+async function openKeyboard(page: Page) {
+  await page.evaluate(() => {
+    const vv = window.visualViewport;
+    if (!vv) throw new Error('visualViewport yok');
+    Object.defineProperty(vv, 'height', {
+      configurable: true,
+      get: () => Math.round(window.innerHeight * 0.5),
+    });
+    vv.dispatchEvent(new Event('resize'));
+  });
+}
+
+async function closeKeyboard(page: Page) {
+  await page.evaluate(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    delete (vv as { height?: number }).height;
+    vv.dispatchEvent(new Event('resize'));
+  });
+}
+
 test.describe('telefon alt çubuğu', () => {
   test('telefonda görünür; tablet ve masaüstünde görünmez', async ({ page }) => {
     await page.goto('/');
@@ -102,28 +124,46 @@ test.describe('telefon alt çubuğu', () => {
     }
   });
 
-  test('sanal klavye açılınca gizlenir, kapanınca geri gelir', async ({ page }) => {
+  test('dikey telefonda sanal klavye açılınca gizlenir, kapanınca geri gelir', async ({ page }) => {
     test.skip(!isCompact(page), 'Alt çubuk yalnız telefon kabuğundadır.');
+    test.skip(isLandscapePhone(page), 'Yatay telefonda çubuk gizlenmez. Ayrı test vardır.');
     await page.goto('/');
     await expect(bar(page)).toBeVisible();
-    // Görünür alanın yüksekliği küçülür. Sanal klavye tarayıcıda böyle görünür.
-    await page.evaluate(() => {
-      const vv = window.visualViewport;
-      if (!vv) throw new Error('visualViewport yok');
-      Object.defineProperty(vv, 'height', {
-        configurable: true,
-        get: () => Math.round(window.innerHeight * 0.5),
-      });
-      vv.dispatchEvent(new Event('resize'));
-    });
+    await openKeyboard(page);
     await expect(bar(page)).toBeHidden();
-    await page.evaluate(() => {
-      const vv = window.visualViewport;
-      if (!vv) return;
-      delete (vv as { height?: number }).height;
-      vv.dispatchEvent(new Event('resize'));
-    });
+    await closeKeyboard(page);
     await expect(bar(page)).toBeVisible();
+  });
+
+  // Bu test her projede koşar. Görünüm yatay telefona çevrilir. Böylece WebKit de denenir.
+  test('yatay telefonda sanal klavye açılınca sol çubuk yerinde kalır, sayfa kaymaz', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.goto(RECORD);
+    await expect(page.locator('.shell')).toHaveAttribute('data-layout', 'compact');
+    await expect(bar(page)).toBeVisible();
+    const measure = () =>
+      page.evaluate(() => {
+        const shell = document.querySelector<HTMLElement>('.shell');
+        const main = document.querySelector<HTMLElement>('#main');
+        return {
+          pad: shell ? getComputedStyle(shell).paddingLeft : '',
+          mainX: main?.getBoundingClientRect().left ?? -1,
+        };
+      });
+    const before = await measure();
+    expect(parseFloat(before.pad)).toBeGreaterThan(0);
+    const title = page.getByRole('textbox', { name: /Örnek başlık/ });
+    await title.focus();
+    await openKeyboard(page);
+    await expect(bar(page)).toHaveAttribute('data-keyboard', 'open');
+    await expect(bar(page)).toBeVisible();
+    expect(await measure()).toEqual(before);
+    await expect(title).toBeFocused();
+    await closeKeyboard(page);
+    await expect(bar(page)).not.toHaveAttribute('data-keyboard', 'open');
+    expect(await measure()).toEqual(before);
   });
 
   test('menü Escape ile ve kapatma düğmesiyle kapanınca odak "Menü" düğmesine döner', async ({

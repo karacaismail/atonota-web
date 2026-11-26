@@ -151,4 +151,39 @@ describe('telefon alt çubuğu', () => {
     });
     expect(bar()).not.toHaveAttribute('data-keyboard', 'open');
   });
+
+  it('kaydırmada yalnız yatay telefonda ve yalnız üst kenar ölçülür', () => {
+    const run = (landscape: boolean) => {
+      window.matchMedia = (query: string) =>
+        ({
+          matches: query.includes('orientation') ? landscape : true,
+          media: query,
+          onchange: null,
+          addListener: () => undefined,
+          removeListener: () => undefined,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+          dispatchEvent: () => false,
+        }) as MediaQueryList;
+      const { unmount } = render(
+        <MemoryRouter>
+          <ViewDataProvider value={null}>
+            <AppShell>
+              <p>İçerik</p>
+            </AppShell>
+          </ViewDataProvider>
+        </MemoryRouter>,
+      );
+      const spy = vi.spyOn(document.documentElement.style, 'setProperty');
+      act(() => {
+        window.dispatchEvent(new Event('scroll'));
+      });
+      const names = spy.mock.calls.map(([name]) => name);
+      spy.mockRestore();
+      unmount();
+      return names;
+    };
+    expect(run(false)).toEqual([]);
+    expect(run(true)).toEqual(['--shell-bar-top']);
+  });
 });
