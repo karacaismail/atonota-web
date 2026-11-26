@@ -5,6 +5,19 @@ import { expect, test } from '../../../../tests/setup/playwright-fixtures';
 const FORM = '/src/views/record/harness/?scenario=leave&assist=1';
 const SHOTS = '/Users/w6x/Documents/frappesetup/.pane/scratch/orkestrator/ekran';
 
+// Linux Chromium draws text with coloured subpixel edges. The right edge of each letter is blue,
+// so the ring probe below would count letters as a ring. Grayscale text keeps the probe honest.
+// The probe and its zero expectation do not change. WebKit rejects this switch, so only
+// Chromium gets it.
+test.use({
+  launchOptions: [
+    async ({ browserName }, use) => {
+      await use(browserName === 'chromium' ? { args: ['--disable-lcd-text'] } : {});
+    },
+    { scope: 'worker' },
+  ],
+});
+
 /** Safari reaches buttons with Option+Tab; plain Tab skips them (macOS keyboard setting). */
 async function tabTo(page: Page, target: Locator, key = 'Tab') {
   for (let i = 0; i < 30; i += 1) {
