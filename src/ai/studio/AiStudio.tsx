@@ -14,20 +14,29 @@ import {
 } from '@phosphor-icons/react';
 import { App, Button, Drawer, Tag } from 'antd';
 import type { GetProp } from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import type { GenUIAction, GenUIActionResult } from '@/genui';
 import { useGenuiVars } from '@/genui/useGenuiVars';
-import { OwlMark } from '@/mascot';
 
-import { createMockTransport, MOCK_SOURCE } from '../agent';
-import type { AgentSource, AgentTransport, AssistantMessage, ChatMessage } from '../agent';
+import { MOCK_SOURCE } from '../agent';
+import type {
+  AgentMode,
+  AgentSource,
+  AgentTransport,
+  AssistantMessage,
+  ChatMessage,
+} from '../agent';
 import { aiStudioLayout } from '../tokens';
 import { useMediaQuery } from '../useMediaQuery';
 import { AnswerActions } from './AnswerActions';
 import { AssistantBody } from './AssistantBody';
 import { ConversationsPanel, type StudioConversation } from './ConversationsPanel';
+import { createFlowDemoTransport } from './flowDemo';
+import { FlowSteps } from './FlowSteps';
+import { ModePicker } from './ModePicker';
 import { SLASH_COMMANDS, WELCOME_PROMPTS } from './content';
+import { useFlow } from './useFlow';
 import { actionToMessage, decisionsOf, useStudioChat } from './useStudioChat';
 import { FILE_NAME_ONLY_NOTE, Workspace } from './Workspace';
 
@@ -57,12 +66,15 @@ type FileItems = NonNullable<AttachmentsProps['items']>;
 function StudioInner({ transport, source }: { transport: AgentTransport; source: AgentSource }) {
   const { message: toast } = App.useApp();
   const vars = useGenuiVars();
+  const titleId = useId();
   const wide = useMediaQuery(WIDE_QUERY);
-  const { messages, setMessages, send, cancel, regenerate, retryKind, busy } =
-    useStudioChat(transport);
-
   const [conversations, setConversations] = useState(FIRST_CONVERSATIONS);
   const [activeKey, setActiveKey] = useState('c1');
+  // Seçilen kip bir sonraki yeni işe uygulanır. Başlamış akışın kipi değişmez.
+  const [mode, setMode] = useState<AgentMode>('ask');
+  const { flow, flowTransport, start, approve, forget } = useFlow(transport, activeKey);
+  const { messages, setMessages, send, cancel, regenerate, retryKind, busy } =
+    useStudioChat(flowTransport);
   const store = useRef<Record<string, StoredMessages>>({});
   const nextId = useRef(2);
   // Çekmece kapanınca odak, çekmeceyi açan düğmeye döner.
@@ -105,6 +117,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
     (text: string): GenUIActionResult => {
       const trimmed = text.trim();
       if (!trimmed || busy) return 'busy';
+      start(mode);
       const result = send({
         role: 'user',
         text: trimmed,
@@ -121,13 +134,18 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
       );
       return 'accepted';
     },
-    [activeKey, busy, fileNames, send],
+    [activeKey, busy, fileNames, mode, send, start],
   );
 
   const onAction = useCallback(
-    (action: GenUIAction): GenUIActionResult =>
-      action.kind === 'ask' ? submit(action.text) : send(actionToMessage(action)),
-    [send, submit],
+    (action: GenUIAction): GenUIActionResult => {
+      if (action.kind === 'ask') return submit(action.text);
+      // Onay adımında kullanıcının onayı akışa yazılır. Uygulama adımı ancak bundan sonra açılır.
+      const result = send(actionToMessage(action));
+      if (result === 'accepted' && action.decision === 'approved') approve();
+      return result;
+    },
+    [approve, send, submit],
   );
 
   const switchTo = (key: string) => {
@@ -153,6 +171,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
       Object.fromEntries(Object.entries(all).filter(([k]) => k !== key)),
     );
     setConversations(rest);
+    forget(key);
     if (key === activeKey && rest[0]) {
       cancel();
       setMessages(store.current[rest[0].key] ?? []);
@@ -199,7 +218,6 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
     if (message.role === 'user') {
       return {
         key,
-        role: 'user',
         placement: 'end',
         content: message,
         messageRender: (m: ChatMessage) => (
@@ -221,9 +239,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
     const finished = message.phase === 'done' || message.phase === 'cancelled';
     return {
       key,
-      role: 'ai',
       placement: 'start',
-      avatar: <OwlMark size={28} />,
       variant: 'borderless',
       loading: message.phase === 'waiting' && message.steps.length === 0,
       content: message,
@@ -323,7 +339,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
     <div className={`ai-studio ai-scope ${wide ? 'is-wide' : 'is-narrow'}`} style={vars}>
       {wide && <div className="ai-col ai-col-left">{left}</div>}
 
-      <main className="ai-main" aria-label="AI Studio">
+      <section className="ai-main" aria-labelledby={titleId}>
         <header className="ai-head">
           {!wide && (
             <Button
@@ -334,8 +350,9 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
               onClick={() => setLeftOpen(true)}
             />
           )}
-          {wide && <OwlMark size={28} />}
-          <h1 className="ai-title">AI Studio</h1>
+          <h1 className="ai-title" id={titleId}>
+            AI Studio
+          </h1>
           <Tag bordered={false} color={source.simulated ? 'warning' : 'processing'}>
             {source.label}
           </Tag>
@@ -351,12 +368,13 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
           )}
         </header>
 
+        <FlowSteps flow={flow} />
+
         <div className="ai-log" role="log" aria-live="polite" aria-relevant="additions text">
           {messages.length === 0 ? (
             <div className="ai-welcome">
               <Welcome
                 variant="borderless"
-                icon={<OwlMark size={48} />}
                 title="Merhaba, ben Atonota asistanı"
                 description="Raporları özetlerim, siparişleri tararım ve otomasyon kurmanıza yardım ederim. Onayınız olmadan hiçbir işlem yapmam."
               />
@@ -378,10 +396,11 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
         </p>
 
         <div className="ai-sender">
+          <ModePicker value={mode} onChange={setMode} disabled={busy} />
           {sender}
           <p className="ai-hint">Asistan hata yapabilir. Önemli bilgileri kontrol edin.</p>
         </div>
-      </main>
+      </section>
 
       {wide && <div className="ai-col ai-col-right">{right}</div>}
 
@@ -421,7 +440,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
  * Dar ekranda tek sütun olur. Sol ve sağ bölüm çekmeceye taşınır.
  */
 export function AiStudio({ transport, source }: AiStudioProps) {
-  const resolvedTransport = useMemo(() => transport ?? createMockTransport(), [transport]);
+  const resolvedTransport = useMemo(() => transport ?? createFlowDemoTransport(), [transport]);
   const resolvedSource = source ?? MOCK_SOURCE;
   return (
     <App component={false}>

@@ -61,6 +61,8 @@
   /* "Örnek veri" notunun görünen yüksekliği. Kabuk ölçer ve satır içi yazar. Not yoksa 0'dır. */
   --shell-note-h: 0px;
   --shell-zero: 0px;
+  /* Ana sayfa: özet sayı kutusunun en dar hâli (taslak: 10rem). */
+  --shell-home-kpi-min: 160px;
 
   /* Hareket. Süre ve eğriler merkezi tokenlardır (src/design/motion.ts). Değerler kaynak örnek
      sayfanın `.glide`, iskelet ve dönme kurallarından gelir. Solma eğrisi genel S eğrisidir;
@@ -1768,6 +1770,194 @@ html:has(.shell[data-layout='compact']) {
   padding: var(--shell-space-ml) var(--shell-space-lg);
   border-radius: var(--shell-radius);
   background: var(--shell-bg-e);
+}
+
+/* ---------- Ana sayfa: Bekleyenler (taslak AJA-880, "2. ANA SAYFA") ---------- */
+/* Bölümler kart çerçevesi almaz. Ayrım boşluk ve yüzey tonuyla kurulur. */
+.shell-home .shell-body {
+  gap: var(--shell-space-2xl);
+}
+
+.shell-home-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shell-space-md);
+  min-width: 0;
+}
+
+.shell-home-h {
+  margin: 0;
+  font-size: var(--shell-fs-md);
+  font-weight: 600;
+  line-height: calc(var(--shell-fs-md) + var(--shell-lh-add));
+}
+
+.shell-home-pending,
+.shell-home-list,
+.shell-home-kpis {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Satırları düz çizgi ayırır. Satırın köşesi yuvarlak değildir. */
+.shell-home-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--shell-space-lg);
+  align-items: center;
+  padding: var(--shell-space-lg) 0;
+}
+
+.shell-home-item + .shell-home-item {
+  border-top: var(--shell-hairline) solid var(--shell-bd);
+}
+
+.shell-home-text {
+  min-width: 0;
+}
+
+.shell-home-who,
+.shell-home-done {
+  margin: 0;
+  font-size: var(--shell-fs);
+  font-weight: 600;
+  line-height: calc(var(--shell-fs) + var(--shell-lh-add));
+}
+
+.shell-home-done {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shell-space-md);
+  align-items: center;
+  grid-column: 1 / -1;
+}
+
+.shell-home-meta {
+  margin: 0;
+  color: var(--shell-tx2);
+  font-size: var(--shell-fs-min);
+  line-height: calc(var(--shell-fs-min) + var(--shell-lh-add));
+}
+
+.shell-home-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shell-space-md);
+}
+
+.shell-home-err {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--shell-err);
+  font-size: var(--shell-fs);
+}
+
+/* Durum etiketi: çerçevesiz, tonlu zemin. Metin ana metin renginde kalır (kontrast). */
+.shell-home-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--shell-space-md);
+  border-radius: var(--shell-radius);
+  font-size: var(--shell-fs-min);
+  font-weight: 600;
+  line-height: calc(var(--shell-fs-min) + var(--shell-lh-add));
+  white-space: nowrap;
+  color: var(--shell-tx);
+}
+
+.shell-home-tag[data-tone='ok'] {
+  background: color-mix(in srgb, var(--shell-ok) 22%, var(--shell-bg-c));
+}
+
+.shell-home-tag[data-tone='err'] {
+  background: color-mix(in srgb, var(--shell-err) 22%, var(--shell-bg-c));
+}
+
+.shell-home-tag[data-tone='warn'] {
+  background: color-mix(in srgb, var(--shell-warn) 26%, var(--shell-bg-c));
+}
+
+.shell-home-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shell-space-md);
+  align-items: baseline;
+  padding: var(--shell-space-md) 0;
+}
+
+.shell-home-recent {
+  flex-wrap: nowrap;
+}
+
+.shell-home-recent-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Süs simgesi (taslak AJA-880): ölçü menü simgesi tokenından gelir. Ekran okuyucu okumaz. */
+.shell-home-ic {
+  flex: none;
+  font-size: var(--shell-item-icon);
+  align-self: center;
+}
+
+.shell-home-ic[data-tone='warn'] {
+  color: var(--shell-warn);
+}
+
+.shell-home-h:has(> .shell-home-ic) {
+  display: flex;
+  gap: var(--shell-space-md);
+  align-items: center;
+}
+
+.shell-home-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--shell-space-2xl);
+}
+
+.shell-home-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--shell-home-kpi-min)), 1fr));
+  gap: var(--shell-space-lg);
+}
+
+.shell-home-kpis li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shell-space-2xs);
+  padding: var(--shell-space-lg);
+  border-radius: var(--shell-radius);
+  background: var(--shell-bg-e);
+}
+
+.shell-home-kpis strong {
+  font-size: var(--shell-fs-lg);
+  line-height: calc(var(--shell-fs-lg) + var(--shell-lh-add));
+}
+
+/* Dar kapsayıcıda düğmeler metnin altına iner. */
+@container (max-width: 599px) {
+  .shell-home-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (min-width: 900px) {
+  .shell-home-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Dokunmalı işaretçi: düğmenin dokunma alanı merkezi tokendır (`--hit-target`, 48 px). */
+@media (any-pointer: coarse) {
+  .shell-home .ant-btn {
+    min-width: var(--hit-target);
+    min-height: var(--hit-target);
+  }
 }
 
 /* ---------- Hareket azaltma ---------- */

@@ -45,10 +45,15 @@ export type {
 export type {
   AccessScope,
   AccessSummary,
+  HomeCounts,
+  HomeProblem,
+  HomeSummary,
   LeaveApplication,
   LeaveName,
   PermissionExplanation,
+  PendingApproval,
   PermissionType,
+  RecentChange,
 } from './guards';
 export { pressAccountDeletionUrl, readPressConfig } from './press';
 export type { PressConfig, PressEnv } from './press';

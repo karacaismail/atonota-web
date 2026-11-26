@@ -4,6 +4,9 @@ import type { ModuleEnvironment } from '@/modules';
 // Giriş ekranı kayıt listesini indirmez (ilk yük bütçesi). Test: `src/modules/e2e/ilk-yuk.spec.ts`.
 import { createModuleClient } from '@/modules/client';
 
+import { createShellHomeData } from './home-client';
+import { registerHomeData } from './home-data';
+
 export interface ShellModuleEnvironmentInput extends Omit<ModuleEnvironment, 'client' | 'mode'> {
   /** Oturumdaki ortak API istemcisi (`createPlatformSession().api`). */
   api: ApiClient;
@@ -20,5 +23,8 @@ export function createShellModuleEnvironment({
   mode = 'live',
   ...rest
 }: ShellModuleEnvironmentInput): ModuleEnvironment {
-  return { ...rest, mode, client: createModuleClient(api) };
+  const env: ModuleEnvironment = { ...rest, mode, client: createModuleClient(api) };
+  // Ana sayfa (Bekleyenler) aynı istemciyi kullanır. Bkz. `home-data.ts`.
+  registerHomeData(env, createShellHomeData(api));
+  return env;
 }

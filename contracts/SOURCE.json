@@ -1,12 +1,12 @@
 {
   "repository": "frappesetup",
-  "commit": "c404bdeb4092c209c4054a6f3f086e539238cc87",
-  "dirty": false,
+  "commit": "2ea78d4fff2ec04bd228458b425e8b331efcc835",
+  "dirty": true,
   "commitSource": "git",
   "files": [
     {
       "path": "openapi/hrms_tr.openapi.yaml",
-      "sha256": "18d3206a10a6273e2e133fc04aa74358af790555a2fdb3e9756a2eaa3be0506b"
+      "sha256": "c9310d29f6f504dc057e6b0af0cab8dbe120e9192a5aed633c330de7a9a177ad"
     },
     {
       "path": "openapi/identity_sync.openapi.yaml",
