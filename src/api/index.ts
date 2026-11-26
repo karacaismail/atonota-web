@@ -20,7 +20,9 @@ export type {
   Bootstrap,
   CompletionRequest,
   CompletionResult,
+  ComponentHelp,
   DocTypeMeta,
+  FieldHelp,
   LoginUrl,
   LogoutUrl,
   Proposal,
@@ -36,7 +38,7 @@ export type {
   UiBlock,
 } from './ai-agent';
 export type { McpResult } from './client';
-export type { ExplainPermissionQuery, LeaveListQuery } from './client';
+export type { ExplainPermissionQuery, FieldHelpQuery, LeaveListQuery } from './client';
 export type {
   AccessScope,
   AccessSummary,

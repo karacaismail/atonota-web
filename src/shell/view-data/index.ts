@@ -8,6 +8,8 @@ export type {
   ShellCredit,
   ShellCreditData,
   ShellCollectionData,
+  ShellHelpAnswer,
+  ShellHelpData,
   ShellNavigationData,
   ShellRecordData,
   ShellSidebar,
