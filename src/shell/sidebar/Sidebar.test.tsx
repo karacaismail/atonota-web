@@ -90,12 +90,12 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('group', { name: 'Stok' })).not.toBeInTheDocument();
   });
 
-  it('odak perdesi flyout açıkken açılır', async () => {
+  it('odak perdesi flyout açıkken açılmaz: perde yalnız iletişim kutusundadır', async () => {
     setup();
     const parent = screen.getByRole('button', { name: 'Satış' });
     act(() => parent.focus());
     await screen.findByRole('group', { name: 'Satış' });
-    expect(document.body).toHaveAttribute('data-focus-dim', 'on');
+    expect(document.body).not.toHaveAttribute('data-focus-dim');
   });
 
   it('RT2: rail anahtarı başlıktadır ve varyantı değiştirir', async () => {
