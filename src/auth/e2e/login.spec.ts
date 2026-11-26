@@ -1,14 +1,17 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '../../../tests/setup/playwright-fixtures';
 
-import { isBottomBarOnly, isRingShadow, splitShadows } from '../../../tests/setup/odak-gostergesi';
+import {
+  isBottomBarOnly,
+  isRingShadow,
+  splitShadows,
+  tokenColor,
+} from '../../../tests/setup/odak-gostergesi';
 import { SAMPLE_KEYCLOAK_URL, sampleLoginUrl } from '../../mocks/fixtures';
 import { MOCK_START_LOGIN_KEY } from '../../mocks/handlers';
 import { MOCK_SCENARIO_KEY } from '../../mocks/scenarios';
 
 const BUTTON = 'AtonotA Login ile oturum aç';
-/** Birincil renk (#00aacc). Odak göstergesinin rengi. */
-const PRIMARY_RGB = 'rgb(0, 170, 204)';
 const START_LOGIN = '/api/method/platform_core.api.auth.start_login';
 
 /**
@@ -85,15 +88,17 @@ test.describe('AtonotA Login düğmesi', () => {
       return style.outlineStyle === 'none' || style.outlineWidth === '0px';
     });
     expect(outline, 'outline').toBe(true);
-    // Gösterge alt kenarda tek bir birincil renk çizgidir. Gösterge geçişle gelir. Test bu yüzden bekler.
+    // Gösterge alt kenarda tek bir vurgu rengi çizgidir. Renk tokendan okunur (`--focus-indicator-color`).
+    // Gösterge geçişle gelir. Test bu yüzden bekler.
+    const FOCUS_RGB = await tokenColor(page, '--focus-indicator-color');
     const shadows = async () =>
       splitShadows(await button.evaluate((node) => getComputedStyle(node).boxShadow));
     await expect
-      .poll(async () => (await shadows()).filter((p) => isBottomBarOnly(p, PRIMARY_RGB)))
+      .poll(async () => (await shadows()).filter((p) => isBottomBarOnly(p, FOCUS_RGB)))
       .toHaveLength(1);
     const parts = await shadows();
     expect(
-      parts.filter((p) => p.includes(PRIMARY_RGB)),
+      parts.filter((p) => p.includes(FOCUS_RGB)),
       parts.join(' | '),
     ).toHaveLength(1);
     expect(parts.filter(isRingShadow), parts.join(' | ')).toEqual([]);

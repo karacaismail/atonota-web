@@ -320,9 +320,12 @@ test.describe('komut kutusu önerileri', () => {
       return {
         size: label ? getComputedStyle(label).fontSize : '',
         token: root.getPropertyValue('--font-default').trim(),
+        body: root.getPropertyValue('--font-body').trim(),
       };
     });
-    expect(result.token).toBe('14px');
+    // Boyut sabit yazılmaz: etiket gövde metni tokenını izler (AJA-997: gövde 16 px).
+    expect(result.token).toBe(result.body);
+    expect(parseFloat(result.token)).toBeGreaterThanOrEqual(14);
     expect(result.size).toBe(result.token);
   });
 });

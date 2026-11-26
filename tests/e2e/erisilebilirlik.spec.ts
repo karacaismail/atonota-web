@@ -1,10 +1,11 @@
 import AxeBuilder from '@axe-core/playwright';
-import { isBottomBarOnly as isBottomBar, splitShadows } from '../setup/odak-gostergesi';
+import { isBottomBarOnly as isBottomBar, splitShadows, tokenColor } from '../setup/odak-gostergesi';
 import { expect, test, type Locator, type Page } from '../setup/playwright-fixtures';
 
 const DEMO = '/_demo/foundation';
 
-const PRIMARY_RGB = 'rgb(0, 170, 204)';
+/** Odak göstergesi rengi tokendan okunur (`--focus-indicator-color`); testte renk yazılmaz. */
+let FOCUS_RGB = '';
 
 /** Klavye durakları: odaklanan öğe ve göstergeyi taşıması gereken görünür kontrol. */
 function stops(
@@ -29,9 +30,9 @@ function stops(
   ];
 }
 
-/** Birincil renkte tek alt çizgi mi? Ortak denetim: `tests/setup/odak-gostergesi.ts`. */
+/** Odak renginde tek alt çizgi mi? Ortak denetim: `tests/setup/odak-gostergesi.ts`. */
 function isBottomBarOnly(shadow: string): boolean {
-  return isBottomBar(shadow, PRIMARY_RGB);
+  return isBottomBar(shadow, FOCUS_RGB);
 }
 
 async function openKeyboardMode(page: Page) {
@@ -86,9 +87,10 @@ async function canHover(page: Page): Promise<boolean> {
 test.describe('odak göstergesi: üç durak', () => {
   test.beforeEach(async ({ page }) => {
     await openDemo(page);
+    FOCUS_RGB = await tokenColor(page, '--focus-indicator-color');
   });
 
-  test('metin bağlantısında klavye odağı 2 px birincil renk alt çizgi olur; halka yok', async ({
+  test('metin bağlantısında klavye odağı 2 px vurgu rengi alt çizgi olur; halka yok', async ({
     page,
   }) => {
     const link = page.getByRole('link', { name: 'yardım sayfasına' });
@@ -110,9 +112,17 @@ test.describe('odak göstergesi: üç durak', () => {
     await expect(link).toBeFocused();
     const focused = await look();
     expect(focused.line).toBe('underline');
-    expect(focused.color, 'odak çizgisi birincil renk').toBe(PRIMARY_RGB);
+    // Açık temada vurgu rengi #00aacc değildir (AJA-997); değer tokendan gelir.
+    expect(FOCUS_RGB, 'açık temada odak rengi birincil renk değildir').not.toBe(
+      await tokenColor(page, '--color-primary'),
+    );
+    expect(focused.color, 'odak çizgisi vurgu rengi').toBe(FOCUS_RGB);
     expect(focused.thickness, 'odak çizgisi 2 px').toBe('2px');
-    expect(focused.color, 'odak görünümü dinlenmeden farklı').not.toBe(rest.color);
+    // Bağlantı ve odak aynı vurgu rengini kullanır (AJA-997). Gösterge çizgiyi kalınlaştırır.
+    expect(
+      focused.thickness !== rest.thickness || focused.color !== rest.color,
+      'odak görünümü dinlenmeden farklı',
+    ).toBe(true);
     expect(focused.outline, 'çevreleyen halka yok').toBe(true);
     expect(focused.shadow).toBe('none');
   });
@@ -136,7 +146,7 @@ test.describe('odak göstergesi: üç durak', () => {
       const parts = splitShadows(
         await stop.indicator.evaluate((el) => getComputedStyle(el).boxShadow),
       );
-      const primaryParts = parts.filter((p) => p.includes(PRIMARY_RGB));
+      const primaryParts = parts.filter((p) => p.includes(FOCUS_RGB));
       expect(primaryParts, `${stop.name}: ${parts.join(' | ')}`).toHaveLength(1);
       expect(primaryParts.every(isBottomBarOnly), stop.name).toBe(true);
       const outline = await stop.indicator.evaluate((el) => {
@@ -146,7 +156,7 @@ test.describe('odak göstergesi: üç durak', () => {
       expect(outline, `${stop.name}: outline`).toBe(true);
       if (stop.inner) {
         const innerShadow = await stop.inner.evaluate((el) => getComputedStyle(el).boxShadow);
-        expect(innerShadow, `${stop.name}: iç öğe`).not.toContain(PRIMARY_RGB);
+        expect(innerShadow, `${stop.name}: iç öğe`).not.toContain(FOCUS_RGB);
       }
     }
   });
@@ -385,6 +395,8 @@ test.describe('koyu birincil düğme kontrastı', () => {
     await btn.focus();
     await expect(btn).toBeFocused();
     const restBg = await btn.evaluate((el) => getComputedStyle(el).backgroundColor);
+    // Koyu temada basılı birincil düğme metni %100 birincil renktir (`--primary-text-hover`).
+    const pressedText = await tokenColor(page, '--primary-text-hover');
     await page.keyboard.down('Space');
     try {
       await expect
@@ -396,7 +408,7 @@ test.describe('koyu birincil düğme kontrastı', () => {
         .poll(() => btn.evaluate((el) => getComputedStyle(el).color), {
           message: 'metin %100 olur',
         })
-        .toBe(PRIMARY_RGB);
+        .toBe(pressedText);
       expect(await measureContrast(btn), 'klavyeyle basılı').toBeGreaterThanOrEqual(4.5);
     } finally {
       await page.keyboard.up('Space');

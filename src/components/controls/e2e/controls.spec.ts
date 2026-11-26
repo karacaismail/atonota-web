@@ -1,5 +1,6 @@
 import { expect, test } from '../../../../tests/setup/playwright-fixtures';
 import type { Locator, Page } from '@playwright/test';
+import designSource from '../../../../design/source/control-size-config.json' with { type: 'json' };
 
 // Ortak deneme yolu (AGENTS.md, src/shell/routes.ts). Yalnız e2e derlemesinde açılır.
 const demo = '/_demo/controls';
@@ -157,14 +158,17 @@ test('controls match the locked height and font size', async ({ page }) => {
 
 test('choice controls match the locked height and font size', async ({ page }) => {
   // Source: control-size-config.json choice.C3 and the per-control antdTheme blocks.
+  // Values are read from the source file: the smallest text is 14 px (AJA-997).
+  const c = designSource.choice;
   for (const [control, height, fontSize] of [
-    ['.ant-checkbox-wrapper', 32, 14],
-    ['.ant-radio-button-wrapper', 32, 14],
-    ['.atonota-switch', 28, 14],
-    ['.ant-switch', 24, 14],
-    ['.ant-segmented', 32, 16],
-    ['.ant-tag', 24, 12],
+    ['.ant-checkbox-wrapper', c.checkbox.height, c.checkbox.labelSize],
+    ['.ant-radio-button-wrapper', c.radio.height, c.radio.labelSize],
+    ['.atonota-switch', c.switch.height, c.switch.labelSize],
+    ['.ant-switch', c.switch.trackHeight, c.switch.antdTheme.token.fontSize],
+    ['.ant-segmented', c.tabs.height, c.tabs.fontSize],
+    ['.ant-tag', c.tag.height, c.tag.fontSize],
   ] as const) {
+    expect(fontSize, `${control} text`).toBeGreaterThanOrEqual(14);
     const target = page.locator('.controls-demo').locator(control).first();
     await expect.soft(target, control).toHaveCSS('height', `${height}px`, { timeout: 1000 });
     await expect.soft(target, control).toHaveCSS('font-size', `${fontSize}px`, { timeout: 1000 });
@@ -258,13 +262,30 @@ test('Tab enables a single focus indicator and pointer input turns it off', asyn
 test('dropdown animation uses the shared motion and honors reduced motion', async ({ page }) => {
   const trigger = page.getByRole('button', { name: 'İşlemler' });
   const popup = page.locator('.atonota-dropdown-popup');
+  // The dropdown motion is short (source dropdown.animation, 140 ms). Polling the computed style can
+  // miss it, so the test records the style when each animation starts.
+  await page.evaluate(() => {
+    const seen: Record<string, string> = {};
+    (window as unknown as { __dropdownMotion: Record<string, string> }).__dropdownMotion = seen;
+    document.addEventListener('animationstart', (event) => {
+      if (!event.animationName.startsWith('atonota-dropdown-')) return;
+      const style = getComputedStyle(event.target as Element);
+      seen[event.animationName] = `${style.animationDuration} ${style.animationTimingFunction}`;
+    });
+  });
+  const motion = (name: string) =>
+    page.evaluate(
+      (key) =>
+        (window as unknown as { __dropdownMotion: Record<string, string> }).__dropdownMotion[key],
+      name,
+    );
+  const expected = `${designSource.dropdown.animation.duration / 1000}s ${standardEasing}`;
   await trigger.click();
-  await expect(popup).toHaveCSS('animation-name', 'atonota-dropdown-in');
-  await expect(popup).toHaveCSS('animation-duration', '0.5s');
-  await expect(popup).toHaveCSS('animation-timing-function', 'cubic-bezier(0.2, 0.9, 0.3, 1.15)');
+  await expect(popup).toBeVisible();
+  await expect.poll(() => motion('atonota-dropdown-in')).toBe(expected);
   await page.keyboard.press('Escape');
   await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  await expect(popup).toHaveCSS('animation-name', 'atonota-dropdown-out');
+  await expect.poll(() => motion('atonota-dropdown-out')).toBe(expected);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await trigger.click();
   await expect(popup).toHaveCSS('animation-name', 'none');

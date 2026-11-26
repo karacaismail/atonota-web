@@ -4,12 +4,12 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page } from '@playwright/test';
+import { tokenColor } from '../../../tests/setup/odak-gostergesi';
 import { expect, test } from '../../../tests/setup/playwright-fixtures';
 
 const LIST = `/ornek/${encodeURIComponent('örnek-kayıt')}`;
 /** Kabuğun deneme sayfası: metin bağlantısı ve ekmek kırıntısı bağlantısı buradadır. */
 const DEMO = '/_demo/shell';
-const PRIMARY_RGB = 'rgb(0, 170, 204)';
 
 const isCompact = (page: Page) => {
   const v = page.viewportSize();
@@ -38,11 +38,13 @@ async function openMenu(page: Page) {
 }
 
 test.describe('Ö1: metin bağlantısında klavye odağı görünür', () => {
-  test('odaklanınca alt çizgi kalınlaşır ve birincil renk olur', async ({ page }) => {
+  test('odaklanınca alt çizgi kalınlaşır ve vurgu rengi olur', async ({ page }) => {
     await page.goto(DEMO);
     const link = page.getByRole('link', { name: 'yardım sayfası' });
     await expect(link).toBeVisible();
     await settle(page);
+    // Renk tokendan okunur: `--focus-indicator-color` (açık temada koyu mavi, AJA-997).
+    const focusRgb = await tokenColor(page, '--focus-indicator-color');
     const rest = await link.evaluate((el) => {
       const s = getComputedStyle(el);
       return { thickness: s.textDecorationThickness, color: s.textDecorationColor };
@@ -50,9 +52,9 @@ test.describe('Ö1: metin bağlantısında klavye odağı görünür', () => {
     await keyboardFocus(page, link);
     await expect(link).toHaveCSS('text-decoration-line', 'underline');
     await expect(link).toHaveCSS('text-decoration-thickness', '2px');
-    await expect(link).toHaveCSS('text-decoration-color', PRIMARY_RGB);
+    await expect(link).toHaveCSS('text-decoration-color', focusRgb);
     // Gösterge görünüşü gerçekten değiştirir: dinlenme hâliyle aynı değildir.
-    expect(rest.thickness === '2px' && rest.color === PRIMARY_RGB).toBe(false);
+    expect(rest.thickness === '2px' && rest.color === focusRgb).toBe(false);
     // Çevreleyen halka yoktur.
     await expect(link).toHaveCSS('outline-style', 'none');
     await expect(link).toHaveCSS('box-shadow', 'none');
@@ -63,9 +65,10 @@ test.describe('Ö1: metin bağlantısında klavye odağı görünür', () => {
     const crumb = page.getByRole('navigation', { name: 'Konum' }).getByRole('link');
     await expect(crumb).toBeVisible();
     await settle(page);
+    const focusRgb = await tokenColor(page, '--focus-indicator-color');
     await keyboardFocus(page, crumb);
     await expect(crumb).toHaveCSS('text-decoration-thickness', '2px');
-    await expect(crumb).toHaveCSS('text-decoration-color', PRIMARY_RGB);
+    await expect(crumb).toHaveCSS('text-decoration-color', focusRgb);
   });
 });
 

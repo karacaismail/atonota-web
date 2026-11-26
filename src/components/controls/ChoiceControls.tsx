@@ -186,7 +186,8 @@ export const Switch = forwardRef<SwitchRef, SwitchProps>(function Switch(props, 
       <ConfigProvider theme={switchTheme}>
         <span
           className={classes('atonota-switch', choice.switch.squared && 'atonota-switch-squared')}
-          style={rowStyle(choice.switch.height)}
+          // The label keeps the source size (14 px); it must not inherit the 16 px body text.
+          style={rowStyle(choice.switch.height, { fontSize: choice.switch.labelSize })}
         >
           <AntSwitch {...switchText} {...props} ref={ref} />
         </span>

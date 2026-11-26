@@ -30,3 +30,28 @@ export function isRingShadow(shadow: string): boolean {
   const [x = 0, y = 0, blur = 0, spread = 0] = shadowLengths(shadow);
   return spread > 0 || (x === 0 && y === 0 && blur > 0);
 }
+
+/** `page.evaluate` için en küçük sayfa arayüzü; Playwright tipine bağımlılık eklemez. */
+interface EvaluatingPage {
+  evaluate<R, A>(fn: (arg: A) => R, arg: A): Promise<R>;
+}
+
+/**
+ * CSS renk tokenının sayfadaki hesaplanmış değerini `rgb(...)` olarak verir.
+ * Testler renk yazmaz, tokendan okur. Örnek: `await tokenColor(page, '--focus-indicator-color')`.
+ * Değer o anki temaya göredir (`html[data-theme]`).
+ */
+export function tokenColor(page: EvaluatingPage, name: string): Promise<string> {
+  return page.evaluate((token: string) => {
+    // Token sayfada henüz yoksa sessizce siyah dönmesin: test açık bir hatayla düşer.
+    if (!getComputedStyle(document.documentElement).getPropertyValue(token).trim()) {
+      throw new Error(`CSS tokenı sayfada yok: ${token}`);
+    }
+    const probe = document.createElement('span');
+    probe.style.color = `var(${token})`;
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  }, name);
+}
