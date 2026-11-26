@@ -136,6 +136,12 @@ export const lazyRoutes: RouteEntry[] = [
           icon: SquaresFour,
           load: () => import('@/components/controls/demo/ControlsDemoPage'),
         },
+        {
+          path: '/_demo/genui',
+          label: 'Yüzey denemesi',
+          icon: Flask,
+          load: () => import('@/genui/demo/GenuiDemoPage'),
+        },
       ]
     : []),
 ];

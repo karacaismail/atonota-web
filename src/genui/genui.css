@@ -290,6 +290,253 @@
   white-space: pre;
 }
 
+/*
+ * Yapay zekâ yüzeyleri (AJA-1156). Onaylı taslağın asistan panelini izler.
+ * Ayrım boşluk ve yüzey tonuyla kurulur. Renkli vurgu kenarı kullanılmaz.
+ */
+.genui-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.genui-scope dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ai-gap-sm) var(--ai-gap-md);
+  margin: 0;
+  padding: var(--ai-gap-sm) var(--ai-gap);
+  border-radius: var(--card-radius);
+  background: var(--ai-fill);
+  color: var(--ai-text);
+  font-size: var(--font-min);
+}
+
+.genui-scope dl > div {
+  display: flex;
+  gap: var(--ai-gap-xs);
+  min-width: 0;
+}
+
+.genui-scope dt {
+  color: var(--ai-text);
+}
+
+.genui-scope dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.genui-events ul,
+.genui-queue ul,
+.genui-source-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.genui-events li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ai-gap-sm);
+  padding: var(--ai-gap-sm) 0;
+  font-size: var(--font-min);
+}
+
+.genui-events li + li,
+.genui-queue li + li {
+  border-top: 1px solid var(--ai-border);
+}
+
+.genui-events li > svg {
+  font-size: var(--ai-font-lg);
+}
+
+.genui-events li.is-done > svg {
+  color: var(--ai-success);
+}
+
+.genui-events li.is-running > svg {
+  color: var(--color-primary);
+}
+
+.genui-events li.is-failed > svg {
+  color: var(--ai-error);
+}
+
+.genui-events code {
+  font-family: var(--font-code);
+  font-size: var(--font-min);
+  overflow-wrap: break-word;
+}
+
+.genui-event-state {
+  color: var(--ai-text-2);
+  font-weight: 600;
+}
+
+.genui-source {
+  display: flex;
+  gap: var(--ai-gap-sm);
+  align-items: flex-start;
+  min-width: 0;
+  padding: var(--ai-gap-sm) var(--ai-gap);
+  border-radius: var(--card-radius);
+  background: var(--ai-fill);
+  color: var(--ai-text);
+  font-size: var(--font-min);
+}
+
+.genui-source > svg {
+  flex-shrink: 0;
+  margin-top: var(--ai-gap-xs);
+  font-size: var(--ai-font-lg);
+}
+
+.genui-source > div {
+  min-width: 0;
+}
+
+.genui-source-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-target);
+  color: var(--color-link);
+  font-size: var(--font-min);
+}
+
+.genui-source-text,
+.genui-source-empty {
+  display: block;
+  margin: 0;
+  padding: var(--ai-gap-xs) 0;
+}
+
+.genui-diff-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ai-gap);
+  box-shadow: none;
+}
+
+.genui-diff-review.is-r3 {
+  background: var(--ai-error-bg);
+}
+
+/* Kart içindeki kaynak satırı sayfa zeminini alır. Koyu temada bağlantı karşıtlığı korunur. */
+.genui-diff-review .genui-source {
+  background: var(--ai-bg);
+}
+
+.genui-diff-review.is-r3 .genui-source {
+  background: var(--ai-bg-c);
+}
+
+.genui-diff-review .genui-changes thead th {
+  color: var(--ai-text-2);
+}
+
+.genui-diff-summary {
+  margin: 0;
+}
+
+.genui-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--ai-gap-xs) var(--ai-gap);
+  margin: 0;
+  font-size: var(--font-min);
+}
+
+.genui-facts dt {
+  color: var(--ai-text-2);
+}
+
+.genui-facts dd {
+  margin: 0;
+}
+
+.genui-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--ai-gap-sm);
+  border-radius: var(--radius);
+  color: var(--ai-text);
+  font-size: var(--font-min);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.genui-badge.is-info {
+  background: var(--ai-primary-bg);
+}
+
+.genui-badge.is-warn {
+  background: var(--ai-warning-bg);
+}
+
+.genui-badge.is-danger {
+  background: var(--ai-error-bg);
+}
+
+.genui-queue-h {
+  margin: 0 0 var(--ai-gap-sm);
+  font-size: var(--font-default);
+  font-weight: 600;
+}
+
+.genui-queue li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ai-gap-xs);
+  padding: var(--ai-gap-sm) 0;
+}
+
+.genui-queue-title {
+  font-weight: 600;
+}
+
+.genui-result {
+  display: flex;
+  gap: var(--ai-gap-sm);
+  align-items: flex-start;
+  box-shadow: none;
+}
+
+.genui-result p {
+  margin: 0;
+}
+
+.genui-result > svg {
+  flex-shrink: 0;
+  margin-top: var(--ai-gap-xs);
+  font-size: var(--ai-font-lg);
+}
+
+.genui-result.is-succeeded {
+  background: var(--ai-success-bg);
+}
+
+.genui-result.is-succeeded > svg {
+  color: var(--ai-success);
+}
+
+.genui-result.is-failed {
+  background: var(--ai-error-bg);
+}
+
+.genui-result.is-failed > svg {
+  color: var(--ai-error);
+}
+
+.genui-result.is-unknown {
+  background: var(--ai-fill);
+}
+
 /* AI önerileri: kart 2 px yükselir, ikon sallanır. */
 .genui-choices .ant-prompts-item {
   transition:
