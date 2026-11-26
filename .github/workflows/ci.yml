@@ -41,15 +41,25 @@ jobs:
       - name: Derleme
         run: npm run build
 
+  # Tarayıcı testleri parçalara bölünür (AJA-961). Tek Chromium işi 26 ile 27 dakika
+  # sürüyordu ve 30 dakikalık sınıra takılıyordu. Her parça testlerin bir dilimini koşar.
+  # Parça sayısı değişirse toplam test sayısını `npx playwright test --list` ile denetleyin.
   e2e:
-    name: Playwright (${{ matrix.browser }})
+    name: Playwright (${{ matrix.browser }} ${{ matrix.shard }}/${{ matrix.total }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     needs: checks
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, webkit]
+        include:
+          - { browser: chromium, shard: 1, total: 4 }
+          - { browser: chromium, shard: 2, total: 4 }
+          - { browser: chromium, shard: 3, total: 4 }
+          - { browser: chromium, shard: 4, total: 4 }
+          - { browser: webkit, shard: 1, total: 3 }
+          - { browser: webkit, shard: 2, total: 3 }
+          - { browser: webkit, shard: 3, total: 3 }
     steps:
       - name: Depoyu al
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -67,11 +77,60 @@ jobs:
         with:
           browsers: ${{ matrix.browser }}
       - name: Tarayıcı testleri
-        run: npx playwright test --grep "${{ matrix.browser == 'chromium' && '^chromium-' || '^(webkit-|iphone-13)' }}"
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.browser }}-${{ matrix.shard }}.zip
+        run: >-
+          npx playwright test
+          --grep "${{ matrix.browser == 'chromium' && '^chromium-' || '^(webkit-|iphone-13)' }}"
+          --shard=${{ matrix.shard }}/${{ matrix.total }}
+          --reporter=list,blob
+      - name: Parça raporunu sakla
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: blob-report-${{ matrix.browser }}-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 1
+
+  # Toplayıcı iş. Parçalardan biri düşerse, kesilirse ya da atlanırsa bu iş de düşer.
+  # Böylece atlanan bir parça yeşil sayılmaz. Parça raporları tek HTML raporunda birleşir.
+  e2e-result:
+    name: Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [checks, e2e]
+    if: ${{ always() }}
+    steps:
+      - name: Depoyu al
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Node kur
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Bağımlılıkları kur
+        run: npm ci
+      - name: Parça raporlarını al
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+      - name: Raporları birleştir
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
       - name: Raporu sakla
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-report-${{ matrix.browser }}
+          name: playwright-report
           path: playwright-report/
           retention-days: 7
+      - name: Parça sonuçlarını denetle
+        if: ${{ always() }}
+        env:
+          CHECKS: ${{ needs.checks.result }}
+          E2E: ${{ needs.e2e.result }}
+        run: |
+          echo "checks=$CHECKS e2e=$E2E"
+          test "$CHECKS" = success
+          test "$E2E" = success
