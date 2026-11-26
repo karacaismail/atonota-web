@@ -47,6 +47,16 @@ export function buildAntdTheme(mode: ThemeMode, options: BuildThemeOptions = {})
     colorLinkHover: link[mode].hover,
     colorLinkActive: link[mode].active,
     colorInfo: primary.color,
+    // Birincil ve bilgi yazısı vurgu rengidir (AJA-997, QA AJA-1007). antd bunları colorPrimary'den
+    // türetir; açık temada #00aacc yazı olur (2.76:1). Bağlantı renkleriyle aynı değerler kullanılır.
+    colorPrimaryText: link[mode].color,
+    colorPrimaryTextHover: link[mode].hover,
+    colorPrimaryTextActive: link[mode].active,
+    colorInfoText: link[mode].color,
+    colorInfoTextHover: link[mode].hover,
+    colorInfoTextActive: link[mode].active,
+    // Soluk yazı (Typography type="secondary"): açıklama metniyle aynı, her zeminde 4.5:1.
+    colorTextSecondary: textDescription[mode].color,
     colorTextPlaceholder: placeholder[mode],
     colorTextDescription: textDescription[mode].color,
     fontFamily: fontFamily.ui,

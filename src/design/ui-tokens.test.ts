@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { theme as antdThemeApi } from 'antd';
 import { describe, expect, it } from 'vitest';
 
 import { buildAntdTheme } from './antd-theme';
@@ -13,7 +14,7 @@ import { blendOver, contrastRatio } from './color';
 import { buildDesignCss, darkVariables, rootVariables } from './css-variables';
 import { dropdownAnimation, duration, easing } from './motion';
 import { designSource } from './source';
-import { focusIndicator, hitTarget, link, palette, typography } from './tokens';
+import { focusIndicator, hitTarget, link, palette, textDescription, typography } from './tokens';
 
 const STANDARD_EASING = 'cubic-bezier(.65,0,.35,1)';
 const squash = (v: string) => v.replace(/\s/g, '').toLowerCase();
@@ -189,5 +190,50 @@ describe('AGENTS.md ortak kurallarla ilişki', () => {
     expect(section).toMatch(/14 CSS px/);
     expect(section).toMatch(/12 px istisnası geçersizdir/);
     expect(section).toMatch(/Dropdown için ayrı hareket eğrisi yoktur/);
+  });
+});
+
+describe('antd yazı tokenları (QA AJA-1007)', () => {
+  const textTokens = (mode: 'light' | 'dark') => {
+    const t = antdThemeApi.getDesignToken(buildAntdTheme(mode)) as unknown as Record<string, unknown>;
+    return Object.entries(t).filter(
+      ([k, v]) => /^color.*Text(Hover|Active)?$|^colorText(Secondary)?$/.test(k) && typeof v === 'string',
+    ) as [string, string][];
+  };
+
+  it('açık temada antd hiçbir yazı tokenını #00aacc üretmez', () => {
+    const primary = designSource.primary.color.toLowerCase();
+    const tokens = textTokens('light');
+    expect(tokens.length).toBeGreaterThan(10);
+    for (const [k, v] of tokens) expect(v.toLowerCase(), k).not.toBe(primary);
+  });
+
+  for (const mode of ['light', 'dark'] as const) {
+    it(`${mode} temada birincil, bilgi ve soluk yazı tokenları her zeminde 4.5:1 verir`, () => {
+      const p = palette[mode];
+      const tokens = textTokens(mode).filter(([k]) => /^color(Primary|Info)Text|^colorTextSecondary$/.test(k));
+      expect(tokens.map(([k]) => k)).toEqual(expect.arrayContaining(['colorPrimaryText', 'colorInfoText', 'colorTextSecondary']));
+      for (const surface of [p.layout, p.panel, p.panelAlt, p.elevated]) {
+        for (const [k, v] of tokens) {
+          const c = v.startsWith('rgba') ? solid(v.replace(/\s/g, ''), surface) : v;
+          expect(contrastRatio(c, surface), `${mode} ${k} / ${surface}`).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    });
+  }
+
+  it('seçili radyo düğmesinin yazısı vurgu rengini kullanır', () => {
+    const css = squash(buildDesignCss());
+    expect(css).toContain(squash(':not(.ant-radio-group-solid) > .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) { color: var(--color-ink); }'));
+  });
+});
+
+describe('soluk yazı tema sarmalayıcısı dışında da okunur (QA AJA-1007)', () => {
+  it('soluk yazı rengi iki temada CSS değişkenidir ve antd soluk yazısına uygulanır', () => {
+    expect(rootVariables()['--color-text-secondary']).toBe(textDescription.light.color);
+    expect(darkVariables()['--color-text-secondary']).toBe(textDescription.dark.color);
+    expect(squash(buildDesignCss())).toContain(
+      squash(':root .ant-typography.ant-typography-secondary { color: var(--color-text-secondary); }'),
+    );
   });
 });
