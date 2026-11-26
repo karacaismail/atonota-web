@@ -209,6 +209,14 @@ describe('bayi menüsü ve "Müşteriler" sayfası (G-169, G-170)', () => {
     ]);
   });
 
+  it('bayi tanıma için tanım ucuna bağ türü sorulmaz (AJA-945)', () => {
+    // Bayi hesabını müşteri listesi ucu tanır. Tanım ucu bu türe iki bayi rolünde de 403 verir.
+    expect(requiredDocTypes).not.toContain(LINK);
+    expect(requiredDocTypes).toEqual(
+      expect.arrayContaining(['Leave Application', 'PLT AI API', 'PLT AI Account']),
+    );
+  });
+
   it('sayfa kapısı menüyle aynı kuralı kullanır', () => {
     expect(moduleAllowed('/customers', RESELLER)).toBe(true);
     expect(moduleAllowed('/customers', TENANT)).toBe(false);

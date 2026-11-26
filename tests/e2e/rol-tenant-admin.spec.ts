@@ -11,6 +11,7 @@ test.describe.configure({ mode: 'parallel' });
 describeRole({
   role: 'Tenant Admin',
   scenario: 'rol-tenant-admin',
+  account: 'inceleme-yonetici@example.test',
   menu: [
     'Hesap',
     'Yönetim',

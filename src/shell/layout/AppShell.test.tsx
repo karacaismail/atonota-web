@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ant-design/x', () => import('../testing/antdXMock'));
 
-import type { ShellViewData } from '../view-data';
+import type { AccountKind, ShellViewData } from '../view-data';
 import { ViewDataProvider } from '../view-data';
 import { AppShell } from './AppShell';
 
@@ -79,6 +79,55 @@ describe('AppShell', () => {
       expect.arrayContaining(['Leave Application', 'PLT AI API']),
       expect.any(AbortSignal),
     );
+  });
+
+  describe('bayi hesabı (AJA-945, G-169, G-170)', () => {
+    const TENANT_READABLE = new Set([
+      'Leave Application',
+      'PLT AI API',
+      'PLT AI Account',
+      'PLT AI Provider',
+    ]);
+    const navigationWith = (loadAccountKind: (signal: AbortSignal) => Promise<AccountKind>) => ({
+      navigation: {
+        loadSidebars: vi.fn().mockResolvedValue([]),
+        loadReadable: vi.fn().mockResolvedValue(new Set<string>()),
+        loadAccountKind,
+      },
+    });
+
+    it('bayi hesabı "Müşteriler" grubunu görür, kiracı gruplarını görmez', async () => {
+      mockCompact(false);
+      renderShell(navigationWith(vi.fn().mockResolvedValue('reseller')));
+      expect(await screen.findByRole('link', { name: 'Müşteriler' })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Yönetim' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Yapay zekâ işlemleri' })).not.toBeInTheDocument();
+    });
+
+    it('kiracı hesabının menüsü değişmez', async () => {
+      mockCompact(false);
+      const loadReadable = vi.fn().mockResolvedValue(TENANT_READABLE);
+      renderShell({
+        navigation: {
+          loadSidebars: vi.fn().mockResolvedValue([]),
+          loadReadable,
+          loadAccountKind: vi.fn().mockResolvedValue('tenant'),
+        },
+      });
+      expect(await screen.findByRole('link', { name: 'İzin talepleri' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Yönetim' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Yapay zekâ işlemleri' })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Müşteriler' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('hesap türü anlaşılamazsa bayi sayılmaz ve hata görünür', async () => {
+      mockCompact(false);
+      renderShell(navigationWith(vi.fn().mockRejectedValue(new Error('500'))));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Hesap türü denetlenemedi');
+      expect(screen.queryByRole('link', { name: 'Müşteriler' })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Yönetim' })).toBeInTheDocument();
+    });
   });
 
   it('yetki bilgisi gelmezse yetki isteyen sayfa menüde görünmez (G-94)', async () => {

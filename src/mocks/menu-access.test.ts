@@ -29,12 +29,11 @@ afterAll(() => mockServer.close());
 describe('sahte sunucu: menü yetkisi (G-94)', () => {
   it('örnek kullanıcı modül sayfalarının okuduğu türleri okuyabilir', async () => {
     expect(requiredDocTypes.length).toBeGreaterThan(0);
-    // Menü bütün türleri sorar. Örnek kullanıcı kiracıdır: bayi bağ kaydını okuyamaz (G-169).
-    expect([...MENU_READABLE_DOCTYPES, ...RESELLER_READABLE_DOCTYPES].sort()).toEqual(
-      [...requiredDocTypes].sort(),
-    );
-    for (const doctype of RESELLER_READABLE_DOCTYPES)
-      expect((await fetch(metaUrl(doctype))).status, doctype).toBe(403);
+    // Menü modül türlerini tanım ucuna sorar. Bayi bağ türü sorulmaz (AJA-945).
+    expect([...MENU_READABLE_DOCTYPES].sort()).toEqual([...requiredDocTypes].sort());
+    expect(RESELLER_READABLE_DOCTYPES).toEqual([]);
+    // Gerçek sunucu gibi tanım ucu bağ türüne 403 verir.
+    expect((await fetch(metaUrl('Reseller Customer Link'))).status).toBe(403);
     for (const doctype of MENU_READABLE_DOCTYPES) {
       const response = await fetch(metaUrl(doctype));
       expect(response.status, doctype).toBe(200);

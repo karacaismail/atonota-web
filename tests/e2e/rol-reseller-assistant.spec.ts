@@ -14,6 +14,7 @@ test.describe.configure({ mode: 'parallel' });
 describeRole({
   role: 'Reseller Assistant',
   scenario: 'rol-reseller-assistant',
+  account: 'inceleme-bayi-yardimci@example.test',
   menu: ['Hesap', 'Site ve plan', 'Müşteriler'],
   pagesOpen: ['Hesap', 'Site ve plan', 'Müşteriler'],
   pagesClosed: ['Yönetim', 'Yapay zekâ sağlayıcıları', 'İzin talepleri', 'Yapay zekâ işlemleri'],

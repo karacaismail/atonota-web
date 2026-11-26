@@ -19,6 +19,7 @@
     "vite.config.ts",
     "vite",
     "playwright.config.ts",
+    "playwright.gercek.config.ts",
     "eslint.config.js",
     "tests/e2e",
     "scripts",

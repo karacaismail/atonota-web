@@ -120,9 +120,11 @@ describe('sahte sunucu: dört panel rolü (AJA-831, AJA-834)', () => {
     expect(await bootstrapRoles()).toEqual(['Website User', role]);
   });
 
-  it('bayi bağ kaydını okur, kiracının iş verisini okuyamaz', async () => {
+  it('bayi müşteri listesini okur, kiracının iş verisini okuyamaz', async () => {
     applyMockScenario('rol-reseller-admin');
-    expect(await metaStatus('Reseller Customer Link')).toBe(200);
+    // Gerçek sunucu gibi: tanım ucu bağ türüne bayiye de 403 verir (AJA-945).
+    expect(await metaStatus('Reseller Customer Link')).toBe(403);
+    expect((await fetch(`${RESELLER}list_customers`)).status).toBe(200);
     expect(await metaStatus('Leave Application')).toBe(403);
     expect(await metaStatus('PLT AI API')).toBe(403);
   });

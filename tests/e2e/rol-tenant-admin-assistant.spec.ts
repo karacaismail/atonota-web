@@ -13,6 +13,7 @@ test.describe.configure({ mode: 'parallel' });
 describeRole({
   role: 'Tenant Admin Assistant',
   scenario: 'rol-tenant-admin-assistant',
+  account: 'inceleme-yonetici-yardimci@example.test',
   menu: ['Hesap', 'Yönetim', 'İzin talepleri', 'Site ve plan', 'Yapay zekâ işlemleri'],
   pagesOpen: ['Hesap', 'Yönetim', 'İzin talepleri', 'Site ve plan', 'Yapay zekâ işlemleri'],
   pagesClosed: ['Yapay zekâ sağlayıcıları', 'Müşteriler'],

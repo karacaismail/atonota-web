@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { createElement, Suspense } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ApiError } from '@/api';
 import { sampleDocTypeMeta as sampleMeta } from '@/mocks/fixtures';
 import { navFromSidebars } from '@/shell/nav';
 
@@ -215,6 +216,51 @@ describe('menü yetkisi (G-94)', () => {
     await expect(
       data.navigation?.loadReadable?.(['Leave Application'], new AbortController().signal),
     ).resolves.toEqual(new Set());
+  });
+});
+
+describe('bayi hesabını tanıma (AJA-945, G-169, G-170)', () => {
+  const PATH = '/api/method/platform_core.api.reseller.list_customers';
+  const kindWith = (frappeDocument: (...args: never[]) => unknown) =>
+    createShellViewData({ frappeDocument } as never).navigation?.loadAccountKind?.(
+      new AbortController().signal,
+    );
+
+  it('müşteri listesi ucu 200 dönerse hesap bayi hesabıdır', async () => {
+    const frappeDocument = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      etag: undefined,
+      body: { message: [{ customer_tenant: 'musteri-a.example.test' }] },
+    });
+    await expect(kindWith(frappeDocument)).resolves.toBe('reseller');
+    expect(frappeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'GET', path: PATH, signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it('boş müşteri listesi de bayi hesabı sayılır', async () => {
+    const frappeDocument = vi
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, etag: undefined, body: { message: [] } });
+    await expect(kindWith(frappeDocument)).resolves.toBe('reseller');
+  });
+
+  it('uç 403 dönerse hesap bayi hesabı değildir', async () => {
+    const error = new ApiError({ kind: 'forbidden', status: 403 });
+    const frappeDocument = vi.fn().mockResolvedValue({ ok: false, error, body: undefined });
+    await expect(kindWith(frappeDocument)).resolves.toBe('tenant');
+  });
+
+  it('başka bir hata gelirse karar verilmez ve hata iletilir', async () => {
+    const error = new ApiError({ kind: 'unavailable', status: 500 });
+    const frappeDocument = vi.fn().mockResolvedValue({ ok: false, error, body: undefined });
+    await expect(kindWith(frappeDocument)).rejects.toBe(error);
+  });
+
+  it('ağ hatası da karar vermez', async () => {
+    const frappeDocument = vi.fn().mockRejectedValue(new Error('ağ'));
+    await expect(kindWith(frappeDocument)).rejects.toThrow('ağ');
   });
 });
 
