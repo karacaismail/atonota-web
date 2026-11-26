@@ -1,4 +1,4 @@
-import { List, WarningCircle, X } from '@phosphor-icons/react';
+import { List, Sparkle, WarningCircle, X } from '@phosphor-icons/react';
 import { theme } from 'antd';
 import type { CSSProperties, ReactNode } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -8,6 +8,7 @@ import { isDemoEnabled, isDemoPath } from '@/app/demo-mode';
 import { RESELLER_LINK_DOCTYPE } from '@/modules';
 
 import { type ShellAccess, ShellAccessContext } from '../access';
+import { ASSIST_PANEL_ID, AssistPanel, type AssistPanelApi, AssistPanelContext } from '../assist';
 import { FocusDimProvider } from '../focus-dim';
 import { isDarkColor } from '../focus-dim/isDarkColor';
 import { WorkspaceIdentity } from '../header/WorkspaceIdentity';
@@ -226,13 +227,15 @@ function useShellCredit(demo: boolean): ShellCredit | null {
 
 interface AppShellProps {
   children: ReactNode;
+  /** Yardımcı panelin içeriği. İçerik `ai-studio` işinindir. Yoksa kısa bir not görünür. */
+  assistant?: ReactNode;
 }
 
 /**
  * Uygulama kabuğu. Sidebar her ekranda aynı DOM yerindedir.
  * Telefonda sidebar çekmece olur. Böylece yön değişiminde durum ve odak korunur.
  */
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, assistant }: AppShellProps) {
   const compact = useCompactLayout();
   const [variant, setVariant] = useState<SidebarVariant>(readVariant);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -249,6 +252,14 @@ export function AppShell({ children }: AppShellProps) {
   const credit = useShellCredit(demo);
   const isDrawer = compact;
   const modalOpen = isDrawer && drawerOpen;
+  const [assistOpen, setAssistOpen] = useState(false);
+  const assistBtn = useRef<HTMLButtonElement>(null);
+  const assistOpener = useRef<HTMLElement | null>(null);
+  const assistPanelRef = useRef<HTMLDivElement>(null);
+  const assistCloseRef = useRef<HTMLButtonElement>(null);
+  const assistReturnFocus = useRef(false);
+  // Telefonda panel tam boy iletişim kutusudur. Geri kalan kabuk etkileşime kapanır.
+  const assistModal = isDrawer && assistOpen;
   // A wrapping identity strip has no fixed height. Keep focused content below it.
   useLayoutEffect(() => {
     const header = topRef.current;
@@ -275,6 +286,48 @@ export function AppShell({ children }: AppShellProps) {
 
   const returnFocus = useRef(false);
 
+  const closeAssist = useCallback(() => {
+    assistReturnFocus.current = true;
+    setAssistOpen(false);
+  }, []);
+
+  const toggleAssist = useCallback((opener?: HTMLElement | null) => {
+    setAssistOpen((was) => {
+      if (was) {
+        assistReturnFocus.current = true;
+        return false;
+      }
+      assistOpener.current = opener ?? assistBtn.current;
+      return true;
+    });
+  }, []);
+
+  const assistApi = useMemo<AssistPanelApi>(
+    () => ({ open: assistOpen, toggle: toggleAssist, close: closeAssist }),
+    [assistOpen, toggleAssist, closeAssist],
+  );
+
+  // Panel açılınca odak kapatma düğmesine geçer.
+  useEffect(() => {
+    if (assistOpen) assistCloseRef.current?.focus();
+  }, [assistOpen]);
+
+  // Çekmece ya da telefon paneli açıkken geri kalan kabuk etkileşime kapanır.
+  // Panel kapanınca odak paneli açan düğmeye döner. Düğme önce etkileşime açılır.
+  useLayoutEffect(() => {
+    const drawer = drawerRef.current;
+    for (const el of [mainRef.current, topRef.current]) {
+      el?.toggleAttribute('inert', modalOpen || assistModal);
+    }
+    if (isDrawer) drawer?.toggleAttribute('inert', assistModal);
+    else drawer?.removeAttribute('inert');
+    if (!assistOpen && assistReturnFocus.current) {
+      assistReturnFocus.current = false;
+      const target = assistOpener.current?.isConnected ? assistOpener.current : assistBtn.current;
+      target?.focus();
+    }
+  }, [assistOpen, assistModal, modalOpen, isDrawer]);
+
   const closeDrawer = useCallback(() => {
     returnFocus.current = true;
     setDrawerOpen(false);
@@ -282,10 +335,8 @@ export function AppShell({ children }: AppShellProps) {
 
   // Çekmece açıkken çekmece dışı etkileşime kapanır.
   // Kapanınca odak menü düğmesine döner. Düğme önce etkileşime açılmalıdır.
+  // `inert` yukarıdaki etkide kurulur. Bu etki ondan sonra çalışır.
   useLayoutEffect(() => {
-    for (const el of [mainRef.current, topRef.current]) {
-      el?.toggleAttribute('inert', modalOpen);
-    }
     if (!modalOpen && returnFocus.current) {
       returnFocus.current = false;
       menuBtn.current?.focus();
@@ -314,85 +365,109 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <FocusDimProvider>
-      <div
-        className="shell"
-        style={vars}
-        data-layout={isDrawer ? 'compact' : 'wide'}
-        data-variant={variant}
-      >
-        <header ref={topRef} className="shell-identity" aria-label={workspaceText.identity}>
-          {isDrawer && (
-            <button
-              ref={menuBtn}
-              type="button"
-              className="shell-iconbtn"
-              aria-label={t.nav.openMenu}
-              aria-expanded={drawerOpen}
-              aria-controls="shell-drawer"
-              onClick={() => setDrawerOpen(true)}
-            >
-              <List aria-hidden="true" />
-            </button>
-          )}
-          <WorkspaceIdentity
-            tenant={ws?.name}
-            environment={demo ? 'example' : moduleEnvironment}
-            mode={commandMode}
-          />
-        </header>
-        {isDrawer && (
-          <div
-            className="shell-backdrop"
-            data-open={drawerOpen ? 'true' : 'false'}
-            aria-hidden="true"
-            onClick={closeDrawer}
-          />
-        )}
+      <AssistPanelContext.Provider value={assistApi}>
         <div
-          ref={drawerRef}
-          id="shell-drawer"
-          className="shell-aside"
-          data-open={isDrawer ? (drawerOpen ? 'true' : 'false') : undefined}
-          {...(isDrawer
-            ? { role: 'dialog', 'aria-modal': drawerOpen, 'aria-label': t.nav.drawer }
-            : { role: 'complementary' })}
+          className="shell"
+          style={vars}
+          data-layout={isDrawer ? 'compact' : 'wide'}
+          data-variant={variant}
+          data-assist={assistOpen ? 'open' : 'closed'}
         >
-          {isDrawer && (
+          <header ref={topRef} className="shell-identity" aria-label={workspaceText.identity}>
+            {isDrawer && (
+              <button
+                ref={menuBtn}
+                type="button"
+                className="shell-iconbtn"
+                aria-label={t.nav.openMenu}
+                aria-expanded={drawerOpen}
+                aria-controls="shell-drawer"
+                onClick={() => setDrawerOpen(true)}
+              >
+                <List aria-hidden="true" />
+              </button>
+            )}
+            <WorkspaceIdentity
+              tenant={ws?.name}
+              environment={demo ? 'example' : moduleEnvironment}
+              mode={commandMode}
+            />
+            {/* Panel yalnız tıklama, dokunma, Enter ve Space ile açılır. Fare üstüne gelmek açmaz. */}
             <button
+              ref={assistBtn}
               type="button"
-              className="shell-iconbtn shell-drawer-close"
-              data-drawer-close=""
-              aria-label={t.nav.closeMenu}
-              onClick={closeDrawer}
+              className="shell-iconbtn shell-assist-btn"
+              aria-label={t.assist.open}
+              aria-expanded={assistOpen}
+              aria-controls={ASSIST_PANEL_ID}
+              onClick={(e) => toggleAssist(e.currentTarget)}
             >
-              <X aria-hidden="true" />
+              <Sparkle aria-hidden="true" />
             </button>
+          </header>
+          {isDrawer && (
+            <div
+              className="shell-backdrop"
+              data-open={drawerOpen ? 'true' : 'false'}
+              aria-hidden="true"
+              onClick={closeDrawer}
+            />
           )}
-          <Sidebar
-            variant={variant}
-            onVariantChange={changeVariant}
-            nav={nav}
-            agents={agents}
-            workspaces={workspaces}
-            quickActions={quickActions}
-            credit={credit}
+          <div
+            ref={drawerRef}
+            id="shell-drawer"
+            className="shell-aside"
+            data-open={isDrawer ? (drawerOpen ? 'true' : 'false') : undefined}
+            {...(isDrawer
+              ? { role: 'dialog', 'aria-modal': drawerOpen, 'aria-label': t.nav.drawer }
+              : { role: 'complementary' })}
+          >
+            {isDrawer && (
+              <button
+                type="button"
+                className="shell-iconbtn shell-drawer-close"
+                data-drawer-close=""
+                aria-label={t.nav.closeMenu}
+                onClick={closeDrawer}
+              >
+                <X aria-hidden="true" />
+              </button>
+            )}
+            <Sidebar
+              variant={variant}
+              onVariantChange={changeVariant}
+              nav={nav}
+              agents={agents}
+              workspaces={workspaces}
+              quickActions={quickActions}
+              credit={credit}
+              compact={isDrawer}
+              onNavigate={isDrawer ? closeDrawer : undefined}
+              grouped={!demo}
+              commandMode={commandMode}
+              onCommandModeChange={setCommandMode}
+            />
+          </div>
+          <main ref={mainRef} className="shell-main" id="main">
+            {accountKindFailed && (
+              <div className="shell-hd-err" role="alert">
+                <WarningCircle aria-hidden="true" />
+                <span>{t.pages.accountKindError}</span>
+              </div>
+            )}
+            <ShellAccessContext.Provider value={access}>{children}</ShellAccessContext.Provider>
+          </main>
+          <AssistPanel
+            open={assistOpen}
             compact={isDrawer}
-            onNavigate={isDrawer ? closeDrawer : undefined}
-            grouped={!demo}
-            commandMode={commandMode}
-            onCommandModeChange={setCommandMode}
-          />
+            onClose={closeAssist}
+            panelRef={assistPanelRef}
+            closeRef={assistCloseRef}
+          >
+            {assistant}
+          </AssistPanel>
         </div>
-        <main ref={mainRef} className="shell-main" id="main">
-          {accountKindFailed && (
-            <div className="shell-hd-err" role="alert">
-              <WarningCircle aria-hidden="true" />
-              <span>{t.pages.accountKindError}</span>
-            </div>
-          )}
-          <ShellAccessContext.Provider value={access}>{children}</ShellAccessContext.Provider>
-        </main>
-      </div>
+      </AssistPanelContext.Provider>
     </FocusDimProvider>
   );
 }

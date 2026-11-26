@@ -54,6 +54,8 @@
   --shell-kb-col: 240px;
   --shell-stat-min: 200px;
   --shell-form-max: 560px;
+  /* Yardımcı panelin geniş ekran genişliği. Onaylı taslakta 26rem'dir. */
+  --shell-assist-w: 416px;
 
   /* Hareket. Süre ve eğriler merkezi tokenlardır (src/design/motion.ts). Değerler kaynak örnek
      sayfanın `.glide`, iskelet ve dönme kurallarından gelir. Solma eğrisi genel S eğrisidir;
@@ -139,6 +141,13 @@ html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible::after {
   opacity: 1;
 }
 
+/* Panel düğmelerinin tek göstergesi ortak alt kenar çizgisidir (iç gölge).
+   Kabuğun ikinci alt çizgisi bu düğmelerde açılmaz. */
+html[data-focus-mode='keyboard']
+  :is(.shell-assist-btn, .shell-assist .shell-iconbtn):focus-visible::after {
+  opacity: 0;
+}
+
 @media (forced-colors: active) {
   html[data-focus-mode='keyboard'] .shell-item:focus-visible,
   html[data-focus-mode='keyboard'] .shell-ws:focus-visible,
@@ -198,6 +207,80 @@ html[data-focus-mode='keyboard'] .shell-kb-card:focus-visible::after {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+}
+
+/* ---------- Yardımcı panel ---------- */
+/* Geniş ekranda panel sağdaki ızgara sütunudur. Sayfa içeriği daralır, örtülmez. */
+.shell[data-layout='wide'][data-assist='open'] {
+  grid-template-columns: auto minmax(0, 1fr) var(--shell-assist-w);
+}
+
+.shell-assist {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--shell-bg);
+}
+
+.shell-assist[hidden] {
+  display: none;
+}
+
+.shell[data-layout='wide'] .shell-assist {
+  height: 100%;
+  overflow: auto;
+}
+
+.shell-assist-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--shell-space-md);
+  padding: var(--shell-pad) var(--shell-gutter);
+}
+
+.shell-assist-title {
+  margin: 0;
+  font-size: var(--shell-fs-lg);
+  font-weight: var(--shell-hd-title-fw);
+}
+
+.shell-assist-body {
+  padding: 0 var(--shell-gutter) var(--shell-gutter);
+  overflow-wrap: break-word;
+}
+
+/* Telefonda panel alttan tam boy açılır. Kapanış hareketi bitince gizlenir. */
+.shell[data-layout='compact'] .shell-assist {
+  position: fixed;
+  inset: 0;
+  z-index: var(--shell-z-raised);
+  overflow: auto;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  transform: translateY(100%);
+  visibility: hidden;
+  transition:
+    transform var(--shell-rail-dur) var(--shell-ease),
+    visibility var(--shell-instant) var(--motion-easing-linear) var(--shell-rail-dur);
+}
+
+.shell[data-layout='compact'] .shell-assist[data-open='true'] {
+  transform: none;
+  visibility: visible;
+  transition:
+    transform var(--shell-rail-dur) var(--shell-ease),
+    visibility var(--shell-instant);
+}
+
+/* Telefonda düğme ilk satırda kalır. Kimlik alanları ikinci satıra iner. */
+.shell[data-layout='compact'] .shell-assist-btn {
+  order: 1;
+}
+
+.shell[data-layout='compact'] .shell-identity-fields {
+  order: 2;
 }
 
 /* ---------- Yerleşim: telefon kabuğu ---------- */

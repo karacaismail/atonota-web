@@ -262,6 +262,51 @@ describe('AppShell', () => {
     );
   });
 
+  it('yardımcı panel geniş ekranda sağ sütundur; tıklamayla açılır, Escape kapatır', async () => {
+    mockCompact(false);
+    renderShell();
+    const user = userEvent.setup();
+    const trigger = screen.getByRole('button', { name: 'Asistan' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('complementary', { name: 'Asistan' })).not.toBeInTheDocument();
+
+    await user.click(trigger);
+    const panel = screen.getByRole('complementary', { name: 'Asistan' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('main')).not.toHaveAttribute('inert');
+    expect(within(panel).getByRole('button', { name: 'Asistanı kapat' })).toHaveFocus();
+    expect(document.body).not.toHaveAttribute('data-focus-dim');
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('complementary', { name: 'Asistan' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('yardımcı panel telefonda tam boy iletişim kutusudur; kapanınca odak döner', async () => {
+    mockCompact(true);
+    renderShell();
+    const user = userEvent.setup();
+    const trigger = screen.getByRole('button', { name: 'Asistan' });
+    await user.click(trigger);
+    const sheet = screen.getByRole('dialog', { name: 'Asistan' });
+    expect(sheet).toHaveAttribute('aria-modal', 'true');
+    expect(sheet).toHaveAttribute('data-open', 'true');
+    expect(screen.getByRole('main')).toHaveAttribute('inert');
+    expect(document.body).not.toHaveAttribute('data-focus-dim');
+
+    await user.click(within(sheet).getByRole('button', { name: 'Asistanı kapat' }));
+    expect(sheet).toHaveAttribute('data-open', 'false');
+    expect(trigger).toHaveFocus();
+  });
+
+  it('fare üstüne gelince panel açılmaz', async () => {
+    mockCompact(false);
+    renderShell();
+    const trigger = screen.getByRole('button', { name: 'Asistan' });
+    await userEvent.setup().hover(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('rail tercihi saklanır', async () => {
     mockCompact(false);
     renderShell();

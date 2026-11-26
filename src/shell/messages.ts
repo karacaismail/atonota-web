@@ -7,6 +7,12 @@ const nf = new Intl.NumberFormat('tr-TR');
 export const formatNumber = (n: number) => nf.format(n);
 
 export const t = {
+  assist: {
+    title: 'Asistan',
+    open: 'Asistan',
+    close: 'Asistanı kapat',
+    empty: 'Asistan bu sürümde yanıt vermez. Panelin içeriği sonraki işte gelecek.',
+  },
   nav: {
     label: 'Ana gezinme',
     sectionMain: 'Gezinme',
