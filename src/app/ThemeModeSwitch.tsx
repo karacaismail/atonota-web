@@ -2,6 +2,7 @@ import { Desktop, Moon, Sun } from '@phosphor-icons/react';
 import { Segmented } from 'antd';
 
 import { useThemeMode, type ThemeModeChoice } from './theme-mode';
+import './ThemeModeSwitch.css';
 
 const OPTIONS: { label: string; value: ThemeModeChoice; icon: JSX.Element }[] = [
   { label: 'Açık', value: 'light', icon: <Sun weight="regular" aria-hidden="true" /> },
@@ -14,6 +15,7 @@ export function ThemeModeSwitch() {
   const { choice, setChoice } = useThemeMode();
   return (
     <Segmented<ThemeModeChoice>
+      className="theme-mode-switch"
       aria-label="Tema"
       value={choice}
       onChange={(v) => setChoice(v)}

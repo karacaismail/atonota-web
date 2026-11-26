@@ -1,0 +1,14 @@
+/* Keep antd's painted ::after at its visible size; this layer only receives input. */
+.theme-mode-switch .ant-segmented-item::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: max(100%, var(--hit-target));
+  transform: translateY(-50%);
+}
+
+/* Keep text and icons above the transparent target so direct clicks still reach them. */
+.theme-mode-switch .ant-segmented-item-label {
+  position: relative;
+}

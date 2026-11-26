@@ -78,6 +78,7 @@ Her iş yalnız kendi klasörünü değiştirir. Ortak dosya gerekiyorsa raporda
 - `src/design/` bu dosyadan antd teması ve CSS değişkenleri üretir.
 - Bileşen içinde sabit renk, ölçü, gölge ya da süre yazılmaz. Değerler tokenlardan gelir.
 - Açık ve koyu tema aynı tokenlardan üretilir.
+- Tema seçicisinin görünür yüksekliği 38 px kalır. Görünmez dokunma katmanı `--hit-target` değerini kullanır. Dokunmatik girişte bu değer 48 px olur. `src/app/e2e/theme-hit-target.spec.ts` gerçek dokunma alanını ve kenardan seçimi denetler. Hedefli komut: `E2E_PORT=4393 npm run test:e2e -- src/app/e2e/theme-hit-target.spec.ts --project=chromium-320 --project=webkit-320 --project=iphone-13`.
 
 ## Ortak kurallarla ilişki
 
