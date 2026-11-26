@@ -106,3 +106,37 @@ test('açık temada giriş sayfasının soluk yazısı her zeminde en az 4.5:1 v
   expect(ratios.length).toBeGreaterThan(0);
   for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(4.5);
 });
+
+/**
+ * Fare üstü ve basılı durumda yazı da vurgu rengidir (QA AJA-1023).
+ * antd seçili olmayan radyo düğmesinde `colorPrimary`, kenarlıklı düğmede `colorPrimaryHover` kullanır.
+ * Bu iki renk beyaz zeminde 4.5:1 vermez.
+ */
+test('açık temada seçili olmayan radyo düğmesinin üstüne gelince yazı vurgu rengidir', async ({
+  page,
+}) => {
+  await openLight(page, '/_demo/controls');
+  const unchecked = page
+    .getByTestId('radio-buttons')
+    .locator('.ant-radio-button-wrapper:not(.ant-radio-button-wrapper-checked)')
+    .first();
+  await unchecked.hover();
+  await expect(unchecked).toHaveCSS('color', await tokenColor(page, '--color-link-hover'));
+});
+
+test('açık temada seçili radyo düğmesinin üstüne gelince yazı vurgu rengidir', async ({ page }) => {
+  await openLight(page, '/_demo/controls');
+  const checked = page.getByTestId('radio-buttons').locator('.ant-radio-button-wrapper-checked');
+  await checked.hover();
+  await expect(checked).toHaveCSS('color', await tokenColor(page, '--color-link-hover'));
+});
+
+for (const name of ['Kaydet', 'İşlemler']) {
+  test(`açık temada "${name}" düğmesinin üstüne gelince yazı vurgu rengidir`, async ({ page }) => {
+    await openLight(page, '/_demo/controls');
+    const button = page.getByRole('button', { name, exact: true }).first();
+    await expect(button).toBeVisible();
+    await button.hover();
+    await expect(button).toHaveCSS('color', await tokenColor(page, '--color-link-hover'));
+  });
+}

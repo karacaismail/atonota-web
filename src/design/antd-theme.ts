@@ -149,7 +149,12 @@ export function buildAntdTheme(mode: ThemeMode, options: BuildThemeOptions = {})
             defaultColor: derivedButton.defaultColor,
             defaultHoverColor: derivedButton.defaultHoverColor,
           }
-        : {}),
+        : {
+            // Kenarlıklı düğmenin fare üstü ve basılı yazısı antd'de colorPrimaryHover ve colorPrimaryActive
+            // olur (beyazda 2.5:1). Yazı bağlantı rengidir; kenarlık antd kuralında kalır (AJA-1023).
+            defaultHoverColor: link.light.hover,
+            defaultActiveColor: link.light.active,
+          }),
     },
     Input: {
       controlHeight: input.md.height,

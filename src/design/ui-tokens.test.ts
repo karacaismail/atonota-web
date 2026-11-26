@@ -237,3 +237,38 @@ describe('soluk yazı tema sarmalayıcısı dışında da okunur (QA AJA-1007)',
     );
   });
 });
+
+describe('fare üstü ve basılı yazı vurgu rengidir (QA AJA-1023)', () => {
+  const button = (mode: 'light' | 'dark') => {
+    const t = antdThemeApi.getDesignToken(buildAntdTheme(mode)) as unknown as Record<string, unknown>;
+    const c = buildAntdTheme(mode).components?.Button as Record<string, unknown> | undefined;
+    return {
+      hover: (c?.defaultHoverColor ?? t.colorPrimaryHover) as string,
+      active: (c?.defaultActiveColor ?? t.colorPrimaryActive) as string,
+    };
+  };
+
+  for (const mode of ['light', 'dark'] as const) {
+    it(`${mode} temada kenarlıklı düğmenin fare üstü ve basılı yazısı her zeminde 4.5:1 verir`, () => {
+      const p = palette[mode];
+      const { hover, active } = button(mode);
+      for (const surface of [p.layout, p.panel, p.panelAlt, p.elevated]) {
+        for (const [k, v] of [['hover', hover], ['active', active]] as const) {
+          const c = v.startsWith('rgba') ? solid(v.replace(/\s/g, ''), surface) : v;
+          expect(contrastRatio(c, surface), `${mode} ${k} / ${surface}`).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    });
+  }
+
+  it('açık temada kenarlıklı düğmenin fare üstü ve basılı yazısı bağlantı rengidir', () => {
+    expect(button('light')).toEqual({ hover: link.light.hover, active: link.light.active });
+  });
+
+  it('kenarlıklı radyo düğmesinin fare üstü ve basılı yazısı bağlantı rengidir', () => {
+    const css = squash(buildDesignCss());
+    const wrapper = ':not(.ant-radio-group-solid) > .ant-radio-button-wrapper:not(.ant-radio-button-wrapper-disabled)';
+    expect(css).toContain(squash(`${wrapper}:hover { color: var(--color-link-hover); }`));
+    expect(css).toContain(squash(`${wrapper}:active { color: var(--color-link-active); }`));
+  });
+});
