@@ -292,11 +292,24 @@ test('dropdown animation uses the shared motion and honors reduced motion', asyn
 });
 
 test('open menu with long text stays inside the viewport', async ({ page }) => {
+  // The opening motion is short (140 ms) and can finish between two computed-style polls, so the
+  // test records the animation when it starts and measures only after it has ended.
+  await page.evaluate(() => {
+    const started: string[] = [];
+    (window as unknown as { __dropdownStarted: string[] }).__dropdownStarted = started;
+    document.addEventListener('animationstart', (event) => {
+      if (event.animationName.startsWith('atonota-dropdown-')) started.push(event.animationName);
+    });
+  });
   await page.getByRole('button', { name: 'İşlemler' }).click();
   const item = page.getByRole('menuitem', { name: /Bu kaydın daha önce/ });
   await expect(item).toBeVisible();
   const popup = page.locator('.atonota-dropdown-popup');
-  await expect(popup).toHaveCSS('animation-name', 'atonota-dropdown-in');
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { __dropdownStarted: string[] }).__dropdownStarted),
+    )
+    .toContain('atonota-dropdown-in');
   await expect(popup).toHaveCSS('animation-name', 'none');
   const bounds = await box(item);
   const popupBounds = await box(popup);
