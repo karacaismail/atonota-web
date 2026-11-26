@@ -348,3 +348,22 @@ Kimlik denemesi `identity/harness/` klasöründedir.
 Bu deneme gerçek sunucuya bağlanmaz.
 Üretim derlemesi bu deneme girişini içermez.
 Görsel referans dosyaları bu işte değiştirilmez.
+
+## Dokunmalı sol menü
+
+`any-pointer: coarse` koşulunda menü hedefleri en az 48 px olur.
+“Dar görünüme geç” düğmesi de aynı ölçüyü kullanır.
+Ekran genişliği bu koşulu belirlemez.
+`--shell-item-h` görünüm ölçüsüdür. `--hit-target` dokunma ölçüsüdür.
+Fare kullanılan menüde 36 px görünüm korunur.
+Dokunmalı dar menü, kaydırma çubuğuna yer ayırır.
+Böylece WebKit kaydırma çubuğu dokunma alanını örtmez.
+
+Test, 320, 1024 ve 1366 px genişliklerini denetler.
+Test gerçek dokunma alanını da ölçer.
+Fare denemeleri 1024 ve 1366 px genişliklerinde çalışır.
+Firefox bu projenin test kapsamına girmez.
+
+```sh
+E2E_PORT=4275 npm run test:e2e -- src/shell/e2e/sidebar-touch.spec.ts --project=chromium-tablet --project=webkit-desktop --workers=2
+```
