@@ -96,7 +96,15 @@ describe('sahte sunucu senaryoları', () => {
 
     async function summary() {
       const response = await fetch(SUMMARY);
-      return { status: response.status, body: (await response.json()) as Record<string, any> };
+      return {
+        status: response.status,
+        body: (await response.json()) as {
+          message: {
+            pending_approvals: { name: string; version: string }[];
+            counts: { pending_approvals: number };
+          };
+        },
+      };
     }
 
     function decide(url: string, name: string, version: string) {
@@ -137,6 +145,7 @@ describe('sahte sunucu senaryoları', () => {
         expect(applyMockScenario('ana-sayfa-eski-surum')).toBe(true);
         const { body } = await summary();
         const item = body.message.pending_approvals[0];
+        if (!item) throw new Error('Bekleyen talep yok.');
         const response = await decide(url, item.name, item.version);
         expect(response.status).toBe(417);
         expect(await response.json()).toMatchObject({ exc_type: 'TimestampMismatchError' });

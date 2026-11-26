@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, type JsonBodyType } from 'msw';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -466,7 +466,7 @@ describe('ana sayfa özeti', () => {
     for (const name of names) expect(name).toMatch(/^Örnek Kişi( \d+)?$/);
   });
 
-  const broken: [string, unknown][] = [
+  const broken: [string, JsonBodyType][] = [
     ['message yok', {}],
     ['bir parça eksik', { pending_approvals: [], problems: [], recent_changes: [] }],
     [

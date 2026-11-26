@@ -33,12 +33,14 @@ import {
   isRevoked,
   type AccessSummary,
   type LeaveApplication,
+  type HomeSummary,
   type LeaveName,
   type PermissionExplanation,
   type PermissionType,
   isAccessSummary,
   isLeaveApplication,
   isLeaveList,
+  isHomeSummary,
   isLeaveName,
   isPermissionExplanation,
   type ApprovalOutcome,
@@ -600,6 +602,30 @@ export function createApiClient({ config, csrf, onSessionExpired }: ApiClientDep
           body: { name, version },
         }),
         isLeaveName,
+        options,
+      );
+    },
+
+    /** Açık başvuruyu reddeder. `version`, okunan kaydın `modified` değeridir. Eski sürüm `conflict` verir. */
+    rejectLeave(name: string, version: string, options: RequestOptions = {}): Promise<LeaveName> {
+      return unwrap(
+        hrms.POST('/method/hrms_tr.api.reject_leave', {
+          ...signalOf(options),
+          body: { name, version },
+        }),
+        isLeaveName,
+        options,
+      );
+    },
+
+    /**
+     * Ana sayfanın dört parçasını okur: bekleyen onaylar, sorunlu kayıtlar,
+     * son değişiklikler ve özet sayılar. Bozuk yanıt `invalid_response` verir.
+     */
+    getHomeSummary(options: RequestOptions = {}): Promise<HomeSummary> {
+      return unwrap(
+        hrms.GET('/method/hrms_tr.api.get_home_summary', signalOf(options)),
+        isHomeSummary,
         options,
       );
     },
