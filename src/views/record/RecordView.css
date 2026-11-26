@@ -107,8 +107,11 @@
 
 /*
  * WebKit draws its own rounded focus ring around the active date segment (month, day, year).
- * That ring surrounds the text, so it is removed. The wrapper underline above stays the single
- * focus indicator. The active segment keeps a flat brand tint so the user sees the edited part.
+ * Chromium fills the active segment with the system highlight blue. Both are removed.
+ * The wrapper underline above stays the single focus indicator.
+ * The active segment keeps a flat brand tint so the user sees the edited part.
+ * WebKit matches the segment with :focus. Chromium matches it only with :focus-within.
+ * The two rules stay separate, so one engine cannot drop the other's rule.
  */
 .rv-root input[type='date']::-webkit-datetime-edit-month-field:focus,
 .rv-root input[type='date']::-webkit-datetime-edit-day-field:focus,
@@ -122,6 +125,23 @@
 .rv-root input[type='time']::-webkit-datetime-edit-hour-field:focus,
 .rv-root input[type='time']::-webkit-datetime-edit-minute-field:focus,
 .rv-root input[type='time']::-webkit-datetime-edit-second-field:focus {
+  outline: none;
+  background-color: var(--rv-date-segment-bg);
+  color: var(--rv-color-text);
+}
+
+.rv-root input[type='date']::-webkit-datetime-edit-month-field:focus-within,
+.rv-root input[type='date']::-webkit-datetime-edit-day-field:focus-within,
+.rv-root input[type='date']::-webkit-datetime-edit-year-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-month-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-day-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-year-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-hour-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-minute-field:focus-within,
+.rv-root input[type='datetime-local']::-webkit-datetime-edit-second-field:focus-within,
+.rv-root input[type='time']::-webkit-datetime-edit-hour-field:focus-within,
+.rv-root input[type='time']::-webkit-datetime-edit-minute-field:focus-within,
+.rv-root input[type='time']::-webkit-datetime-edit-second-field:focus-within {
   outline: none;
   background-color: var(--rv-date-segment-bg);
   color: var(--rv-color-text);
