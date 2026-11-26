@@ -268,4 +268,30 @@ describe('HomePage: Bekleyenler', () => {
     mount({ modules: env });
     await waitFor(() => expect(home.load).toHaveBeenCalled());
   });
+
+  it('"Sorunlu kayıtlar" başlığında süs olan uyarı simgesi vardır', async () => {
+    mount({ home: fakeHome() });
+    await screen.findByText('Örnek Kişi 8 personel kaydında işe giriş tarihi yok.');
+    const heading = screen.getByRole('heading', { level: 2, name: 'Sorunlu kayıtlar' });
+    const icons = heading.querySelectorAll('svg');
+    expect(icons).toHaveLength(1);
+    expect(icons[0]).toHaveAttribute('aria-hidden', 'true');
+    expect(icons[0]).toHaveClass('shell-home-ic');
+    expect(icons[0]).toHaveAttribute('data-tone', 'warn');
+  });
+
+  it('"Son değişiklikler" satırlarında süs olan saat simgesi vardır', async () => {
+    mount({ home: fakeHome() });
+    const text = await screen.findByText('Örnek Kişi 1, ORNEK-IZIN-0002 talebini onayladı.');
+    const item = text.closest('li');
+    expect(item).not.toBeNull();
+    const icons = item?.querySelectorAll('svg') ?? [];
+    expect(icons).toHaveLength(1);
+    expect(icons[0]).toHaveAttribute('aria-hidden', 'true');
+    expect(icons[0]).toHaveClass('shell-home-ic');
+    // Simge satırın ilk öğesidir. Taslakta simge metnin önünde durur.
+    expect(item?.firstElementChild).toBe(icons[0]);
+    const heading = screen.getByRole('heading', { level: 2, name: 'Son değişiklikler' });
+    expect(heading.querySelector('svg')).toBeNull();
+  });
 });

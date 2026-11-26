@@ -95,3 +95,19 @@ describe('kayan zemin hareketi', () => {
     expect(css).toMatch(/\.shell-fly-list\s*>\s*li\s*>\s*\.shell-item/);
   });
 });
+
+/** AJA-1222: ana sayfa simgelerinin ölçüsü ve rengi merkezi tokendan gelir. */
+describe('ana sayfa simgeleri', () => {
+  const rule = (selector: string) => {
+    const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?:^|\\n)${esc}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? '';
+  };
+
+  it('simge ölçüsü menü simgesi tokenıdır', () => {
+    expect(rule('.shell-home-ic')).toMatch(/font-size:\s*var\(--shell-item-icon\);/);
+  });
+
+  it('uyarı simgesinin rengi uyarı tokenıdır', () => {
+    expect(rule(".shell-home-ic[data-tone='warn']")).toMatch(/color:\s*var\(--shell-warn\);/);
+  });
+});

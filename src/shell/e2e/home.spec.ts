@@ -259,4 +259,43 @@ test.describe('ana sayfa: Bekleyenler', () => {
       r.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
     ).toEqual([]);
   });
+
+  test('iki simge taslaktaki yerde görünür, ekran okuyucu okumaz', async ({ page }) => {
+    await open(page, 'ana-sayfa-iki-bekleyen');
+    const problems = page.getByRole('heading', { level: 2, name: 'Sorunlu kayıtlar' });
+    const warn = problems.locator('svg');
+    await expect(warn).toBeVisible();
+    await expect(warn).toHaveAttribute('aria-hidden', 'true');
+    const recent = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { level: 2, name: 'Son değişiklikler' }) });
+    const clocks = recent.getByRole('listitem').locator('svg');
+    await expect(clocks.first()).toBeVisible();
+    expect(await clocks.count()).toBe(await recent.getByRole('listitem').count());
+
+    // Renk ve ölçü merkezi tokendan gelir: aynı tokenı kullanan bir ölçüm öğesiyle karşılaştırılır.
+    const measure = (loc: Locator) =>
+      loc.evaluate((el) => {
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--shell-warn)';
+        probe.style.width = 'var(--shell-item-icon)';
+        probe.style.display = 'inline-block';
+        (el.closest('.shell') ?? document.body).appendChild(probe);
+        const want = getComputedStyle(probe);
+        const got = getComputedStyle(el);
+        const out = {
+          color: got.color,
+          warn: want.color,
+          size: el.getBoundingClientRect().width,
+          token: probe.getBoundingClientRect().width,
+        };
+        probe.remove();
+        return out;
+      });
+    const w = await measure(warn);
+    expect(w.color).toBe(w.warn);
+    expect(w.size).toBeCloseTo(w.token, 0);
+    const c = await measure(clocks.first());
+    expect(c.size).toBeCloseTo(c.token, 0);
+  });
 });
