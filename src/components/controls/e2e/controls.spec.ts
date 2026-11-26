@@ -550,46 +550,53 @@ test('touch targets are at least 48 px on a touch screen', async ({ page, hasTou
   }
 });
 
-test('select is the branded antd select and works with keyboard, pointer and touch', async ({
-  page,
-  hasTouch,
-}) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(page.locator('select')).toHaveCount(0);
-  const row = page.getByTestId('row-middle');
-  const combobox = row.getByRole('combobox');
-  const selector = row.locator('.ant-select-selector');
-  const popup = page.locator('.atonota-select-popup:not(.ant-select-dropdown-hidden)');
+test.describe('select input methods', () => {
+  // Set the preference before beforeEach navigates. A late media change rebuilds antd's
+  // motion wrappers and can replace the focused Select while its popup is opening.
+  test.use({ reducedMotion: 'reduce' });
 
-  await keyboardFocus(page, combobox);
-  await page.keyboard.press('ArrowDown');
-  await expect(popup).toBeVisible();
-  const active = popup.locator('.ant-select-item-option-active');
-  await expect(active).toHaveText('Açık');
-  // rc-select 14 marks the selected option active again in a setTimeout after the list opens
-  // (OptionList "Auto scroll to item position"). A key pressed before that timer is undone, so
-  // the test waits one frame and one task for it (AJA-1086).
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0))),
-  );
-  await page.keyboard.press('ArrowDown');
-  await expect(active).toHaveText('Kapalı');
-  await page.keyboard.press('Enter');
-  await expect(popup).toBeHidden();
-  await expect(selector).toHaveText('Kapalı');
+  test('select is the branded antd select and works with keyboard, pointer and touch', async ({
+    page,
+    hasTouch,
+  }) => {
+    await expect(page.locator('select')).toHaveCount(0);
+    const row = page.getByTestId('row-middle');
+    const combobox = row.getByRole('combobox');
+    const selector = row.locator('.ant-select-selector');
+    const popup = page.locator('.atonota-select-popup:not(.ant-select-dropdown-hidden)');
 
-  await selector.click();
-  await expect(popup).toBeVisible();
-  await popup.getByText('Açık', { exact: true }).click();
-  await expect(selector).toHaveText('Açık');
-  await expect(popup).toBeHidden();
-
-  if (hasTouch) {
-    await selector.tap();
+    await keyboardFocus(page, combobox);
+    await page.keyboard.press('ArrowDown');
     await expect(popup).toBeVisible();
-    await popup.getByText('Kapalı', { exact: true }).tap();
+    // rc-select restores the selected option while rc-motion prepares the popup. Wait for
+    // that opening phase to finish before sending the next key, including in reduced motion.
+    await expect(popup).not.toHaveClass(/\batonota-popup-motion-(appear|enter)\b/);
+    const active = popup.locator('.ant-select-item-option-active');
+    await expect(active).toHaveText('Açık');
+    await expect(combobox).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('ArrowDown');
+    await expect(active).toHaveText('Kapalı');
+    await page.keyboard.press('Enter');
+    await expect(combobox).toHaveAttribute('aria-expanded', 'false');
+    await expect(popup).toBeHidden();
     await expect(selector).toHaveText('Kapalı');
-  }
+
+    await selector.click();
+    await expect(popup).toBeVisible();
+    await popup.getByText('Açık', { exact: true }).click();
+    await expect(selector).toHaveText('Açık');
+    await expect(combobox).toHaveAttribute('aria-expanded', 'false');
+    await expect(popup).toBeHidden();
+
+    if (hasTouch) {
+      await selector.tap();
+      await expect(popup).toBeVisible();
+      await popup.getByText('Kapalı', { exact: true }).tap();
+      await expect(selector).toHaveText('Kapalı');
+      await expect(combobox).toHaveAttribute('aria-expanded', 'false');
+      await expect(popup).toBeHidden();
+    }
+  });
 });
 
 test('demo page does not overflow horizontally', async ({ page }) => {
