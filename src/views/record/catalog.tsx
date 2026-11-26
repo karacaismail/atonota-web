@@ -85,6 +85,8 @@ function formatScalarReadOnly(value: unknown, locale: RecordLocale): string {
 export interface CatalogFieldProps {
   field: DocField;
   value: unknown;
+  /** Presentation only: the underlying record value stays available to rules and saving. */
+  readOnlyDisplayValue?: string | undefined;
   doc: Readonly<Record<string, unknown>>;
   parentDoc?: Readonly<Record<string, unknown>> | undefined;
   doctype: string;
@@ -124,6 +126,7 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
     isSubmitting = false,
     error,
     sourceNote,
+    readOnlyDisplayValue,
     compactCell = false,
     onChange,
     onFieldAction,
@@ -220,6 +223,19 @@ export function CatalogField(props: CatalogFieldProps): ReactNode {
   }
 
   const renderControl = (a11y: FieldControlA11yProps): ReactNode => {
+    if (state.readOnly && readOnlyDisplayValue !== undefined) {
+      return (
+        <Input
+          id={a11y.controlId}
+          aria-labelledby={a11y.labelId}
+          aria-describedby={a11y.ariaDescribedBy}
+          aria-invalid={a11y.ariaInvalid}
+          size={compactCell ? 'small' : 'middle'}
+          readOnly
+          value={readOnlyDisplayValue}
+        />
+      );
+    }
     const strVal =
       typeof value === 'string'
         ? value

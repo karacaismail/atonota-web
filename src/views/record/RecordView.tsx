@@ -24,7 +24,7 @@ import { CatalogField } from './catalog';
 import { CATALOG_VERSION } from './catalogRegistry';
 import { buildFormLayout, isLayoutBreakFieldType, type LayoutSection } from './layout';
 import { formatRecordMessage } from './messages';
-import { applyNewRecordContext, prefillSourceNote } from './prefill';
+import { applyNewRecordContext, formatLeaveBalance, prefillSourceNote } from './prefill';
 import { RecordErrorBoundary } from './RecordErrorBoundary';
 import { RecordNavigator } from './RecordNavigator';
 import { RecordLinkProvider, type RecordLinkRenderer } from './recordLink';
@@ -290,6 +290,13 @@ function RecordSectionCard(props: {
                   key={field.fieldname}
                   field={field}
                   value={effectiveDoc[field.fieldname]}
+                  readOnlyDisplayValue={
+                    !isExistingRecord &&
+                    doctype === 'Leave Application' &&
+                    field.fieldname === 'leave_balance'
+                      ? formatLeaveBalance(effectiveDoc[field.fieldname], locale)
+                      : undefined
+                  }
                   doc={effectiveDoc}
                   doctype={doctype}
                   meta={meta}
@@ -412,10 +419,22 @@ function RecordViewBody(props: RecordViewBodyProps) {
         });
 
         if (createMode || !name) {
-          const [meta, context] = await Promise.all([
-            metaPromise,
-            adapter.getNewRecordContext?.({ doctype, signal: controller.signal }),
-          ]);
+          const loadContext = async () => {
+            try {
+              return await adapter.getNewRecordContext?.({ doctype, signal: controller.signal });
+            } catch (err) {
+              // Context is optional. Invalid responses and expired sessions keep their error flow.
+              if (
+                err instanceof RecordApiError &&
+                err.code !== 'invalid_response' &&
+                err.code !== 'session_expired'
+              ) {
+                return undefined;
+              }
+              throw err;
+            }
+          };
+          const [meta, context] = await Promise.all([metaPromise, loadContext()]);
           if (controller.signal.aborted || currentSeq !== requestSeqRef.current) {
             return;
           }

@@ -3,10 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { components } from '@/api/generated/hrms_tr';
 import type { DocumentRequest } from '@/api';
-import { createFrappeRecordAdapter } from '../adapter';
+import { createFrappeRecordAdapter, RecordApiError } from '../adapter';
 import { RecordView } from '../RecordView';
 import { LEAVE_META } from '../harness/leaveFixture';
-import type { DocTypeMeta, RecordDataAdapter } from '../types';
+import type { DocTypeMeta, RecordDataAdapter, RecordErrorCode } from '../types';
 
 type Context = components['schemas']['LeaveRequestContextResponse']['message'];
 const context: Context = {
@@ -75,7 +75,7 @@ describe('new record prefill', () => {
     mount(adapter);
     expect(await screen.findByLabelText('Ad')).toHaveValue('Örnek Kişi 1');
     expect(screen.getByLabelText('Ad')).toHaveAccessibleDescription('Personel kaydından geldi.');
-    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue('8.5');
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue('8,5 gün');
     expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAccessibleDescription(
       'İzin kayıtlarından hesaplandı.',
     );
@@ -123,7 +123,7 @@ describe('new record prefill', () => {
     expect(await screen.findByLabelText('Ad')).toHaveValue('');
     expect(screen.queryByText('Personel kaydından geldi.')).not.toBeInTheDocument();
     const control = screen.getByLabelText('Kalan yıllık izin');
-    expect(control).toHaveValue(balance === null ? '' : '0');
+    expect(control).toHaveValue(balance === null ? '' : '0 gün');
     if (balance === null)
       expect(screen.queryByText('İzin kayıtlarından hesaplandı.')).not.toBeInTheDocument();
     else expect(control).toHaveAccessibleDescription('İzin kayıtlarından hesaplandı.');
@@ -136,6 +136,93 @@ describe('new record prefill', () => {
     expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue('');
     expect(screen.queryByText('Personel kaydından geldi.')).not.toBeInTheDocument();
   });
+
+  it.each<[RecordErrorCode, number | undefined]>([
+    ['network', undefined],
+    ['unauthorized', 401],
+    ['unauthorized', 403],
+    ['validation', 417],
+  ])('opens an empty form after an optional context error (%s, %s)', async (code, status) => {
+    const { adapter } = setup();
+    mount({
+      ...adapter,
+      getDocTypeMeta: async () => LEAVE_META,
+      getNewRecordContext: async () => {
+        throw new RecordApiError({ code, status, message: 'Context request failed' });
+      },
+    });
+    expect(await screen.findByLabelText('Ad')).toHaveValue('');
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue('');
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAttribute('readonly');
+    expect(document.querySelector('.rv-field-source')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Açıklama'), { target: { value: 'İzin talebim.' } });
+    expect(screen.getByLabelText('Açıklama')).toHaveValue('İzin talebim.');
+    expect(screen.getByRole('button', { name: 'Kaydet' })).toBeEnabled();
+  });
+
+  it('preserves the sign-in flow when the session expires during context loading', async () => {
+    const { adapter } = setup();
+    const onSignIn = vi.fn();
+    render(
+      <RecordView
+        doctype="Leave Application"
+        createMode
+        onSignIn={onSignIn}
+        adapter={{
+          ...adapter,
+          getNewRecordContext: async () => {
+            throw new RecordApiError({ code: 'session_expired', status: 401, message: 'Expired' });
+          },
+        }}
+      />,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Yeniden giriş yap' }));
+    expect(onSignIn).toHaveBeenCalledOnce();
+    expect(screen.queryByLabelText('Ad')).not.toBeInTheDocument();
+  });
+
+  it('still rejects missing metadata permissions when optional context is unavailable', async () => {
+    const { adapter } = setup();
+    mount({
+      ...adapter,
+      getDocTypeMeta: async () => {
+        throw new RecordApiError({ code: 'unauthorized', status: 403, message: 'Forbidden' });
+      },
+      getNewRecordContext: async () => {
+        throw new RecordApiError({ code: 'network', message: 'Offline' });
+      },
+    });
+    expect(await screen.findByText('Bu kaydı görüntüleme yetkiniz bulunmuyor.')).toBeVisible();
+    expect(screen.queryByLabelText('Ad')).not.toBeInTheDocument();
+  });
+
+  it.each(['Data', 'Float'])(
+    'formats a %s balance with the current language and day unit',
+    async (fieldtype) => {
+      const { adapter } = setup();
+      const numericMeta = {
+        ...meta,
+        schema: {
+          ...meta.schema,
+          fields: meta.schema.fields.map((field) =>
+            field.fieldname === 'leave_balance'
+              ? { ...field, fieldtype, component: fieldtype === 'Float' ? 'float' : 'input' }
+              : field,
+          ),
+        },
+      };
+      render(
+        <RecordView
+          doctype="Leave Application"
+          createMode
+          locale="en"
+          adapter={{ ...adapter, getDocTypeMeta: async () => numericMeta }}
+        />,
+      );
+      expect(await screen.findByLabelText('Kalan yıllık izin')).toHaveValue('8.5 days');
+      expect(screen.getByLabelText('Kalan yıllık izin')).toHaveAttribute('readonly');
+    },
+  );
 
   it('does not prefill an existing record', async () => {
     const { adapter, frappeDocument } = setup();

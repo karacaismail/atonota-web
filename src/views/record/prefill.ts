@@ -81,3 +81,16 @@ export function prefillSourceNote(source: PrefillSource | undefined, locale: Rec
         : 'sourceLeaveBalance';
   return formatRecordMessage(locale, key);
 }
+
+/** Format only the visible balance. Keep raw values out of localized display strings. */
+export function formatLeaveBalance(value: unknown, locale: RecordLocale): string {
+  if ((typeof value !== 'number' && typeof value !== 'string') || value === '') return '';
+  const days = Number(value);
+  if (!Number.isFinite(days)) return '';
+  return new Intl.NumberFormat(locale === 'tr' ? 'tr-TR' : 'en-US', {
+    style: 'unit',
+    unit: 'day',
+    unitDisplay: 'long',
+    maximumFractionDigits: 20,
+  }).format(days);
+}

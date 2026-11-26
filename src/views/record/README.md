@@ -35,7 +35,9 @@ Bu durumda form, kişiye ait alanları boş bırakır.
 
 Form, yalnız alan tanımında bulunan bilgileri doldurur.
 Kaynağı veya değeri eksik alan boş kalır.
-Gerçek sıfır bakiye ekranda `0` olur.
+Türkçe ekranda bakiye `8,5 gün` gibi yazılır.
+Gerçek sıfır bakiye ekranda `0 gün` olur.
+Birim ve sayı biçimi yalnız gösterimde kullanılır.
 Sistem, eski başvurudan bakiye kopyalamaz.
 Hesaplanan bakiye değiştirilemez. Form bu değeri kaydetme isteğine eklemez.
 
@@ -48,6 +50,12 @@ Form kaydedilince yeni kayıt kaynak notları kalkar.
 
 Geçersiz sunucu yanıtında form hata gösterir.
 Kullanıcı bu ekrandan yeniden deneyebilir.
+Ön bilgi isteğinde ağ veya erişim hatası olursa form açılır.
+Kişinin adı ve bakiyesi boş kalır. Kaynak notları görünmez.
+Ön bilgi isteğindeki 417 hatasında da form açılır.
+401 yanıtı oturumun dolduğunu bildirirse mevcut giriş ekranı korunur.
+Böylece kullanıcı, süresi dolmuş oturumla form doldurmaz.
+Formun alan tanımları alınamazsa mevcut hata ekranı korunur.
 Kayıt değişince bekleyen istek iptal edilir.
 Geciken yanıt, yeni kaydı değiştirmez.
 
@@ -85,6 +93,11 @@ Bu ekran, ortak API istemcisini sahte bir istemciyle değiştirir.
 Ekran, üretimde kullanılan yanıt denetimini çalıştırır.
 Adrese `&context=empty` eklenirse bilgiler boş gelir.
 Adrese `&context=zero` eklenirse bakiye sıfır gelir.
+Adrese `&context=network` eklenirse ön bilgi isteği ağ hatası verir.
+Adrese `&context=forbidden` eklenirse ön bilgi isteği 403 hatası verir.
+Adrese `&context=unauthenticated` eklenirse ön bilgi isteği 401 hatası verir.
+Bu son deneme, oturum süresinin dolduğunu bildirmez.
+Adrese `&context=validation` eklenirse ön bilgi isteği 417 hatası verir.
 
 ## Kontroller
 

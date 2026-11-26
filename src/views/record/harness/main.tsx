@@ -250,6 +250,19 @@ export function HarnessApp() {
           throw new Error('Unexpected harness request');
         }
         const context = params.get('context');
+        if (context === 'network') {
+          throw new RecordApiError({ code: 'network', message: 'Context request failed' });
+        }
+        if (context === 'forbidden' || context === 'unauthenticated') {
+          throw new RecordApiError({
+            code: 'unauthorized',
+            status: context === 'forbidden' ? 403 : 401,
+            message: 'Context request failed',
+          });
+        }
+        if (context === 'validation') {
+          throw new RecordApiError({ code: 'validation', status: 417, message: 'Invalid request' });
+        }
         const message =
           context === 'empty'
             ? EMPTY_LEAVE_CONTEXT
