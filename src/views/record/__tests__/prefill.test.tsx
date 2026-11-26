@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { components } from '@/api/generated/hrms_tr';
@@ -70,6 +70,78 @@ function mount(adapter: RecordDataAdapter) {
 }
 
 describe('new record prefill', () => {
+  it.each([
+    ['tr', 'Size ayrılan izin hakkından geldi.'],
+    ['en', 'From your leave allocation.'],
+  ] as const)(
+    'fills the allocated leave type and explains its source (%s)',
+    async (locale, note) => {
+      const { adapter } = setup({
+        message: {
+          ...context,
+          sources: { ...context.sources, leave_type: 'Leave Allocation' },
+        },
+      });
+      render(
+        <RecordView doctype="Leave Application" createMode locale={locale} adapter={adapter} />,
+      );
+      const type = await screen.findByRole('combobox', { name: /İzin türü/ });
+      expect(type).toHaveAccessibleDescription(note);
+      expect(
+        within(type.closest('.rv-field') as HTMLElement).getByText('Yıllık izin'),
+      ).toBeVisible();
+      expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue(
+        locale === 'tr' ? '8,5 gün' : '8.5 days',
+      );
+    },
+  );
+
+  it('leaves a null type and balance empty and submits the user choice', async () => {
+    const { adapter } = setup({
+      message: {
+        ...context,
+        leave_type: null,
+        leave_balance: null,
+        sources: { ...context.sources, leave_type: null, leave_balance: null },
+      },
+    });
+    mount({
+      ...adapter,
+      getDocTypeMeta: async () => ({
+        ...meta,
+        schema: {
+          ...meta.schema,
+          fields: meta.schema.fields.map((field) => ({
+            ...field,
+            default: field.fieldname === 'leave_type' ? context.leave_type : field.default,
+          })),
+        },
+      }),
+    });
+    expect(await screen.findByLabelText('Ad')).toHaveValue('Örnek Kişi 1');
+    const type = screen.getByRole('combobox', { name: /İzin türü/ });
+    expect(type).toHaveValue('');
+    const typeField = within(type.closest('.rv-field') as HTMLElement);
+    expect(typeField.queryByText('Yıllık izin')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Kalan yıllık izin')).toHaveValue('');
+    expect(screen.queryByText('İzin kayıtlarından hesaplandı.')).not.toBeInTheDocument();
+    await userEvent.click(type);
+    await userEvent.click(await screen.findByText('Mazeret izni'));
+    expect(typeField.getByText('Mazeret izni')).toBeVisible();
+    expect(type).not.toHaveAccessibleDescription();
+    fireEvent.change(screen.getByLabelText(/Başlangıç tarihi/), {
+      target: { value: '2026-11-27' },
+    });
+    fireEvent.change(screen.getByLabelText(/Bitiş tarihi/), { target: { value: '2026-11-28' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
+    expect(adapter.saveRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ leave_type: 'Casual Leave' }) }),
+    );
+    expect(vi.mocked(adapter.saveRecord).mock.calls[0]?.[0].data).not.toHaveProperty(
+      'leave_balance',
+    );
+  });
+
   it('loads session defaults through the shared client and links both source notes', async () => {
     const { adapter, frappeDocument } = setup();
     mount(adapter);
@@ -280,6 +352,8 @@ describe('prefill response validation', () => {
     { message: { ...context, leave_balance: '8.5' } },
     { message: { ...context, leave_balance: Number.NaN } },
     { message: { ...context, sources: { ...context.sources, employee_name: 'Other' } } },
+    { message: { ...context, sources: { ...context.sources, leave_type: 'Other' } } },
+    { message: { ...context, sources: { ...context.sources, leave_balance: 'Leave Allocation' } } },
   ])('rejects invalid context without inventing defaults', async (body) => {
     const { adapter } = setup(body);
     mount(adapter);

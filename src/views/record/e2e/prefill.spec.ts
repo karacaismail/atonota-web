@@ -11,6 +11,11 @@ for (const theme of ['light', 'dark']) {
     const name = page.getByLabel('Ad', { exact: true });
     await expect(name).toHaveValue('Örnek Kişi 1');
     await expect(name).toHaveAccessibleDescription('Personel kaydından geldi.');
+    const type = page.getByRole('combobox', { name: /İzin türü/ });
+    await expect(type).toHaveAccessibleDescription('Size ayrılan izin hakkından geldi.');
+    await expect(
+      page.locator('[data-fieldname="leave_type"] .ant-select-selection-item'),
+    ).toHaveText('Yıllık izin');
     const balance = page.getByLabel('Kalan yıllık izin');
     // Intl may separate the unit with a regular, nonbreaking or narrow nonbreaking space.
     await expect(balance).toHaveValue(/^8,5[ \u00a0\u202f]gün$/);
@@ -65,6 +70,32 @@ test('missing data stays empty and zero remains a sourced value', async ({ page 
     'İzin kayıtlarından hesaplandı.',
   );
 });
+
+test('a null leave type stays empty until the user selects it', async ({ page }) => {
+  await page.goto(`${FORM}&context=no-allocation`);
+  await expect(page.getByLabel('Ad', { exact: true })).toHaveValue('Örnek Kişi 1');
+  await expect(page.getByLabel('Kalan yıllık izin')).toHaveValue('');
+  const type = page.getByRole('combobox', { name: /İzin türü/ });
+  await expect(type).toHaveValue('');
+  await expect(
+    page.locator('[data-fieldname="leave_type"] .ant-select-selection-item'),
+  ).toHaveCount(0);
+  await page.locator('[data-fieldname="leave_type"] .ant-select-selector').click();
+  await expect(page.locator('.ant-select-item-option-active')).toHaveText('Yıllık izin');
+  await type.press('ArrowDown');
+  await type.press('Enter');
+  await type.press('Escape');
+  await expect(page.locator('[data-fieldname="leave_type"] .ant-select-selection-item')).toHaveText(
+    'Mazeret izni',
+  );
+  await expect(type).toHaveAccessibleDescription('');
+  await expect(page.getByLabel('Kalan yıllık izin')).toHaveValue('');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    ),
+  ).toBeLessThanOrEqual(0);
+});
 for (const context of ['network', 'forbidden', 'unauthenticated', 'validation']) {
   test(`optional context failure keeps the new form usable (${context})`, async ({ page }) => {
     await page.goto(`${FORM}&context=${context}`);
@@ -82,7 +113,7 @@ test('changing a prefilled choice removes its source and resize retains the draf
 }) => {
   await page.goto(FORM);
   const type = page.getByRole('combobox', { name: /İzin türü/ });
-  await expect(type).toHaveAccessibleDescription('İzin türü kaydından geldi.');
+  await expect(type).toHaveAccessibleDescription('Size ayrılan izin hakkından geldi.');
   await page.locator('[data-fieldname="leave_type"] .ant-select-selector').click();
   await expect(type).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('.ant-select-item-option-active')).toHaveText('Yıllık izin');
@@ -90,7 +121,7 @@ test('changing a prefilled choice removes its source and resize retains the draf
   await expect(page.locator('.ant-select-item-option-active')).toHaveText('Mazeret izni');
   await type.press('Enter');
   await type.press('Escape');
-  await expect(type).not.toHaveAccessibleDescription('İzin türü kaydından geldi.');
+  await expect(type).not.toHaveAccessibleDescription('Size ayrılan izin hakkından geldi.');
   const note = page.getByLabel('Açıklama');
   await note.fill('Örnek açıklama');
   await note.press('Tab');
