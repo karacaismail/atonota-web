@@ -18,13 +18,24 @@ export interface paths {
     /**
      * Approves the proposal and executes the action in this request.
      * @description CAN BE DESTRUCTIVE. This endpoint creates, changes, submits, cancels or deletes a document.
-     *     An application tool can also start a billable action. Check the `destructive` and `billable` fields of the proposal.
+     *     An application tool can also start a billable action. Check the `destructive`, `billable` and `risk_level` fields of the proposal.
      *
      *     Every human request that writes carries the `X-Frappe-CSRF-Token` header. If the session has no CSRF token, the request is denied.
      *     An approval can be used only once. The server checks these in order: human session, same user,
      *     `pending` status, expiry, digest match, that the document has not changed, current permission and
      *     an action with an unknown result on the same target.
      *     If a check fails, the action does not run and the response carries `executed: false` and the deny reason.
+     *
+     *     An R3 proposal needs two people. The owner gives the first approval. The action does not run then.
+     *     The response carries `executed: false`, a null `deny_reason` and the status `awaiting_second_approval`.
+     *     A second person gives the second approval with the same `digest`. The rule for that person is in `list_second_approvals`.
+     *     The server runs all checks again at that moment. The preview runs again in the second person's session.
+     *     If that preview refuses the second person's permission, the response is 403 and the proposal keeps waiting.
+     *     Then the action runs with the second person's permissions, and `second_approver` and `second_approved_at` are stored.
+     *     If the owner approves again, the deny reason is `second_approver_required` and the proposal keeps waiting.
+     *     A person without write permission gets 403 and the deny reason `not_second_approver` is written to the log.
+     *     A person who may not read a field the preview changes gets the same 403. The response shows no value of the preview.
+     *     R0, R1 and R2 proposals need only the owner's approval. Another person gets 403 with `not_owner`.
      *
      *     Before executing, the server records the result as `unknown`. If the process is cut off midway, the result stays `unknown`.
      *     If execution raises an error, the result becomes `failed` only in this case: the error occurred in the layer's own check.
@@ -108,6 +119,36 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/platform_core.api.ai.list_second_approvals': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Lists other users' R3 proposals that the session user may approve as the second person.
+     * @description An R3 proposal needs two approvals. The owner gives the first one. Then the proposal waits with the status `awaiting_second_approval`.
+     *     This list shows such proposals to a second person. A row is shown only if the session user may give the second approval.
+     *     That person is an enabled user of this site, is not the owner and may use the tool.
+     *     The person also has write permission on the target record. Without a target record, the DocType permission counts.
+     *     A preview with the action `create`, `submit`, `cancel` or `delete` needs that permission instead of write permission.
+     *     Nobody holds write permission on the layer's own records, for example the PLT AI Action Log. For those the tool's own role check decides.
+     *     The person may also read every field of the target DocType that the preview changes. Frappe hides some fields by their permission level (permlevel). A proposal whose preview changes such a hidden field is not in this list. `approve_proposal` refuses that person with 403 and returns nothing of the proposal.
+     *     The session user's own proposals are never in this list. An expired proposal is not in this list.
+     *     Each row carries the `digest` value. The second person sends it with `approve_proposal`.
+     *     The newest proposal comes first. For the next page, increase `start` by `limit`.
+     *     A successful read is not written to the log. A denied read is written.
+     */
+    get: operations['listSecondApprovals'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/platform_core.api.ai.mcp': {
     parameters: {
       query?: never;
@@ -149,6 +190,36 @@ export interface paths {
     get: operations['getMcpResourceMetadata'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/platform_core.api.ai.propose_revert': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Opens a proposal that writes the old values of an applied proposal back.
+     * @description This endpoint does not write to the document. It opens a new `pending` proposal. That proposal goes through the normal approval.
+     *     When an update succeeds, the server stores the old values of the fields it changed. The new proposal writes those values back.
+     *     The new proposal names the applied proposal in `source_proposal`. Its `risk_level` is at least the level of the applied proposal.
+     *     Nothing is opened in these cases. The answer is 200 with `opened` false and one of these codes in `deny_reason`:
+     *
+     *     - `not_applied`: the proposal is pending, rejected or expired, or its result is not `succeeded`.
+     *     - `not_revertable`: the action has no stored old values. Only `plt_update_document` stores them. An update of an unreadable field or of a child table stores none.
+     *     - `record_changed`: the document changed or was deleted after the proposal was applied.
+     *
+     *     A refusal of the new proposal's preview comes back the same way, for example `permission` or `unresolved_unknown`.
+     *     Every outcome is written to the AI Action Log with the stage `revert`.
+     */
+    post: operations['proposeRevert'];
     delete?: never;
     options?: never;
     head?: never;
@@ -210,7 +281,7 @@ export interface paths {
     put?: never;
     /**
      * Rejects a pending proposal.
-     * @description Nothing is written to the document. A rejected proposal cannot be approved later. If the proposal is not `pending`, 417 is returned.
+     * @description Nothing is written to the document. A rejected proposal cannot be approved later. The owner can also reject an R3 proposal that waits for its second approval. If the proposal is not `pending` or `awaiting_second_approval`, 417 is returned.
      */
     post: operations['rejectProposal'];
     delete?: never;
@@ -274,6 +345,7 @@ export interface components {
       expires_at: string;
       preview: components['schemas']['Preview'];
       proposal_id: string;
+      risk_level: components['schemas']['RiskLevel'];
       /** @constant */
       status: 'approval_required';
     };
@@ -311,13 +383,18 @@ export interface components {
       | 'preview_required'
       | 'purge_failed'
       | 'not_owner'
+      | 'second_approver_required'
+      | 'not_second_approver'
       | 'not_pending'
       | 'expired'
       | 'digest_mismatch'
       | 'document_changed'
       | 'unresolved_unknown'
       | 'execution_failed'
-      | 'internal_error';
+      | 'internal_error'
+      | 'not_applied'
+      | 'not_revertable'
+      | 'record_changed';
     JsonRpcRequest: {
       /** @description Not present in a notification. */
       id?: string | number;
@@ -384,11 +461,26 @@ export interface components {
        * @description Expiry time. ISO 8601, with a UTC offset.
        */
       expires_at: string;
+      /**
+       * Format: date-time
+       * @description When the owner gave the first approval of an R3 proposal. Null for other levels.
+       */
+      first_approved_at: string | null;
       preview: components['schemas']['Preview'];
       proposal_id: string;
       result: components['schemas']['ProposalResult'];
       /** @description Name of the affected document if execution succeeded. */
       result_document?: string | null;
+      risk_level: components['schemas']['RiskLevel'];
+      /**
+       * Format: date-time
+       * @description When the second person approved the R3 proposal.
+       */
+      second_approved_at: string | null;
+      /** @description User who gave the second approval of an R3 proposal. Null until then and for other levels. */
+      second_approver: string | null;
+      /** @description The applied proposal this proposal reverts. Null on an ordinary proposal. */
+      source_proposal?: string | null;
       status: components['schemas']['ProposalStatus'];
       target_doctype?: string | null;
       target_name?: string | null;
@@ -400,11 +492,12 @@ export interface components {
      */
     ProposalResult: '' | 'unknown' | 'succeeded' | 'failed';
     /**
-     * @description `pending`: waits for the human decision. `rejected`: the human rejected it or the approval check failed permanently.
+     * @description `pending`: waits for the human decision. `awaiting_second_approval`: an R3 proposal the owner approved. It waits for a second person's approval and nothing has run yet.
+     *     `rejected`: the human rejected it or the approval check failed permanently.
      *     `expired`: the time ran out. `consumed`: it was approved and execution started. The outcome is in the `result` field.
      * @enum {string}
      */
-    ProposalStatus: 'pending' | 'rejected' | 'expired' | 'consumed';
+    ProposalStatus: 'pending' | 'awaiting_second_approval' | 'rejected' | 'expired' | 'consumed';
     PurgeResult: {
       /** @description Most records of each kind one run deletes. It is 500. A preview shows it, so the human sees that one run may not delete everything that waits. */
       batch_size: number;
@@ -440,6 +533,22 @@ export interface components {
         to_delete?: number;
       };
     };
+    RevertOutcome: {
+      deny_reason: components['schemas']['DenyReason'] | null;
+      /** @description True when a new pending revert proposal was opened. */
+      opened: boolean;
+      proposal: components['schemas']['Proposal'] | null;
+    };
+    /**
+     * @description Risk level of the proposal. The server sets it when the proposal opens. The model cannot set or change it.
+     *     The level comes from the tool's class and flags. An application tool can declare a higher level, never a lower one.
+     *     `R0`: a read tool. It opens no proposal. `R1`: a write that does not destroy and costs nothing.
+     *     `R2`: a write that destroys or overwrites data, costs money, or is an admin tool.
+     *     `R3`: an admin write that destroys or costs money, or a write that both destroys and costs money.
+     *     The level does not change after the proposal opens.
+     * @enum {string}
+     */
+    RiskLevel: 'R0' | 'R1' | 'R2' | 'R3';
     /** @description Content of `structuredContent` on denial or error. */
     ToolError: {
       error: {
@@ -502,7 +611,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description The request did not come from a human session, the session has no CSRF token or the proposal belongs to another user. Another user's proposal is not returned in the response. */
+      /** @description The request did not come from a human session, the session has no CSRF token, or the proposal belongs to another user and the session user may not give its second approval. Another user's proposal is not returned in the response. */
       403: {
         headers: {
           [name: string]: unknown;
@@ -614,6 +723,49 @@ export interface operations {
     requestBody?: never;
     responses: {
       /** @description List of proposals. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            message: {
+              has_next_page: boolean;
+              proposals: components['schemas']['Proposal'][];
+            };
+          };
+        };
+      };
+      /** @description The session has expired. Frappe denies the request before calling the endpoint. The client asks for a new login. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The request did not come from a human session. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  listSecondApprovals: {
+    parameters: {
+      query?: {
+        limit?: number;
+        /** @description Number of proposals to skip. */
+        start?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Proposals that wait for this user's second approval. */
       200: {
         headers: {
           [name: string]: unknown;
@@ -768,6 +920,56 @@ export interface operations {
       };
       /** @description Discovery allows 60 requests per minute per IP. */
       429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  proposeRevert: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** @description The applied proposal to revert. */
+          proposal_id: string;
+        };
+      };
+    };
+    responses: {
+      /** @description The new revert proposal, or the reason it was not opened. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            message: components['schemas']['RevertOutcome'];
+          };
+        };
+      };
+      /** @description The session has expired. Frappe denies the request before calling the endpoint. The client asks for a new login. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The request did not come from a human session, the session has no CSRF token or the proposal belongs to another user. Another user's proposal is not returned in the response. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The proposal does not exist. */
+      404: {
         headers: {
           [name: string]: unknown;
         };
