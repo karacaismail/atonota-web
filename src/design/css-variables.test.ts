@@ -22,7 +22,7 @@ describe('CSS değişkenleri', () => {
     expect(vars['--color-primary']).toBe(designSource.primary.color);
     expect(vars['--hit-expand']).toBe(String(designSource.hitArea.expand));
     expect(vars['--shadow-input']).toBe(designSource.derived.shadowCss.input);
-    expect(vars['--motion-duration-dropdown']).toBe('500ms');
+    expect(vars['--motion-duration-dropdown']).toBe(`${designSource.dropdown.animation.duration}ms`);
     expect(vars['--focus-dim-color']).toBe('rgba(100,116,139,0.33)');
   });
 

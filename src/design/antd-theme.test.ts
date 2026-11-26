@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { buildAntdTheme } from './antd-theme';
 import { blendOver, contrastRatio, darkenToContrast } from './color';
-import { danger, primary, textDescription } from './tokens';
+import { danger, palette, primary, textDescription } from './tokens';
 
 /** `rgba(r,g,b,a)` -> blendOver için renk ve opaklık. */
 function parseRgba(value: string): [string, number] {
@@ -61,16 +61,16 @@ describe('buildAntdTheme', () => {
     // antd varsayılanı açık temada siyah %45, koyu temada beyaz %45'tir; ikisi de 4.5:1 vermez.
     expect(textDescription.light.opacity).toBeGreaterThan(0.45);
     expect(textDescription.dark.opacity).toBeGreaterThan(0.45);
-    expect(textDescription.light.surfaces).toContain(antdThemeApi.getDesignToken().colorBgLayout);
+    expect(textDescription.light.surfaces).toContain(designSource.lightPalette.layout);
     expect(textDescription.dark.surfaces).toContain(designSource.darkPalette.layout);
   });
 
   it('açık tema bağlantı rengi beyaz üzerinde en az 4.5:1 kontrast verir', () => {
     const { token } = buildAntdTheme('light');
-    const layout = antdThemeApi.getDesignToken().colorBgLayout;
+    const layout = designSource.lightPalette.layout;
     expect(contrastRatio(String(token?.colorLink), layout)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(String(token?.colorLink), '#ffffff')).toBeGreaterThanOrEqual(4.5);
-    expect(buildAntdTheme('dark').token?.colorLink).toBe(designSource.primary.color);
+    expect(buildAntdTheme('dark').token?.colorLink).toBe(palette.dark.ink);
   });
 
   it('koyu birincil düğme zemini saydam değildir ve kaynak tondan türetilir', () => {
@@ -188,10 +188,10 @@ describe('buildAntdTheme', () => {
     ).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('açık tema koyu paleti taşımaz', () => {
+  it('açık tema koyu paleti taşımaz; zeminler açık paletten gelir (AJA-997)', () => {
     const { token, components } = buildAntdTheme('light');
-    expect(token?.colorBgLayout).toBeUndefined();
-    expect(token?.colorBgContainer).toBeUndefined();
+    expect(token?.colorBgLayout).toBe(designSource.lightPalette.layout);
+    expect(token?.colorBgContainer).toBe(designSource.lightPalette.panel);
     expect((components?.Input as Record<string, unknown>)?.['colorBgContainer']).toBeUndefined();
   });
 
@@ -217,7 +217,8 @@ describe('buildAntdTheme', () => {
 
   it('satır kutusu = metin + 8 kuralını oran olarak verir', () => {
     const { token } = buildAntdTheme('light');
-    expect(token?.lineHeight).toBeCloseTo(22 / 14, 6);
+    expect(token?.lineHeight).toBeCloseTo(24 / 16, 6);
+    expect(token?.lineHeightSM).toBeCloseTo(22 / 14, 6);
     expect(token?.lineHeightLG).toBeCloseTo(26 / 18, 6);
   });
 });

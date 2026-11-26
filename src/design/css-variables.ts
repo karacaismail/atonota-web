@@ -18,6 +18,9 @@ import {
   fontFamily,
   fontWeight,
   hitArea,
+  hitTarget,
+  link,
+  palette,
   primary,
   radius,
   shadowsFor,
@@ -33,6 +36,33 @@ function block(selector: string, lines: Record<string, string>): string {
     .map(([k, v]) => `  ${k}: ${v};`)
     .join('\n');
   return `${selector} {\n${body}\n}`;
+}
+
+/** Zemin, metin, çizgi, durum, bağlantı ve odak rengi. Açık ve koyu tema aynı adları üretir. */
+function paletteVars(mode: ThemeMode): Record<string, string> {
+  const p = palette[mode];
+  return {
+    '--color-bg-layout': p.layout,
+    '--color-bg-panel': p.panel,
+    '--color-bg-panel-alt': p.panelAlt,
+    '--color-bg-elevated': p.elevated,
+    '--color-bg-input': p.input,
+    '--color-bg-button': p.button,
+    '--color-bg-button-hover': p.buttonHover,
+    '--color-text': p.text,
+    '--color-text-quiet': p.textQuiet,
+    '--color-line': p.line,
+    '--color-ink': p.ink,
+    '--color-tint': p.tint,
+    '--color-ok': p.ok,
+    '--color-warn': p.warn,
+    '--color-draft-bg': p.draftBg,
+    '--color-draft-text': p.draftText,
+    '--color-link': link[mode].color,
+    '--color-link-hover': link[mode].hover,
+    '--color-link-active': link[mode].active,
+    '--focus-indicator-color': focusIndicator[mode].color,
+  };
 }
 
 function shadowVars(mode: ThemeMode): Record<string, string> {
@@ -51,10 +81,15 @@ export function rootVariables(): Record<string, string> {
   return {
     '--font-ui': fontFamily.ui,
     '--font-code': fontFamily.code,
-    '--font-special': px(typography.special),
-    '--font-exception': px(typography.exception),
     '--font-min': px(typography.min),
     '--font-default': px(typography.default),
+    '--font-body': px(typography.default),
+    '--font-h1': px(typography.headings.h1),
+    '--font-h2': px(typography.headings.h2),
+    '--font-h3': px(typography.headings.h3),
+    '--control-h-sm': px(button.sm.height),
+    '--control-h-md': px(button.md.height),
+    '--control-h-lg': px(button.lg.height),
     '--btn-h-sm': px(button.sm.height),
     '--btn-fs-sm': px(button.sm.fontSize),
     '--btn-lh-sm': px(button.sm.lineBox),
@@ -89,7 +124,7 @@ export function rootVariables(): Record<string, string> {
     '--card-radius': px(radius.card),
     '--hit-expand': String(hitArea.expand),
     '--hit-min-target': px(hitArea.minTarget),
-    '--focus-indicator-color': focusIndicator.color,
+    '--hit-target': px(hitTarget.fine),
     '--focus-indicator-size': px(focusIndicator.size),
     '--focus-dim-color': focusDim.light.color,
     '--focus-dim-transparent': focusDim.light.transparent,
@@ -128,11 +163,17 @@ export function rootVariables(): Record<string, string> {
     '--sidebar-width': px(layout.sidebarWidth),
     '--sidebar-rail-width': px(layout.sidebarRailWidth),
     '--card-padding': px(layout.cardPadding),
+    '--menu-width': px(layout.menuWidth),
+    '--assist-width': px(layout.assistWidth),
+    '--bar-height': px(layout.barHeight),
+    '--rail-width': px(layout.railWidth),
+    '--icon-size': px(layout.iconSize),
     '--table-col-min-action': px(table.columnMinWidth.action),
     '--table-col-min-number': px(table.columnMinWidth.number),
     '--table-col-min-date': px(table.columnMinWidth.date),
     '--table-col-min-text': px(table.columnMinWidth.text),
     '--table-col-min-title': px(table.columnMinWidth.title),
+    ...paletteVars('light'),
     ...shadowVars('light'),
   };
 }
@@ -156,6 +197,7 @@ export function darkVariables(): Record<string, string> {
     '--bg-button': darkPalette.button,
     '--focus-dim-color': focusDim.dark.color,
     '--focus-dim-transparent': focusDim.dark.transparent,
+    ...paletteVars('dark'),
     ...shadowVars('dark'),
   };
 }
@@ -249,16 +291,18 @@ function focusCss(): string {
   ].join('\n');
 }
 
-/** Dropdown açılış hareketi (kaynak: dropdown.animation). Controls işi bu adı kullanır. */
+/**
+ * Dropdown açılış hareketi (kaynak: dropdown.animation). Controls işi bu adı kullanır.
+ * Eğri varsayılan eğridir, süre kısa dropdown süresidir (AJA-997). Eğilme yoktur.
+ */
 function dropdownMotionCss(): string {
-  const k = dropdownAnimation.keyframes;
-  return [
-    `@keyframes atonota-dropdown-in {`,
-    `  from { ${k.from}; }`,
-    `  60% { ${k['60%']}; }`,
-    `  to { ${k.to}; }`,
-    `}`,
-  ].join('\n');
+  const frames = Object.entries(dropdownAnimation.keyframes).map(([at, rule]) => `  ${at} { ${rule}; }`);
+  return [`@keyframes atonota-dropdown-in {`, ...frames, `}`].join('\n');
+}
+
+/** Dokunmatik ekranda dokunma alanı tokenı büyür. Görünen kontrol boyutu değişmez. */
+function hitTargetCss(): string {
+  return `@media (any-pointer: coarse) { :root { --hit-target: ${px(hitTarget.coarse)}; } }`;
 }
 
 function reducedMotionCss(): string {
@@ -281,7 +325,7 @@ function reducedMotionCss(): string {
 function baseCss(): string {
   return [
     'html { font-family: var(--font-ui); font-size: 100%; -webkit-text-size-adjust: 100%; }',
-    'body { margin: 0; font-family: var(--font-ui); font-size: var(--font-default); line-height: calc(var(--font-default) + 8px); min-width: 320px; }',
+    'body { margin: 0; font-family: var(--font-ui); font-size: var(--font-body); line-height: calc(var(--font-body) + 8px); min-width: 320px; }',
     '/* Tablolar kendi kapsayıcısında kayar; başlık ve ilk sütun sözcük ortasından bölünmez. */',
     '[data-scroll-x] { overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }',
     '.ant-table-thead > tr > th, .ant-table-tbody > tr > td:first-child { word-break: normal; overflow-wrap: normal; white-space: nowrap; }',
@@ -306,6 +350,7 @@ export function buildDesignCss(): string {
     primaryButtonCss(),
     focusCss(),
     hitArea.css,
+    hitTargetCss(),
     dropdownMotionCss(),
     reducedMotionCss(),
   ].join('\n\n');

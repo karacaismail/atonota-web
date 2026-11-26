@@ -1,11 +1,21 @@
 import source from '../design/source/control-size-config.json' with { type: 'json' };
 
 const { defaultColor, defaultHoverColor } = source.derived.antdTheme.components.Button;
+// Karar metinleri (decision) çalışma verisine girmez.
+const { decision: _lightPaletteDecision, ...lightPalette } = source.lightPalette;
+const { decision: _layoutDecision, ...layoutTokens } = source.layoutTokens;
 
 // Keep documentation, examples, and test fixtures out of the runtime design data.
 export const runtimeDesignSource = {
-  typography: source.typography,
+  typography: {
+    min: source.typography.min,
+    default: source.typography.default,
+    headings: source.typography.headings,
+  },
   primary: source.primary,
+  lightPalette,
+  textPalette: { light: source.textPalette.light, dark: source.textPalette.dark },
+  layoutTokens,
   radius: { default: source.radius.default },
   sizes: { sm: source.sizes.sm, md: source.sizes.md, lg: source.sizes.lg },
   fontWeight: {
@@ -21,6 +31,7 @@ export const runtimeDesignSource = {
     minTarget: source.hitArea.minTarget,
     css: source.hitArea.css,
     rules: source.hitArea.rules,
+    target: { fine: source.hitArea.target.fine, coarse: source.hitArea.target.coarse },
   },
   focusDim: source.focusDim,
   choice: {

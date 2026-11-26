@@ -13,6 +13,7 @@ import {
   fontFamily,
   fontWeight,
   link,
+  palette,
   placeholder,
   primary,
   radius,
@@ -83,6 +84,15 @@ export function buildAntdTheme(mode: ThemeMode, options: BuildThemeOptions = {})
     motionEaseInQuint: easing.standard,
     motionEaseOutQuint: easing.standard,
   };
+
+  if (!dark) {
+    // Açık tema zeminleri kaynaktaki açık paletten gelir; koyu tema ile aynı tokenlardan üretilir.
+    Object.assign(token, {
+      colorBgLayout: palette.light.layout,
+      colorBgContainer: palette.light.panel,
+      colorBgElevated: palette.light.elevated,
+    });
+  }
 
   if (dark) {
     Object.assign(token, {
@@ -156,6 +166,8 @@ export function buildAntdTheme(mode: ThemeMode, options: BuildThemeOptions = {})
       ...(dark ? { selectorBg: darkPalette.input, colorBgContainer: darkPalette.input } : {}),
     },
     Dropdown: { fontSize: typography.default },
+    /** Tablo metni en küçük metindir: 14 px (model 4. bölüm). Gövde 16 px kalır. */
+    Table: { fontSize: typography.min },
     Card: { borderRadiusLG: radius.card },
   };
 

@@ -28,7 +28,7 @@ export function parseEasing(text: string): string {
 export const easing = {
   /** Genel S eğrisi. Kaynaktaki odak perdesi ve AI hareketi aynı eğriyi kullanır. */
   standard: s.focusDim.easing,
-  /** Dropdown açılışı: kaynaktaki belgeli istisna. */
+  /** Dropdown açılışı: ayrı eğri yoktur, varsayılan eğridir (AJA-997). */
   dropdown: s.dropdown.animation.easing,
   /** Baykuş rozeti: kaynaktaki belgeli istisna. */
   owlPop: parseEasing(s.owlAssist.badge.animation),
@@ -43,6 +43,7 @@ export const duration = {
   fast: 100,
   mid: 200,
   slow: 300,
+  /** Dropdown: varsayılan orta süreden kısa (AJA-997). */
   dropdown: s.dropdown.animation.duration,
   focusDim: s.focusDim.duration,
   flyout: parseMs(s.sidebar.flyout.animation),

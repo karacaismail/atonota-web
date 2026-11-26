@@ -24,11 +24,14 @@ export const fontFamily = {
   code: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
 } as const;
 
+/**
+ * Yazı boyutları. En küçük metin 14 px, gövde 16 px (AJA-997, model 6. bölüm).
+ * 12, 10 ve 9 px istisnaları kaldırıldı. Başlıklar kaynaktaki `typography.headings` değeridir.
+ */
 export const typography = {
-  special: s.typography.special,
-  exception: s.typography.exception,
   min: s.typography.min,
   default: s.typography.default,
+  headings: s.typography.headings,
   /** Satır kutusu = metin + 8 px. */
   lineBoxFor: (fontSize: number): number => fontSize + 8,
   /** antd oran ister: satır kutusu / metin. */
@@ -107,8 +110,56 @@ export const border = {
   width: 1,
 } as const;
 
-/** Açık tema sayfa zemini antd varsayılan algoritmasından gelir. Kontrast bu zemine göre hesaplanır. */
-const LIGHT_SURFACE: string = antdThemeApi.getDesignToken().colorBgLayout;
+/**
+ * Açık ve koyu tema zeminleri, metin, çizgi ve durum renkleri. İki tema aynı adları taşır.
+ * Açık zeminler `lightPalette`, koyu zeminler `darkPalette`, metin ve durum renkleri `textPalette` kaynağındandır.
+ * `panelAlt` ikinci yüzeydir; koyu temada yükseltilmiş zemindir. `ink` vurgu ve bağlantı metnidir.
+ */
+function paletteFor(mode: ThemeMode) {
+  const dark = mode === 'dark';
+  const text = s.textPalette[mode];
+  const surfaces = dark
+    ? {
+        layout: s.darkPalette.layout,
+        panel: s.darkPalette.panel,
+        panelAlt: s.darkPalette.elevated,
+        elevated: s.darkPalette.elevated,
+        input: s.darkPalette.input,
+        button: s.darkPalette.button,
+        buttonHover: s.darkPalette.buttonHover,
+      }
+    : { ...s.lightPalette };
+  const tint = hexToRgba(s.primary.color, text.tintAlpha);
+  // Vurgu metni sayfa, panel, ikinci yüzey ve vurgu zemini (tint) üstünde en az 4.5:1 verir.
+  // Kaynak değer başlangıçtır; gerekirse açık temada koyulaşır, koyu temada açılır.
+  const inkSurfaces = [surfaces.layout, surfaces.panel, surfaces.panelAlt, surfaces.elevated];
+  const allSurfaces = [...inkSurfaces, ...inkSurfaces.map((bg) => blendOver(s.primary.color, text.tintAlpha, bg))];
+  const adjust = dark ? lightenToContrast : darkenToContrast;
+  const ink = allSurfaces.reduce((c, bg) => adjust(c, bg), s.primary.ink[mode]);
+  return {
+    ...surfaces,
+    text: text.text,
+    textQuiet: text.textQuiet,
+    line: text.line,
+    ink,
+    tint,
+    /** Vurgu metninin denendiği zeminler; test aynı listeyi kullanır. */
+    inkSurfaces: allSurfaces,
+    ok: text.ok,
+    warn: text.warn,
+    draftBg: text.draftBg,
+    draftText: text.draftText,
+  };
+}
+
+export const palette = {
+  light: paletteFor('light'),
+  dark: paletteFor('dark'),
+} as const;
+
+/** Açık tema sayfa zemini kaynaktaki açık paletten gelir. Kontrast bu zemine göre hesaplanır. */
+const LIGHT_SURFACES: string[] = palette.light.inkSurfaces;
+const darkenOnLight = (c: string) => LIGHT_SURFACES.reduce((acc, bg) => darkenToContrast(acc, bg), c);
 
 /**
  * Metin bağlantısı renkleri. Koyu temada birincil renk yeterli kontrast verir.
@@ -118,11 +169,12 @@ const LIGHT_SURFACE: string = antdThemeApi.getDesignToken().colorBgLayout;
  */
 export const link = {
   light: {
-    color: darkenToContrast(s.primary.color, LIGHT_SURFACE),
-    hover: darkenToContrast(s.primary.hover, LIGHT_SURFACE),
-    active: darkenToContrast(s.primary.active, LIGHT_SURFACE),
+    /** Açık temada #00aacc yazı rengi olmaz. Bağlantı kaynaktaki koyu mavi vurgu rengidir (AJA-997). */
+    color: palette.light.ink,
+    hover: darkenOnLight(s.primary.hover),
+    active: darkenOnLight(s.primary.active),
   },
-  dark: { color: s.primary.color, hover: s.primary.hover, active: s.primary.active },
+  dark: { color: palette.dark.ink, hover: s.primary.hover, active: s.primary.active },
 } as const;
 
 const WHITE = '#ffffff';
@@ -157,7 +209,7 @@ function dangerFor(mode: ThemeMode) {
   const surfaces: string[] =
     mode === 'dark'
       ? [s.darkPalette.layout, s.darkPalette.panel, s.darkPalette.elevated]
-      : [t.colorBgContainer, t.colorBgLayout];
+      : [s.lightPalette.panel, s.lightPalette.layout, s.lightPalette.panelAlt];
   surfaces.push(t.colorErrorBg, t.colorErrorBgHover, t.colorErrorBgActive, t.colorErrorBgFilledHover);
   const adjust = mode === 'dark' ? lightenToContrast : darkenToContrast;
   // Her zemin için sırayla ayarlanır; yön tek olduğundan son renk bütün zeminlerde sınırı sağlar.
@@ -186,7 +238,7 @@ export const danger = {
 /**
  * Yer tutucu metni. antd varsayılanı siyah %25 ve beyaz %25'tir; AA (4.5:1) sınırının altındadır.
  * Opaklık, giriş zemininde 4.5:1 veren en küçük değere programatik çıkar.
- * Açık temada zemin antd varsayılan kapsayıcı rengidir; koyu temada kaynak giriş zemini.
+ * Açık temada zemin kaynaktaki açık giriş zeminidir; koyu temada kaynak giriş zemini.
  */
 export const placeholder = {
   light: hexToRgba(
@@ -194,9 +246,9 @@ export const placeholder = {
     minAlphaForContrast({
       text: '#000000',
       startAlpha: 0.25,
-      background: antdThemeApi.getDesignToken().colorBgContainer,
+      background: s.lightPalette.input,
       backgroundAlpha: 1,
-      surfaces: [antdThemeApi.getDesignToken().colorBgContainer],
+      surfaces: [s.lightPalette.input],
     }),
   ),
   dark: hexToRgba(
@@ -216,7 +268,7 @@ export const placeholder = {
  * bu rengi kullanır. antd varsayılanı açık temada siyah %45 (yerleşim zemininde 3.29:1), koyu temada
  * beyaz %45'tir (4.47:1); WCAG 2.2 AA 4.5:1 ister. Opaklık, metnin durabileceği her zeminde 4.5:1
  * veren en küçük değere programatik çıkar. Zeminler: açık temada yerleşim, kapsayıcı ve yükseltilmiş
- * zemin; koyu temada kaynak yerleşim, panel ve yükseltilmiş zemini.
+ * zemin (kaynaktaki açık palet); koyu temada kaynak yerleşim, panel ve yükseltilmiş zemini.
  */
 function textDescriptionFor(mode: ThemeMode) {
   const dark = mode === 'dark';
@@ -226,7 +278,7 @@ function textDescriptionFor(mode: ThemeMode) {
   const text = dark ? '#ffffff' : '#000000';
   const surfaces: string[] = dark
     ? [s.darkPalette.layout, s.darkPalette.panel, s.darkPalette.elevated]
-    : [t.colorBgLayout, t.colorBgContainer, t.colorBgElevated];
+    : [s.lightPalette.layout, s.lightPalette.panel, s.lightPalette.panelAlt, s.lightPalette.elevated];
   // antd varsayılan opaklığı (rgba(..., 0.45)) başlangıçtır.
   const startAlpha = Number(/,\s*([\d.]+)\)$/.exec(t.colorTextDescription)?.[1] ?? 0.45);
   // Zemin saydamlığı 0: metin doğrudan her zeminin üstündedir.
@@ -300,6 +352,16 @@ export const darkPalette = {
   borderSecondary: s.darkPalette.borderSecondary,
 } as const;
 
+/**
+ * Dokunma alanı tokenı. Görünen kontrol boyutundan (`sizes`) ayrıdır.
+ * İnce işaretçide en az `fine`, dokunmatik ekranda (`any-pointer: coarse`) en az `coarse` px.
+ */
+export const hitTarget = {
+  fine: s.hitArea.target.fine,
+  coarse: s.hitArea.target.coarse,
+} as const;
+
+
 export const hitArea = {
   expand: s.hitArea.expand,
   minTarget: s.hitArea.minTarget,
@@ -320,10 +382,12 @@ export const focusDim = {
 
 /**
  * Klavye odak göstergesi. Çevreleyen halka yasaktır; gösterge alt kenarda tek çizgidir.
- * Renk birincil renktir. Kalınlık proje kararıdır (kaynakta tanımlı değil): 2 px.
+ * Renk vurgu rengidir: açık temada koyu mavi, koyu temada birincil renk (AJA-997).
+ * Kalınlık proje kararıdır (kaynakta tanımlı değil): 2 px.
  */
 export const focusIndicator = {
-  color: s.primary.color,
+  light: { color: palette.light.ink },
+  dark: { color: palette.dark.ink },
   size: 2,
 } as const;
 
@@ -384,6 +448,12 @@ export const layout = {
   sidebarWidth: s.sidebar.widthExpanded,
   sidebarRailWidth: s.sidebar.widthCollapsed,
   cardPadding: s.cards.padding,
+  /** Kabuk ölçüleri (onaylı taslak): menü, yardımcı paneli, telefon alt çubuğu, dar menü ve simge. */
+  menuWidth: s.layoutTokens.menuWidth,
+  assistWidth: s.layoutTokens.assistWidth,
+  barHeight: s.layoutTokens.barHeight,
+  railWidth: s.layoutTokens.railWidth,
+  iconSize: s.layoutTokens.iconSize,
   /** Dar form sütunu (giriş, parola, kısa ayar). Kaynak ölçeğinden türetilir: 10 orta buton yüksekliği = 420 px. */
   formMaxWidth: sizes.button.md.height * 10,
   /**

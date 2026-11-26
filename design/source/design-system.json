@@ -20,7 +20,7 @@
     {
       "id": "D02",
       "topic": "Tipografi",
-      "decision": "Min 12 px, varsayılan 14 px, istisna 10 px, özel istisna 9 px.",
+      "decision": "Min 14 px, gövde 16 px. 12, 10 ve 9 px istisnaları kaldırıldı (AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü.)",
       "status": "locked"
     },
     {
@@ -38,13 +38,13 @@
     {
       "id": "D05",
       "topic": "Tıklanabilir alan",
-      "decision": "Buton, input, select, link ve seçim kontrolleri görünen alanın +%12'si kadar tıklanabilir/dokunulabilir (HIT_RULES R1–R11, ::after halkası, komşu kırpma). R11: Select halkasına tıklama seçiciye aktarılır.",
+      "decision": "Buton, input, select, link ve seçim kontrolleri görünen alanın +%12'si kadar tıklanabilir/dokunulabilir (HIT_RULES R1–R11, ::after halkası, komşu kırpma). R11: Select halkasına tıklama seçiciye aktarılır. Dokunmatik ekranda dokunma alanı en az 48 px olur; görünen kontrol boyutu ayrı tokendır (AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü.)",
       "status": "locked"
     },
     {
       "id": "D06",
       "topic": "Primary renk",
-      "decision": "normal #00aacc, hover #00b2dd, active #00baee. Light: siyah metin %85 → hover %100. Dark: metin #00aacc %85 → %100, tint zemin %14 → %22.",
+      "decision": "normal #00aacc, hover #00b2dd, active #00baee. Light: siyah metin %85 → hover %100. Dark: metin #00aacc %85 → %100, tint zemin %14 → %22. Açık temada #00aacc yazı rengi olmaz; bağlantı ve odak #00728a olur (AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü.)",
       "status": "locked"
     },
     {
@@ -62,7 +62,7 @@
     {
       "id": "D09",
       "topic": "Dropdown",
-      "decision": "Öğeler arası radiussuz birleşik; Select ve buton bitişik açılır (boşluk ve birleşim radius'u yok). Stiller: Klasik 42, Kısayollu 36, Açıklamalı 48, Seçimli 42, Aramalı 36 (Kompakt kaldırıldı). Animasyon Skew + Scale 500 ms. Tıklayınca açılır.",
+      "decision": "Öğeler arası radiussuz birleşik; Select ve buton bitişik açılır (boşluk ve birleşim radius'u yok). Stiller: Klasik 42, Kısayollu 36, Açıklamalı 48, Seçimli 42, Aramalı 36 (Kompakt kaldırıldı). Açılış varsayılan eğriyi kullanır: cubic-bezier(.65, 0, .35, 1), 140 ms; eğilme kalktı (AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü.)",
       "status": "locked"
     },
     {
@@ -92,7 +92,7 @@
     {
       "id": "D14",
       "topic": "Seçim kontrolleri",
-      "decision": "Checkbox 32 (kutu 20, radius 5, dolu); Radio 32 (kart, daire 20); Switch 28 (iz 24, oran 1.8, padding 3, köşeli, iç metinli); Tabs 32 (segmented, 16 px); Pill/Tag 24 (soft, pill, baştan ikon, 12/400, padding 6, ikon 14, kapatılabilir). Diğer seçenekler kaldırıldı.",
+      "decision": "Checkbox 32 (kutu 20, radius 5, dolu); Radio 32 (kart, daire 20); Switch 28 (iz 24, oran 1.8, padding 3, köşeli, iç metinli); Tabs 32 (segmented, 16 px); Pill/Tag 24 (soft, pill, baştan ikon, 14/400, padding 6, ikon 14, kapatılabilir). Diğer seçenekler kaldırıldı.",
       "status": "locked"
     },
     {
@@ -198,7 +198,7 @@
       {
         "key": "dds",
         "label": "Dropdown stilleri",
-        "content": "5 stil, Skew + Scale 500 ms"
+        "content": "5 stil, varsayılan eğri, 140 ms"
       },
       {
         "key": "shadow",
@@ -275,9 +275,8 @@
     ]
   },
   "rules": [
-    "Minimum metin boyutu 12 px.",
-    "Varsayılan metin boyutu 14 px.",
-    "İstisna metin boyutu 10 px; ikinci istisna (özel durumlar) 9 px. İkisi de input ve butonda kullanılmaz.",
+    "Minimum metin boyutu 14 px. 12, 10 ve 9 px kaldırıldı.",
+    "Gövde metin boyutu 16 px.",
     "Satır kutusu = fontSize + 8 px; yükseklik − fontSize çift olmalı (tam piksel padding).",
     "Radius 5 px (karar verildi, sabit).",
     "Primary normal #00aacc, hover #00b2dd (normal ile active arası), active #00baee. Açık tema: zemin #00aacc, metin siyah %85 → hover %100. Koyu tema: metin #00aacc %85 → hover %100, zemin #00aacc %14 → hover %22.",
@@ -286,7 +285,7 @@
     "Satır kutusu = metin + 8: 14 → 22, 16 → 24, 18 → 26 px; dikey padding 6 / 8 / 10 px (tam piksel).",
     "Font ağırlığı (buton ve input): Small 400, Medium 500, Large 600 (font 600 içermiyorsa 500). Sabit karar.",
     "Koyu temada panel bir tık açık (#1F1F23), input daha koyu (#141418), buton daha açık (#34343B), kenarlıklar koyu (#111114 / #151518).",
-    "Dropdown: 5 stil (Klasik, Kısayollu, Açıklamalı, Seçimli, Aramalı) onaylandı; varsayılan classic; açılış animasyonu Skew + Scale, 500 ms (son karar).",
+    "Dropdown: 5 stil (Klasik, Kısayollu, Açıklamalı, Seçimli, Aramalı) onaylandı; varsayılan classic; açılış varsayılan eğriyle 140 ms; eğilme kalktı.",
     "Select açıkken kapalı hali (üst alan) ile açılan liste bütünleşik: aradaki radius ve boşluk yok.",
     "Buton dropdown açıkken buton ile açılan menü bütünleşik: butonun alt köşeleri ve menünün buton tarafındaki üst köşesi radiussuz, boşluk yok.",
     "Dropdown satır yükseklikleri buton ölçeğinden: klasik ve seçimli 42, kısayollu ve aramalı 36, açıklamalı 48 px (metin 32 px ikon yüksekliğini aşmaz).",
@@ -294,7 +293,7 @@
     "Small buton 36 px, small input 36 px.",
     "Medium buton 42 px, medium input 42 px.",
     "Large buton 48 px, large input 48 px.",
-    "Tüm buton, input, select ve linklerde tıklanabilir/dokunulabilir alan görünen alanın %12 fazlası; kurallar: R1 Ölçek, R2 Simetri, R3 Komşu, R4 Bitişik, R5 İç içe, R6 Pasif, R7 Yerleşim, R8 Kenarlık, R9 Input, R10 Doğrulama.",
+    "Tüm buton, input, select ve linklerde tıklanabilir/dokunulabilir alan görünen alanın %12 fazlası, dokunmatik ekranda en az 48 px; kurallar: R1 Ölçek, R2 Simetri, R3 Komşu, R4 Bitişik, R5 İç içe, R6 Pasif, R7 Yerleşim, R8 Kenarlık, R9 Input, R10 Doğrulama.",
     "Gölge seçenekleri: flat, long, 3 / 7 / 9 katman; kart, buton, input ve dropdown için ayrı ayrı.",
     "Input: koyu temada zemini panelden koyu (#141418 < #1F1F23) ama iç gölgeden açık; iç gölge belirgin (inset 0px 1px 2px 0 rgba(0,0,0,1)).",
     "Odak perdesi: flyout veya dropdown açıkken arka plan soğuk gri %33 + 2 px blur (koyu temada 2× koyu: #323A46 %66); odak net; 320 ms S eğrisi (cubic-bezier(.65,0,.35,1)).",
@@ -332,14 +331,23 @@
         "hoverBackground": 0.22,
         "activeBackground": 0.28
       },
-      "decision": "Primary normal #00aacc, hover #00b2dd (normal ile active arası), active #00baee. Açık tema: zemin #00aacc, metin siyah %85 → hover %100. Koyu tema: metin #00aacc %85 → hover %100, zemin #00aacc %14 → hover %22."
+      "decision": "Primary normal #00aacc, hover #00b2dd (normal ile active arası), active #00baee. Açık tema: zemin #00aacc, metin siyah %85 → hover %100. Koyu tema: metin #00aacc %85 → hover %100, zemin #00aacc %14 → hover %22.",
+      "ink": {
+        "light": "#00728a",
+        "dark": "#00aacc",
+        "decision": "Açık temada #00aacc yazı rengi olmaz; yalnız düğme zemininde kullanılır. Bağlantı, vurgu metni ve odak göstergesi açık temada #00728a olur. AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü."
+      }
     },
     "typography": {
-      "special": 9,
-      "exception": 10,
-      "min": 12,
-      "default": 14,
-      "lineHeightRule": "fontSize + 8"
+      "min": 14,
+      "default": 16,
+      "lineHeightRule": "fontSize + 8",
+      "headings": {
+        "h1": 26,
+        "h2": 20,
+        "h3": 18
+      },
+      "decision": "En küçük metin 14 px, gövde 16 px. 12, 10 ve 9 px kaldırıldı. AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü."
     },
     "radius": {
       "default": 5,
@@ -383,9 +391,9 @@
     "link": {
       "touchExpandPercent": 12,
       "fontSizes": [
-        12,
         14,
-        16
+        16,
+        18
       ]
     },
     "hitArea": {
@@ -629,7 +637,12 @@
           "meetsWcag258": true
         }
       ],
-      "measuredAt": "2026-11-22T21:24:19.460Z"
+      "measuredAt": "2026-11-22T21:24:19.460Z",
+      "target": {
+        "fine": 44,
+        "coarse": 48,
+        "decision": "Dokunma alanı tokenla belirlenir. İnce işaretçide en az 44 px, dokunmatik ekranda (any-pointer: coarse) en az 48 px. Görünen kontrol boyutu ayrı tokendır. AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü."
+      }
     },
     "shadows": {
       "card": {
@@ -730,19 +743,18 @@
     "dropdown": {
       "style": "classic",
       "animation": {
-        "name": "skewScale",
-        "label": "Skew + Scale",
-        "duration": 500,
-        "easing": "cubic-bezier(.2, .9, .3, 1.15)",
+        "name": "fadeSlide",
+        "label": "Solma + kayma",
+        "duration": 140,
+        "easing": "cubic-bezier(.65, 0, .35, 1)",
         "keyframes": {
-          "from": "opacity: 0; transform: scale(.92) skew(-6deg, -2deg)",
-          "60%": "opacity: 1; transform: scale(1.01) skew(1deg, .3deg)",
+          "from": "opacity: 0; transform: translateY(-4px)",
           "to": "opacity: 1; transform: none"
         },
         "transformOrigin": "menünün butona bakan üst köşesi (bottomLeft → top left, bottomRight → top right)",
         "reducedMotion": "prefers-reduced-motion: reduce → animasyon yok"
       },
-      "duration": 500,
+      "duration": 140,
       "joinedItems": {
         "value": true,
         "rule": "Öğeler aralıksız ve radiussuz birleşik; yalnızca liste dış köşeleri yuvarlak (radius 5 px)."
@@ -755,7 +767,7 @@
         "value": true,
         "rule": "Buton dropdown açıkken butonun alt köşeleri ve menünün butona bakan üst köşesi radiussuz; boşluk 0; butonun flat gölgesi kaybolur."
       },
-      "decision": "Tüm dropdown stilleri onaylandı. Açılış animasyonu Skew + Scale, 500 ms. Son karar.",
+      "decision": "Tüm dropdown stilleri onaylandı. Açılış varsayılan eğriyi kullanır: cubic-bezier(.65, 0, .35, 1), 140 ms. Eğilme (Skew + Scale) kalktı. AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü.",
       "defaultStyle": "classic",
       "trigger": "click",
       "shadow": {
@@ -793,7 +805,7 @@
           "lineHeight": 22,
           "icon": "14 px çizgi ikon",
           "groups": "grup başlığı + öğeler; gruplar arası 1 px ayırıcı",
-          "shortcut": "sağda kbd: 12 px mono, 1 px kenarlık, 4 px radius",
+          "shortcut": "sağda kbd: 14 px mono, 1 px kenarlık, 4 px radius",
           "description": false,
           "selection": false,
           "search": false,
@@ -811,7 +823,7 @@
           "icon": "32 × 32 ikon kutusu, 6 px radius, 1 px kenarlık",
           "groups": false,
           "shortcut": false,
-          "description": "başlık 14 px / 16 px 600 + açıklama 12 px / 16 px; toplam 32 px = ikon yüksekliği, taşmaz",
+          "description": "başlık 14 px / 600 + açıklama 14 px; ikon kutusu 32 px. En küçük metin 14 px (AJA-997)",
           "selection": false,
           "search": false,
           "minWidth": 300
@@ -893,16 +905,16 @@
         32
       ],
       "tagHeights": [
-        20,
         24,
-        28
+        28,
+        32
       ],
       "rules": [
         "C1 Satır yükseklikleri 24 / 28 / 32 px.",
         "C2 Etiket satır kutusu = metin + 8; dikey ortalı.",
         "C3 Son karar: Checkbox 32 · Radio 32 (kart) · Switch 28 · Tabs 32 (segmented) · Tag 24; diğer seçenekler kaldırıldı.",
         "C4 Tüm seçim kontrolleri tıklanabilir alan motoruna dahil (+%12).",
-        "C5 Pill/Tag yükseklikleri 20 / 24 / 28 px; metin satır kutusu = metin + 8 (12 → 20); ikon 1em, metinle dikey ortalı."
+        "C5 Pill/Tag yükseklikleri 24 / 28 / 32 px; metin satır kutusu = metin + 8 (14 → 22); ikon 1em, metinle dikey ortalı."
       ],
       "checkbox": {
         "decided": true,
@@ -1021,7 +1033,7 @@
         "style": "soft",
         "shape": "pill",
         "icon": "leading",
-        "fontSize": 12,
+        "fontSize": 14,
         "weight": 400,
         "paddingX": 6,
         "iconSize": 14,
@@ -1030,8 +1042,8 @@
         "antdTheme": {
           "token": {
             "controlHeight": 24,
-            "fontSize": 12,
-            "lineHeight": 1.6666666666666667,
+            "fontSize": 14,
+            "lineHeight": 1.5714285714285714,
             "borderRadius": 5,
             "colorPrimary": "#00aacc",
             "colorPrimaryHover": "#00b2dd",
@@ -1294,7 +1306,7 @@
           "Baykuşu kapat"
         ],
         "itemHeight": 36,
-        "animation": "Skew + Scale 500 ms",
+        "animation": "dropdown hareketi: varsayılan eğri, 140 ms",
         "focusDim": true
       },
       "rules": [
@@ -1479,12 +1491,12 @@
           "colorPrimary": "#00aacc",
           "colorPrimaryHover": "#00b2dd",
           "colorPrimaryActive": "#00baee",
-          "colorLink": "#00aacc",
+          "colorLink": "#16b1d0",
           "colorLinkHover": "#00b2dd",
           "colorLinkActive": "#00baee",
           "colorInfo": "#00aacc",
-          "fontSize": 14,
-          "fontSizeSM": 12,
+          "fontSize": 16,
+          "fontSizeSM": 14,
           "fontSizeLG": 18,
           "controlHeight": 42,
           "controlHeightSM": 36,
@@ -1530,7 +1542,7 @@
             "optionFontSize": 16
           },
           "Dropdown": {
-            "fontSize": 14
+            "fontSize": 16
           },
           "Card": {
             "borderRadiusLG": 10
@@ -1549,7 +1561,48 @@
         "input": "inset 0px 1px 2px 0 rgba(0,0,0,1)",
         "dropdown": "0px 0.06px 0.14px 0 rgba(0,0,0,0.05), 0px 0.13px 0.28px 0 rgba(0,0,0,0.05), 0px 0.25px 0.56px 0 rgba(0,0,0,0.05), 0px 0.5px 1.13px 0 rgba(0,0,0,0.05), 0px 1px 2.25px 0 rgba(0,0,0,0.05), 0px 2px 4.5px 0 rgba(0,0,0,0.05), 0px 4px 9px 0 rgba(0,0,0,0.05), 0px 8px 18px 0 rgba(0,0,0,0.05), 0px 16px 36px 0 rgba(0,0,0,0.05)"
       },
-      "css": ":root {\n  /* tipografi */\n  --font-special: 9px;   /* ikinci istisna */\n  --font-exception: 10px; /* istisna */\n  --font-min: 12px;\n  --font-default: 14px;\n\n  --btn-h-sm: 36px;  --btn-fs-sm: 14px;\n  --input-h-sm: 36px;  --input-fs-sm: 14px;\n  --btn-h-md: 42px;  --btn-fs-md: 16px;\n  --input-h-md: 42px;  --input-fs-md: 16px;\n  --btn-h-lg: 48px;  --btn-fs-lg: 18px;\n  --input-h-lg: 48px;  --input-fs-lg: 18px;\n\n  --color-primary: #00aacc;\n  --color-primary-hover: #00b2dd;\n  --color-primary-active: #00baee;\n  --primary-text: rgba(0,0,0,0.85);\n  --primary-text-hover: rgba(0,0,0,1);\n  --radius: 5px;\n  --card-radius: 10px;\n  --hit-expand: 0.12;\n\n  --shadow-card: 0.13px 0.13px 0.19px 0 rgba(11,18,32,0.01), 0.27px 0.27px 0.38px 0 rgba(11,18,32,0.01), 0.53px 0.53px 0.75px 0 rgba(11,18,32,0.01), 1.06px 1.06px 1.5px 0 rgba(11,18,32,0.01), 2.12px 2.12px 3px 0 rgba(11,18,32,0.01), 4.24px 4.24px 6px 0 rgba(11,18,32,0.01), 8.49px 8.49px 12px 0 rgba(11,18,32,0.01);\n  --shadow-button: 0px 2px 0 0 rgba(11,18,32,0.36);\n  --shadow-input: inset 0px 1px 2px 0 rgba(11,18,32,0.36);\n  --shadow-dropdown: 0px 0.06px 0.14px 0 rgba(11,18,32,0.02), 0px 0.13px 0.28px 0 rgba(11,18,32,0.02), 0px 0.25px 0.56px 0 rgba(11,18,32,0.02), 0px 0.5px 1.13px 0 rgba(11,18,32,0.02), 0px 1px 2.25px 0 rgba(11,18,32,0.02), 0px 2px 4.5px 0 rgba(11,18,32,0.02), 0px 4px 9px 0 rgba(11,18,32,0.02), 0px 8px 18px 0 rgba(11,18,32,0.02), 0px 16px 36px 0 rgba(11,18,32,0.02);\n}\n[data-theme=\"dark\"] {\n  --shadow-card: 0.13px 0.13px 0.19px 0 rgba(0,0,0,0.03), 0.27px 0.27px 0.38px 0 rgba(0,0,0,0.03), 0.53px 0.53px 0.75px 0 rgba(0,0,0,0.03), 1.06px 1.06px 1.5px 0 rgba(0,0,0,0.03), 2.12px 2.12px 3px 0 rgba(0,0,0,0.03), 4.24px 4.24px 6px 0 rgba(0,0,0,0.03), 8.49px 8.49px 12px 0 rgba(0,0,0,0.03);\n  --shadow-button: 0px 2px 0 0 rgba(0,0,0,1);\n  --shadow-input: inset 0px 1px 2px 0 rgba(0,0,0,1);\n  --shadow-dropdown: 0px 0.06px 0.14px 0 rgba(0,0,0,0.05), 0px 0.13px 0.28px 0 rgba(0,0,0,0.05), 0px 0.25px 0.56px 0 rgba(0,0,0,0.05), 0px 0.5px 1.13px 0 rgba(0,0,0,0.05), 0px 1px 2.25px 0 rgba(0,0,0,0.05), 0px 2px 4.5px 0 rgba(0,0,0,0.05), 0px 4px 9px 0 rgba(0,0,0,0.05), 0px 8px 18px 0 rgba(0,0,0,0.05), 0px 16px 36px 0 rgba(0,0,0,0.05);\n\n  --font-weight-sm: 400;\n  --font-weight-md: 500;\n  --font-weight-lg: 600;  /* 600, font 600 içermiyorsa 500 */\n}\n\n/* Tıklanabilir alan = görünen alan × 1.12 (HIT_RULES R1–R10)\n   --hit-t/r/b/l değerlerini HitArea motoru yazar: ideal olarak her kenar boyutun %6’i,\n   komşu kontrole göre boşluk/2 ile sınırlı. Görünen kutu ve yerleşim değişmez. */\n.hit { position: relative; }\n.hit::after {\n  content: \"\";\n  position: absolute;\n  top: calc(var(--hit-t, 0px) * -1);\n  right: calc(var(--hit-r, 0px) * -1);\n  bottom: calc(var(--hit-b, 0px) * -1);\n  left: calc(var(--hit-l, 0px) * -1);\n}\n\n/* JS yoksa yedek: yalnızca R1 + R2 (komşu kuralı yok).\n   top/bottom yüzdesi yüksekliğe, left/right yüzdesi genişliğe göre hesaplanır. */\n.hit-fallback { position: relative; }\n.hit-fallback::after { content: \"\"; position: absolute; inset: -6%; }\n\n/* R9: Input için görünmez suffix (affix sarmalayıcıyı zorlar) */\n.ant-input-suffix:has(> .hit-sfx) { display: none; }\n\n/* Input satır kutusu = fontSize + 8; buton satır kutusu çift */\n.ant-input, .ant-input-affix-wrapper, .ant-input-affix-wrapper > input.ant-input { line-height: 24px; }\n.ant-input-sm, .ant-input-affix-wrapper.ant-input-affix-wrapper-sm, .ant-input-affix-wrapper-sm > input.ant-input { line-height: 22px; }\n.ant-input-lg, .ant-input-affix-wrapper.ant-input-affix-wrapper-lg, .ant-input-affix-wrapper-lg > input.ant-input { line-height: 26px; }\n/* Input yüksekliği font metriklerinden bağımsız: sistem boyutuna sabit */\n.ant-input-affix-wrapper { height: 42px; }\n.ant-input-affix-wrapper.ant-input-affix-wrapper-sm { height: 36px; }\n.ant-input-affix-wrapper.ant-input-affix-wrapper-lg { height: 48px; }\n.ant-select-sm .ant-select-selection-item, .ant-select-sm .ant-select-selection-placeholder { font-size: 14px; }\n.ant-btn { font-size: 16px; line-height: 24px; }\n.ant-btn.ant-btn-sm { font-size: 14px; line-height: 22px; }\n.ant-btn.ant-btn-lg { font-size: 18px; line-height: 26px; }\n.ant-btn:not(:disabled):active, .ant-btn.ant-dropdown-open { box-shadow: none; }\n.ant-btn, .ant-input, .ant-select-selection-item { font-weight: var(--font-weight-md); }\n.ant-btn-sm, .ant-input-sm, .ant-input-affix-wrapper-sm .ant-input, .ant-select-sm .ant-select-selection-item { font-weight: var(--font-weight-sm); }\n.ant-btn-lg, .ant-input-lg, .ant-input-affix-wrapper-lg .ant-input, .ant-select-lg .ant-select-selection-item { font-weight: var(--font-weight-lg); }"
+      "css": ":root {\n  /* tipografi */\n  --font-min: 14px;\n  --font-default: 16px;\n\n  --btn-h-sm: 36px;  --btn-fs-sm: 14px;\n  --input-h-sm: 36px;  --input-fs-sm: 14px;\n  --btn-h-md: 42px;  --btn-fs-md: 16px;\n  --input-h-md: 42px;  --input-fs-md: 16px;\n  --btn-h-lg: 48px;  --btn-fs-lg: 18px;\n  --input-h-lg: 48px;  --input-fs-lg: 18px;\n\n  --color-primary: #00aacc;\n  --color-primary-hover: #00b2dd;\n  --color-primary-active: #00baee;\n  --primary-text: rgba(0,0,0,0.85);\n  --primary-text-hover: rgba(0,0,0,1);\n  --radius: 5px;\n  --card-radius: 10px;\n  --hit-expand: 0.12;\n\n  --shadow-card: 0.13px 0.13px 0.19px 0 rgba(11,18,32,0.01), 0.27px 0.27px 0.38px 0 rgba(11,18,32,0.01), 0.53px 0.53px 0.75px 0 rgba(11,18,32,0.01), 1.06px 1.06px 1.5px 0 rgba(11,18,32,0.01), 2.12px 2.12px 3px 0 rgba(11,18,32,0.01), 4.24px 4.24px 6px 0 rgba(11,18,32,0.01), 8.49px 8.49px 12px 0 rgba(11,18,32,0.01);\n  --shadow-button: 0px 2px 0 0 rgba(11,18,32,0.36);\n  --shadow-input: inset 0px 1px 2px 0 rgba(11,18,32,0.36);\n  --shadow-dropdown: 0px 0.06px 0.14px 0 rgba(11,18,32,0.02), 0px 0.13px 0.28px 0 rgba(11,18,32,0.02), 0px 0.25px 0.56px 0 rgba(11,18,32,0.02), 0px 0.5px 1.13px 0 rgba(11,18,32,0.02), 0px 1px 2.25px 0 rgba(11,18,32,0.02), 0px 2px 4.5px 0 rgba(11,18,32,0.02), 0px 4px 9px 0 rgba(11,18,32,0.02), 0px 8px 18px 0 rgba(11,18,32,0.02), 0px 16px 36px 0 rgba(11,18,32,0.02);\n}\n[data-theme=\"dark\"] {\n  --shadow-card: 0.13px 0.13px 0.19px 0 rgba(0,0,0,0.03), 0.27px 0.27px 0.38px 0 rgba(0,0,0,0.03), 0.53px 0.53px 0.75px 0 rgba(0,0,0,0.03), 1.06px 1.06px 1.5px 0 rgba(0,0,0,0.03), 2.12px 2.12px 3px 0 rgba(0,0,0,0.03), 4.24px 4.24px 6px 0 rgba(0,0,0,0.03), 8.49px 8.49px 12px 0 rgba(0,0,0,0.03);\n  --shadow-button: 0px 2px 0 0 rgba(0,0,0,1);\n  --shadow-input: inset 0px 1px 2px 0 rgba(0,0,0,1);\n  --shadow-dropdown: 0px 0.06px 0.14px 0 rgba(0,0,0,0.05), 0px 0.13px 0.28px 0 rgba(0,0,0,0.05), 0px 0.25px 0.56px 0 rgba(0,0,0,0.05), 0px 0.5px 1.13px 0 rgba(0,0,0,0.05), 0px 1px 2.25px 0 rgba(0,0,0,0.05), 0px 2px 4.5px 0 rgba(0,0,0,0.05), 0px 4px 9px 0 rgba(0,0,0,0.05), 0px 8px 18px 0 rgba(0,0,0,0.05), 0px 16px 36px 0 rgba(0,0,0,0.05);\n\n  --font-weight-sm: 400;\n  --font-weight-md: 500;\n  --font-weight-lg: 600;  /* 600, font 600 içermiyorsa 500 */\n}\n\n/* Tıklanabilir alan = görünen alan × 1.12 (HIT_RULES R1–R10)\n   --hit-t/r/b/l değerlerini HitArea motoru yazar: ideal olarak her kenar boyutun %6’i,\n   komşu kontrole göre boşluk/2 ile sınırlı. Görünen kutu ve yerleşim değişmez. */\n.hit { position: relative; }\n.hit::after {\n  content: \"\";\n  position: absolute;\n  top: calc(var(--hit-t, 0px) * -1);\n  right: calc(var(--hit-r, 0px) * -1);\n  bottom: calc(var(--hit-b, 0px) * -1);\n  left: calc(var(--hit-l, 0px) * -1);\n}\n\n/* JS yoksa yedek: yalnızca R1 + R2 (komşu kuralı yok).\n   top/bottom yüzdesi yüksekliğe, left/right yüzdesi genişliğe göre hesaplanır. */\n.hit-fallback { position: relative; }\n.hit-fallback::after { content: \"\"; position: absolute; inset: -6%; }\n\n/* R9: Input için görünmez suffix (affix sarmalayıcıyı zorlar) */\n.ant-input-suffix:has(> .hit-sfx) { display: none; }\n\n/* Input satır kutusu = fontSize + 8; buton satır kutusu çift */\n.ant-input, .ant-input-affix-wrapper, .ant-input-affix-wrapper > input.ant-input { line-height: 24px; }\n.ant-input-sm, .ant-input-affix-wrapper.ant-input-affix-wrapper-sm, .ant-input-affix-wrapper-sm > input.ant-input { line-height: 22px; }\n.ant-input-lg, .ant-input-affix-wrapper.ant-input-affix-wrapper-lg, .ant-input-affix-wrapper-lg > input.ant-input { line-height: 26px; }\n/* Input yüksekliği font metriklerinden bağımsız: sistem boyutuna sabit */\n.ant-input-affix-wrapper { height: 42px; }\n.ant-input-affix-wrapper.ant-input-affix-wrapper-sm { height: 36px; }\n.ant-input-affix-wrapper.ant-input-affix-wrapper-lg { height: 48px; }\n.ant-select-sm .ant-select-selection-item, .ant-select-sm .ant-select-selection-placeholder { font-size: 14px; }\n.ant-btn { font-size: 16px; line-height: 24px; }\n.ant-btn.ant-btn-sm { font-size: 14px; line-height: 22px; }\n.ant-btn.ant-btn-lg { font-size: 18px; line-height: 26px; }\n.ant-btn:not(:disabled):active, .ant-btn.ant-dropdown-open { box-shadow: none; }\n.ant-btn, .ant-input, .ant-select-selection-item { font-weight: var(--font-weight-md); }\n.ant-btn-sm, .ant-input-sm, .ant-input-affix-wrapper-sm .ant-input, .ant-select-sm .ant-select-selection-item { font-weight: var(--font-weight-sm); }\n.ant-btn-lg, .ant-input-lg, .ant-input-affix-wrapper-lg .ant-input, .ant-select-lg .ant-select-selection-item { font-weight: var(--font-weight-lg); }"
+    },
+    "lightPalette": {
+      "layout": "#f4f5f7",
+      "panel": "#ffffff",
+      "panelAlt": "#eef0f3",
+      "elevated": "#ffffff",
+      "input": "#ffffff",
+      "button": "#eef0f3",
+      "buttonHover": "#e2e5ea",
+      "decision": "Açık tema zeminleri onaylı taslaktan (AJA-880, 3. sürüm). AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü."
+    },
+    "textPalette": {
+      "light": {
+        "text": "#1b1f24",
+        "textQuiet": "#4b5563",
+        "line": "#cfd4dc",
+        "tintAlpha": 0.12,
+        "ok": "#166534",
+        "warn": "#92400e",
+        "draftBg": "#fff4d6",
+        "draftText": "#5c3d00"
+      },
+      "dark": {
+        "text": "#ececf0",
+        "textQuiet": "#a8a8b3",
+        "line": "#3a3a42",
+        "tintAlpha": 0.14,
+        "ok": "#4ade80",
+        "warn": "#fbbf24",
+        "draftBg": "#3a2f12",
+        "draftText": "#ffe6a6"
+      },
+      "decision": "Metin, çizgi ve durum renkleri onaylı taslaktan. Açık ve koyu tema aynı adları kullanır. AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü."
+    },
+    "layoutTokens": {
+      "menuWidth": 240,
+      "assistWidth": 416,
+      "barHeight": 64,
+      "railWidth": 88,
+      "iconSize": 20,
+      "decision": "Kabuk ölçüleri onaylı taslaktan (15rem, 26rem, 64 px, 5.5rem, simge 20 px). AJA-997, 26 Kasım 2026 Perşembe: model belgesinin 6. bölümü."
     }
   }
 }

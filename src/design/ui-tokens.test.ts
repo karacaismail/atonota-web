@@ -1,0 +1,193 @@
+/**
+ * Arayüz yenileme 1a (AJA-997): yeni görsel dil tokenları.
+ * Kararlar model belgesinin 6. bölümündedir: en küçük metin 14 px, gövde 16 px,
+ * açık temada #00aacc yazı rengi olmaz, dokunma alanı ayrı tokendır, dropdown varsayılan eğriyi kullanır.
+ */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+
+import { buildAntdTheme } from './antd-theme';
+import { blendOver, contrastRatio } from './color';
+import { buildDesignCss, darkVariables, rootVariables } from './css-variables';
+import { dropdownAnimation, duration, easing } from './motion';
+import { designSource } from './source';
+import { focusIndicator, hitTarget, link, palette, typography } from './tokens';
+
+const STANDARD_EASING = 'cubic-bezier(.65,0,.35,1)';
+const squash = (v: string) => v.replace(/\s/g, '').toLowerCase();
+const pxValue = (v: string) => Number(/^(\d+(?:\.\d+)?)px$/.exec(v)?.[1] ?? NaN);
+
+/** `rgba(r,g,b,a)` ya da `#rrggbb` rengini verilen zemine bindirip düz renk verir. */
+function solid(color: string, surface: string): string {
+  const m = /^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/.exec(color);
+  if (!m) return color;
+  const hex = `#${[m[1], m[2], m[3]].map((c) => Number(c).toString(16).padStart(2, '0')).join('')}`;
+  return blendOver(hex, Number(m[4]), surface);
+}
+
+describe('en küçük metin ve gövde metni', () => {
+  it('tipografi tokenı 14 px altına inmez, gövde 16 px olur', () => {
+    expect(typography.min).toBe(14);
+    expect(typography.default).toBe(16);
+    expect(typography).not.toHaveProperty('special');
+    expect(typography).not.toHaveProperty('exception');
+  });
+
+  it('hiçbir yazı boyutu CSS değişkeni 14 px altında değildir', () => {
+    const vars = { ...rootVariables(), ...darkVariables() };
+    const fontVars = Object.entries(vars).filter(([name]) => /^--(font|btn-fs|input-fs|text)-/.test(name));
+    const sizes = fontVars.filter(([, v]) => /px$/.test(v));
+    expect(sizes.length).toBeGreaterThan(8);
+    for (const [name, value] of sizes) {
+      expect(pxValue(value), name).toBeGreaterThanOrEqual(14);
+    }
+    expect(vars['--font-body']).toBe('16px');
+    expect(vars).not.toHaveProperty('--font-special');
+    expect(vars).not.toHaveProperty('--font-exception');
+  });
+
+  it('antd temasında hiçbir yazı boyutu 14 px altında değildir; gövde 16 px olur', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const theme = buildAntdTheme(mode);
+      expect(theme.token?.fontSize).toBe(16);
+      const all: [string, unknown][] = [
+        ...Object.entries(theme.token ?? {}),
+        ...Object.entries(theme.components ?? {}).flatMap(([c, t]) =>
+          Object.entries(t as object).map(([k, v]) => [`${c}.${k}`, v] as [string, unknown]),
+        ),
+      ];
+      const fonts = all.filter(([k, v]) => /fontsize/i.test(k) && typeof v === 'number');
+      for (const [k, v] of fonts) expect(v as number, `${mode} ${k}`).toBeGreaterThanOrEqual(14);
+    }
+  });
+
+  it('kaynak dosyadaki bileşen yazı boyutları 14 px altında değildir', () => {
+    for (const st of designSource.dropdown.styles) expect(st.fontSize, st.key).toBeGreaterThanOrEqual(14);
+    for (const [key, c] of Object.entries(designSource.choice)) {
+      const size = 'labelSize' in c ? c.labelSize : 'fontSize' in c ? c.fontSize : undefined;
+      if (size !== undefined) expect(size, key).toBeGreaterThanOrEqual(14);
+    }
+  });
+});
+
+describe('renk kontrastı', () => {
+  for (const mode of ['light', 'dark'] as const) {
+    it(`${mode} temada metin tokenları her zeminde en az 4.5:1 verir`, () => {
+      const p = palette[mode];
+      const surfaces = [p.layout, p.panel, p.panelAlt, p.elevated];
+      const texts: Record<string, string> = {
+        text: p.text,
+        textQuiet: p.textQuiet,
+        ink: p.ink,
+        ok: p.ok,
+        warn: p.warn,
+        link: link[mode].color,
+        linkHover: link[mode].hover,
+        linkActive: link[mode].active,
+      };
+      for (const surface of surfaces) {
+        for (const [name, color] of Object.entries(texts)) {
+          expect(contrastRatio(solid(color, surface), surface), `${mode} ${name} / ${surface}`).toBeGreaterThanOrEqual(
+            4.5,
+          );
+        }
+        // Vurgu zemini (tint) üstündeki vurgu metni de okunur kalır.
+        const tinted = solid(p.tint, surface);
+        expect(contrastRatio(p.ink, tinted), `${mode} ink / tint`).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrastRatio(p.draftText, p.draftBg), `${mode} draft`).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
+  it('açık temada #00aacc hiçbir metin tokenında kullanılmaz', () => {
+    const primary = designSource.primary.color.toLowerCase();
+    const p = palette.light;
+    const lightTexts = [
+      p.text,
+      p.textQuiet,
+      p.ink,
+      p.ok,
+      p.warn,
+      p.draftText,
+      link.light.color,
+      link.light.hover,
+      link.light.active,
+      focusIndicator.light.color,
+    ];
+    for (const c of lightTexts) expect(c.toLowerCase()).not.toBe(primary);
+    const light = rootVariables();
+    for (const name of ['--color-text', '--color-text-quiet', '--color-ink', '--color-link', '--focus-indicator-color']) {
+      expect(light[name]?.toLowerCase(), name).not.toBe(primary);
+    }
+    expect(buildAntdTheme('light').token?.colorLink?.toLowerCase()).not.toBe(primary);
+    // Düğme zemini birincil renkte kalır.
+    expect(light['--color-primary']).toBe(designSource.primary.color);
+  });
+
+  it('bağlantı ve odak için açık temada daha koyu mavi token vardır', () => {
+    expect(link.light.color).toBe(palette.light.ink);
+    expect(focusIndicator.light.color).toBe(palette.light.ink);
+    expect(focusIndicator.dark.color).toBe(palette.dark.ink);
+    expect(darkVariables()['--focus-indicator-color']).toBe(palette.dark.ink);
+    expect(contrastRatio(palette.light.ink, palette.light.layout)).toBeGreaterThan(
+      contrastRatio(designSource.primary.color, palette.light.layout),
+    );
+  });
+
+  it('açık ve koyu tema zeminleri aynı tokenlardan üretilir', () => {
+    const lightKeys = Object.keys(palette.light).sort();
+    expect(Object.keys(palette.dark).sort()).toEqual(lightKeys);
+    const root = rootVariables();
+    const dark = darkVariables();
+    for (const name of ['--color-bg-layout', '--color-bg-panel', '--color-text', '--color-ink', '--color-line']) {
+      expect(root[name], name).toBeTruthy();
+      expect(dark[name], name).toBeTruthy();
+    }
+    expect(buildAntdTheme('light').token?.colorBgLayout).toBe(palette.light.layout);
+    expect(buildAntdTheme('dark').token?.colorBgLayout).toBe(palette.dark.layout);
+  });
+});
+
+describe('dokunma alanı', () => {
+  it('görünen kontrol boyutu ile dokunma alanı ayrı tokendır; telefonda en az 48 px olur', () => {
+    expect(hitTarget.coarse).toBeGreaterThanOrEqual(48);
+    expect(hitTarget.fine).toBeGreaterThanOrEqual(24);
+    const vars = rootVariables();
+    expect(vars['--hit-target']).toBe(`${hitTarget.fine}px`);
+    expect(vars['--control-h-md']).toBe(`${designSource.sizes.md.button.height}px`);
+    const css = squash(buildDesignCss());
+    expect(css).toContain(squash(`@media (any-pointer: coarse) { :root { --hit-target: ${hitTarget.coarse}px;`));
+  });
+});
+
+describe('dropdown hareketi', () => {
+  it('dropdown ayrı eğri kullanmaz: varsayılan eğri ve daha kısa süre tokenı', () => {
+    expect(squash(easing.dropdown)).toBe(STANDARD_EASING);
+    expect(squash(easing.standard)).toBe(STANDARD_EASING);
+    expect(duration.dropdown).toBeGreaterThan(0);
+    expect(duration.dropdown).toBeLessThan(duration.mid);
+    expect(squash(rootVariables()['--motion-easing-dropdown'] ?? '')).toBe(STANDARD_EASING);
+    expect(rootVariables()['--motion-duration-dropdown']).toBe(`${duration.dropdown}ms`);
+    const frames = JSON.stringify(dropdownAnimation.keyframes);
+    expect(frames).not.toMatch(/skew/);
+    expect(squash(designSource.dropdown.animation.easing)).toBe(STANDARD_EASING);
+  });
+});
+
+describe('AGENTS.md ortak kurallarla ilişki', () => {
+  const agents = readFileSync(resolve(__dirname, '../../AGENTS.md'), 'utf8');
+  const section = agents.split('## Ortak kurallarla ilişki')[1]?.split('\n## ')[0] ?? '';
+
+  it('12 px ve ayrı dropdown eğrisi istisnası kalmaz', () => {
+    expect(section).not.toBe('');
+    // "12 px istisnası geçersizdir" cümlesi kararın kendisidir; başka hiçbir yerde 12 px kalmaz.
+    expect(agents.replace('12 px istisnası geçersizdir', '')).not.toMatch(/\b12 px\b/);
+    expect(agents).not.toMatch(/cubic-bezier\(\.2, \.9/);
+    expect(agents).not.toMatch(/Skew \+ Scale/);
+    expect(section).toMatch(/14 CSS px/);
+    expect(section).toMatch(/12 px istisnası geçersizdir/);
+    expect(section).toMatch(/Dropdown için ayrı hareket eğrisi yoktur/);
+  });
+});
