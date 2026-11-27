@@ -46,12 +46,13 @@ function ModuleRecordLink({
   name,
   children,
 }: ModuleRecordLinkProps) {
+  const language = useLanguage();
   const [resolved, setResolved] = useState<{ doctype: string; module: string | undefined }>();
   useEffect(() => {
     if (knownModule) return;
     const controller = new AbortController();
     adapter
-      .getDocTypeMeta({ doctype, language: 'tr', signal: controller.signal })
+      .getDocTypeMeta({ doctype, language, signal: controller.signal })
       .then((meta) => {
         if (controller.signal.aborted) return;
         const module = meta.schema.module ? moduleSlug(meta.schema.module) : '';
@@ -61,7 +62,7 @@ function ModuleRecordLink({
         if (!controller.signal.aborted) setResolved({ doctype, module: undefined });
       });
     return () => controller.abort();
-  }, [adapter, knownModule, doctype]);
+  }, [adapter, knownModule, doctype, language]);
   const module = knownModule ?? (resolved?.doctype === doctype ? resolved.module : undefined);
   if (!module) return <>{children}</>;
   return <Link to={routes.record(module, slug, name)}>{children}</Link>;
