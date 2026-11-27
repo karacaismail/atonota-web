@@ -9,7 +9,7 @@ import '@fontsource/jetbrains-mono/400.css';
 
 import { StrictMode, useState } from 'react';
 
-import { FALLBACK_LANGUAGE } from '@/app/locale';
+import { resolveLanguage } from '@/app/locale';
 
 import { createRoot } from 'react-dom/client';
 import { EMPTY_LEAVE_CONTEXT, LEAVE_CONTEXT, LEAVE_META } from './leaveFixture';
@@ -22,6 +22,9 @@ import {
   type RecordDocument,
   RecordView,
 } from '../index';
+
+/** Boot language of the sample user. This is fixture data, like the mock server's boot data. */
+const SAMPLE_USER_LANGUAGE = 'tr';
 
 const HARNESS_META: DocTypeMeta = {
   schema: {
@@ -240,6 +243,9 @@ const HARNESS_RECORD: RecordDocument = {
 export function HarnessApp() {
   const params = new URLSearchParams(window.location.search);
   const themeMode = params.get('theme') === 'dark' ? 'dark' : 'light';
+  // The sample user's language. The fixture labels are Turkish, so the default is Turkish.
+  // The fallback language is not used here. A fallback change must not change this page (AJA-2408).
+  const language = resolveLanguage(params.get('lang') ?? SAMPLE_USER_LANGUAGE);
   const scenario = params.get('scenario') ?? 'ready';
   const isLeave = scenario === 'leave' || scenario === 'leave-prefill';
   // Exercise the production mapper with a fake shared client. No network request is made.
@@ -338,7 +344,7 @@ export function HarnessApp() {
           createMode
           adapter={adapter}
           themeMode={themeMode}
-          locale={FALLBACK_LANGUAGE}
+          locale={language}
           breadcrumbs={[]}
           {...(params.get('assist') === '1'
             ? { onAssistField: () => setAssistCalls((count) => count + 1) }
@@ -350,7 +356,7 @@ export function HarnessApp() {
           {...(scenario === 'empty' ? {} : { name: `HR-EXP-000${currentIndex}` })}
           adapter={adapter}
           themeMode={themeMode}
-          locale={FALLBACK_LANGUAGE}
+          locale={language}
           navigator={{
             currentIndex,
             totalCount: 1284,
