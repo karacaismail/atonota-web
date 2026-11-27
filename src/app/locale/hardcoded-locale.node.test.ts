@@ -19,6 +19,13 @@ const HARDCODED_LOCALE =
  */
 const HARDCODED_LOCALE_VALUE = /\b(?:locale|language)(?:\s*:\s*|=\{?\s*)['"](?:tr|en)['"]/;
 
+/**
+ * Biçimde sabit dil (IC-13). Örnek: `new Intl.NumberFormat('tr-TR')`, `'en-US'`,
+ * `toLocaleString('tr')`, `toLocaleLowerCase('tr')`. Biçim dili dil bağlamından gelir.
+ */
+const HARDCODED_FORMAT_LOCALE =
+  /['"][a-z]{2}-[A-Z]{2}['"]|new\s+Intl\.\w+\(\s*['"]|\.toLocale\w*\(\s*['"]/;
+
 /** Örnek sunucunun açılış verisi. Kullanıcı dili orada veridir, arayüz ayarı değildir. */
 const SAMPLE_DATA = ['mocks/'];
 
@@ -73,5 +80,30 @@ describe('sabit dil yalnız eşleme dosyasındadır', () => {
     expect(HARDCODED_LOCALE_VALUE.test('getDocTypeMeta({ doctype, language, signal })')).toBe(
       false,
     );
+  });
+
+  it('tarih, sayı ve harf dönüşümünde dil sabit yazılmaz (IC-13)', () => {
+    const offenders = sourceFiles(SRC)
+      .map((path) => relative(SRC, path))
+      .filter((path) => path !== LOCALE_MAP)
+      .filter((path) => !SAMPLE_DATA.some((dir) => path.startsWith(dir)))
+      .filter((path) => HARDCODED_FORMAT_LOCALE.test(readFileSync(join(SRC, path), 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+
+  it('biçim denetimi örnek yazımları yakalar (olumsuz örnek)', () => {
+    for (const sample of [
+      "new Intl.NumberFormat('tr-TR')",
+      "new Intl.DateTimeFormat('en', { weekday: 'long' })",
+      "locale === 'tr' ? 'tr-TR' : 'en-US'",
+      "value.toLocaleString('tr')",
+      "text.toLocaleLowerCase('tr')",
+      'word.toLocaleUpperCase("en")',
+    ]) {
+      expect(HARDCODED_FORMAT_LOCALE.test(sample), sample).toBe(true);
+    }
+    expect(HARDCODED_FORMAT_LOCALE.test('new Intl.NumberFormat(format.intl)')).toBe(false);
+    expect(HARDCODED_FORMAT_LOCALE.test('text.toLocaleLowerCase(format.intl)')).toBe(false);
+    expect(HARDCODED_FORMAT_LOCALE.test("timeZone: 'Europe/Istanbul'")).toBe(false);
   });
 });
