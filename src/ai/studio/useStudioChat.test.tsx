@@ -1,11 +1,12 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { GenUIAction } from '@/genui';
 
 import { encodeAgentEvent } from '../agent';
 import type { AgentEvent, AgentRequest, AgentTransport, UserMessage } from '../agent';
 import { acceptChunk } from './generation';
+import { RESEND_LIMIT_MS, storageName } from './idempotencyStore';
 import { actionToMessage, useStudioChat } from './useStudioChat';
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -277,3 +278,191 @@ describe('useStudioChat akış kuralları', { timeout: 15_000 }, () => {
     expect(requests[0]?.idempotencyKey).toBeUndefined();
   });
 });
+
+/**
+ * Idempotency key in persistent storage (AJA-1860).
+ * Contract: AJA-1749, `contracts/idempotency.md`, sections 1-3.
+ * - Format: lower-case UUID 4.
+ * - Storage: `localStorage`. The name holds the team, the account and the action.
+ * - Lifetime: the client resends a key on its own only while it is younger than 23 hours.
+ * - A final result removes the key.
+ */
+describe(
+  'AJA-1749 iş anahtarı kalıcı depoda (localStorage, küçük harfli UUID 4, 23 saat)',
+  { timeout: 15_000 },
+  () => {
+    const teamA = { team: 'acme.atonota.net', user: 'kisi@example.test' };
+    const approve: GenUIAction = {
+      kind: 'confirm',
+      blockId: 'buy-plan-1',
+      title: 'Planı satın al',
+      decision: 'approved',
+    };
+    const nameA = storageName(teamA, 'chat-approval', 'buy-plan-1');
+
+    /** The stream ends without `done`. The client does not know the result. */
+    const drop = (streams: ReadableStreamDefaultController<Uint8Array>[], index: number) => {
+      act(() => streams[index]?.close());
+    };
+
+    beforeEach(() => localStorage.clear());
+
+    it('1. onaydan sonra sayfa yenilenir, yeniden deneme aynı anahtarı gönderir', async () => {
+      const first = manual();
+      const before = renderHook(() => useStudioChat(first.transport, 'c1', teamA));
+      act(() => {
+        before.result.current.send(actionToMessage(approve));
+      });
+      await flush();
+      const key = first.requests[0]?.idempotencyKey;
+      expect(key).toMatch(UUID_V4);
+      expect(localStorage.getItem(nameA)).toContain(key as string);
+
+      // The page reloads before the result arrives. Memory is gone, storage stays.
+      before.unmount();
+      const second = manual();
+      const after = renderHook(() => useStudioChat(second.transport, 'c1', teamA));
+      act(() => {
+        expect(after.result.current.send(actionToMessage(approve))).toBe('accepted');
+      });
+      await flush();
+      expect(second.requests).toHaveLength(1);
+      expect(second.requests[0]?.intent).toBe('message');
+      expect(second.requests[0]?.idempotencyKey).toBe(key);
+    });
+
+    it('2. sonucu bilinmeyen işlem aynı anahtarla yeniden sorulur, ikinci işlem açılmaz', async () => {
+      const { requests, streams, push, transport } = manual();
+      const { result } = renderHook(() => useStudioChat(transport, 'c1', teamA));
+      act(() => {
+        result.current.send(actionToMessage(approve));
+      });
+      await flush();
+      drop(streams, 0);
+      await flush();
+      const answer = result.current.messages.at(-1);
+      expect(answer?.message).toMatchObject({ phase: 'error' });
+      const key = requests[0]?.idempotencyKey;
+      expect(localStorage.getItem(nameA)).toContain(key as string);
+
+      act(() => result.current.regenerate(answer?.id as string));
+      await flush();
+      expect(requests).toHaveLength(2);
+      expect(requests[1]?.intent).toBe('status');
+      expect(requests[1]?.actionId).toBe('buy-plan-1');
+      expect(requests[1]?.message.action).toBeUndefined();
+      expect(requests[1]?.idempotencyKey).toBe(key);
+      const commercial = requests.filter(
+        (r) => r.message.action?.kind === 'confirm' && r.message.action.decision === 'approved',
+      );
+      expect(commercial).toHaveLength(1);
+
+      // The status answer is a final result. The key leaves storage.
+      push(1, { type: 'text', delta: 'Satın alma tamamlandı.' }, { type: 'done' });
+      await flush();
+      expect(localStorage.getItem(nameA)).toBeNull();
+    });
+
+    it('3. işlem başarıyla bitince anahtar depodan silinir', async () => {
+      const { push, transport } = manual();
+      const { result } = renderHook(() => useStudioChat(transport, 'c1', teamA));
+      act(() => {
+        result.current.send(actionToMessage(approve));
+      });
+      await flush();
+      expect(localStorage.getItem(nameA)).not.toBeNull();
+      push(0, { type: 'text', delta: 'Satın alma yapıldı.' }, { type: 'done' });
+      await flush();
+      expect(localStorage.getItem(nameA)).toBeNull();
+    });
+
+    it('3. sunucu hata verince sonuç kesindir, anahtar depodan silinir', async () => {
+      const { push, transport } = manual();
+      const { result } = renderHook(() => useStudioChat(transport, 'c1', teamA));
+      act(() => {
+        result.current.send(actionToMessage(approve));
+      });
+      await flush();
+      push(0, { type: 'error', message: 'Kart reddedildi.' });
+      await flush();
+      expect(localStorage.getItem(nameA)).toBeNull();
+    });
+
+    it('4. başka kurumun ya da kullanıcının anahtarı kullanılmaz', async () => {
+      const a = manual();
+      const hookA = renderHook(() => useStudioChat(a.transport, 'c1', teamA));
+      act(() => {
+        hookA.result.current.send(actionToMessage(approve));
+      });
+      await flush();
+      const keyA = a.requests[0]?.idempotencyKey;
+      hookA.unmount();
+
+      const otherTeam = { team: 'beta.atonota.net', user: teamA.user };
+      const otherUser = { team: teamA.team, user: 'baska@example.test' };
+      const keys: (string | undefined)[] = [];
+      for (const scope of [otherTeam, otherUser]) {
+        const other = manual();
+        const hook = renderHook(() => useStudioChat(other.transport, 'c1', scope));
+        act(() => {
+          hook.result.current.send(actionToMessage(approve));
+        });
+        await flush();
+        keys.push(other.requests[0]?.idempotencyKey);
+        hook.unmount();
+      }
+      expect(keys[0]).toMatch(UUID_V4);
+      expect(keys[1]).toMatch(UUID_V4);
+      expect(keys[0]).not.toBe(keyA);
+      expect(keys[1]).not.toBe(keyA);
+      expect(keys[0]).not.toBe(keys[1]);
+      // The first account's pending key stays as it was.
+      expect(localStorage.getItem(nameA)).toContain(keyA as string);
+    });
+
+    it('anahtar ve depo adı kişisel veri taşımaz', async () => {
+      const { transport } = manual();
+      const { result } = renderHook(() => useStudioChat(transport, 'c1', teamA));
+      act(() => {
+        result.current.send(actionToMessage(approve));
+      });
+      await flush();
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const name = localStorage.key(i) as string;
+        expect(name.startsWith('idempotency-key:acme.atonota.net:')).toBe(true);
+        expect(name).not.toContain('kisi');
+        expect(localStorage.getItem(name)).not.toContain('kisi');
+      }
+    });
+
+    it('23 saatten eski anahtar kendiliğinden yeniden gönderilmez, işlemin durumu sorulur', async () => {
+      const old = '3f2b8c1e-6d4a-4f0b-9a7e-2c5d8e1f0a3b';
+      localStorage.setItem(
+        nameA,
+        JSON.stringify({ key: old, createdAt: Date.now() - RESEND_LIMIT_MS - 60_000 }),
+      );
+      const { requests, transport } = manual();
+      const { result } = renderHook(() => useStudioChat(transport, 'c1', teamA));
+      act(() => {
+        result.current.send(actionToMessage(approve));
+      });
+      await flush();
+      expect(requests).toHaveLength(1);
+      expect(requests[0]?.intent).toBe('status');
+      expect(requests[0]?.actionId).toBe('buy-plan-1');
+      expect(requests[0]?.message.action).toBeUndefined();
+      expect(requests[0]?.idempotencyKey).toBe(old);
+    });
+
+    it('biçimi bozuk kayıt kullanılmaz, yeni anahtar üretilir', async () => {
+      localStorage.setItem(nameA, JSON.stringify({ key: 'ABC', createdAt: Date.now() }));
+      const { requests, transport } = manual();
+      const { result } = renderHook(() => useStudioChat(transport, 'c1', teamA));
+      act(() => {
+        result.current.send(actionToMessage(approve));
+      });
+      await flush();
+      expect(requests[0]?.idempotencyKey).toMatch(UUID_V4);
+    });
+  },
+);
