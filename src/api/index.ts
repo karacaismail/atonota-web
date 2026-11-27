@@ -1,5 +1,7 @@
 // This folder is owned by the `api-client` task.
 export { createApiClient } from './client';
+export { appendUnique, createLatestRequest, scopedKey } from './request-order';
+export type { LatestTicket } from './request-order';
 export type {
   ApiClient,
   ApiClientDeps,
