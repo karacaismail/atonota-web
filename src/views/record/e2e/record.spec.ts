@@ -136,7 +136,7 @@ test.describe('imza alanı ve bağlantı araması', () => {
   });
 
   // Each behaviour has its own test. Under load Linux WebKit delays frames by seconds.
-  // Steps chained in one test add up their time (review 1, S-1). The expectations are unchanged.
+  // Steps chained in one test add up their time (review 1, Ö-1). The expectations are unchanged.
   test('yazarak imzalama gerçek tarayıcıda PNG üretir', async ({ page }) => {
     await page.goto(HARNESS);
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
@@ -212,7 +212,7 @@ test.describe('odak kuralları', () => {
         // (PR #3 CI failure).
         // `getAnimations()` computes style at once. A new transition also enters this list.
         // Only finite animations are skipped. An infinite animation (like a loading icon)
-        // does not end with `finish()`; it throws (review 2, S4).
+        // does not end with `finish()`; it throws (review 2, Ö4).
         for (const animation of document.getAnimations()) {
           const end = animation.effect?.getComputedTiming().endTime;
           if (typeof end === 'number' && Number.isFinite(end)) animation.finish();

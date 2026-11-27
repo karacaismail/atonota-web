@@ -1,5 +1,5 @@
 /**
- * Type and ref contract for the choice groups (review 2, S4).
+ * Type and ref contract for the choice groups (review 2, Ö4).
  * `npm run typecheck` checks the type lines; Vitest checks the forwarded refs.
  */
 import { render } from '@testing-library/react';

@@ -505,7 +505,7 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
   const SITE = 'https://kiraci.example.test';
 
   /**
-   * The adapter uses the shared API client (review 2, S3 and B3).
+   * The adapter uses the shared API client (review 2, Ö3 and B3).
    * The client is built with the real `createApiClient`. Only the network (`fetch`) is mocked.
    */
   function setup(csrfToken = 'csrf-test-token') {
