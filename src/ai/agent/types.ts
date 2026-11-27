@@ -24,6 +24,11 @@ export interface UserMessage {
    * If the query also drops, a retry asks for the status again with this ID.
    */
   statusOf?: string;
+  /**
+   * Client ID of the message. Every stream chunk of its reply carries this ID.
+   * The UI sets it when the message is sent.
+   */
+  clientId?: string;
 }
 
 export type AssistantPhase = 'waiting' | 'streaming' | 'done' | 'cancelled' | 'error';
@@ -64,6 +69,12 @@ export interface AgentRequest {
   history: ChatMessage[];
   /** ID of the operation asked about in a `status` request. It is the approval block's ID. */
   actionId?: string;
+  /**
+   * Idempotency key of an approved operation (AJA-1749). Lower-case UUID 4.
+   * Only a new approval with `intent: 'message'` carries it. Regenerate and status requests do not.
+   * The HTTP adapter sends it in the `Idempotency-Key` header.
+   */
+  idempotencyKey?: string;
 }
 
 /**

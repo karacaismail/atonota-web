@@ -1,16 +1,22 @@
 import { useXAgent, useXChat } from '@ant-design/x';
-import { useCallback, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import type { GenUIAction, GenUIActionResult, GenUIDecisions } from '@/genui';
 
 import { emptyAssistant, runAgent } from '../agent';
 import type { AgentIntent, AgentTransport, ChatMessage, UserMessage } from '../agent';
+import { acceptChunk, newIdempotencyKey } from './generation';
+import type { Generation } from './generation';
 
 interface AgentInput {
   message: ChatMessage;
   messages: ChatMessage[];
   intent?: AgentIntent;
   actionId?: string;
+  /** IDs every chunk of this reply carries. */
+  generation: Generation;
+  controller: AbortController;
+  idempotencyKey?: string;
 }
 
 /** User message shown for a regenerate request. Carries no approval data. */
@@ -69,26 +75,71 @@ function isFinished(message: ChatMessage): boolean {
   return message.role === 'user' || message.phase !== 'waiting';
 }
 
+/** An approved approval or form decision is a commercial action. It carries its own idempotency key. */
+function isApproval(message: UserMessage): boolean {
+  return (
+    (message.action?.kind === 'confirm' || message.action?.kind === 'form') &&
+    message.action.decision === 'approved'
+  );
+}
+
+interface StoredMessage {
+  id: string | number;
+  message: ChatMessage;
+  status: string;
+}
+
+/**
+ * Closes replies that are still loading or streaming as "stopped".
+ * Blocks of a stopped reply are not shown (U5).
+ */
+function finalize<T extends StoredMessage>(list: readonly T[]): T[] {
+  return list.map((item) => {
+    if (item.status !== 'loading' && item.status !== 'updating') return item;
+    const { message } = item;
+    if (message.role !== 'assistant') return { ...item, status: 'success' };
+    const open = message.phase === 'waiting' || message.phase === 'streaming';
+    return {
+      ...item,
+      status: 'success',
+      message: open ? { ...message, phase: 'cancelled', ui: [] } : message,
+    };
+  });
+}
+
 /**
  * Conversation state. useXAgent runs the request, useXChat holds the messages.
  *
+ * Stream rules (AJA-1780):
+ * - Every chunk carries the conversation, message and generation IDs.
+ * - Only chunks of the active generation in the conversation on screen are written.
+ * - Stop and conversation switch end the generation at once. Its late chunks are dropped.
+ * - Only one request runs at a time. A second press of the send button creates no message.
+ *
  * Approval rules (AX-6):
  * - Approval data is single-use. The same operation ID is not sent twice.
+ * - An approved operation carries its own idempotency key (AJA-1749).
  * - Regenerate asks only for the reply text. It does not send approval data.
  * - If an approved request drops, a retry asks for the operation's status.
  */
-export function useStudioChat(transport: AgentTransport) {
-  const abortRef = useRef<AbortController | null>(null);
+export function useStudioChat(transport: AgentTransport, conversationId = 'default') {
+  const active = useRef<{ generation: Generation; controller: AbortController } | null>(null);
+  const conversation = useRef(conversationId);
+  const counter = useRef(0);
   const usedActions = useRef(new Set<string>());
+
+  useLayoutEffect(() => {
+    conversation.current = conversationId;
+  }, [conversationId]);
 
   const [agent] = useXAgent<ChatMessage, AgentInput, ChatMessage>({
     request: (
-      { message, messages, intent = 'message', actionId },
+      { message, messages, intent = 'message', actionId, generation, controller, idempotencyKey },
       { onUpdate, onSuccess, onStream },
     ) => {
-      const controller = new AbortController();
-      abortRef.current = controller;
       onStream?.(controller);
+      const current = () =>
+        acceptChunk(generation, active.current?.generation ?? null, conversation.current);
       void runAgent({
         transport,
         request: {
@@ -96,11 +147,16 @@ export function useStudioChat(transport: AgentTransport) {
           message: message as UserMessage,
           history: messages.filter((m) => m !== message && isFinished(m)).map(withoutAction),
           ...(actionId ? { actionId } : {}),
+          ...(idempotencyKey ? { idempotencyKey } : {}),
         },
         signal: controller.signal,
-        onUpdate: (update) => onUpdate(update),
+        onUpdate: (update) => {
+          if (current()) onUpdate(update);
+        },
       }).then((final) => {
-        if (abortRef.current === controller) abortRef.current = null;
+        // A stopped or switched-away generation writes nothing. Not even its final state.
+        if (!current()) return;
+        active.current = null;
         onSuccess([final]);
       });
     },
@@ -121,34 +177,80 @@ export function useStudioChat(transport: AgentTransport) {
   const last = messages[messages.length - 1];
   const busy = last?.status === 'loading' || last?.status === 'updating';
 
+  /** Opens a new generation. The previous one must have ended. */
+  const begin = useCallback((messageId?: string) => {
+    counter.current += 1;
+    const generation: Generation = {
+      conversationId: conversation.current,
+      messageId: messageId ?? `m${counter.current}`,
+      generationId: `g${counter.current}`,
+    };
+    const controller = new AbortController();
+    active.current = { generation, controller };
+    return { generation, controller };
+  }, []);
+
+  /** Ends the active generation. Its later chunks are dropped. */
+  const end = useCallback((): boolean => {
+    const running = active.current;
+    if (!running) return false;
+    active.current = null;
+    running.controller.abort();
+    return true;
+  }, []);
+
   /** Sends the message. The result is passed to the block. */
   const send = useCallback(
     (message: UserMessage): GenUIActionResult => {
-      if (busy) return 'busy';
+      // The active generation is the lock. It changes at once, without waiting for a render.
+      // Two presses in a row send once. A send right after stop is accepted.
+      if (active.current) return 'busy';
       const actionId = actionIdOf(message);
       if (actionId) {
         if (usedActions.current.has(actionId)) return 'used';
         usedActions.current.add(actionId);
       }
-      onRequest({ message, intent: 'message' });
+      const { generation, controller } = begin();
+      onRequest({
+        message: { ...message, clientId: generation.messageId },
+        intent: 'message',
+        generation,
+        controller,
+        ...(isApproval(message) ? { idempotencyKey: newIdempotencyKey() } : {}),
+      });
       return 'accepted';
     },
-    [busy, onRequest],
+    [begin, onRequest],
   );
 
+  /** Stops the reply. The reply stays on screen as "stopped". */
   const cancel = useCallback(() => {
-    abortRef.current?.abort();
-  }, []);
+    if (end()) setMessages((all) => finalize(all));
+  }, [end, setMessages]);
 
   /**
-   * Asks for the reply again.
+   * Stops the reply before a conversation switch.
+   * Returns the closed message list. The caller stores it for this conversation.
+   */
+  const detach = useCallback(() => {
+    end();
+    let snapshot = finalize(messages);
+    setMessages((all) => {
+      snapshot = finalize(all);
+      return snapshot;
+    });
+    return snapshot;
+  }, [end, messages, setMessages]);
+
+  /**
+   * Asks for the reply again. Each regenerate opens a new generation.
    * - If the previous message is not an approval: removes the reply and question, asks again.
    * - If the previous message is an approval: the approval message stays. Approval is not resent.
    *   If the reply ended in an error, the operation's status is queried. Otherwise only text is requested.
    */
   const regenerate = useCallback(
     (assistantId: string | number) => {
-      if (busy) return;
+      if (active.current) return;
       const index = messages.findIndex((m) => m.id === assistantId);
       const answer = messages[index];
       const prompt = messages[index - 1];
@@ -158,23 +260,31 @@ export function useStudioChat(transport: AgentTransport) {
       if (actionId) {
         const failed = answer.message.role === 'assistant' && answer.message.phase === 'error';
         setMessages((all) => all.filter((m) => m.id !== assistantId));
-        onRequest(
-          failed
-            ? {
-                message: { role: 'user', text: STATUS_TEXT, statusOf: actionId },
-                intent: 'status',
-                actionId,
-              }
-            : { message: { role: 'user', text: REGENERATE_TEXT }, intent: 'regenerate' },
-        );
+        const { generation, controller } = begin();
+        const message: UserMessage = failed
+          ? { role: 'user', text: STATUS_TEXT, statusOf: actionId }
+          : { role: 'user', text: REGENERATE_TEXT };
+        onRequest({
+          message: { ...message, clientId: generation.messageId },
+          intent: failed ? 'status' : 'regenerate',
+          ...(failed ? { actionId } : {}),
+          generation,
+          controller,
+        });
         return;
       }
 
       const user = prompt.message;
       setMessages((all) => all.filter((m) => m.id !== assistantId && m.id !== prompt.id));
-      onRequest({ message: user, intent: 'regenerate' });
+      const { generation, controller } = begin(user.clientId);
+      onRequest({
+        message: { ...user, clientId: generation.messageId },
+        intent: 'regenerate',
+        generation,
+        controller,
+      });
     },
-    [busy, messages, onRequest, setMessages],
+    [begin, messages, onRequest, setMessages],
   );
 
   /** What the reply's retry button does: a status query or a retry. */
@@ -186,5 +296,5 @@ export function useStudioChat(transport: AgentTransport) {
     [messages],
   );
 
-  return { messages, setMessages, send, cancel, regenerate, retryKind, busy };
+  return { messages, setMessages, send, cancel, detach, regenerate, retryKind, busy };
 }
