@@ -1,3 +1,5 @@
+import { localeBundle } from '@/app/locale';
+
 import type { RecordLocale } from './types';
 
 export const RECORD_MESSAGES = {
@@ -246,6 +248,8 @@ export function formatRecordMessage(
 }
 
 export function formatRecordInteger(locale: RecordLocale, value: number): string {
-  const tag = locale === 'tr' ? 'tr-TR' : 'en-US';
-  return new Intl.NumberFormat(tag, { maximumFractionDigits: 0 }).format(value);
+  // Biçim dili dil eşleme dosyasından gelir (IC-13).
+  return new Intl.NumberFormat(localeBundle(locale).intl, { maximumFractionDigits: 0 }).format(
+    value,
+  );
 }

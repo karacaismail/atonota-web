@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { createShellViewData } from '@/app/view-data';
 
 import { createDefinition } from './model';
+import { createFormatter } from '@/app/locale';
+
 import { displayCell } from './presentation';
+
+const format = createFormatter({ language: 'tr' });
 import { sampleMeta } from './sample';
 
 /**
@@ -146,10 +150,10 @@ describe('İletişim listesi (AJA-812, G-63)', () => {
       message_id: '<abc@example.test>',
       future_field: 'ham değer',
     };
-    expect(displayCell(row, column('reference_name'))).toBe('CRM-LEAD-0001');
-    expect(displayCell(row, column('content'))).toBe('Merhaba Ayşe & ekip');
-    expect(displayCell(row, column('message_id'))).toBe('<abc@example.test>');
-    expect(displayCell(row, column('future_field'))).toBe('ham değer');
+    expect(displayCell(row, column('reference_name'), format)).toBe('CRM-LEAD-0001');
+    expect(displayCell(row, column('content'), format)).toBe('Merhaba Ayşe & ekip');
+    expect(displayCell(row, column('message_id'), format)).toBe('<abc@example.test>');
+    expect(displayCell(row, column('future_field'), format)).toBe('ham değer');
   });
 
   it('bilinmeyen alan türü ve geçersiz seçenek listeyi bozmaz', () => {

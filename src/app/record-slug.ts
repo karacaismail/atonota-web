@@ -7,6 +7,7 @@ import { doctypeFromSlug } from './view-data';
  * Parça aynı ada geri çevrilemiyorsa `undefined` döner; o zaman bağlantı çizilmez.
  */
 export function slugFromDoctype(doctype: string): string | undefined {
-  const slug = doctype.trim().toLocaleLowerCase('en').split(/\s+/).filter(Boolean).join('-');
+  // `toLowerCase` dile bakmaz. Adres parçası kullanıcının diline göre değişmez (G-132).
+  const slug = doctype.trim().toLowerCase().split(/\s+/).filter(Boolean).join('-');
   return slug !== '' && doctypeFromSlug(slug) === doctype ? slug : undefined;
 }

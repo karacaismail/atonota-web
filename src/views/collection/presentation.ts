@@ -1,3 +1,5 @@
+import type { Formatter } from '@/app/locale';
+
 import type { CollectionField, CollectionRow, SummaryState } from './types';
 import { cellText } from './model';
 const renderers = new Set([
@@ -39,29 +41,17 @@ function plainText(html: string): string {
   body.querySelectorAll(skippedElements).forEach((node) => node.remove());
   return (body.textContent ?? '').replace(/\s+/g, ' ').trim();
 }
-export function displayCell(row: CollectionRow, field: CollectionField): string {
+/** Hücrenin görünen metni. Tarih ve sayı kullanıcının diliyle yazılır (IC-13). */
+export function displayCell(row: CollectionRow, field: CollectionField, format: Formatter): string {
   const value = row[field.fieldname];
   if (value === null || value === undefined) return 'Bilgi yok';
   if (typeof value === 'string' && richTextTypes.has(field.fieldtype)) return plainText(value);
   if (!field.component || !renderers.has(field.component)) return String(value);
   if (field.fieldtype === 'Date') {
-    const time = dateValue(value);
-    if (time === undefined) return 'Geçersiz tarih';
-    const date = new Date(time);
-    return (
-      new Intl.DateTimeFormat('tr-TR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        timeZone: 'UTC',
-      }).format(date) +
-      ' ' +
-      new Intl.DateTimeFormat('tr-TR', { weekday: 'long', timeZone: 'UTC' }).format(date) +
-      ' günü'
-    );
+    if (dateValue(value) === undefined) return 'Geçersiz tarih';
+    return `${format.date(value as string)} günü`;
   }
-  if (typeof value === 'number')
-    return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 4 }).format(value);
+  if (typeof value === 'number') return format.number(value, { maximumFractionDigits: 4 });
   if (typeof value === 'boolean') return value ? 'Evet' : 'Hayır';
   return cellText(row, field);
 }

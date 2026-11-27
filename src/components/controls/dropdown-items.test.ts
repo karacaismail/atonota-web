@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { localeBundle } from '@/app/locale';
+
 import { groupDropdownItems } from './dropdown-items';
 
 describe('groupDropdownItems', () => {
@@ -18,9 +20,16 @@ describe('groupDropdownItems', () => {
   });
 
   it('trims searches and folds Turkish casing', () => {
-    const result = groupDropdownItems([copy, open, remove], '  İÇERİĞİ  ');
+    const tr = localeBundle('tr').intl;
+    const result = groupDropdownItems([copy, open, remove], '  İÇERİĞİ  ', true, tr);
     expect([...result.regular.values()]).toEqual([[copy]]);
     expect(result.danger).toEqual([remove]);
-    expect(groupDropdownItems([copy], 'yok').regular.size).toBe(0);
+    expect(groupDropdownItems([copy], 'yok', true, tr).regular.size).toBe(0);
+  });
+
+  it('harf karşılaştırması verilen dille yapılır', () => {
+    const item = { key: 'irmak', label: 'Irmak' };
+    expect(groupDropdownItems([item], 'ırmak', true, localeBundle('tr').intl).regular.size).toBe(1);
+    expect(groupDropdownItems([item], 'irmak', true, localeBundle('en').intl).regular.size).toBe(1);
   });
 });

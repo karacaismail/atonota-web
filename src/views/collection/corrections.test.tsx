@@ -6,6 +6,7 @@ import { mockServer } from '@/mocks/node';
 import { resetMockState } from '@/mocks/handlers';
 import { sampleDefinition as exampleDefinition } from './sample';
 import { LAZY_VIEW, sampleSource } from './test-support/api';
+import { createFormatter } from '@/app/locale';
 import { displayCell } from './presentation';
 import { CollectionError } from './types';
 
@@ -157,6 +158,7 @@ describe('review corrections', () => {
           filterable: false,
           sensitivity: 'standard',
         },
+        createFormatter({ language: 'tr' }),
       ),
     ).toBe('<b>Örnek</b>');
   });

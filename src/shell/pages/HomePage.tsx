@@ -4,10 +4,11 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { HomeSummary, PendingApproval } from '@/api';
+import { useFormat } from '@/app/locale';
 
 import type { HeaderState } from '../header/PageHeader';
 import { PageHeader } from '../header/PageHeader';
-import { formatNumber, t } from '../messages';
+import { t } from '../messages';
 import type { ShellHomeData } from '../view-data/home-data';
 import { HomeDataError, homeDataForModules } from '../view-data/home-data';
 import { useViewData } from '../view-data/useViewData';
@@ -26,14 +27,12 @@ type Load =
   | { kind: 'unconnected' }
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; data: HomeSummary; at: string };
+  | { kind: 'ready'; data: HomeSummary; at: Date };
 
 type Decision =
   | { kind: 'working'; action: 'approve' | 'reject' }
   | { kind: 'done'; action: 'approve' | 'reject' }
   | { kind: 'failed'; message: string };
-
-const timeFormat = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
 function messageOf(error: unknown): string {
   return error instanceof HomeDataError ? error.message : m.loadFailed;
@@ -57,6 +56,8 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { data: home, waiting } = useHomeData();
   const [attempt, setAttempt] = useState(0);
+  // Senkron saati sitenin saat diliminde ve kullanıcının dilinde yazılır (IC-13).
+  const format = useFormat();
   // Sonuç, isteği başlatan bağlantı ve deneme numarasıyla saklanır.
   // İkisinden biri değişince eski sonuç kullanılmaz; sayfa yeniden "yükleniyor" olur.
   const [result, setResult] = useState<{
@@ -74,7 +75,7 @@ export default function HomePage() {
         setResult({
           home,
           attempt,
-          load: { kind: 'ready', data, at: timeFormat.format(new Date()) },
+          load: { kind: 'ready', data, at: new Date() },
         });
       },
       (error: unknown) => {
@@ -95,7 +96,7 @@ export default function HomePage() {
   let state: HeaderState;
   switch (load.kind) {
     case 'ready':
-      state = { kind: 'normal', syncedAt: load.at };
+      state = { kind: 'normal', syncedAt: format.time(load.at) };
       break;
     case 'error':
       state = { kind: 'error', message: load.message, onRetry: retry };
@@ -132,6 +133,7 @@ function HomeSections({ data, home }: { data: HomeSummary; home: ShellHomeData }
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [announce, setAnnounce] = useState('');
   const pendingId = useId();
+  const format = useFormat();
   const problemsId = useId();
   const recentId = useId();
   const countsId = useId();
@@ -163,7 +165,7 @@ function HomeSections({ data, home }: { data: HomeSummary; home: ShellHomeData }
   );
 
   let pendingTitle: string;
-  if (left > 0) pendingTitle = m.pendingTitle(left);
+  if (left > 0) pendingTitle = m.pendingTitle(format.number(left));
   else if (items.length > 0) pendingTitle = m.pendingCleared;
   else pendingTitle = m.pendingNone;
 
@@ -231,7 +233,7 @@ function HomeSections({ data, home }: { data: HomeSummary; home: ShellHomeData }
                   <Clock className="shell-home-ic" aria-hidden="true" />
                   <span className="shell-home-recent-text">
                     <span>{recentText(change)}</span>
-                    <small className="shell-home-meta">{formatMoment(change.at)}</small>
+                    <small className="shell-home-meta">{formatMoment(change.at, format)}</small>
                   </span>
                 </li>
               ))}
@@ -256,7 +258,7 @@ function HomeSections({ data, home }: { data: HomeSummary; home: ShellHomeData }
             ] as const
           ).map(([key, value]) => (
             <li key={key}>
-              <strong className="shell-num">{formatNumber(value)}</strong>
+              <strong className="shell-num">{format.number(value)}</strong>
               <span className="shell-home-meta">{m.counts[key]}</span>
             </li>
           ))}
@@ -276,6 +278,7 @@ function PendingRow({
   onDecide: (item: PendingApproval, action: 'approve' | 'reject') => void;
 }) {
   const whoId = useId();
+  const format = useFormat();
   const noteRef = useRef<HTMLParagraphElement>(null);
   const who = pendingWho(item);
   const done = decision?.kind === 'done';
@@ -311,7 +314,7 @@ function PendingRow({
         <p className="shell-home-who" id={whoId}>
           {who}
         </p>
-        <p className="shell-home-meta">{pendingMeta(item)}</p>
+        <p className="shell-home-meta">{pendingMeta(item, format)}</p>
       </div>
       <div className="shell-home-act">
         <Button

@@ -6,6 +6,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 
 import { useThemeMode } from '@/app';
+import { useFormat } from '@/app/locale';
 import { danger as dangerTokens } from '@/design';
 
 import { groupDropdownItems } from './dropdown-items';
@@ -61,6 +62,7 @@ function ActionDropdown({
   const popupId = useId();
   const restoreFocus = useRef(false);
   const { resolved } = useThemeMode();
+  const format = useFormat();
   const menuItemSelector =
     ':is([role="menuitem"], [role="menuitemradio"]):not([aria-disabled="true"])';
 
@@ -126,7 +128,7 @@ function ActionDropdown({
     return () => window.removeEventListener('keydown', dismiss, true);
   }, [open, popupId, triggerId]);
 
-  const { regular, danger } = groupDropdownItems(items, query, style === 'shortcut');
+  const { regular, danger } = groupDropdownItems(items, query, style === 'shortcut', format.intl);
 
   function handlePopupKey(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (event.key === 'Tab') {

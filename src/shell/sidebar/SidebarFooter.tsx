@@ -2,6 +2,8 @@ import { SignOut, XCircle } from '@phosphor-icons/react';
 import { Button, message } from 'antd';
 import { useRef, useState } from 'react';
 
+import { useFormat, type Formatter } from '@/app/locale';
+
 import { t } from '../messages';
 import { sampleUser } from '../sampleData';
 import type { ShellAccount, ShellCredit } from '../view-data';
@@ -13,22 +15,26 @@ interface SidebarFooterProps {
   credit?: ShellCredit | null;
 }
 
-/** Adın ilk iki sözcüğünün baş harfleri. Örnek: "Deneme Kullanıcı" -> "DK". */
-function initialsOf(name: string): string {
+/** Adın ilk iki sözcüğünün baş harfleri. Örnek: "Deneme Kullanıcı" -> "DK". Harf kullanıcının diliyle büyür. */
+function initialsOf(name: string, format: Formatter): string {
   return name
     .split(/[\s@.]+/)
     .filter(Boolean)
     .slice(0, name.includes(' ') ? 2 : 1)
-    .map((word) => word.charAt(0).toLocaleUpperCase('tr'))
+    .map((word) => format.upper(word.charAt(0)))
     .join('');
 }
 
 /** Oturumdaki kişi varsa onu, yoksa deneme sayfasının örnek kişisini gösterir. */
-function cardUser(account: ShellAccount | undefined) {
+function cardUser(account: ShellAccount | undefined, format: Formatter) {
   if (!account) return sampleUser;
   const name = account.fullName?.trim() || account.user;
   // Ad varsa kimlik alt satırda görünür. Ad yoksa kimlik bir kez yazılır.
-  return { name, role: name === account.user ? '' : account.user, initials: initialsOf(name) };
+  return {
+    name,
+    role: name === account.user ? '' : account.user,
+    initials: initialsOf(name, format),
+  };
 }
 
 /** Kredi geçerli mi? Toplam sıfırdan büyük, kullanılan sıfır ya da daha büyük olmalı. */
@@ -44,6 +50,7 @@ function validCredit(credit: ShellCredit | null): credit is ShellCredit {
 
 /** AI kredisi halkası. Sayılar sunucudan gelir. */
 function CreditRing({ rail, credit }: { rail: boolean; credit: ShellCredit }) {
+  const format = useFormat();
   const percent = Math.min(100, Math.round((credit.used / credit.total) * 100));
   const r = 15;
   const c = 2 * Math.PI * r;
@@ -72,7 +79,9 @@ function CreditRing({ rail, credit }: { rail: boolean; credit: ShellCredit }) {
       {!rail && (
         <span className="shell-ws-t">
           <b>{t.footer.credit}</b>
-          <small>{t.footer.creditValue(credit.used, credit.total)}</small>
+          <small>
+            {t.footer.creditValue(format.number(credit.used), format.number(credit.total))}
+          </small>
         </span>
       )}
     </div>
@@ -85,7 +94,8 @@ function CreditRing({ rail, credit }: { rail: boolean; credit: ShellCredit }) {
  */
 export function SidebarFooter({ rail, credit = null }: SidebarFooterProps) {
   const viewData = useViewData();
-  const user = cardUser(viewData?.account);
+  const format = useFormat();
+  const user = cardUser(viewData?.account, format);
   return (
     <div className="shell-foot" data-rail={rail ? 'true' : 'false'}>
       {validCredit(credit) ? <CreditRing rail={rail} credit={credit} /> : null}

@@ -1,6 +1,9 @@
+import { useFormat } from '@/app/locale';
+
 import { dateValue, displayCell } from '../presentation';
 import type { ViewProps } from '../types';
 export default function GanttView({ definition, rows }: ViewProps) {
+  const format = useFormat();
   const startField = definition.columns.find((item) => item.fieldname === definition.startField);
   const endField = definition.columns.find((item) => item.fieldname === definition.endField);
   if (!startField || !endField)
@@ -40,7 +43,8 @@ export default function GanttView({ definition, rows }: ViewProps) {
                 <th scope="row">{String(row[definition.titleField] ?? row.name)}</th>
                 <td>
                   <p>
-                    {displayCell(row, startField)} ile {displayCell(row, endField)} arasında.
+                    {displayCell(row, startField, format)} ile {displayCell(row, endField, format)}{' '}
+                    arasında.
                   </p>
                   <div className="collection-track" aria-hidden="true">
                     <span
