@@ -6,13 +6,15 @@ import type { GenUIActionHandler, GenUIDecisions } from '@/genui';
 
 import type { AssistantMessage } from '../agent';
 import { groupBySteps, SIMULATED_TOOLS_NOTE, type StepGroup } from './chain';
+import { useStudioStrings } from './strings';
 
 function StepSection({ group, children }: { group: StepGroup; children: ReactNode }) {
   const id = useId();
+  const t = useStudioStrings();
   return (
     <section className="ai-step" aria-labelledby={id} data-step={group.step}>
       <h2 id={id} className="ai-step-h">
-        {group.label}
+        {t.steps[group.step]}
       </h2>
       {children}
     </section>
@@ -42,6 +44,7 @@ export function AssistantBody({
   decisions: GenUIDecisions;
   simulated: boolean;
 }) {
+  const t = useStudioStrings();
   const streaming = message.phase === 'streaming';
   const done = message.phase === 'done';
   // Blocks that arrive before the stream ends are not shown (U5). Tool events show as the server sends them.
@@ -64,20 +67,18 @@ export function AssistantBody({
       )}
       {streaming && <GenUISkeleton />}
       {done && <GenUI blocks={rest} onAction={onAction} busy={busy} decisions={decisions} />}
-      {message.phase === 'cancelled' && <p className="ai-note">Yanıt durduruldu.</p>}
+      {message.phase === 'cancelled' && <p className="ai-note">{t.answerStopped}</p>}
       {message.phase === 'error' && (
         <Alert
           type="error"
           showIcon
-          message={message.error ?? 'Yanıt alınamadı.'}
-          description={
-            retryKind === 'status'
-              ? 'Onayınız sunucuya ulaşmış olabilir. Onay yeniden gönderilmez. Önce işlemin durumunu sorun.'
-              : undefined
-          }
+          message={message.error ?? t.answerFailed}
+          // The studio announcer reads the error once. The alert role would read it a second time.
+          role="none"
+          description={retryKind === 'status' ? t.statusRetryNote : undefined}
           action={
             <Button size="small" disabled={busy} onClick={onRetry}>
-              {retryKind === 'status' ? 'İşlemin durumunu sor' : 'Yeniden dene'}
+              {retryKind === 'status' ? t.askStatus : t.retry}
             </Button>
           }
         />

@@ -5,8 +5,7 @@ import { GenUI } from '@/genui';
 
 import type { AgentSource, AgentStep } from '../agent';
 import { SIMULATED_TOOLS_NOTE, toEventsBlock } from './chain';
-
-export const FILE_NAME_ONLY_NOTE = 'Yalnız dosya adı gönderilir. Dosya içeriği okunmaz.';
+import { useStudioStrings } from './strings';
 
 /**
  * Workspace on the right: tool operations, this conversation's file names and security.
@@ -21,13 +20,14 @@ export function Workspace({
   files: string[];
   source: AgentSource;
 }) {
+  const t = useStudioStrings();
   const events = toEventsBlock(steps);
   return (
-    <aside className="ai-workspace" aria-label="Çalışma alanı">
+    <aside className="ai-workspace" aria-label={t.workspace}>
       <section>
         <h2 className="ai-panel-h">
           <Wrench aria-hidden />
-          Son yanıtın araç olayları
+          {t.toolEvents}
         </h2>
         {events ? (
           <>
@@ -36,15 +36,15 @@ export function Workspace({
             <GenUI blocks={[events]} onAction={() => 'busy'} />
           </>
         ) : (
-          <p className="ai-note">Henüz araç işlemi yok. Listeyi yalnız sunucu gönderir.</p>
+          <p className="ai-note">{t.noToolEvents}</p>
         )}
       </section>
       <section>
         <h2 className="ai-panel-h">
           <Paperclip aria-hidden />
-          Bu sohbetin dosya adları
+          {t.conversationFiles}
         </h2>
-        <p className="ai-note">{FILE_NAME_ONLY_NOTE}</p>
+        <p className="ai-note">{t.fileNameOnly}</p>
         {files.length > 0 ? (
           <ul className="ai-files">
             {files.map((name) => (
@@ -52,25 +52,25 @@ export function Workspace({
             ))}
           </ul>
         ) : (
-          <p className="ai-note">Dosya eklenmedi.</p>
+          <p className="ai-note">{t.noFiles}</p>
         )}
       </section>
       <section>
         <h2 className="ai-panel-h">
           <ShieldCheck aria-hidden />
-          Güvenlik
+          {t.security}
         </h2>
         <dl className="ai-facts">
-          <dt>Kaynak</dt>
+          <dt>{t.source}</dt>
           <dd>
             <Tag bordered={false} color={source.simulated ? 'warning' : 'processing'}>
               {source.label}
             </Tag>
           </dd>
-          <dt>Mod</dt>
-          <dd>{source.simulated ? 'Deneme. Gerçek işlem yapılmaz.' : 'Canlı'}</dd>
-          <dt>Eylemler</dt>
-          <dd>Onayınız olmadan hiçbir işlem yapılmaz.</dd>
+          <dt>{t.modeFact}</dt>
+          <dd>{source.simulated ? t.trial : t.live}</dd>
+          <dt>{t.actions}</dt>
+          <dd>{t.noActionWithoutApproval}</dd>
         </dl>
       </section>
     </aside>

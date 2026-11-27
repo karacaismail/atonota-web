@@ -1,3 +1,6 @@
+import type { ReactElement } from 'react';
+
+import { LanguageProvider } from '@/app/locale';
 import {
   cleanup,
   configure,
@@ -14,6 +17,13 @@ import { encodeAgentEvent, MOCK_SOURCE } from '../agent';
 import type { AgentEvent, AgentRequest, AgentTransport } from '../agent';
 import { AiStudio } from './AiStudio';
 import { createFlowDemoTransport } from './flowDemo';
+
+/** The studio speaks the UI language. These tests check the Turkish texts. */
+function renderTr(ui: ReactElement) {
+  return render(ui, {
+    wrapper: ({ children }) => <LanguageProvider initialLanguage="tr">{children}</LanguageProvider>,
+  });
+}
 
 /*
  * Tests that bind the flow to the screen (AJA-1159).
@@ -93,7 +103,7 @@ function manual() {
 
 describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
   it('kip seçicide dört kip vardır, ilk kip "Sor" olur', () => {
-    render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
     const group = screen.getByRole('radiogroup', { name: 'Kip' });
     const names = within(group)
       .getAllByRole('radio')
@@ -105,7 +115,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
   it('seçilen kip istekle sunucuya gider', async () => {
     const user = setupUser();
     const m = manual();
-    render(<AiStudio transport={m.transport} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={m.transport} source={MOCK_SOURCE} />);
     await pickMode(user, 'İşlem yap');
     await send(user, 'Sipariş SO-0041 iptal et');
     await waitFor(() => expect(m.requests).toHaveLength(1));
@@ -115,7 +125,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
   it('sunucu olayı gelmeden araç olayı görünmez, gelince listeye girer', async () => {
     const user = setupUser();
     const m = manual();
-    render(<AiStudio transport={m.transport} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={m.transport} source={MOCK_SOURCE} />);
     await send(user, 'Siparişleri tara');
     await waitFor(() => expect(m.requests).toHaveLength(1));
     expect(document.querySelector('[data-genui="events"]')).toBeNull();
@@ -139,7 +149,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
   it('sunucu adım olayı akış adımını ilerletir, istemci adım uydurmaz', async () => {
     const user = setupUser();
     const m = manual();
-    render(<AiStudio transport={m.transport} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={m.transport} source={MOCK_SOURCE} />);
     const flow = screen.getByRole('list', { name: 'Akış adımları' });
     expect(within(flow).getByText('Niyet').closest('li')).toHaveAttribute('aria-current', 'step');
 
@@ -157,7 +167,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
   });
 
   it('"Sor" kipinde onay, uygulama ve geri alma adımları "Bu kipte yok" yazar', () => {
-    render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
     const flow = screen.getByRole('list', { name: 'Akış adımları' });
     for (const label of ['Onay', 'Uygulama', 'Geri alma önerisi']) {
       expect(within(flow).getByText(label).closest('li')).toHaveTextContent('Bu kipte yok');
@@ -166,7 +176,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
 
   it('plan adımında kapsam şeridi, onay adımında onay kartı görünür', async () => {
     const user = setupUser();
-    render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
     await pickMode(user, 'İşlem yap');
     await send(user, 'SO-0041 siparişinin teslim tarihini bir gün ileri al');
     const log = screen.getByRole('log');
@@ -186,7 +196,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
 
   it('onaydan sonra uygulama adımında sonuç yüzeyi görünür', async () => {
     const user = setupUser();
-    render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
     await pickMode(user, 'İşlem yap');
     await send(user, 'SO-0041 siparişinin teslim tarihini bir gün ileri al');
     const log = screen.getByRole('log');
@@ -211,7 +221,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
 
   it('R3 önerisinde ad yanlış yazılınca "Onayla" kapalı kalır', async () => {
     const user = setupUser();
-    render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
     await pickMode(user, 'İşlem yap');
     await send(user, 'SO-0041 siparişini iptal et');
     const log = screen.getByRole('log');
@@ -229,7 +239,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
 
   it('ekranda baykuş, "Geri al" düğmesi ve yüzde biçiminde güven değeri yoktur', async () => {
     const user = setupUser();
-    const { container } = render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
+    const { container } = renderTr(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
     expect(container.querySelector('svg.owl, .owl')).toBeNull();
     await pickMode(user, 'İşlem yap');
     await send(user, 'SO-0041 siparişinin teslim tarihini bir gün ileri al');
@@ -243,7 +253,7 @@ describe('Yardımcı akışı ekranda', { timeout: 30_000 }, () => {
 
   it('form alanlarında alan başına yapay zekâ düğmesi yoktur', async () => {
     const user = setupUser();
-    render(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={demo()} source={MOCK_SOURCE} />);
     await send(user, 'Stok uyarısı için otomasyon kur');
     const log = screen.getByRole('log');
     await waitFor(() => expect(log.querySelector('[data-genui="form"]')).not.toBeNull());
