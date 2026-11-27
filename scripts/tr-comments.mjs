@@ -17,6 +17,7 @@
  * Turkish comment rule: a comment containing a Turkish letter is Turkish.
  * The letters are c-cedilla, g-breve, dotless i, dotted capital I, o-umlaut, s-cedilla and u-umlaut, with their capitals (`TR_LETTERS`).
  * For Turkish comments without such letters there is a list of common words. Example: `Test icin sabit deger`.
+ * Review finding IDs (`Ö1`, `Ö-2`) do not count as Turkish letters.
  *
  * OpenAPI files come from the backend. They are counted separately and are not in the total.
  * `src/api/generated/` files are generated from OpenAPI. They also go into the OpenAPI section.
@@ -99,8 +100,15 @@ export const TR_WORDS = new Set([
   'deneme',
 ]);
 
+/**
+ * Review finding ID: a capital O-umlaut, an optional hyphen and digits. Examples: `Ö1`, `Ö8`, `Ö-2` (AJA-1469).
+ * The ID is kept as it is, so it does not make a comment Turkish. No other Turkish letter is exempt.
+ */
+const FINDING_ID = /(?<![\p{L}\p{N}_])Ö-?\d+(?![\p{L}\p{N}_])/gu;
+
 /** Is the comment text Turkish? */
-export function isTurkishComment(text) {
+export function isTurkishComment(rawText) {
+  const text = rawText.replace(FINDING_ID, ' ');
   if (TR_LETTERS.test(text)) return true;
   // Inline code (`...`) is skipped. Space-separated tokens are checked.
   // A word inside a code name does not count. Example: `kimlik_yalniz_keycloak`, `api.kullanici.get`.
