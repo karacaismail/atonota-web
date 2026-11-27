@@ -43,6 +43,12 @@ const DAYJS: Record<AppLanguage, string> = { tr: 'tr', en: 'en-gb' };
 /** `Intl` language tags. A hard-coded format locale is written only in this file. */
 const INTL: Record<AppLanguage, string> = { tr: 'tr-TR', en: 'en-GB' };
 
+/**
+ * Right-to-left pseudo language tag. `ar-XB` is the usual tag for a pseudo bidi language.
+ * It is accepted only in the e2e build (IC-15). The text stays in the fallback language.
+ */
+export const PSEUDO_RTL_TAG = 'ar-XB';
+
 const BUNDLES = Object.fromEntries(
   (Object.keys(ANTD) as AppLanguage[]).map((language) => [
     language,

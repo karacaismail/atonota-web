@@ -1,0 +1,183 @@
+{
+  "_aciklama": "Yön kapısı için eski kurallar (IC-14). Her kayıt dosyayı, sahip işi, nedeni ve tam bildirimi taşır. Aynı dosyaya eklenen yeni fiziksel kural yine hata verir. Yeni kayıt eklemeyin; yeni CSS mantıksal özellik kullanır.",
+  "izinler": [
+    {
+      "dosya": "src/ai/studio/studio.css",
+      "sahip": "ai-studio",
+      "neden": "AJA-1364 öncesi yazılmış fiziksel yön kuralı. Sahip iş kuralı mantıksal özelliğe taşıyınca kaydı siler.",
+      "bildirimler": [
+        {
+          "bildirim": "border-right: 1px solid var(--ai-border)",
+          "adet": 1
+        },
+        {
+          "bildirim": "border-left: 1px solid var(--ai-border)",
+          "adet": 1
+        },
+        {
+          "bildirim": "margin-left: auto",
+          "adet": 1
+        },
+        {
+          "bildirim": "margin-left: var(--ai-gap-xs)",
+          "adet": 1
+        },
+        {
+          "bildirim": "padding-left: var(--ai-gap-md)",
+          "adet": 1
+        }
+      ]
+    },
+    {
+      "dosya": "src/components/controls/controls.css",
+      "sahip": "controls",
+      "neden": "AJA-1364 öncesi yazılmış fiziksel yön kuralı. Sahip iş kuralı mantıksal özelliğe taşıyınca kaydı siler.",
+      "bildirimler": [
+        {
+          "bildirim": "right: calc(-1 * (var(--hit-r) + var(--ant-line-width)))",
+          "adet": 1
+        },
+        {
+          "bildirim": "left: calc(-1 * (var(--hit-l) + var(--ant-line-width)))",
+          "adet": 1
+        }
+      ]
+    },
+    {
+      "dosya": "src/genui/genui.css",
+      "sahip": "ai-studio",
+      "neden": "AJA-1364 öncesi yazılmış fiziksel yön kuralı. Sahip iş kuralı mantıksal özelliğe taşıyınca kaydı siler.",
+      "bildirimler": [
+        {
+          "bildirim": "margin-left: auto",
+          "adet": 3
+        },
+        {
+          "bildirim": "text-align: left",
+          "adet": 1
+        }
+      ]
+    },
+    {
+      "dosya": "src/modules/administration/admin.css",
+      "sahip": "modules",
+      "neden": "AJA-1364 öncesi yazılmış fiziksel yön kuralı. Sahip iş kuralı mantıksal özelliğe taşıyınca kaydı siler.",
+      "bildirimler": [
+        {
+          "bildirim": "left: 0",
+          "adet": 1
+        }
+      ]
+    },
+    {
+      "dosya": "src/shell/shell.css",
+      "sahip": "shell",
+      "neden": "AJA-1364 öncesi yazılmış fiziksel yön kuralı. Sahip iş kuralı mantıksal özelliğe taşıyınca kaydı siler.",
+      "bildirimler": [
+        {
+          "bildirim": "left: var(--shell-item-px)",
+          "adet": 1
+        },
+        {
+          "bildirim": "right: var(--shell-item-px)",
+          "adet": 1
+        },
+        {
+          "bildirim": "padding-left: max(var(--shell-gutter), env(safe-area-inset-left))",
+          "adet": 1
+        },
+        {
+          "bildirim": "padding-right: max(var(--shell-gutter), env(safe-area-inset-right))",
+          "adet": 1
+        },
+        {
+          "bildirim": "left: var(--shell-space-ml)",
+          "adet": 1
+        },
+        {
+          "bildirim": "right: var(--shell-space-ml)",
+          "adet": 1
+        },
+        {
+          "bildirim": "left: 0",
+          "adet": 2
+        },
+        {
+          "bildirim": "padding-left: env(safe-area-inset-left)",
+          "adet": 2
+        },
+        {
+          "bildirim": "right: var(--shell-pad)",
+          "adet": 1
+        },
+        {
+          "bildirim": "padding-left: var(--shell-bar-inline, 0)",
+          "adet": 1
+        },
+        {
+          "bildirim": "padding-right: calc(var(--shell-hd-btn-h) + var(--shell-space-xs))",
+          "adet": 1
+        },
+        {
+          "bildirim": "left: calc(-1 * var(--shell-pad))",
+          "adet": 1
+        },
+        {
+          "bildirim": "left: calc(-1 * var(--shell-space-ml))",
+          "adet": 1
+        },
+        {
+          "bildirim": "right: calc(-1 * var(--shell-focus-offset))",
+          "adet": 1
+        },
+        {
+          "bildirim": "margin-left: auto",
+          "adet": 1
+        },
+        {
+          "bildirim": "left: var(--shell-space-md)",
+          "adet": 1
+        },
+        {
+          "bildirim": "right: var(--shell-space-md)",
+          "adet": 1
+        },
+        {
+          "bildirim": "left: calc(-1 * var(--shell-caret) / 2)",
+          "adet": 1
+        },
+        {
+          "bildirim": "margin-right: var(--shell-space-sm)",
+          "adet": 1
+        },
+        {
+          "bildirim": "left: 50%",
+          "adet": 1
+        },
+        {
+          "bildirim": "margin-left: var(--shell-space-sm)",
+          "adet": 1
+        },
+        {
+          "bildirim": "right: 0",
+          "adet": 1
+        }
+      ]
+    },
+    {
+      "dosya": "src/views/collection/preview/temporary-foundation.css",
+      "sahip": "views-collection",
+      "neden": "AJA-1364 öncesi yazılmış fiziksel yön kuralı. Sahip iş kuralı mantıksal özelliğe taşıyınca kaydı siler.",
+      "bildirimler": [
+        {
+          "bildirim": "right: calc(-1 * var(--hit-r, 0px))",
+          "adet": 1
+        },
+        {
+          "bildirim": "left: calc(-1 * var(--hit-l, 0px))",
+          "adet": 1
+        }
+      ]
+    }
+  ]
+}

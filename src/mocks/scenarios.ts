@@ -50,6 +50,18 @@ const SCENARIOS: Record<string, () => void> = {
   'ana-sayfa-eski-surum': () => {
     mockState.home.staleVersions = true;
   },
+  // User language in the boot data (IC-14, AJA-1364).
+  'dil-en': () => {
+    mockState.language = 'en';
+  },
+  /** The boot data has no language. The screen stays in the fallback language. */
+  'dil-yok': () => {
+    mockState.language = '';
+  },
+  /** Right-to-left pseudo language. It is accepted only in the e2e build. */
+  'dil-sahte-rtl': () => {
+    mockState.language = 'ar-XB';
+  },
 };
 
 function setRole(role: string): void {

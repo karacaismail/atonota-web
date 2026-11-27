@@ -128,12 +128,15 @@ export const mockState: {
   providerBusy: boolean;
   /** User roles in the boot data. Role scenarios change them (AJA-831). */
   roles: string[];
+  /** User language in the boot data. Language scenarios change it (AJA-1364). */
+  language: string;
   /** Module types the definition endpoint answers with 200 (G-94). Other types get 403. */
   readableDocTypes: Set<string>;
   /** Submitted new customer requests (G-169). */
   customerRequests: { name: string; customer_name: string; contact_email: string }[];
 } = {
   roles: [...sampleBootstrap.user.roles],
+  language: sampleBootstrap.user.language,
   readableDocTypes: new Set(MENU_READABLE_DOCTYPES),
   customerRequests: [],
   loginProviders: sampleLoginProviders.map((item) => ({ ...item })),
@@ -252,6 +255,7 @@ export function resetMockState(): void {
   mockState.aiConnections = new Map(sampleAiConnections.map((item) => [item.name, { ...item }]));
   mockState.providerBusy = false;
   mockState.roles = [...sampleBootstrap.user.roles];
+  mockState.language = sampleBootstrap.user.language;
   mockState.readableDocTypes = new Set(MENU_READABLE_DOCTYPES);
   mockState.customerRequests = [];
   resetUserAdminState();
@@ -870,7 +874,10 @@ export const handlers = [
   http.get('*/api/method/platform_core.api.shell.get_bootstrap', ({ request }) => {
     return (
       guard(request, { write: false }) ??
-      message({ ...sampleBootstrap, user: { ...sampleBootstrap.user, roles: mockState.roles } })
+      message({
+        ...sampleBootstrap,
+        user: { ...sampleBootstrap.user, roles: mockState.roles, language: mockState.language },
+      })
     );
   }),
 

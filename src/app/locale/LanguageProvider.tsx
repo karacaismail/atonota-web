@@ -1,12 +1,28 @@
 import dayjs from 'dayjs';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
+import {
+  applyDocumentLanguage,
+  resolveDocumentLanguage,
+  type DocumentLanguage,
+  type TextDirection,
+} from './document-language';
 import { createFormatter, type Formatter, type SiteFormatting } from './format';
-import { FALLBACK_LANGUAGE, resolveLanguage, type AppLanguage } from './language';
+import { FALLBACK_LANGUAGE, type AppLanguage } from './language';
 import { localeBundle, type LocaleBundle } from './locale-map';
 
 interface LanguageState {
   language: AppLanguage;
+  /** Text direction of the language. `<html dir>` and antd use it (IC-14). */
+  dir: TextDirection;
   /** Takes the raw language from the boot data. An empty language falls back to the fallback language. */
   setLanguage: (raw: string | null | undefined) => void;
   /** Time zone and currency from the boot data (IC-13). */
@@ -21,31 +37,50 @@ interface LanguageState {
  */
 const LanguageContext = createContext<LanguageState>({
   language: FALLBACK_LANGUAGE,
+  dir: 'ltr',
   setLanguage: () => undefined,
   formatting: {},
   setFormatting: () => undefined,
 });
 
+/** The pseudo language is accepted only in the e2e build. The condition is constant at build time. */
+const PSEUDO_ALLOWED = import.meta.env.MODE === 'e2e';
+
 /**
  * The application's single language context. The language comes from the user language in the boot data.
  * Before sign-in, the language is the fallback language.
+ * `<html lang>` and `<html dir>` follow the language (IC-14). A language change only changes the
+ * visible words: the tree is not remounted, so form drafts stay.
  */
 export function LanguageProvider({
   initialLanguage,
   initialFormatting,
+  allowPseudo = PSEUDO_ALLOWED,
   children,
 }: {
   initialLanguage?: string | null | undefined;
   /** Initial time zone and currency. Tests pass them in here. */
   initialFormatting?: SiteFormatting | undefined;
+  /** Accepts the right-to-left pseudo language. Defaults to true only in the e2e build. */
+  allowPseudo?: boolean;
   children: ReactNode;
 }) {
-  const [language, setResolved] = useState<AppLanguage>(() => resolveLanguage(initialLanguage));
+  const [resolved, setResolved] = useState<DocumentLanguage>(() =>
+    resolveDocumentLanguage(initialLanguage, { allowPseudo }),
+  );
+  const { language, lang, dir } = resolved;
   const [formatting, setFormattingState] = useState<SiteFormatting>(() => initialFormatting ?? {});
   // The functions stay stable. Boot data is not re-requested when the language changes.
   const setLanguage = useCallback<LanguageState['setLanguage']>(
-    (raw) => setResolved(resolveLanguage(raw)),
-    [],
+    (raw) => {
+      const next = resolveDocumentLanguage(raw, { allowPseudo });
+      setResolved((prev) =>
+        prev.language === next.language && prev.lang === next.lang && prev.dir === next.dir
+          ? prev
+          : next,
+      );
+    },
+    [allowPseudo],
   );
   const setFormatting = useCallback<LanguageState['setFormatting']>(
     (next) =>
@@ -55,9 +90,13 @@ export function LanguageProvider({
     [],
   );
   const value = useMemo<LanguageState>(
-    () => ({ language, setLanguage, formatting, setFormatting }),
-    [language, setLanguage, formatting, setFormatting],
+    () => ({ language, dir, setLanguage, formatting, setFormatting }),
+    [language, dir, setLanguage, formatting, setFormatting],
   );
+  // Written before paint, so the screen reader never meets the old language.
+  useLayoutEffect(() => {
+    applyDocumentLanguage({ lang, dir });
+  }, [lang, dir]);
   // The Day.js locale is a global setting. It is set before children render, so the date picker gets the right locale on first render.
   // Repeating the call with the same locale does not change the result.
   dayjs.locale(localeBundle(language).dayjs);
@@ -71,6 +110,11 @@ function useLanguageState(): LanguageState {
 /** The current UI language. */
 export function useLanguage(): AppLanguage {
   return useLanguageState().language;
+}
+
+/** Text direction of the current language: `ltr` or `rtl`. */
+export function useTextDirection(): TextDirection {
+  return useLanguageState().dir;
 }
 
 /** Function that changes the language when the boot data arrives. */

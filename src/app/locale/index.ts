@@ -4,6 +4,13 @@ export {
   resolveLanguage,
   type AppLanguage,
 } from './language';
+export {
+  PSEUDO_RTL_TAG,
+  applyDocumentLanguage,
+  resolveDocumentLanguage,
+  type DocumentLanguage,
+  type TextDirection,
+} from './document-language';
 export { localeBundle, type LocaleBundle, type XLocale } from './locale-map';
 export {
   createFormatter,
@@ -19,4 +26,5 @@ export {
   useLocaleBundle,
   useSetFormatting,
   useSetLanguage,
+  useTextDirection,
 } from './LanguageProvider';
