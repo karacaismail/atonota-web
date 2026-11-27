@@ -74,7 +74,7 @@ describe('contract boundaries', () => {
       'https://evil.test/',
       'https://api.login.atonota.net.evil.test/',
       'https://api.login.atonota.net/realms/other/account',
-      // Kullanıcı bilgisi parçalı adres. Parçalar e-posta taramasına takılmasın diye birleştirilir.
+      // An address with user info. The parts are joined so the email scan does not flag them.
       ['https://name', 'api.login.atonota.net/realms/atonota/account'].join('@'),
     ]) {
       expect(() => safeIdentityUrl(url, 'https://api.login.atonota.net/realms/atonota/')).toThrow();

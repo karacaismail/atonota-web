@@ -458,15 +458,15 @@ function AccessRules({ admin }: { admin: AdminClient }) {
   );
 }
 
-/** "Kullanıcı izinleri ve kurallar" bölümü: iki sekme. */
+/** The "User permissions and rules" section. It has two tabs. */
 export default function PermissionsAndRules() {
   const env = useModule();
   const copy = useCopy();
   const admin = env?.client?.admin;
   const { token } = theme.useToken();
   if (!admin) return <Alert type="info" message={copy.unavailable} />;
-  // antd seçili sekmeyi birincil renkle yazar. Açık temada bu renk 4.5:1 vermez.
-  // Sekme metni projenin bağlantı rengini kullanır (türetilmiş karar 2).
+  // antd writes the selected tab in the primary colour. In the light theme it does not reach 4.5:1.
+  // The tab text uses the project's link colour (derived decision 2).
   const tabs = {
     itemSelectedColor: token.colorLink,
     itemActiveColor: token.colorLinkActive,

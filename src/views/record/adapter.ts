@@ -42,9 +42,10 @@ export class RecordApiError extends Error {
 }
 
 /**
- * Kayıt bağdaştırıcısının ayarı. İstekler oturumun ortak API istemcisinden geçer (SZ-5).
- * Site kökü, çerez ayarı, CSRF deposu, zaman aşımı ve oturum süresi işi istemcidedir.
- * Bağdaştırıcı kendi `fetch` katmanını kurmaz. Sayfadaki `meta` öğesini okumaz (güvenlik bulgusu B3).
+ * Record adapter options. Requests go through the session's shared API client (SZ-5).
+ * Site root, cookie setting, CSRF store, timeout and session expiry live in the client.
+ * The adapter builds no `fetch` layer of its own. It does not read the page `meta` tag (security
+ * finding B3).
  */
 export interface FrappeRecordAdapterConfig {
   api: Pick<ApiClient, 'frappeDocument'>;
@@ -157,7 +158,7 @@ function asRecord(body: unknown): Record<string, unknown> {
     : {};
 }
 
-/** Ortak hata türünü kayıt görünümünün hata koduna çevirir. Sunucu iletisi temizlenerek gösterilir. */
+/** Maps the shared error type to the record view's error code. The server message is sanitised. */
 function toRecordError(error: ApiError, rawBody: unknown, locale: RecordLocale): RecordApiError {
   const body = asRecord(rawBody);
   const excType = extractExcType(body);
@@ -218,7 +219,7 @@ export function createFrappeRecordAdapter(config: FrappeRecordAdapterConfig): Re
         signal: init.externalSignal,
       });
     } catch (err) {
-      // Kullanıcı iptali olduğu gibi iletilir. Ekran iptali hata saymaz.
+      // A user abort is passed through as is. The screen does not treat an abort as an error.
       if (init.externalSignal?.aborted || !(err instanceof ApiError)) throw err;
       throw toRecordError(err, undefined, locale);
     }

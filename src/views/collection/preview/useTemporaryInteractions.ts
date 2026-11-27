@@ -18,9 +18,9 @@ function pointerdown() {
   setKeyboard(false);
 }
 /**
- * Yalnız önizleme için geçici odak ve dokunma alanı motoru kopyası.
- * Kaldırma koşulu: foundation main dalına girince bu kopya silinir.
- * Foundation'ın `--hit-t/r/b/l` ve `html[data-focus-mode]` sözleşmesini kullanır.
+ * Temporary copy of the focus and touch target engine, for the preview only.
+ * Removal condition: delete this copy when foundation reaches the main branch.
+ * It uses foundation's `--hit-t/r/b/l` and `html[data-focus-mode]` contract.
  */
 export function useTemporaryInteractions(root: RefObject<HTMLDivElement>) {
   const [keyboard, setKeyboardState] = useState(keyboardMode);

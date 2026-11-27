@@ -13,7 +13,7 @@ const PAGE = 20;
 function PermissionLogList({ admin }: { admin: AdminClient }) {
   const copy = useCopy();
   const [pages, setPages] = useState(1);
-  // Sayfalar sırayla okunur. "Daha eski kayıtlar" bir sayfa daha ekler.
+  // Pages are read in order. "Older records" adds one more page.
   const load = useCallback(
     async (signal: AbortSignal) => {
       const logs: PermissionLogEntry[] = [];
@@ -81,7 +81,7 @@ function PermissionLogList({ admin }: { admin: AdminClient }) {
   );
 }
 
-/** "Değişiklik kaydı" bölümü. Yalnız okunur. */
+/** The "Change log" section. Read-only. */
 export default function PermissionLog() {
   const env = useModule();
   const copy = useCopy();

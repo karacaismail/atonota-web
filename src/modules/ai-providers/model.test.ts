@@ -43,7 +43,7 @@ describe('buildConnectionInput', () => {
       provider: 'openai',
       account_name: 'Ana hesap',
       api_name: 'Birincil',
-      // Sır olduğu gibi gider. Boşluk kırpılmaz.
+      // The secret is sent as is. Whitespace is not trimmed.
       fields: { api_key: ' anahtar ' },
     });
   });
@@ -98,7 +98,8 @@ describe('messages', () => {
 });
 
 describe('saveFailureKey', () => {
-  // Kayıt bir yazmadır. Yanıt gelmezse sunucu kaydı yazmış olabilir (ortak kural: failureKind).
+  // Saving is a write. Without a response the server may have written the record (shared rule:
+  // failureKind).
   it.each([
     ['503', new ApiError({ kind: 'unavailable', status: 503 })],
     ['500', new ApiError({ kind: 'unknown', status: 500 })],

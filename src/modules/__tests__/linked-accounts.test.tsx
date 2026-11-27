@@ -1,4 +1,4 @@
-// Hesap sayfasındaki "Bağlı hesaplar" bölümü (G-160).
+// The "Linked accounts" section on the account page (G-160).
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -23,7 +23,7 @@ const accounts = (linked: string[], local = 0): Accounts => ({
   local_sign_in_methods: local,
 });
 
-/** Bağlı hesap istemcisi tembel yüklenir. Test istemciyi aynı biçimde verir. */
+/** The linked account client is lazy-loaded. The test provides the client the same way. */
 function linked(
   listLinkedAccounts: LinkedAccountsClient['listLinkedAccounts'],
   unlinkAccount: LinkedAccountsClient['unlinkAccount'] = vi.fn(),

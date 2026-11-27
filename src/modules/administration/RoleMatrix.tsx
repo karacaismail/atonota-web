@@ -26,8 +26,8 @@ import { AdminResource } from './shared';
 import './admin.css';
 
 /**
- * Başlangıçta gösterilen kayıt türleri: panel sayfalarının okuduğu iş türleri.
- * Platform türleri (`PLT ` öneki) kiracı yöneticisine kapalıdır. Sunucu da 403 verir.
+ * Record types shown at the start: the business types that the panel pages read.
+ * Platform types (`PLT ` prefix) are closed to the tenant admin. The server also returns 403.
  */
 const STARTING_DOCTYPES = [
   ...new Set(
@@ -42,7 +42,7 @@ const keyOf = (doctype: string, level: number, right: Right): ChangeKey =>
   `${doctype}|${level}|${right}`;
 
 function rowsFor(doctype: string, rows: PermissionRow[]): PermissionRow[] {
-  // Rolün bu türde satırı yoksa boş bir 0 düzeyi satırı gösterilir. Yönetici izni buradan verir.
+  // With no row for this type, an empty level 0 row is shown. The admin grants access here.
   if (rows.length > 0) return rows;
   const rights = Object.fromEntries(
     RIGHTS.map((right) => [right, false]),
@@ -101,8 +101,8 @@ export function RoleMatrix({ admin }: { admin: AdminClient }) {
   }, [rows.length, role]);
 
   /**
-   * Kutu odaktayken sol ve sağ ok tuşu kutuyu kaydırır. WebKit bunu kendiliğinden yapmaz.
-   * Yalnız kutunun kendisi odaktaysa çalışır. Onay kutusundaki ok tuşu etkilenmez.
+   * While the box has focus, the left and right arrow keys scroll it. WebKit does not do this.
+   * It works only when the box itself has focus. Arrow keys on a checkbox are not affected.
    */
   function scrollByKeyboard(event: KeyboardEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return;
@@ -332,7 +332,7 @@ export function RoleMatrix({ admin }: { admin: AdminClient }) {
   );
 }
 
-/** Rol bölümü. Uç yoksa "Bu hizmet henüz bağlı değil." yazar. */
+/** Role section. If there is no endpoint, it shows "This service is not connected yet." */
 export default function RolesSection() {
   const env = useModule();
   const copy = useCopy();

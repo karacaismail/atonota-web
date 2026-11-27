@@ -15,7 +15,7 @@ export function TableView({
 }: ViewProps & {
   selected: string[];
   onSelect: (names: string[]) => void;
-  /** Verilirse kayıt adı (`name` sütunu) kayda giden bağlantı olur. */
+  /** If given, the record name (`name` column) links to the record. */
   recordHref?: ((name: string) => string) | undefined;
 }) {
   const format = useFormat();

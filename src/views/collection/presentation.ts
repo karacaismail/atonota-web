@@ -26,8 +26,8 @@ export function dateValue(value: unknown): number | undefined {
     : undefined;
 }
 /**
- * Zengin metin alanının değeri HTML'dir. Liste hücresi yalnız düz metni gösterir.
- * Ayrıştırıcı betik çalıştırmaz. Etiketler atılır, `&amp;` gibi kodlar harfe döner.
+ * A rich text field's value is HTML. The list cell shows only plain text.
+ * The parser runs no scripts. Tags are dropped, and codes such as `&amp;` become characters.
  */
 const richTextTypes = new Set(['Text Editor', 'HTML Editor']);
 const skippedElements = 'script, style, template, noscript';
@@ -41,7 +41,7 @@ function plainText(html: string): string {
   body.querySelectorAll(skippedElements).forEach((node) => node.remove());
   return (body.textContent ?? '').replace(/\s+/g, ' ').trim();
 }
-/** Hücrenin görünen metni. Tarih ve sayı kullanıcının diliyle yazılır (IC-13). */
+/** The cell's visible text. Dates and numbers are written in the user's language (IC-13). */
 export function displayCell(row: CollectionRow, field: CollectionField, format: Formatter): string {
   const value = row[field.fieldname];
   if (value === null || value === undefined) return 'Bilgi yok';
@@ -72,7 +72,7 @@ export interface GroupCount {
   label: string;
   count: number;
 }
-/** Gruplar ve kapsam. Sunucu özeti hazırsa bütün kayıtları, değilse yalnız sayfayı sayar. */
+/** Groups and scope. Counts all records if the server summary is ready, else only the page. */
 export function groupCounts(
   rows: CollectionRow[],
   field: CollectionField,
@@ -105,7 +105,7 @@ export function groupCounts(
     truncated: false,
   };
 }
-/** Özet durumunu anlatan cümle. Sayfa özeti kullanılırken boş döner. */
+/** A sentence describing the summary state. Empty while the page summary is in use. */
 export function summaryNotice(summary: SummaryState = { status: 'off' }): string | undefined {
   if (summary.status === 'loading') return 'Sunucu özeti yükleniyor. Şimdilik bu sayfa özetlenir.';
   if (summary.status === 'error') return 'Sunucu özeti alınamadı. Yalnız bu sayfa özetlenir.';

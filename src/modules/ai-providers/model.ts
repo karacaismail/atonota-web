@@ -1,27 +1,27 @@
 /**
- * "Yapay zekâ sağlayıcıları" sayfasının saf mantığı. Ekran ve ağ kodu burada yoktur.
- * Sağlayıcı listesi kodda yazılı değildir; her şey sunucu kataloğundan gelir.
+ * Pure logic of the "AI providers" page. There is no screen or network code here.
+ * The provider list is not written in code; everything comes from the server catalogue.
  */
 import { ApiError } from '@/api';
-// Sağlayıcı istemcisinden yalnız tip alınır. Değer alınırsa istemci parçası sayfa parçasına da
-// bağlanır ve paketleyici ek bir parça üretir.
+// Only types are imported from the provider client. Importing a value would also tie the client
+// chunk to the page chunk, and the bundler would emit an extra chunk.
 import type { ConnectionInput, ConnectionStatus, ProviderDefinition } from '@/api/provider-client';
 import { failureKind, type FailureKind } from '../data';
 import type { ProviderCopyKey } from './messages';
 
-/** Hesap seçicideki "Yeni hesap" seçeneğinin değeri. Kayıt adı bu biçimde olamaz. */
+/** Value of the "New account" option in the account picker. No record name can take this form. */
 export const NEW_ACCOUNT = '__new__';
 
 export interface ConnectionDraft {
-  /** Var olan hesabın kayıt adı ya da `NEW_ACCOUNT`. */
+  /** Record name of an existing account, or `NEW_ACCOUNT`. */
   account: string;
   accountName: string;
   apiName: string;
-  /** Sağlayıcı alanlarının değerleri. Anahtar alanın `name` değeridir. */
+  /** Values of the provider fields. The key is the field's `name`. */
   values: Record<string, string>;
 }
 
-/** Form değerlerinden sağlayıcının sır alanlarını çıkarır. Öteki değerler kalır. */
+/** Removes the provider's secret fields from the form values. Other values stay. */
 export function withoutSecrets(
   values: Record<string, string>,
   provider: ProviderDefinition,
@@ -33,11 +33,11 @@ export function withoutSecrets(
 }
 
 /**
- * Formu sözleşmedeki `ConnectionInput` biçimine çevirir.
- * - Yalnız sağlayıcı tanımındaki alanlar gider.
- * - Boş isteğe bağlı alan gönderilmez.
- * - Var olan hesapta hesap kapsamlı alanlar gönderilmez (sözleşme: ConnectionInput.fields).
- * - Sır değeri kırpılmaz. Öteki metinler kırpılır.
+ * Converts the form to the contract's `ConnectionInput` shape.
+ * - Only fields in the provider definition are sent.
+ * - An empty optional field is not sent.
+ * - For an existing account, account-scoped fields are not sent (contract: ConnectionInput.fields).
+ * - The secret value is not trimmed. Other texts are trimmed.
  */
 export function buildConnectionInput(
   provider: ProviderDefinition,
@@ -62,8 +62,8 @@ export function buildConnectionInput(
 
 export type RowStatus = ConnectionStatus | 'not_checked';
 /**
- * Listede gösterilen durumlar. `satisfies` sözleşmedeki durum listesiyle birebir eşleşmeyi
- * derleme zamanında zorlar: eksik ya da fazla durum tip hatası verir.
+ * Statuses shown in the list. `satisfies` enforces an exact match with the contract's status list
+ * at compile time: a missing or extra status is a type error.
  */
 const ROW_STATUS_FLAGS = {
   not_checked: true,
@@ -78,12 +78,12 @@ const ROW_STATUS_FLAGS = {
 } as const satisfies Record<RowStatus, true>;
 const ROW_STATUSES = new Set<string>(Object.keys(ROW_STATUS_FLAGS));
 
-/** Durumun ekran metni anahtarı. Anahtar adı durumun kendisidir. */
+/** Screen text key of a status. The key name is the status itself. */
 export function statusKey(status: RowStatus): ProviderCopyKey {
   return status;
 }
 
-/** Canlı deneme hatasının ekran metni anahtarı. Deneme yeni kayıt açmaz; yeniden denenebilir. */
+/** Screen text key of a live check error. A check creates no record, so it can be retried. */
 export function checkFailureKey(error: unknown): 'tooFrequent' | 'checkFailed' | FailureKind {
   if (error instanceof ApiError && error.kind === 'rate_limited') return 'tooFrequent';
   const kind = failureKind(error);
@@ -101,9 +101,10 @@ export type SaveFailureKey =
     >;
 
 /**
- * Kaydetme hatasının ekran metni anahtarı. Kayıt bir yazmadır: ortak kural `failureKind(error, true)`
- * zaman aşımını, ağ hatasını, 5xx yanıtını ve bozuk yanıtı "sonuç bilinmiyor" sayar. Sunucu kaydı
- * yazmış olabilir. Bu durumda ekran "yeniden deneyin" demez; çünkü her kayıt yeni bir bağlantı açar.
+ * Screen text key of a save error. Saving is a write: the shared rule `failureKind(error, true)`
+ * treats a timeout, network error, 5xx response and malformed response as "result unknown". The
+ * server may have written the record. In that case the screen does not say "try again", because
+ * every save creates a new connection.
  */
 export function saveFailureKey(error: unknown): SaveFailureKey {
   const kind = failureKind(error, true);
@@ -116,7 +117,7 @@ export function saveFailureKey(error: unknown): SaveFailureKey {
       return 'saveRejected';
     case 'conflict':
       return 'saveConflict';
-    // `writing` bayrağı bu iki türü hiç döndürmez; tip yine de onları dışarıda bırakır.
+    // The `writing` flag never returns these two kinds; the type still excludes them.
     case 'failure':
     case 'invalid':
       return 'saveUncertain';
@@ -139,8 +140,8 @@ const text = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
 
 /**
- * API, hesap ve sağlayıcı kayıtlarını tek listeye birleştirir.
- * Yalnız bilinen alanlar kopyalanır. Böylece beklenmeyen bir alan ekrana çıkmaz.
+ * Merges the API, account and provider records into one list.
+ * Only known fields are copied, so an unexpected field never reaches the screen.
  */
 export function joinConnections(apis: Row[], accounts: Row[], providers: Row[]): ConnectionRow[] {
   const providerLabels = new Map<string, string>();
@@ -177,7 +178,7 @@ export function joinConnections(apis: Row[], accounts: Row[], providers: Row[]):
   return rows;
 }
 
-/** Seçilen katalog sağlayıcısının var olan hesapları. */
+/** Existing accounts of the selected catalogue provider. */
 export function accountsFor(
   catalogProvider: string,
   accounts: Row[],

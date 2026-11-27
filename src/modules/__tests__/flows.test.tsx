@@ -278,7 +278,7 @@ describe('explicit approval', () => {
   });
 });
 
-/** MVP denetimi: süresi geçmiş öneri listede "Süresi doldu" yazar ve onaylanamaz. */
+/** MVP check: an expired proposal shows "Expired" in the list and cannot be approved. */
 describe('süresi geçmiş öneri', () => {
   const stale = { ...proposal, expires_at: '2000-01-01T00:00:00+03:00' };
 

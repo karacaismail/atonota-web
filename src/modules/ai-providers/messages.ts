@@ -1,7 +1,7 @@
 /**
- * "Yapay zekâ sağlayıcıları" sayfasının bütün ekran metinleri (GILT kararı).
- * Ortak katalog mekanizması henüz yok. Bu yüzden metinler tek dosyada durur.
- * Sağlayıcı, kategori ve alan etiketleri bu dosyada değildir. Onları sunucu kataloğu verir.
+ * All screen text of the "AI providers" page (GILT decision).
+ * There is no shared catalogue mechanism yet, so the texts live in one file.
+ * Provider, category and field labels are not in this file. The server catalogue supplies them.
  */
 import { useModule } from '../context';
 

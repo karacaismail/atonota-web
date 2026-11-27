@@ -4,9 +4,9 @@ import { CollectionError } from './types';
 import type { CollectionSource } from './types';
 
 /**
- * Koleksiyon listesini ortak `listDocuments` istemcisine bağlar (Frappe `/api/v2/document`).
- * Yetki ve oturum hataları `unauthorized` olur. Öteki hatalar yeniden denenebilir.
- * Ham sunucu iletisi ekrana taşınmaz. İptal hatası olduğu gibi geçer.
+ * Connects the collection list to the shared `listDocuments` client (Frappe `/api/v2/document`).
+ * Permission and session errors become `unauthorized`. Other errors can be retried.
+ * The raw server message never reaches the screen. An abort error passes through unchanged.
  */
 export function createApiSource(client: Pick<ApiClient, 'listDocuments'>): CollectionSource {
   return {
@@ -30,7 +30,7 @@ export function createApiSource(client: Pick<ApiClient, 'listDocuments'>): Colle
   };
 }
 
-/** Ortak API hatasını koleksiyon hatasına çevirir. Özet kaynağı da bunu kullanır. */
+/** Turns a shared API error into a collection error. The summary source uses it too. */
 export function toCollectionError(error: unknown, signal: AbortSignal): unknown {
   if (signal.aborted || (error instanceof DOMException && error.name === 'AbortError'))
     return error;

@@ -5,8 +5,9 @@ import { CollectionError } from './types';
 import type { CollectionSummarySource, GroupSummaryRequest, SummaryState } from './types';
 
 /**
- * Sunucu özetini okur. Kaynak ya da istek yoksa durum `off` olur.
- * Eski yanıt yeni isteğin sonucunu değiştirmez. Kaynak değişince eski özet gösterilmez. Bileşen kalkınca istek iptal edilir.
+ * Reads the server summary. With no source or request, the state is `off`.
+ * An old response does not change the new request's result. When the source changes, the old
+ * summary is not shown. The request is aborted when the component unmounts.
  */
 export function useGroupSummary(
   source: CollectionSummarySource | undefined,
@@ -20,7 +21,7 @@ export function useGroupSummary(
   }>();
   useEffect(() => {
     if (!source || !key) return undefined;
-    // İstek anahtardan yeniden kurulur. Aynı içerikli yeni nesne yeni istek başlatmaz.
+    // The request is rebuilt from the key. A new object with equal content starts no new request.
     const current = JSON.parse(key) as GroupSummaryRequest;
     const controller = new AbortController();
     source

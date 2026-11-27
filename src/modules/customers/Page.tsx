@@ -1,6 +1,6 @@
-// "Müşteriler" sayfası (G-169, G-170). Bayinin bağlı müşterilerini ve site durumlarını gösterir.
-// "Reseller Admin" yeni müşteri isteği gönderir. "Reseller Assistant" sayfayı yalnız okur.
-// Menü ve sayfa kapısı bu sayfayı kiracı hesabına açmaz. Yetkiyi sunucu yine denetler.
+// The "Customers" page (G-169, G-170). Shows the reseller's linked customers and site statuses.
+// "Reseller Admin" sends a new customer request. "Reseller Assistant" only reads the page.
+// The menu and page gate do not open this page to a tenant account. The server still checks.
 import { Alert, Button, Input } from 'antd';
 import { useCallback, useId, useState } from 'react';
 
@@ -13,11 +13,11 @@ import type { ResellerClient } from '../runtime';
 import { ModuleFrame, ResourceView, Section } from '../shared';
 
 interface CustomerRow extends ResellerCustomer {
-  /** Durum okunamazsa `null` olur. Satır yine görünür. */
+  /** `null` if the status cannot be read. The row is still shown. */
   status: CustomerStatus['status'] | null;
 }
 
-/** Aynı anda en çok bu kadar durum isteği gider. Sunucunun hız sınırını korur. */
+/** At most this many status requests run at once. This respects the server's rate limit. */
 const STATUS_BATCH = 5;
 
 async function loadRows(client: ResellerClient, signal: AbortSignal): Promise<CustomerRow[]> {

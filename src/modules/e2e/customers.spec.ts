@@ -1,5 +1,6 @@
-// "Müşteriler" sayfası tarayıcıda (G-169, G-170, AJA-834).
-// Sayfa 320 pikselde yatay taşmaz. Yazı en az 14 pikseldir. Yeni müşteri isteği gönderilir.
+// The "Customers" page in the browser (G-169, G-170, AJA-834).
+// The page does not overflow horizontally at 320 px. Text is at least 14 px. A new customer
+// request is sent.
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
@@ -13,7 +14,8 @@ async function useRole(page: Page, scenario: string) {
 }
 
 async function expectReadableLayout(page: Page) {
-  // Renk geçişi bitmeden karşıtlık ölçülmez. Örnek: düğme etkin olunca rengi yavaşça değişir.
+  // Contrast is not measured until the colour transition ends. Example: a button changes colour
+  // slowly when it becomes enabled.
   await page.waitForFunction(() =>
     document.getAnimations().every((animation) => animation.playState !== 'running'),
   );

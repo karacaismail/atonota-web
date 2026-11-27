@@ -103,7 +103,7 @@ export function DateValue({ value }: { value: string | null | undefined }) {
   const format = useFormat();
   const copy = useCopy();
   if (!value) return <>{copy.notProvided}</>;
-  // Takvim günü saat dilimi olmadan yazılır. Tarih-saat sitenin saat dilimiyle okunur (IC-13).
+  // A calendar date is written without a time zone. A datetime uses the site's time zone (IC-13).
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
   const label = dateOnly ? format.date(value) : format.frappeDateTime(value);
   if (label === value) return <>{copy.notProvided}</>;

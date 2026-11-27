@@ -36,10 +36,10 @@ type SaveKey = ReturnType<typeof saveFailureKey>;
 type SaveCopyKey = Extract<SaveKey, `save${string}`>;
 const isSaveCopyKey = (key: SaveKey): key is SaveCopyKey => key.startsWith('save');
 
-/** Frappe tarih saatini (`2026-11-20 09:05:00`) bütün tarayıcıların okuduğu biçime çevirir. */
+/** Converts a Frappe datetime (`2026-11-20 09:05:00`) to a format every browser can parse. */
 const isoDateTime = (value: string | null) => (value ? value.replace(' ', 'T') : value);
 
-/** Canlı denemeleri yönetir. Sonuçlar bağlantı adına göre saklanır; liste yenilense de kalır. */
+/** Manages live checks. Results are kept by connection name and survive a list refresh. */
 function useChecks() {
   const env = useModule();
   const [checks, setChecks] = useState<Record<string, CheckState>>({});
@@ -69,7 +69,7 @@ function CheckButton({
 }: {
   state: CheckState | undefined;
   onCheck: () => void;
-  /** Kayıt panelindeki düğme. Panel odağı bu işaretle bulur. */
+  /** The button in the record panel. The panel finds the focus target by this marker. */
   marker?: boolean;
 }) {
   const p = useProviderCopy();
@@ -86,7 +86,7 @@ function CheckButton({
   );
 }
 
-/** Deneme sonucunun yalın iletisi. "Bağlandı" yanında kota notu durur. */
+/** Plain message for a check result. A quota note sits next to "Connected". */
 function CheckResult({ state }: { state: CheckState | undefined }) {
   const p = useProviderCopy();
   const copy = useCopy();
@@ -119,7 +119,7 @@ function ConnectionList({
   checks: Record<string, CheckState>;
   onCheck: (api: string) => void;
   canCheck: boolean;
-  /** Bu bağlantının sonucu kayıt panelinde görünür. Liste aynı iletiyi ikinci kez yazmaz. */
+  /** This connection's result shows in the record panel. The list does not repeat the message. */
   resultShownElsewhere: string | undefined;
 }) {
   const p = useProviderCopy();
@@ -175,7 +175,7 @@ interface FieldProps {
   onChange: (value: string) => void;
 }
 
-/** Tek bir alanı tanımdaki türe göre çizer. Sır alanı maskelidir ve tarayıcıya kaydedilmez. */
+/** Renders one field by its defined type. A secret field is masked and not saved by the browser. */
 function SchemaField({ id, field, value, invalid, onChange }: FieldProps) {
   const p = useProviderCopy();
   const hintId = `${id}-hint`;
@@ -224,11 +224,11 @@ interface FormProps {
   catalog: ProviderCatalog;
   listing: Resource<AiConnectionListing>;
   onSaved: (saved: SavedConnection, label: string) => void;
-  /** Sonuç bilinmiyor ya da çakışma var. Sayfa bağlantı listesini yeniden okur. */
+  /** The result is unknown or there is a conflict. The page re-reads the connection list. */
   onUncertain: () => void;
 }
 
-/** "API ekle" formu. Alanlar seçilen sağlayıcının tanımından çizilir. */
+/** The "API ekle" form. Fields are rendered from the selected provider's definition. */
 function ConnectionForm({ catalog, listing, onSaved, onUncertain }: FormProps) {
   const env = useModule();
   const p = useProviderCopy();
@@ -292,7 +292,7 @@ function ConnectionForm({ catalog, listing, onSaved, onUncertain }: FormProps) {
     try {
       providers = await load();
     } catch {
-      // İstek hiç gitmedi. Sonuç belirsiz değildir.
+      // The request was never sent. The result is not unknown.
       setFailure(p.loadFailed);
       setSaving(false);
       return;
@@ -302,7 +302,7 @@ function ConnectionForm({ catalog, listing, onSaved, onUncertain }: FormProps) {
         buildConnectionInput(provider, { account, accountName, apiName, values }),
         {},
       );
-      // Sır bu noktadan sonra durumda tutulmaz.
+      // From this point on the secret is not kept in state.
       setValues({});
       onSaved(saved, apiName.trim());
     } catch (error) {
@@ -312,8 +312,9 @@ function ConnectionForm({ catalog, listing, onSaved, onUncertain }: FormProps) {
       } else {
         const key = saveFailureKey(error);
         setFailure(isSaveCopyKey(key) ? p[key] : copy[key]);
-        // Sonuç belirsizse kayıt yazılmış olabilir. Sır formda kalmaz.
-        // Sır alanı zorunludur. Yönetici sırrı yeniden yazmadan ikinci kayıt isteği gitmez.
+        // If the result is unknown, the record may have been written. The secret leaves the form.
+        // The secret field is required. No second save request goes out until the admin re-enters
+        // the secret.
         if (key === 'saveUncertain') setValues((current) => withoutSecrets(current, provider));
         if (key === 'saveUncertain' || key === 'saveConflict') onUncertain();
       }
@@ -419,7 +420,7 @@ function ConnectionForm({ catalog, listing, onSaved, onUncertain }: FormProps) {
   );
 }
 
-/** Kaydedilen bağlantının özeti. Sır burada yoktur. "Bağlantıyı dene" ayrı adımdır. */
+/** Summary of the saved connection. The secret is not here. "Test connection" is a later step. */
 export function SavedPanel({
   label,
   state,
@@ -433,8 +434,9 @@ export function SavedPanel({
 }) {
   const p = useProviderCopy();
   const panel = useRef<HTMLDivElement>(null);
-  // Form kalkınca odak boşa düşmesin: odak "Bağlantıyı dene" düğmesine, düğme yoksa panele gider.
-  // Bu programatik bir odak taşımasıdır; klavye modu açıksa görünür gösterge korunur.
+  // Focus must not be lost when the form goes: it moves to the "Test connection" button, or
+  // to the panel if there is no button.
+  // This is a programmatic focus move; if keyboard mode is on, the visible indicator stays.
   useEffect(() => {
     const target = panel.current?.querySelector<HTMLElement>('[data-check]') ?? panel.current;
     target?.focus();
@@ -455,9 +457,10 @@ export function SavedPanel({
 export default function AiProvidersPage() {
   const env = useModule();
   const p = useProviderCopy();
-  // Sağlayıcı istemcisi ayrı parçadadır. İlk okuma onu yükler; tarayıcı parçayı bir kez indirir.
+  // The provider client is in a separate chunk. The first read loads it; the browser downloads
+  // the chunk once.
   const load = env?.client?.aiProviders;
-  // Uç yoksa `useRead` yükleyiciyi hiç çağırmaz; ret yalnız tip için vardır.
+  // Without an endpoint `useRead` never calls the loader; the rejection exists only for the type.
   const client = useCallback(
     () => (load ? load() : Promise.reject(new Error('unavailable'))),
     [load],
@@ -476,7 +479,7 @@ export default function AiProvidersPage() {
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState<{ api: string; label: string }>();
   const [formKey, setFormKey] = useState(0);
-  // Form kapanınca odak "API ekle" düğmesine döner (programatik dönüş odağı).
+  // When the form closes, focus returns to the "API ekle" button (programmatic return focus).
   const returnFocus = useRef(false);
   const focusAdd = useCallback((node: HTMLButtonElement | null) => {
     if (node && returnFocus.current) {

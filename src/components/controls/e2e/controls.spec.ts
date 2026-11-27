@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page } from '@playwright/test';
 import designSource from '../../../../design/source/control-size-config.json' with { type: 'json' };
 
-// Ortak deneme yolu (AGENTS.md, src/shell/routes.ts). Yalnız e2e derlemesinde açılır.
+// Shared demo route (AGENTS.md, src/shell/routes.ts). It opens only in the e2e build.
 const demo = '/_demo/controls';
 
 async function box(locator: Locator) {
@@ -829,7 +829,7 @@ const choiceCases: Record<
 };
 
 // Each control has its own test. Linux WebKit can hold a frame for seconds under load.
-// Eight clicks in one test would share one time budget (review 1, Ö-1). Expectations are unchanged.
+// Eight clicks in one test would share one time budget (review 1, S-1). Expectations are unchanged.
 for (const [name, build] of Object.entries(choiceCases)) {
   test(`${name} transitions use the shared easing and duration in both directions`, async ({
     page,
@@ -856,13 +856,13 @@ for (const [name, build] of Object.entries(choiceCases)) {
       // Hover first and let the hover feedback finish. Otherwise, on a slow frame, the item
       // can become selected while its hover layer is still fading in. The browser then reverses
       // that transition with a shortened duration (CSS Transitions 1, reversing). Hover
-      // transitions are checked on their own, so they never count as the click's motion (review 2, Ö-2).
+      // transitions are checked on their own, so they never count as the click's motion (review 2, S-2).
       await target.hover();
       await finished();
       check(await recorder.take(), 'hover');
       // Press and release are separate steps. A pressed control has its own motion: antd widens
       // the switch handle under `:active`. With one click, a slow frame lets the release reverse
-      // that motion with a shortened duration (review 2, Ö-1). So the press motion ends first.
+      // that motion with a shortened duration (review 2, S-1). So the press motion ends first.
       await page.mouse.down();
       await finished();
       check(await recorder.take(), 'press');

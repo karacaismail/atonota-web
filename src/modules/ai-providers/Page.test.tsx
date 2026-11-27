@@ -49,7 +49,7 @@ function providers(overrides: Partial<AiProviderClient> = {}): AiProviderClient 
   };
 }
 
-/** Sayfa sağlayıcı istemcisini tembel yükler. Sahte istemci aynı biçimde verilir. */
+/** The page lazy-loads the provider client. The fake client is supplied the same way. */
 function client(overrides: Partial<AiProviderClient> = {}): ModuleClient & {
   providers: AiProviderClient;
 } {
@@ -72,7 +72,7 @@ function renderPage(moduleClient: ModuleClient) {
   );
 }
 
-/** antd Select seçeneğini klavye olmadan seçer. */
+/** Picks an antd Select option without the keyboard. */
 async function choose(label: string, option: string) {
   const select = screen.getByLabelText(label);
   fireEvent.mouseDown(select);
@@ -150,7 +150,7 @@ describe('AI providers page', () => {
       },
       expect.anything(),
     );
-    // Kaydettikten sonra sır ekranda hiçbir yerde durmaz.
+    // After saving, the secret appears nowhere on screen.
     expect(document.body.innerHTML).not.toContain('gizli-anahtar');
     expect(fake.providers.checkProviderConnection).not.toHaveBeenCalled();
 
@@ -162,7 +162,8 @@ describe('AI providers page', () => {
       within(result).getByText('Anahtar geçerli. Kalan kota bu denemede görünmez.'),
     ).toBeVisible();
     expect(fake.providers.checkProviderConnection).toHaveBeenCalledWith('API-2', expect.anything());
-    // Sonuç yalnız bir yerde yazılır; liste aynı bağlantı için ikinci ileti çizmez.
+    // The result is written in one place only; the list draws no second message for the same
+    // connection.
     expect(screen.getAllByRole('status', { name: 'Deneme sonucu' })).toHaveLength(1);
   });
 
@@ -242,11 +243,12 @@ describe('AI providers page', () => {
     expect(alert).toHaveTextContent(/^İşlem sonucu bilinmiyor\./);
     expect(alert).not.toHaveTextContent(/Yeniden deneyin\./);
     await waitFor(() => expect(fake.providers.listAiConnections).toHaveBeenCalledTimes(2));
-    // Yeni kayıt satırı listeye gelir; yönetici bağlantının yazıldığını görür.
+    // The new record row appears in the list; the admin sees that the connection was written.
     expect(await screen.findByText('Birincil', { selector: '.ai-provider-name' })).toBeVisible();
   });
 
-  // API ekle incelemesi 2, K-1: belirsiz sonuçta sır formda kalmaz. İkinci kayıt isteği gitmez.
+  // "API ekle" review 2, K-1: on an unknown result the secret does not stay in the form. No second
+  // save request is sent.
   it.each([
     ['503', new ApiError({ kind: 'unavailable', status: 503 })],
     ['timeout', new ApiError({ kind: 'timeout', status: 0 })],
@@ -260,9 +262,9 @@ describe('AI providers page', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }));
       await screen.findByText(/^İşlem sonucu bilinmiyor\./);
       await waitFor(() => expect(screen.getByLabelText(/^API anahtarı/)).toHaveValue(''));
-      // Sır olmayan alanlar kalır. Yönetici yalnız sırrı yeniden yazar.
+      // Non-secret fields stay. The admin only re-enters the secret.
       expect(screen.getByLabelText(/^Bağlantı adı/)).toHaveValue('Birincil');
-      // antd yükleme simgesi kapanış hareketinde bir süre kalır. Ad "loading Kaydet" olabilir.
+      // The antd loading icon lingers during its closing motion. The name may be "loading Kaydet".
       fireEvent.click(screen.getByRole('button', { name: /Kaydet$/ }));
       expect(await screen.findByLabelText(/^API anahtarı/)).toHaveAttribute('aria-invalid', 'true');
       expect(save).toHaveBeenCalledTimes(1);
@@ -352,7 +354,7 @@ describe('AI providers page', () => {
   });
 });
 
-// API ekle incelemesi 2, K-2: deneme ucu yoksa odak kayıt paneline gider.
+// "API ekle" review 2, K-2: if there is no check endpoint, focus moves to the record panel.
 describe('SavedPanel focus', () => {
   function renderPanel(canCheck: boolean) {
     return render(

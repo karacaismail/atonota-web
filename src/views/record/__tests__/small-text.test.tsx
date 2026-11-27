@@ -7,8 +7,8 @@ import { resolveCatalogEntry } from '../catalogRegistry';
 import type { DocField, DocTypeMeta, RecordDataAdapter } from '../types';
 
 /**
- * Arka uç Small Text, Text ve Long Text alanları için `text-area` bileşen adını yollar
- * (`platform_core/shell/catalog.py`, FIELD_COMPONENTS). Arayüz bu adı tanımalıdır.
+ * The backend sends the `text-area` component name for Small Text, Text and Long Text fields
+ * (`platform_core/shell/catalog.py`, FIELD_COMPONENTS). The UI must recognise this name.
  */
 const META: DocTypeMeta = {
   schema: {

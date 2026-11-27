@@ -4,7 +4,7 @@ import type { Resource } from '../data';
 import { useCopy } from '../messages';
 import { ResourceView } from '../shared';
 
-/** Ortak okuma görünümü. Sunucu 403 dönerse bölüm "yetki yok" kutusunu gösterir. */
+/** Shared read view. If the server returns 403, the section shows the "no permission" box. */
 export function AdminResource<T>({
   state,
   retry,

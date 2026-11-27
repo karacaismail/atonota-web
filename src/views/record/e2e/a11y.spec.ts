@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '../../../../tests/setup/playwright-fixtures';
 
-/** Kayıt deneme sayfası; e2e derlemesi bu yolda sunar. Testler kök Playwright kapısında koşar. */
+/** Record harness page; the e2e build serves it here. Tests run in the root Playwright gate. */
 const HARNESS = '/src/views/record/harness/';
 
 for (const query of ['', '?theme=dark', '?scenario=error', '?scenario=unauthorized']) {

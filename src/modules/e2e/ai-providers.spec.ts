@@ -6,14 +6,14 @@ import { object, text } from '../contracts';
 const PATH = '/administration/ai-providers';
 const TITLE = 'Yapay zekâ sağlayıcıları';
 
-/** antd Select'i yalnız klavyeyle seçer: odak, aşağı ok ve Enter. */
+/** Picks an antd Select option with the keyboard only: focus, down arrow and Enter. */
 async function chooseByKeyboard(page: Page, label: string, option: string) {
   const input = page.getByLabel(label, { exact: true });
   await input.focus();
   await page.keyboard.press('ArrowDown');
   const item = page.locator('.ant-select-item-option', { hasText: option }).last();
   await expect(item).toBeVisible();
-  // Etkin seçeneği istenen seçeneğe taşır.
+  // Moves the active option to the wanted option.
   for (let step = 0; step < 10; step += 1) {
     if ((await item.getAttribute('class'))?.includes('ant-select-item-option-active')) break;
     await page.keyboard.press('ArrowDown');
@@ -41,7 +41,7 @@ async function fillAndSave(page: Page, secret: string) {
   await expect(page.getByText('Bağlantı kaydedildi. Bağlantı henüz denenmedi.')).toBeVisible();
 }
 
-/** Odaklı öğede alt çizgi göstergesi var mı? Çevreleyen halka yoktur (outline none). */
+/** Does the focused element show the underline indicator? No surrounding ring (outline none). */
 async function expectFocusIndicator(page: Page, button: Locator) {
   await expect(button).toBeFocused();
   await expect(page.locator('html')).toHaveAttribute('data-focus-mode', 'keyboard');
@@ -53,7 +53,7 @@ async function expectFocusIndicator(page: Page, button: Locator) {
   expect(style.outline).toBe('none');
 }
 
-/** Sağlayıcı yanıtlarının gövdesini toplar: kayıt ucu ve bağlantı listesi. */
+/** Collects provider response bodies: the save endpoint and the connection list. */
 function collectBodies(page: Page): Promise<string>[] {
   const bodies: Promise<string>[] = [];
   page.on('response', (response) => {
@@ -97,7 +97,7 @@ test('adds an API with the keyboard, saves, then checks it live', async ({ page,
   const saveRequest = page.waitForRequest('**/platform_core.api.model.save_connection');
   const saveResponse = page.waitForResponse('**/platform_core.api.model.save_connection');
   await fill(page, 'ornek-gizli-deger');
-  // Klavye modu Tab ile açılır. Form, sır alanında Enter tuşuyla gönderilir.
+  // Tab turns keyboard mode on. The form is submitted with Enter in the secret field.
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
   await expect(page.getByLabel(/^API anahtarı/)).toBeFocused();
@@ -105,29 +105,30 @@ test('adds an API with the keyboard, saves, then checks it live', async ({ page,
   await expect(page.getByText('Bağlantı kaydedildi. Bağlantı henüz denenmedi.')).toBeVisible();
   const request = await saveRequest;
   expect(request.headers()['x-frappe-csrf-token']).toBeTruthy();
-  // Kaydettikten sonra sır sayfada hiçbir yerde durmaz.
+  // After saving, the secret appears nowhere on the page.
   expect(await page.content()).not.toContain('ornek-gizli-deger');
 
-  // Form kalkınca odak "Bağlantıyı dene" düğmesine gider. Elle odak verilmez.
+  // When the form goes, focus moves to the "Test connection" button. Focus is not set by hand.
   const form = page.getByRole('region', { name: 'Yeni bağlantı' });
   await expectFocusIndicator(page, form.getByRole('button', { name: 'Bağlantıyı dene' }));
   await page.keyboard.press('Enter');
   const result = form.getByRole('status', { name: 'Deneme sonucu' });
   await expect(result.getByText('Bağlandı', { exact: true })).toBeVisible();
   await expect(result.getByText('Anahtar geçerli. Kalan kota bu denemede görünmez.')).toBeVisible();
-  // Yeni bağlantı listeye girer.
+  // The new connection enters the list.
   await expect(
     page.getByRole('list', { name: 'Bağlantılar' }).getByText('Deneme bağlantısı'),
   ).toBeVisible();
-  // Kayıt yanıtında ve liste yanıtlarında sır yoktur.
+  // The save response and the list responses contain no secret.
   expect(await (await saveResponse).text()).not.toContain('ornek-gizli-deger');
   const texts = await Promise.all(bodies);
   expect(texts.length).toBeGreaterThanOrEqual(2);
   for (const body of texts) expect(body).not.toContain('ornek-gizli-deger');
 
-  // "Formu kapat" düğmesine klavyeyle gidilir. Form kapanınca odak "API ekle" düğmesine döner.
+  // The "Formu kapat" button is reached with the keyboard. When the form closes, focus returns to
+  // the "API ekle" button.
   const close = form.getByRole('button', { name: 'Formu kapat' });
-  // WebKit düğmeleri sekme sırasına yalnız Option+Tab ile alır.
+  // WebKit only puts buttons in the tab order with Option+Tab.
   const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
   for (let step = 0; step < 6; step += 1) {
     if (await close.evaluate((element) => element === document.activeElement)) break;
@@ -205,13 +206,14 @@ test('page code stays out of the initial bundle', async ({ page }) => {
     seen.add(key);
     const entry = object(manifest[key]);
     const files = new Set([text(entry['file'])]);
-    // Yalnız durağan içe aktarımlar ilk yüke girer.
+    // Only static imports are part of the initial load.
     if (Array.isArray(entry['imports']))
       for (const dependency of entry['imports'])
         for (const file of collect(text(dependency), seen)) files.add(file);
     return files;
   };
-  // Sağlayıcı uçları ve denetim işlevleri de ilk yüke girmez (ayrı `provider-client` parçası).
+  // Provider endpoints and check functions are not in the initial load either (separate
+  // `provider-client` chunk).
   const clientFile = text(object(manifest['src/api/provider-client.ts'])['file']);
   const initial = collect('index.html');
   expect(initial.has(pageFile)).toBe(false);

@@ -505,8 +505,8 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
   const SITE = 'https://kiraci.example.test';
 
   /**
-   * Bağdaştırıcı ortak API istemcisini kullanır (inceleme 2, Ö3 ve B3).
-   * İstemci gerçek `createApiClient` ile kurulur. Yalnız ağ (`fetch`) taklit edilir.
+   * The adapter uses the shared API client (review 2, S3 and B3).
+   * The client is built with the real `createApiClient`. Only the network (`fetch`) is mocked.
    */
   function setup(csrfToken = 'csrf-test-token') {
     const fetchMock = vi.fn<(request: Request) => Promise<Response>>();
@@ -592,7 +592,7 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
     ).rejects.toMatchObject({
       code: 'session_expired',
     } satisfies Partial<RecordApiError>);
-    // Oturum bitince ortak oturum işi (girişe dönüş) çalışır.
+    // When the session ends, the shared session handler (back to sign-in) runs.
     expect(onSessionExpired).toHaveBeenCalledTimes(1);
 
     // Case 2: 200 with real non-Guest user means session IS active -> real permission denial ('unauthorized')
@@ -722,7 +722,7 @@ describe('Frappe HTTP adapter (SZ-5, SZ-7, SZ-8, SZ-11, Review 1 Findings 2, 3 &
       });
 
     await save();
-    // Çıkışta ortak depo belirteci siler. Sayfadaki eski belirteç yine de gönderilmez.
+    // On sign-out the shared store clears the token. The stale token on the page is still not sent.
     csrf.clear();
     await save();
 

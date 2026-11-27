@@ -3,10 +3,10 @@ import { sampleDocTypeMeta } from '@/mocks/fixtures';
 import { createDefinition } from './model';
 
 /**
- * Önizleme ve test için örnek kayıt tanımı. Veri burada yoktur.
- * Kayıtlar `@/mocks` sahte sunucusunun `/api/v2/document` işleyicisinden gelir.
- * Tanım `sampleDocTypeMeta` nesnesini temel alır. Alan listesi sahte kayıtların alanlarıyla eşleşir.
- * Üretim koleksiyon girişi bu dosyayı içe aktarmaz.
+ * Sample record definition for the preview and tests. No data lives here.
+ * Records come from the `/api/v2/document` handler of the `@/mocks` mock server.
+ * The definition is based on `sampleDocTypeMeta`. The field list matches the mock records' fields.
+ * The production collection entry does not import this file.
  */
 const sampleFields: DocTypeMeta['schema']['fields'] = [
   {

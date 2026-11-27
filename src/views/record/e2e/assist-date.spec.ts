@@ -179,7 +179,7 @@ test('form with focused date is readable, accessible and does not overflow', asy
     await expect(date).toBeFocused();
     // Full-page capture of a sticky header is only correct from the top of the page.
     await page.evaluate(() => window.scrollTo(0, 0));
-    // SHOT_DIR yoksa görüntü testin kendi çıktı klasörüne yazılır.
+    // Without SHOT_DIR the screenshot goes to the test's own output folder.
     const shotDir = process.env['SHOT_DIR'];
     const path = shotDir ? join(shotDir, name) : testInfo.outputPath(name);
     await page.screenshot({ path, fullPage: true });

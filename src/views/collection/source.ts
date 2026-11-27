@@ -1,7 +1,7 @@
 /**
- * Hafif giriş: kaynak ve tanım yardımcıları. Görünümü ve yönlendiriciyi getirmez.
- * Uygulama girişi (`src/app/view-data.ts`) ilk yük parçasındadır ve yalnız bunları ister.
- * `index.ts` girişi `CollectionView` ile birlikte `react-router-dom` paketini de getirir.
+ * Light entry: source and definition helpers. It does not pull in the view or the router.
+ * The app entry (`src/app/view-data.ts`) is in the first-load chunk and needs only these.
+ * The `index.ts` entry also pulls in the `react-router-dom` package with `CollectionView`.
  */
 export { createApiSource, toCollectionError } from './api-source';
 export { createDefinition, parsePage } from './model';

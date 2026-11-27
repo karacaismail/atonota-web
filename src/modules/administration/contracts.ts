@@ -1,4 +1,4 @@
-/** Yönetim sayfasının rol ve yetki yanıtları için görünüm ayrıştırıcıları (G-62, G-98). */
+/** View parsers for the role and permission responses of the admin page (G-62, G-98). */
 import { object, text } from '../contracts';
 
 function list(value: unknown): unknown[] {
@@ -12,14 +12,14 @@ function optionalText(value: unknown): string | null {
   return value === null || value === undefined ? null : text(value);
 }
 
-/** Paneli kullanan kişi bu iki rolü hiç görmez. Sunucu da bu rolleri değiştirtmez. */
+/** The panel user never sees these two roles. The server does not allow changing them either. */
 const HIDDEN_ROLES = new Set(['Administrator', 'System Manager']);
-/** Bu rollerin izinleri yalnız okunur. Sunucu bu rollerde 403 verir (`tenant_admin.CLOSED_ROLES`). */
+/** These roles' permissions are read-only. The server returns 403 (`tenant_admin.CLOSED_ROLES`). */
 const STANDARD_ROLES = new Set(['Script Manager', 'All', 'Guest', 'Tenant Admin']);
 
 export interface RoleOption {
   name: string;
-  /** Standart ya da masaüstü rolüdür. İzinleri panelden değişmez. */
+  /** A standard or desk role. Its permissions cannot change from the panel. */
   standard: boolean;
 }
 export function parseRoles(value: unknown): RoleOption[] {
@@ -34,7 +34,7 @@ export function parseRoles(value: unknown): RoleOption[] {
 
 export const RIGHTS = ['read', 'write', 'create', 'delete', 'submit', 'cancel', 'amend'] as const;
 export type Right = (typeof RIGHTS)[number];
-/** 1 ve üstü alan düzeyinde Frappe yalnız okuma ve düzenleme hakkını kullanır. */
+/** At field level 1 and above, Frappe uses only the read and write rights. */
 export const LEVEL_RIGHTS: readonly Right[] = ['read', 'write'];
 
 export interface PermissionRow {
@@ -42,7 +42,7 @@ export interface PermissionRow {
   permlevel: number;
   rights: Record<Right, boolean>;
 }
-/** Bir kayıt türünün satırlarından yalnız istenen rolün `if_owner` olmayan satırlarını döner. */
+/** From a record type's rows, returns only the requested role's rows without `if_owner`. */
 export function parseRolePermissions(value: unknown, role: string): PermissionRow[] {
   const source = object(value);
   const doctype = text(source['doctype']);
@@ -92,7 +92,7 @@ export function parsePermissionLogs(value: unknown): {
     });
     return {
       name: text(row['name']),
-      // Sunucu zamanı site saat diliminde ve boşlukla yazar. WebKit boşluklu biçimi okumaz.
+      // The server writes the time in the site time zone, with a space. WebKit cannot parse it.
       changedAt: text(row['changed_at']).replace(' ', 'T'),
       changedBy: optionalText(row['changed_by']),
       forDoctype: text(row['for_doctype']),

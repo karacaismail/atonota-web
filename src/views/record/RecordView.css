@@ -1,9 +1,9 @@
 /**
- * GEÇİCİ / BORC(foundation): Kayıt ekranı stil kuralları.
+ * TEMPORARY / BORC(foundation): Record screen style rules.
  *
- * Kaldırma koşulu: `foundation` işinin `src/design` modülü `main` dalına birleştiğinde
- * geçici `--rv-*` token eşlemeleri ve aşağıdaki AD-2 odak uyarlamaları ortak tema
- * katmanına devredilecektir (Review 2 Önemli 5, Küçük 1).
+ * Removal condition: when the `src/design` module of the `foundation` work merges into `main`,
+ * the temporary `--rv-*` token mappings and the AD-2 focus adaptations below move to the
+ * shared theme layer (Review 2 Major 5, Minor 1).
  */
 .rv-root {
   box-sizing: border-box;
@@ -24,10 +24,10 @@
 }
 
 /*
- * AD-2 Gerekçe: antd Input/Select/Button/Checkbox/Segmented/Rate odak çerçevesini iç `.ant-*`
- * sarmalayıcılarında çizer. AGENTS.md çevreleyen odak halkasını yasaklar ve görünür odak
- * göstergesinin yalnız Tab / Shift+Tab klavye kipinde (`data-rv-kbd='true'`) açılmasını ister.
- * Kaldırma koşulu: `foundation` işinin `src/design` odak kuralları `main` dalına birleşince silinir.
+ * AD-2 rationale: antd Input/Select/Button/Checkbox/Segmented/Rate draw the focus frame on
+ * inner `.ant-*` wrappers. AGENTS.md forbids a surrounding focus ring and wants the visible
+ * focus indicator only in Tab / Shift+Tab keyboard mode (`data-rv-kbd='true'`).
+ * Removal condition: delete when the `src/design` focus rules of `foundation` merge into `main`.
  */
 .rv-root :focus,
 .rv-root :focus-visible,
@@ -434,7 +434,7 @@
   color: var(--rv-color-text-secondary);
 }
 
-/* Yardım metni solda, yardımcı düğmesi sağda durur. Dar ekranda düğme alt satıra geçer. */
+/* Help text sits left, the assistant button right. On narrow screens the button wraps. */
 .rv-field-footer {
   display: flex;
   flex-wrap: wrap;
@@ -640,9 +640,9 @@
 }
 
 /*
- * Salt okunur bağlantı alanı. Ad, hedef kayda giden bağlantıdır. Renk tokendan gelir.
- * Metin rengi gövde rengidir: vurgu rengi bu zeminde 4.5:1 karşıtlığı vermiyor (axe).
- * Bağlantı alt çizgiyle ayrılır. Üzerine gelince çizgi kalınlaşır.
+ * Read-only link field. The name is a link to the target record. The colour comes from a token.
+ * The text colour is the body colour: the accent colour lacks 4.5:1 contrast here (axe).
+ * The link is marked by an underline. On hover the underline gets thicker.
  */
 .rv-link-value {
   display: flex;

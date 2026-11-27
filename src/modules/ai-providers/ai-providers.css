@@ -1,4 +1,4 @@
-/* "Yapay zekâ sağlayıcıları" sayfası. Değerler ortak tokenlardan gelir. */
+/* "AI providers" page. Values come from the shared tokens. */
 .ai-provider-form {
   max-width: var(--form-max-width);
   min-width: 0;
@@ -12,14 +12,14 @@
 .ai-provider-muted {
   color: var(--module-muted);
 }
-/* Hata metni renge dayanmaz: metin ve kalın yazı yeter. Kenarlık rengini antd verir. */
+/* Error text does not rely on colour: text and bold type suffice. antd sets the border colour. */
 .ai-provider-error {
   color: var(--module-text);
   font-weight: 600;
 }
 .ai-provider-row {
   padding-block: var(--space-sm);
-  /* Kalınlık kaynak `border.width` değerinden gelir (antd `lineWidth`). */
+  /* The thickness comes from the source `border.width` value (antd `lineWidth`). */
   border-bottom: var(--ant-line-width) solid var(--module-line);
 }
 .ai-provider-name {
