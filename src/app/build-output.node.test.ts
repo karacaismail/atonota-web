@@ -19,7 +19,7 @@ const MSW_MARKERS = ['setupWorker', '[MSW]', 'mockServiceWorker'];
 const DEMO_ROUTE = /\/_demo\/[\w-]+/;
 
 /** Chunk names of the demo pages. The production output must contain no files with these names. */
-const DEMO_CHUNK = /^(DemoPage|ControlsDemoPage)-/;
+const DEMO_CHUNK = /^(DemoPage|ControlsDemoPage|DialogDemoPage)-/;
 
 /**
  * Example domain names (`*.example.test`). The mock server and e2e values use them.
