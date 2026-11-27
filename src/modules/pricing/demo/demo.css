@@ -1,0 +1,19 @@
+/* Demo layout only. 260 px is the side panel width under test (AJA-1731). */
+.tax-demo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.tax-demo-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex: 1 1 18rem;
+  min-inline-size: 0;
+}
+
+.tax-demo-panel {
+  flex: 0 0 auto;
+  inline-size: min(100%, 260px);
+}
