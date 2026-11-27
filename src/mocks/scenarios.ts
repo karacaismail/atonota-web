@@ -15,6 +15,10 @@ const SCENARIOS: Record<string, () => void> = {
   'oturum-kapali': () => {
     mockState.signedIn = false;
   },
+  /** The profile language save is refused (403 `PermissionError`, AJA-1772). */
+  'dil-kaydi-red': () => {
+    mockState.languageSaveRejected = true;
+  },
   /** The provider save and check endpoints return a rate limit (429 `gateway_busy`). */
   'saglayici-mesgul': () => {
     mockState.providerBusy = true;

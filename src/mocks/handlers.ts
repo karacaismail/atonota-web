@@ -92,6 +92,17 @@ export const MOCK_START_LINK_KEY = 'atonota.mock-start-link';
  */
 export type LogoutOutcome = 'ok' | 'failure' | 'foreign_url';
 
+/** Session storage key of the sample user's saved language. Browser tests may set it before the page opens. */
+export const MOCK_LANGUAGE_KEY = 'atonota.mock-dil';
+
+function storedUserLanguage(): string {
+  try {
+    return globalThis.sessionStorage?.getItem(MOCK_LANGUAGE_KEY) ?? sampleBootstrap.user.language;
+  } catch {
+    return sampleBootstrap.user.language;
+  }
+}
+
 export const mockState: {
   signedIn: boolean;
   proposals: Map<string, ReturnType<typeof sampleProposal>>;
@@ -132,7 +143,16 @@ export const mockState: {
   readableDocTypes: Set<string>;
   /** Submitted new customer requests (G-169). */
   customerRequests: { name: string; customer_name: string; contact_email: string }[];
+  /**
+   * Profile language of the sample user (AJA-1772). The boot data returns it.
+   * A saved choice is kept in session storage, so it survives a page reload like a real profile.
+   */
+  userLanguage: string;
+  /** If true, the profile save is refused (403 `PermissionError`). */
+  languageSaveRejected: boolean;
 } = {
+  userLanguage: storedUserLanguage(),
+  languageSaveRejected: false,
   roles: [...sampleBootstrap.user.roles],
   readableDocTypes: new Set(MENU_READABLE_DOCTYPES),
   customerRequests: [],
@@ -254,6 +274,8 @@ export function resetMockState(): void {
   mockState.roles = [...sampleBootstrap.user.roles];
   mockState.readableDocTypes = new Set(MENU_READABLE_DOCTYPES);
   mockState.customerRequests = [];
+  mockState.userLanguage = sampleBootstrap.user.language;
+  mockState.languageSaveRejected = false;
   resetUserAdminState();
   connectionSecrets.clear();
   gatewayCalls.save = [];
@@ -870,8 +892,32 @@ export const handlers = [
   http.get('*/api/method/platform_core.api.shell.get_bootstrap', ({ request }) => {
     return (
       guard(request, { write: false }) ??
-      message({ ...sampleBootstrap, user: { ...sampleBootstrap.user, roles: mockState.roles } })
+      message({
+        ...sampleBootstrap,
+        user: { ...sampleBootstrap.user, roles: mockState.roles, language: mockState.userLanguage },
+      })
     );
+  }),
+
+  // Profile language save (AJA-1772). Only the session user's `language` field is written.
+  // The request is a target state: the same value twice gives the same profile.
+  http.put('*/api/v2/document/User/:name', async ({ request, params }) => {
+    const denied = guard(request, { write: true });
+    if (denied) return denied;
+    if (params['name'] !== sampleBootstrap.user.name || mockState.languageSaveRejected) {
+      return frappeError(403, 'PermissionError');
+    }
+    const body = (await request.json().catch(() => null)) as { language?: unknown } | null;
+    if (!body || typeof body.language !== 'string' || Object.keys(body).length !== 1) {
+      return frappeError(417, 'ValidationError');
+    }
+    mockState.userLanguage = body.language;
+    try {
+      globalThis.sessionStorage?.setItem(MOCK_LANGUAGE_KEY, body.language);
+    } catch {
+      /* Without storage the choice lasts until the page closes. */
+    }
+    return HttpResponse.json({ data: { name: params['name'], language: body.language } });
   }),
 
   http.get('*/api/method/platform_core.api.meta.get_doctype', ({ request }) => {

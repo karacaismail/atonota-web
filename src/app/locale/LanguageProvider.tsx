@@ -1,14 +1,36 @@
 import dayjs from 'dayjs';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { createFormatter, type Formatter, type SiteFormatting } from './format';
-import { FALLBACK_LANGUAGE, resolveLanguage, type AppLanguage } from './language';
+import {
+  FALLBACK_LOCALE,
+  catalogLanguage,
+  resolveLocale,
+  type AppLanguage,
+  type LocaleTag,
+} from './language';
 import { localeBundle, type LocaleBundle } from './locale-map';
 
 interface LanguageState {
+  /** Full locale tag. Example: `de-DE`. Formats, Ant Design and `<html lang>` use it. */
+  locale: LocaleTag;
+  /** Text catalogue language of the locale. */
   language: AppLanguage;
-  /** Takes the raw language from the boot data. An empty language falls back to the fallback language. */
-  setLanguage: (raw: string | null | undefined) => void;
+  /**
+   * Takes the raw profile language and, if known, the tenant setting from the boot data.
+   * The order is: profile, tenant, fallback `en-GB`. The browser language is not used.
+   */
+  setLanguage: (raw: string | null | undefined, tenant?: string | null | undefined) => void;
+  /** Applies a locale the user chose. The caller saves the choice to the profile first. */
+  applyLocale: (locale: LocaleTag) => void;
   /** Time zone and currency from the boot data (IC-13). */
   formatting: SiteFormatting;
   /** Stores the time zone and currency when the boot data arrives. */
@@ -20,8 +42,10 @@ interface LanguageState {
  * In that case the language cannot be changed.
  */
 const LanguageContext = createContext<LanguageState>({
-  language: FALLBACK_LANGUAGE,
+  locale: FALLBACK_LOCALE,
+  language: catalogLanguage(FALLBACK_LOCALE),
   setLanguage: () => undefined,
+  applyLocale: () => undefined,
   formatting: {},
   setFormatting: () => undefined,
 });
@@ -40,13 +64,15 @@ export function LanguageProvider({
   initialFormatting?: SiteFormatting | undefined;
   children: ReactNode;
 }) {
-  const [language, setResolved] = useState<AppLanguage>(() => resolveLanguage(initialLanguage));
+  const [locale, setLocale] = useState<LocaleTag>(() => resolveLocale(initialLanguage));
+  const language = catalogLanguage(locale);
   const [formatting, setFormattingState] = useState<SiteFormatting>(() => initialFormatting ?? {});
   // The functions stay stable. Boot data is not re-requested when the language changes.
   const setLanguage = useCallback<LanguageState['setLanguage']>(
-    (raw) => setResolved(resolveLanguage(raw)),
+    (raw, tenant) => setLocale(resolveLocale(raw, tenant)),
     [],
   );
+  const applyLocale = useCallback<LanguageState['applyLocale']>((next) => setLocale(next), []);
   const setFormatting = useCallback<LanguageState['setFormatting']>(
     (next) =>
       setFormattingState((prev) =>
@@ -55,17 +81,33 @@ export function LanguageProvider({
     [],
   );
   const value = useMemo<LanguageState>(
-    () => ({ language, setLanguage, formatting, setFormatting }),
-    [language, setLanguage, formatting, setFormatting],
+    () => ({ locale, language, setLanguage, applyLocale, formatting, setFormatting }),
+    [locale, language, setLanguage, applyLocale, formatting, setFormatting],
   );
+  // IC-14: the page language follows the locale. Every offered locale is written left to right.
+  // The state change does not reload the page or remount the tree, so forms and drafts stay.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.documentElement.dir = 'ltr';
+  }, [locale]);
   // The Day.js locale is a global setting. It is set before children render, so the date picker gets the right locale on first render.
   // Repeating the call with the same locale does not change the result.
-  dayjs.locale(localeBundle(language).dayjs);
+  dayjs.locale(localeBundle(locale).dayjs);
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
 function useLanguageState(): LanguageState {
   return useContext(LanguageContext);
+}
+
+/** The current full locale tag. Example: `de-DE`. */
+export function useLocale(): LocaleTag {
+  return useLanguageState().locale;
+}
+
+/** Function that applies a locale the user chose. */
+export function useApplyLocale(): LanguageState['applyLocale'] {
+  return useLanguageState().applyLocale;
 }
 
 /** The current UI language. */
@@ -88,15 +130,15 @@ export function useSetFormatting(): LanguageState['setFormatting'] {
  * Example: `useFormat().date('2026-11-27')`.
  */
 export function useFormat(): Formatter {
-  const { language, formatting } = useLanguageState();
+  const { locale, language, formatting } = useLanguageState();
   const { time_zone: timeZone, currency } = formatting;
   return useMemo(
-    () => createFormatter({ language, timeZone, currency }),
-    [language, timeZone, currency],
+    () => createFormatter({ language, locale, timeZone, currency }),
+    [language, locale, timeZone, currency],
   );
 }
 
 /** The antd, Ant Design X and Day.js objects for the current language. */
 export function useLocaleBundle(): LocaleBundle {
-  return localeBundle(useLanguage());
+  return localeBundle(useLocale());
 }

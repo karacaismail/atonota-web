@@ -9,6 +9,8 @@ import { sampleUser } from '../sampleData';
 import type { ShellAccount, ShellCredit } from '../view-data';
 import { useViewData } from '../view-data';
 
+import { LanguageSelect } from './LanguageSelect';
+
 interface SidebarFooterProps {
   rail: boolean;
   /** AI credit. If absent, the meter is not rendered. */
@@ -112,6 +114,8 @@ export function SidebarFooter({ rail, credit = null }: SidebarFooterProps) {
           </span>
         )}
       </div>
+      {/* The compact rail has no room for the list. The wide sidebar and the phone drawer show it. */}
+      {viewData?.saveLanguage && !rail ? <LanguageSelect save={viewData.saveLanguage} /> : null}
       {viewData?.signOut ? <SignOutButton rail={rail} signOut={viewData.signOut} /> : null}
     </div>
   );

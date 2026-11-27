@@ -3,7 +3,7 @@
  * The format locale comes from the language context. The time zone and currency come from the boot data.
  * Components do not build `Intl` objects with a hard-coded locale; they use the `useFormat()` hook.
  */
-import type { AppLanguage } from './language';
+import type { AppLanguage, LocaleTag } from './language';
 import { localeBundle } from './locale-map';
 
 /** The boot data format fields that the UI uses. */
@@ -16,6 +16,8 @@ export interface SiteFormatting {
 
 export interface FormatSettings {
   language: AppLanguage;
+  /** Full locale tag. If absent, the language's default locale is used. Example: `de-DE`. */
+  locale?: LocaleTag | undefined;
   timeZone?: string | null | undefined;
   currency?: string | null | undefined;
 }
@@ -168,7 +170,7 @@ export function parseFrappeDatetime(
 
 /** Builds a formatter from the language, time zone and currency. */
 export function createFormatter(settings: FormatSettings): Formatter {
-  const intl = localeBundle(settings.language).intl;
+  const intl = localeBundle(settings.locale ?? settings.language).intl;
   // Broken boot data does not crash the screen. Unrecognised time zones and currency codes are ignored.
   const timeZone = validTimeZone(settings.timeZone);
   const currencyCode = validCurrency(settings.currency);

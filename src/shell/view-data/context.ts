@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 
 import type { AgentSource, AgentTransport } from '@/ai/agent/types';
 import type { ModuleEnvironment } from '@/modules';
+import type { SaveLanguage } from '@/app/locale';
 import type { CollectionDefinition, CollectionSource } from '@/views/collection';
 
 import type { ShellHomeData } from './home-data';
@@ -141,6 +142,11 @@ export interface ShellViewData {
    * If absent, the shell does not draw the sign-out button (test pages).
    */
   signOut?: () => Promise<void>;
+  /**
+   * Writes the chosen locale to the user profile (AJA-1772). Rejects if the server refuses.
+   * If absent, the shell does not draw the language switch (test pages without a session).
+   */
+  saveLanguage?: SaveLanguage;
   /** Environment for module pages. The shell provides it via `ModuleProvider`. */
   modules?: ModuleEnvironment;
   /**
