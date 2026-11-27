@@ -10,6 +10,8 @@ import type {
 } from '@/shell/view-data';
 import type { CollectionSource } from '@/views/collection/source';
 
+import { readBootLocale, type MeasurementSystem } from './locale/market';
+
 // This file is in the initial-load chunk. The collection source and definition builder must not be in the initial load.
 // The chain is fetched via `import()` only when the list route makes its first request (orchestrator addendum: initial load).
 // The record adapter is likewise fetched only with the record route (`RecordRoute` lazy chunk).
@@ -158,12 +160,16 @@ export async function loadShellAccount(
   return { user };
 }
 
-/** User language, time zone and currency from the bootstrap data. */
+/** User language, time zone, currency, region and measurement system from the bootstrap data. */
 export interface UserLocale {
   /** Raw language. The language context resolves it. */
   language: string;
   time_zone: string;
   currency: string | null;
+  /** Region from the `locale` field. Absent on old servers. */
+  region?: string;
+  /** Measurement system from the `locale` field. Absent on old servers. */
+  measurement_system?: MeasurementSystem;
 }
 
 /**
@@ -178,10 +184,15 @@ export async function loadUserLocale(
   try {
     const bootstrap = await api.getBootstrap(signal ? { signal } : {});
     if (bootstrap.user.name === user) {
+      // The `locale` field is new (AJA-1766). The generated types do not carry it yet; it is read with checks.
+      // Each new value wins over its old field. A missing value falls back to the old field.
+      const locale = readBootLocale((bootstrap as { locale?: unknown }).locale);
       return {
-        language: bootstrap.user.language,
-        time_zone: bootstrap.formatting.time_zone,
-        currency: bootstrap.formatting.currency,
+        language: locale.language_tag ?? bootstrap.user.language,
+        time_zone: locale.time_zone ?? bootstrap.formatting.time_zone,
+        currency: locale.transaction_currency ?? bootstrap.formatting.currency,
+        ...(locale.region ? { region: locale.region } : {}),
+        ...(locale.measurement_system ? { measurement_system: locale.measurement_system } : {}),
       };
     }
   } catch {

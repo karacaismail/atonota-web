@@ -5,6 +5,7 @@
  */
 import type { AppLanguage } from './language';
 import { localeBundle } from './locale-map';
+import { distanceUnit, type DistanceUnit, type MeasurementSystem } from './market';
 
 /** The boot data format fields that the UI uses. */
 export interface SiteFormatting {
@@ -12,13 +13,22 @@ export interface SiteFormatting {
   time_zone?: string | null | undefined;
   /** The site's default currency. Example: `TRY`. If absent, the amount is written as a plain number. */
   currency?: string | null | undefined;
+  /** Region from the `locale` field. Example: `GB`. Used for the distance unit. */
+  region?: string | null | undefined;
+  /** Measurement system from the `locale` field. It wins over the region. */
+  measurement_system?: MeasurementSystem | null | undefined;
 }
 
 export interface FormatSettings {
   language: AppLanguage;
   timeZone?: string | null | undefined;
   currency?: string | null | undefined;
+  region?: string | null | undefined;
+  measurementSystem?: MeasurementSystem | null | undefined;
 }
+
+/** Kilometres in one mile. */
+const KM_PER_MILE = 1.609344;
 
 export interface Formatter {
   language: AppLanguage;
@@ -43,6 +53,10 @@ export interface Formatter {
   currency: (value: number, code?: string | null) => string;
   /** List. Example: "a, b and c". */
   list: (items: readonly string[]) => string;
+  /** Unit of road distances. Comes from the measurement system and the region, not the language. */
+  distanceUnit: DistanceUnit;
+  /** Road distance. The value is in kilometres. Example: 42.195 -> "26.2 mi" in region `GB`. */
+  distance: (kilometres: number) => string;
   /** Lower case according to the user's language. In Turkish `I` becomes dotless i (U+0131). */
   lower: (text: string) => string;
   /** Upper case according to the user's language. In Turkish `i` becomes dotted capital I (U+0130). */
@@ -178,6 +192,15 @@ export function createFormatter(settings: FormatSettings): Formatter {
   const dateTimeFormat = new Intl.DateTimeFormat(intl, { ...DAY, ...TIME, ...zone });
   const listFormat = new Intl.ListFormat(intl, { type: 'conjunction' });
   const parse = (value: string) => parseFrappeDatetime(value, timeZone);
+  const unit = distanceUnit({
+    region: settings.region,
+    measurementSystem: settings.measurementSystem,
+  });
+  const distanceFormat = new Intl.NumberFormat(intl, {
+    style: 'unit',
+    unit,
+    maximumFractionDigits: 1,
+  });
 
   return {
     language: settings.language,
@@ -203,6 +226,9 @@ export function createFormatter(settings: FormatSettings): Formatter {
         : new Intl.NumberFormat(intl).format(value);
     },
     list: (items) => listFormat.format(items),
+    distanceUnit: unit,
+    distance: (kilometres) =>
+      distanceFormat.format(unit === 'mile' ? kilometres / KM_PER_MILE : kilometres),
     lower: (text) => text.toLocaleLowerCase(intl),
     upper: (text) => text.toLocaleUpperCase(intl),
   };
