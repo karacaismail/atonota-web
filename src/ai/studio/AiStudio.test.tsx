@@ -1,3 +1,6 @@
+import type { ReactElement } from 'react';
+
+import { LanguageProvider } from '@/app/locale';
 import {
   cleanup,
   configure,
@@ -15,6 +18,13 @@ import type { AgentEvent, AgentRequest, AgentTransport } from '../agent';
 import { encodeAgentEvent } from '../agent';
 import { MOCK_SOURCE } from '../agent';
 import { AiStudio } from './AiStudio';
+
+/** The studio speaks the UI language. These tests check the Turkish texts. */
+function renderTr(ui: ReactElement) {
+  return render(ui, {
+    wrapper: ({ children }) => <LanguageProvider initialLanguage="tr">{children}</LanguageProvider>,
+  });
+}
 
 // `waitFor` and `find*` checks rerun when the DOM changes. They do not wait a fixed time.
 // The default limit is 1 second. The mock stream takes longer on a loaded machine (review 2, Ö4).
@@ -102,19 +112,19 @@ async function send(text: string) {
 // one test takes a few seconds. The time budget is explicit. Expectations and event checks stay the same.
 describe('AI Studio', { timeout: 30_000 }, () => {
   it('boş durumda karşılama ve kategorili önerileri gösterir', () => {
-    render(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
     expect(screen.getByRole('heading', { name: /Atonota asistanı/ })).toBeInTheDocument();
     expect(screen.getByText('Bu haftanın satış özetini çıkar')).toBeInTheDocument();
     expect(screen.getByRole('log')).toBeInTheDocument();
   });
 
   it('sahte sunucuyu açıkça etiketler', () => {
-    render(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
     expect(screen.getAllByText('Sahte sunucu').length).toBeGreaterThan(0);
   });
 
   it('yanıtı akıtır ve bloklar akış bitince belirir', async () => {
-    const { container } = render(
+    const { container } = renderTr(
       <AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />,
     );
     await send('Bu haftanın satış özetini çıkar');
@@ -128,11 +138,13 @@ describe('AI Studio', { timeout: 30_000 }, () => {
 
   it('iptal düğmesi akışı durdurur', async () => {
     const { signals, transport } = recording(mock({ delayMs: 40 }));
-    const { container } = render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    const { container } = renderTr(<AiStudio transport={transport} source={MOCK_SOURCE} />);
     const user = await send('Geciken siparişleri bul');
     const stop = await screen.findByRole('button', { name: 'Yanıtı durdur' });
     await user.click(stop);
-    expect(await screen.findByText('Yanıt durduruldu.')).toBeInTheDocument();
+    expect(
+      await within(screen.getByRole('log')).findByText('Yanıt durduruldu.'),
+    ).toBeInTheDocument();
     // No time is awaited. The request's abort signal must have arrived. On abort the mock server
     // closes the stream at once, so no block can arrive later.
     await waitFor(() => expect(signals[0]?.aborted).toBe(true));
@@ -167,23 +179,25 @@ describe('AI Studio', { timeout: 30_000 }, () => {
         }),
       );
     const { signals, transport } = recording(stubborn);
-    const { container } = render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    const { container } = renderTr(<AiStudio transport={transport} source={MOCK_SOURCE} />);
     const user = await send('Geciken siparişleri bul');
     await screen.findByText(/İlk parça/);
     await user.click(await screen.findByRole('button', { name: 'Yanıtı durdur' }));
-    expect(await screen.findByText('Yanıt durduruldu.')).toBeInTheDocument();
+    expect(
+      await within(screen.getByRole('log')).findByText('Yanıt durduruldu.'),
+    ).toBeInTheDocument();
     await waitFor(() => expect(signals[0]?.aborted).toBe(true));
     await sent;
     // Late events entered the stream. A few task ticks are awaited so the UI can process them.
     for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByText(/Geç gelen metin/)).toBeNull();
     expect(container.querySelector('[data-genui]')).toBeNull();
-    expect(screen.getByText('Yanıt durduruldu.')).toBeInTheDocument();
+    expect(within(screen.getByRole('log')).getByText('Yanıt durduruldu.')).toBeInTheDocument();
   });
 
   it('sunucu araç olayı göndermezse araç listesi göstermez', async () => {
     const events: AgentEvent[] = [{ type: 'text', delta: 'Kısa yanıt.' }, { type: 'done' }];
-    render(
+    renderTr(
       <AiStudio transport={mock({ delayMs: 1, events: () => events })} source={MOCK_SOURCE} />,
     );
     await send('merhaba');
@@ -192,7 +206,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
   });
 
   it('onay bloğu onay verilmeden mesaj göndermez, onayla yeni mesaj oluşur', async () => {
-    render(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
     const user = await send('Geciken siparişleri bul');
     const log = screen.getByRole('log');
     await waitFor(() => expect(log.querySelector('[data-genui="confirm"]')).not.toBeNull());
@@ -204,7 +218,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
   });
 
   it('yanıt eylemleri klavyeyle çalışır', async () => {
-    render(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
     const user = await send('merhaba');
     const like = await screen.findByRole('button', { name: 'Beğen' });
     expect(like).toHaveAttribute('aria-pressed', 'false');
@@ -215,7 +229,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
 
   it('dar ekranda yan bölümler çekmeceye iner', async () => {
     const user = setupUser();
-    render(<AiStudio />);
+    renderTr(<AiStudio />);
     expect(screen.queryByRole('navigation', { name: 'Sohbetler' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Sohbetleri aç' }));
     expect(await screen.findByRole('navigation', { name: 'Sohbetler' })).toBeInTheDocument();
@@ -235,14 +249,14 @@ describe('AI Studio', { timeout: 30_000 }, () => {
           dispatchEvent: () => false,
         }) as MediaQueryList,
     );
-    render(<AiStudio />);
+    renderTr(<AiStudio />);
     expect(screen.getByRole('navigation', { name: 'Sohbetler' })).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: 'Çalışma alanı' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sohbetleri aç' })).toBeNull();
   });
 
   it('araç olaylarını "Araç olayları" yüzeyinde gösterir, düşünce demez', async () => {
-    render(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
     await send('Bu haftanın satış özetini çıkar');
     await within(screen.getByRole('log')).findByText('Araç olayları');
     expect(screen.queryByText(/Düşünce/)).toBeNull();
@@ -251,7 +265,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
 
   it('yeniden üret onay verisini tekrar göndermez', async () => {
     const { requests, transport } = recording();
-    render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={transport} source={MOCK_SOURCE} />);
     const user = await send('Geciken siparişleri bul');
     await approveDelayNotice(user);
     const log = screen.getByRole('log');
@@ -284,7 +298,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
       );
     };
     const { requests, transport } = recording(broken);
-    render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={transport} source={MOCK_SOURCE} />);
     const user = await send('Geciken siparişleri bul');
     await approveDelayNotice(user);
     const ask = await screen.findByRole('button', { name: 'İşlemin durumunu sor' });
@@ -300,7 +314,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
 
   it('yanıt akarken eski onay düğmesi kapalıdır', async () => {
     const { transport } = recording(mock({ delayMs: 15 }));
-    render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={transport} source={MOCK_SOURCE} />);
     const user = await send('Geciken siparişleri bul');
     const log = screen.getByRole('log');
     await waitFor(() => expect(log.querySelector('[data-genui="confirm"]')).not.toBeNull());
@@ -316,7 +330,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
   it('bağlam dosyası yalnız kendi sohbetinde kalır', async () => {
     const { requests, transport } = recording();
     const user = setupUser();
-    const { container } = render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    const { container } = renderTr(<AiStudio transport={transport} source={MOCK_SOURCE} />);
     await user.click(screen.getByRole('button', { name: 'Bağlam dosyası ekle' }));
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(input, new File(['x'], 'rapor.csv', { type: 'text/csv' }));
@@ -332,7 +346,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
 
   it('çekmece kapanınca odak açan düğmeye döner', async () => {
     const user = setupUser();
-    render(<AiStudio />);
+    renderTr(<AiStudio />);
     const trigger = screen.getByRole('button', { name: 'Sohbetleri aç' });
     await user.click(trigger);
     await screen.findByRole('navigation', { name: 'Sohbetler' });
@@ -341,7 +355,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
   });
 
   it('sohbet değişip geri dönülünce gönderilmiş onay kilitli kalır', async () => {
-    render(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={mock({ delayMs: 1 })} source={MOCK_SOURCE} />);
     const user = await send('Geciken siparişleri bul');
     await approveDelayNotice(user);
     const log = screen.getByRole('log');
@@ -357,7 +371,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
 
   it('yeni sohbette aynı soru yeni onay kimliğiyle onaylanabilir', async () => {
     const { requests, transport } = recording();
-    render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={transport} source={MOCK_SOURCE} />);
     let user = await send('Geciken siparişleri bul');
     await approveDelayNotice(user);
     const log = screen.getByRole('log');
@@ -376,7 +390,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
 
   it('geçmişteki onay verisini sunucuya göndermez', async () => {
     const { requests, transport } = recording();
-    render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={transport} source={MOCK_SOURCE} />);
     const user = await send('Geciken siparişleri bul');
     await approveDelayNotice(user);
     const log = screen.getByRole('log');
@@ -405,7 +419,7 @@ describe('AI Studio', { timeout: 30_000 }, () => {
       );
     };
     const { requests, transport } = recording(broken);
-    render(<AiStudio transport={transport} source={MOCK_SOURCE} />);
+    renderTr(<AiStudio transport={transport} source={MOCK_SOURCE} />);
     const user = await send('Geciken siparişleri bul');
     await approveDelayNotice(user);
     await user.click(await screen.findByRole('button', { name: 'İşlemin durumunu sor' }));

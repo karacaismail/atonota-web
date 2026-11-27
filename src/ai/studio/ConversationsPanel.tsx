@@ -3,6 +3,8 @@ import type { Conversation } from '@ant-design/x';
 import { Plus, Trash } from '@phosphor-icons/react';
 import { Button } from 'antd';
 
+import { useStudioStrings } from './strings';
+
 export interface StudioConversation extends Conversation {
   key: string;
   label: string;
@@ -22,10 +24,11 @@ export function ConversationsPanel({
   onCreate: () => void;
   onDelete: (key: string) => void;
 }) {
+  const t = useStudioStrings();
   return (
-    <nav className="ai-convs" aria-label="Sohbetler">
+    <nav className="ai-convs" aria-label={t.conversations}>
       <Button block icon={<Plus aria-hidden />} onClick={onCreate}>
-        Yeni sohbet
+        {t.newConversation}
       </Button>
       <Conversations
         items={items}
@@ -36,7 +39,7 @@ export function ConversationsPanel({
           items: [
             {
               key: 'delete',
-              label: 'Sohbeti sil',
+              label: t.deleteConversation,
               icon: <Trash aria-hidden />,
               danger: true,
               disabled: items.length < 2,

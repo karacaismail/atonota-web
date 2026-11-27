@@ -15,6 +15,9 @@ import {
 import { App, Button, Drawer, Tag } from 'antd';
 import type { GetProp } from 'antd';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
+
+import { useLanguage } from '@/app/locale';
 
 import type { GenUIAction, GenUIActionResult } from '@/genui';
 import { useGenuiVars } from '@/genui/useGenuiVars';
@@ -35,10 +38,11 @@ import { ConversationsPanel, type StudioConversation } from './ConversationsPane
 import { createFlowDemoTransport } from './flowDemo';
 import { FlowSteps } from './FlowSteps';
 import { ModePicker } from './ModePicker';
-import { SLASH_COMMANDS, WELCOME_PROMPTS } from './content';
+import { slashCommands, welcomePrompts } from './content';
 import { useFlow } from './useFlow';
 import { actionToMessage, decisionsOf, useStudioChat } from './useStudioChat';
-import { FILE_NAME_ONLY_NOTE, Workspace } from './Workspace';
+import { useStudioStrings } from './strings';
+import { Workspace } from './Workspace';
 
 /**
  * If no transport is given, the mock server is used.
@@ -51,9 +55,19 @@ export type AiStudioProps =
 /** Three columns open only when both side panels and a readable middle area fit. */
 const WIDE_QUERY = `(min-width: ${aiStudioLayout.left + aiStudioLayout.right + 600}px)`;
 
-const FIRST_CONVERSATIONS: StudioConversation[] = [
-  { key: 'c1', label: 'Yeni sohbet', group: 'Bugün' },
-];
+/** An empty label means "new conversation". The visible name comes from the language table. */
+const FIRST_CONVERSATIONS: StudioConversation[] = [{ key: 'c1', label: '', group: '' }];
+
+/**
+ * True while the IME (candidate selection) is active.
+ * `isComposing` is the standard signal. Safari sends Enter with key code 229 right after
+ * `compositionend`, so that code is checked too (AJA-1784).
+ */
+function isComposing(event: KeyboardEvent): boolean {
+  return event.nativeEvent.isComposing || event.keyCode === 229;
+}
+
+type Announcement = keyof ReturnType<typeof useStudioStrings>['announce'];
 
 type Feedback = 'like' | 'dislike';
 
@@ -65,6 +79,8 @@ type FileItems = NonNullable<AttachmentsProps['items']>;
 
 function StudioInner({ transport, source }: { transport: AgentTransport; source: AgentSource }) {
   const { message: toast } = App.useApp();
+  const t = useStudioStrings();
+  const language = useLanguage();
   const vars = useGenuiVars();
   const titleId = useId();
   const wide = useMediaQuery(WIDE_QUERY);
@@ -100,6 +116,30 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
     wasOpen.current = { left: leftOpen, right: rightOpen };
   }, [leftOpen, rightOpen]);
 
+  // Screen reader announcement (AJA-1784). Stream chunks are not read out.
+  // Each reply is announced when it starts and once more when it ends: ready, stopped or failed.
+  // The reply's ID changes when the stream ends, so the last reply's state is followed instead.
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const inFlight = useRef(false);
+  useEffect(() => {
+    const last = messages[messages.length - 1]?.message;
+    if (last?.role !== 'assistant') return;
+    if (last.phase === 'waiting' || last.phase === 'streaming') {
+      if (inFlight.current) return;
+      inFlight.current = true;
+      setAnnouncement('preparing');
+    } else if (inFlight.current) {
+      inFlight.current = false;
+      setAnnouncement(last.phase);
+    }
+  }, [messages]);
+
+  // While the IME is active, Enter picks a candidate. It must not send the message or pick a
+  // "/" command. The capture handler stops the event before Sender and Suggestion see it.
+  const blockImeEnter = (event: KeyboardEvent) => {
+    if (event.key === 'Enter' && isComposing(event)) event.stopPropagation();
+  };
+
   const fileNames = files.map((f) => f.name);
 
   // Decisions come from the conversation history. Blocks stay locked after switching away and back.
@@ -127,9 +167,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
       setValue('');
       setConversations((all) =>
         all.map((c) =>
-          c.key === activeKey && c.label === 'Yeni sohbet'
-            ? { ...c, label: trimmed.slice(0, 40) }
-            : c,
+          c.key === activeKey && c.label === '' ? { ...c, label: trimmed.slice(0, 40) } : c,
         ),
       );
       return 'accepted';
@@ -151,6 +189,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
   const switchTo = (key: string) => {
     if (key === activeKey) return;
     cancel();
+    inFlight.current = false;
     store.current[activeKey] = messages;
     setMessages(store.current[key] ?? []);
     setActiveKey(key);
@@ -159,7 +198,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
 
   const createConversation = () => {
     const key = `c${nextId.current++}`;
-    setConversations((all) => [{ key, label: 'Yeni sohbet', group: 'Bugün' }, ...all]);
+    setConversations((all) => [{ key, label: '', group: '' }, ...all]);
     switchTo(key);
   };
 
@@ -174,6 +213,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
     forget(key);
     if (key === activeKey && rest[0]) {
       cancel();
+      inFlight.current = false;
       setMessages(store.current[rest[0].key] ?? []);
       setActiveKey(rest[0].key);
     }
@@ -182,24 +222,24 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
   const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      void toast.success('Yanıt kopyalandı.');
+      void toast.success(t.copied);
     } catch {
-      void toast.error('Kopyalanamadı. Tarayıcı izin vermedi.');
+      void toast.error(t.copyFailed);
     }
   };
 
   const actionItems = (id: string) => [
-    { key: 'copy', label: 'Kopyala', icon: <Copy aria-hidden /> },
-    { key: 'retry', label: 'Yeniden üret', icon: <ArrowClockwise aria-hidden /> },
+    { key: 'copy', label: t.copy, icon: <Copy aria-hidden /> },
+    { key: 'retry', label: t.regenerate, icon: <ArrowClockwise aria-hidden /> },
     {
       key: 'like',
-      label: 'Beğen',
+      label: t.like,
       pressed: feedback[id] === 'like',
       icon: <ThumbsUp weight={feedback[id] === 'like' ? 'fill' : 'regular'} aria-hidden />,
     },
     {
       key: 'dislike',
-      label: 'Beğenme',
+      label: t.dislike,
       pressed: feedback[id] === 'dislike',
       icon: <ThumbsDown weight={feedback[id] === 'dislike' ? 'fill' : 'regular'} aria-hidden />,
     },
@@ -269,7 +309,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
   });
 
   const sender = (
-    <Suggestion items={SLASH_COMMANDS} onSelect={(command) => setValue(command)}>
+    <Suggestion items={slashCommands(t)} onSelect={(command) => setValue(command)}>
       {({ onTrigger, onKeyDown }) => (
         <Sender
           value={value}
@@ -282,13 +322,13 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
           onCancel={cancel}
           loading={busy}
           allowSpeech
-          placeholder="Sorunuzu yazın. Komut için / yazın."
-          aria-label="Asistana mesaj yazın"
+          placeholder={t.placeholder}
+          aria-label={t.messageBox}
           prefix={
             <Button
               type="text"
               icon={<Paperclip aria-hidden />}
-              aria-label="Bağlam dosyası ekle"
+              aria-label={t.attachFile}
               aria-expanded={attachOpen}
               onClick={() => setAttachOpen((open) => !open)}
             />
@@ -296,25 +336,25 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
           actions={(_, { components }) => {
             const { SendButton, LoadingButton, SpeechButton } = components;
             return busy ? (
-              <LoadingButton aria-label="Yanıtı durdur" />
+              <LoadingButton aria-label={t.stop} />
             ) : (
               <span className="ai-sender-actions">
-                <SpeechButton aria-label="Sesle yaz" />
-                <SendButton aria-label="Mesajı gönder" />
+                <SpeechButton aria-label={t.speech} />
+                <SendButton aria-label={t.send} />
               </span>
             );
           }}
           header={
-            <Sender.Header title="Dosya adları" open={attachOpen} onOpenChange={setAttachOpen}>
-              <p className="ai-note">{FILE_NAME_ONLY_NOTE}</p>
+            <Sender.Header title={t.fileNames} open={attachOpen} onOpenChange={setAttachOpen}>
+              <p className="ai-note">{t.fileNameOnly}</p>
               <Attachments
                 items={files}
                 beforeUpload={() => false}
                 onChange={({ fileList }) => setFiles(fileList)}
                 placeholder={{
                   icon: <UploadSimple aria-hidden />,
-                  title: 'Dosyayı buraya bırakın',
-                  description: 'Dosyanın adı yalnız bu sohbete eklenir.',
+                  title: t.dropTitle,
+                  description: t.dropDescription,
                 }}
               />
             </Sender.Header>
@@ -326,7 +366,11 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
 
   const left = (
     <ConversationsPanel
-      items={conversations}
+      items={conversations.map((c) => ({
+        ...c,
+        label: c.label || t.newConversation,
+        group: t.today,
+      }))}
       activeKey={activeKey}
       onSelect={switchTo}
       onCreate={createConversation}
@@ -336,7 +380,11 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
   const right = <Workspace steps={latestSteps} files={fileNames} source={source} />;
 
   return (
-    <div className={`ai-studio ai-scope ${wide ? 'is-wide' : 'is-narrow'}`} style={vars}>
+    <div
+      className={`ai-studio ai-scope ${wide ? 'is-wide' : 'is-narrow'}`}
+      style={vars}
+      lang={language}
+    >
       {wide && <div className="ai-col ai-col-left">{left}</div>}
 
       <section className="ai-main" aria-labelledby={titleId}>
@@ -346,7 +394,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
               type="text"
               icon={<ChatCircle aria-hidden />}
               ref={leftTrigger}
-              aria-label="Sohbetleri aç"
+              aria-label={t.openConversations}
               onClick={() => setLeftOpen(true)}
             />
           )}
@@ -362,7 +410,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
               className="ai-head-end"
               icon={<SidebarSimple aria-hidden />}
               ref={rightTrigger}
-              aria-label="Çalışma alanını aç"
+              aria-label={t.openWorkspace}
               onClick={() => setRightOpen(true)}
             />
           )}
@@ -370,17 +418,19 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
 
         <FlowSteps flow={flow} />
 
-        <div className="ai-log" role="log" aria-live="polite" aria-relevant="additions text">
+        {/* The log is not a live region. Each stream chunk would be read out (AJA-1784). */}
+        {/* The state of the reply is announced once by the announcer below. */}
+        <div className="ai-log" role="log" aria-live="off">
           {messages.length === 0 ? (
             <div className="ai-welcome">
               <Welcome
                 variant="borderless"
-                title="Merhaba, ben Atonota asistanı"
-                description="Raporları özetlerim, siparişleri tararım ve otomasyon kurmanıza yardım ederim. Onayınız olmadan hiçbir işlem yapmam."
+                title={t.welcomeTitle}
+                description={t.welcomeDescription}
               />
               <Prompts
-                title="Nereden başlayalım?"
-                items={WELCOME_PROMPTS}
+                title={t.promptsTitle}
+                items={welcomePrompts(t)}
                 wrap
                 onItemClick={({ data }) => {
                   if (typeof data.label === 'string' && !data.children) submit(data.label);
@@ -391,14 +441,14 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
             <Bubble.List items={items} autoScroll />
           )}
         </div>
-        <p className="ai-visually-hidden" role="status">
-          {busy ? 'Asistan yanıt hazırlıyor.' : ''}
+        <p className="ai-visually-hidden" role="status" data-ai-announcer>
+          {announcement ? t.announce[announcement] : ''}
         </p>
 
-        <div className="ai-sender">
+        <div className="ai-sender" onKeyDownCapture={blockImeEnter}>
           <ModePicker value={mode} onChange={setMode} disabled={busy} />
           {sender}
-          <p className="ai-hint">Asistan hata yapabilir. Önemli bilgileri kontrol edin.</p>
+          <p className="ai-hint">{t.hint}</p>
         </div>
       </section>
 
@@ -407,7 +457,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
       {!wide && (
         <>
           <Drawer
-            title="Sohbetler"
+            title={t.conversations}
             placement="left"
             open={leftOpen}
             onClose={() => setLeftOpen(false)}
@@ -418,7 +468,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
             {left}
           </Drawer>
           <Drawer
-            title="Çalışma alanı"
+            title={t.workspace}
             placement="right"
             open={rightOpen}
             onClose={() => setRightOpen(false)}

@@ -87,8 +87,9 @@ function watchAnnouncer(container: HTMLElement) {
 
 /** Elements a screen reader reads out when their content changes. */
 function liveRegions(container: HTMLElement): HTMLElement[] {
-  return [...container.querySelectorAll<HTMLElement>('[aria-live], [role="log"], [role="status"]')]
-    .filter((node) => node.getAttribute('aria-live') !== 'off');
+  return [
+    ...container.querySelectorAll<HTMLElement>('[aria-live], [role="log"], [role="status"]'),
+  ].filter((node) => node.getAttribute('aria-live') !== 'off');
 }
 
 async function typeAndSend(text: string) {
@@ -111,7 +112,9 @@ describe('ekran okuyucu duyurusu', { timeout: 30_000 }, () => {
     const { container } = renderTr(mock());
     const announcer = watchAnnouncer(container);
     await typeAndSend('Bu haftanın satış özetini çıkar');
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Kopyala' })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Kopyala' })).toBeInTheDocument(),
+    );
     await waitFor(() => expect(announcer.node).toHaveTextContent('Yanıt hazır.'));
     announcer.stop();
     expect(announcer.texts.filter((t) => t === 'Yanıt hazır.')).toHaveLength(1);
@@ -143,6 +146,8 @@ describe('ekran okuyucu duyurusu', { timeout: 30_000 }, () => {
     expect(
       announcer.texts.filter((t) => t === 'Yanıt hata verdi. Yeniden deneyebilirsiniz.'),
     ).toHaveLength(1);
+    // The error box in the reply is not a second live region.
+    expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 });
 
@@ -199,7 +204,9 @@ describe('aday seçimi (IME) ve Enter', { timeout: 30_000 }, () => {
     fireEvent.keyDown(box, { key: 'Enter', code: 'Enter', keyCode: 13 });
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(requests[0]?.message.text).toBe('こんにちは');
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Kopyala' })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Kopyala' })).toBeInTheDocument(),
+    );
     expect(requests).toHaveLength(1);
   });
 });

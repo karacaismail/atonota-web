@@ -147,7 +147,7 @@ test.describe('AI Studio', () => {
     await expect(page.getByRole('textbox', { name: 'Asistana mesaj yazın' })).toBeVisible();
     await ask(page, 'Bu haftanın satış özetini çıkar');
     await page.getByRole('button', { name: 'Yanıtı durdur' }).click();
-    await expect(page.getByText('Yanıt durduruldu.')).toBeVisible();
+    await expect(page.getByRole('log').getByText('Yanıt durduruldu.')).toBeVisible();
     await page.waitForTimeout(800);
     await expect(page.locator('[data-genui]')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Mesajı gönder' })).toBeVisible();

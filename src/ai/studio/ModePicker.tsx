@@ -1,8 +1,9 @@
 import { Radio } from 'antd';
 import { useId } from 'react';
 
-import { AGENT_MODES, MODE_LABELS } from '../agent';
+import { AGENT_MODES } from '../agent';
 import type { AgentMode } from '../agent';
+import { useStudioStrings } from './strings';
 
 /**
  * Mode picker. Native radio buttons: arrow keys change the mode, Tab leaves the group.
@@ -18,10 +19,11 @@ export function ModePicker({
   disabled: boolean;
 }) {
   const legend = useId();
+  const t = useStudioStrings();
   return (
     <div className="ai-mode" role="radiogroup" aria-labelledby={legend}>
       <span id={legend} className="ai-mode-legend">
-        Kip
+        {t.mode}
       </span>
       <Radio.Group
         optionType="button"
@@ -32,7 +34,7 @@ export function ModePicker({
       >
         {AGENT_MODES.map((mode) => (
           <Radio.Button key={mode} value={mode}>
-            {MODE_LABELS[mode]}
+            {t.modes[mode]}
           </Radio.Button>
         ))}
       </Radio.Group>
