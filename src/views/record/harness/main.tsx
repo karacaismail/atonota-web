@@ -8,6 +8,9 @@ import '@fontsource-variable/outfit';
 import '@fontsource/jetbrains-mono/400.css';
 
 import { StrictMode, useState } from 'react';
+
+import { FALLBACK_LANGUAGE } from '@/app/locale';
+
 import { createRoot } from 'react-dom/client';
 import { EMPTY_LEAVE_CONTEXT, LEAVE_CONTEXT, LEAVE_META } from './leaveFixture';
 import { createFrappeRecordAdapter } from '../adapter';
@@ -335,7 +338,7 @@ export function HarnessApp() {
           createMode
           adapter={adapter}
           themeMode={themeMode}
-          locale="tr"
+          locale={FALLBACK_LANGUAGE}
           breadcrumbs={[]}
           {...(params.get('assist') === '1'
             ? { onAssistField: () => setAssistCalls((count) => count + 1) }
@@ -347,7 +350,7 @@ export function HarnessApp() {
           {...(scenario === 'empty' ? {} : { name: `HR-EXP-000${currentIndex}` })}
           adapter={adapter}
           themeMode={themeMode}
-          locale="tr"
+          locale={FALLBACK_LANGUAGE}
           navigator={{
             currentIndex,
             totalCount: 1284,
