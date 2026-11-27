@@ -11,6 +11,7 @@ import {
   RecordView,
 } from '@/views/record';
 
+import { useLanguage } from './locale';
 import { slugFromDoctype } from './record-slug';
 import { doctypeFromSlug, moduleSlug } from './view-data';
 
@@ -80,7 +81,8 @@ export interface RecordRouteProps extends RecordAddress {
  * kendisi ekler. Hedef sayfa kaydı sunucudan ister; izin orada denetlenir.
  */
 export default function RecordRoute({ api, module, doctype, name }: RecordRouteProps) {
-  const adapter = useMemo(() => createFrappeRecordAdapter({ api, locale: 'tr' }), [api]);
+  const locale = useLanguage();
+  const adapter = useMemo(() => createFrappeRecordAdapter({ api, locale }), [api, locale]);
   const pageDoctype = doctypeFromSlug(doctype);
   const renderRecordLink = useCallback(
     (target: RecordLinkTarget, children: ReactNode) => {
@@ -104,7 +106,7 @@ export default function RecordRoute({ api, module, doctype, name }: RecordRouteP
     <RecordView
       doctype={pageDoctype}
       name={decode(name)}
-      locale="tr"
+      locale={locale}
       adapter={adapter}
       renderRecordLink={renderRecordLink}
     />
