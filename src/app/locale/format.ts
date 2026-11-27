@@ -12,6 +12,12 @@ export interface SiteFormatting {
   time_zone?: string | null | undefined;
   /** The site's default currency. Example: `TRY`. If absent, the amount is written as a plain number. */
   currency?: string | null | undefined;
+  /**
+   * BCP 47 tag of the user's region formats. Example: `fr-FR`.
+   * Today only number entry uses it (AJA-1765). If absent, the language's format locale is used.
+   * The real boot data field comes from AJA-1732. Until then tests pass a fake value.
+   */
+  format_locale?: string | null | undefined;
 }
 
 export interface FormatSettings {
