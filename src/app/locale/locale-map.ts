@@ -3,9 +3,10 @@
  * Bileşenler dili `useLanguage` ve `useLocaleBundle` kancalarından alır (IC-12).
  * Yeni dil eklenince yalnız bu dosya ve `language.ts` değişir.
  */
-import enUS from 'antd/locale/en_US';
+import enGB from 'antd/locale/en_GB';
 import trTR from 'antd/locale/tr_TR';
 import type { Locale as AntdLocale } from 'antd/es/locale';
+import 'dayjs/locale/en-gb';
 import 'dayjs/locale/tr';
 
 import type { AppLanguage } from './language';
@@ -30,13 +31,17 @@ export interface LocaleBundle {
 /** Ant Design X'in kendi dil alanları. Bu sürümde boştur. */
 const X_FIELDS: Record<AppLanguage, Partial<XLocale>> = { tr: {}, en: {} };
 
-const ANTD: Record<AppLanguage, AntdLocale> = { tr: trTR, en: enUS };
+/**
+ * Arayüzün İngilizcesi İngiliz İngilizcesidir (AJA-1407). Bu yüzden `en` dili `en-GB` paketlerini kullanır.
+ * Örnek: hafta pazartesi başlar, tarih `27/11/2026` yazılır, saat 24 saatliktir.
+ */
+const ANTD: Record<AppLanguage, AntdLocale> = { tr: trTR, en: enGB };
 
-/** `en` Day.js içinde gömülüdür. `tr` yukarıda yüklenir. */
-const DAYJS: Record<AppLanguage, string> = { tr: 'tr', en: 'en' };
+/** Day.js dil adları. İki dil de yukarıda yüklenir. */
+const DAYJS: Record<AppLanguage, string> = { tr: 'tr', en: 'en-gb' };
 
 /** `Intl` dil etiketleri. Sabit biçim dili yalnız bu dosyada yazılır. */
-const INTL: Record<AppLanguage, string> = { tr: 'tr-TR', en: 'en-US' };
+const INTL: Record<AppLanguage, string> = { tr: 'tr-TR', en: 'en-GB' };
 
 const BUNDLES = Object.fromEntries(
   (Object.keys(ANTD) as AppLanguage[]).map((language) => [
