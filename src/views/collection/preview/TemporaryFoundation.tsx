@@ -1,7 +1,8 @@
 import { ConfigProvider } from 'antd';
-import trTR from 'antd/locale/tr_TR';
 import { useRef, useSyncExternalStore } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { useLocaleBundle } from '@/app/locale';
+
 import source from '../../../../design/source/control-size-config.json';
 import { collectionTheme } from './temporary-theme';
 import { useTemporaryInteractions } from './useTemporaryInteractions';
@@ -28,6 +29,7 @@ export function TemporaryFoundation({
   mode: 'light' | 'dark';
 }) {
   const root = useRef<HTMLDivElement>(null);
+  const { antd: locale } = useLocaleBundle();
   useTemporaryInteractions(root);
   const reduced = useSyncExternalStore(subscribe, snapshot, () => false);
   const variables = {
@@ -46,7 +48,11 @@ export function TemporaryFoundation({
     ).dropdown,
   } as CSSProperties;
   return (
-    <ConfigProvider locale={trTR} theme={collectionTheme(mode, reduced)} wave={{ disabled: true }}>
+    <ConfigProvider
+      locale={locale}
+      theme={collectionTheme(mode, reduced)}
+      wave={{ disabled: true }}
+    >
       <div ref={root} data-collection-preview data-theme={mode} style={variables}>
         {children}
       </div>

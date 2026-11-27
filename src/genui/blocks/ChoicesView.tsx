@@ -1,4 +1,5 @@
-import { Prompts, XProvider } from '@ant-design/x';
+import { Prompts } from '@ant-design/x';
+import { LocalizedXProvider } from '@/app/locale/LocalizedXProvider';
 import { Sparkle } from '@phosphor-icons/react';
 
 import type { ChoicesBlock, GenUIActionHandler } from '../types';
@@ -11,7 +12,7 @@ export function ChoicesView({
   onAction: GenUIActionHandler;
 }) {
   return (
-    <XProvider>
+    <LocalizedXProvider>
       <section data-genui="choices" className="genui-choices" aria-label="Öneriler">
         <Prompts
           wrap
@@ -25,6 +26,6 @@ export function ChoicesView({
           }}
         />
       </section>
-    </XProvider>
+    </LocalizedXProvider>
   );
 }

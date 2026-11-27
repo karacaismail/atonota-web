@@ -1,4 +1,4 @@
-import { XProvider } from '@ant-design/x';
+import { LocalizedXProvider } from '@/app/locale/LocalizedXProvider';
 import { Typography } from 'antd';
 import { useMemo } from 'react';
 
@@ -47,7 +47,7 @@ export default function AiStudioPage() {
     [ai, delayMs],
   );
   return (
-    <XProvider>
+    <LocalizedXProvider>
       {ai ? (
         <AiStudio transport={ai.transport} source={ai.source} />
       ) : mock ? (
@@ -55,6 +55,6 @@ export default function AiStudioPage() {
       ) : (
         <NotConnected />
       )}
-    </XProvider>
+    </LocalizedXProvider>
   );
 }

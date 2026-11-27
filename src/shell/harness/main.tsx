@@ -10,11 +10,11 @@ import '@fontsource/jetbrains-mono/400.css';
 
 import config from '@design-source/control-size-config.json';
 import { App as AntApp, ConfigProvider, theme } from 'antd';
-import trTR from 'antd/locale/tr_TR';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { createApiClient, createCsrfStore, readApiConfig } from '@/api';
+import { FALLBACK_LANGUAGE, localeBundle } from '@/app/locale';
 import { SAMPLE_CSRF_TOKEN } from '@/mocks/fixtures';
 import { startApiMocks } from '@/mocks/start';
 import { createApiSource } from '@/views/collection';
@@ -81,7 +81,8 @@ if (!container) throw new Error('Kök öğe bulunamadı: #root');
 createRoot(container).render(
   <StrictMode>
     <ConfigProvider
-      locale={trTR}
+      // Deneme sayfasında oturum ve açılış verisi yoktur. Dil yedek dildir.
+      locale={localeBundle(FALLBACK_LANGUAGE).antd}
       theme={{
         algorithm: light ? theme.defaultAlgorithm : theme.darkAlgorithm,
         token: { ...token, fontFamily: "'Outfit Variable', system-ui, sans-serif" },

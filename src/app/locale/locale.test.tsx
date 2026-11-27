@@ -12,13 +12,11 @@ import { mockServer } from '@/mocks/node';
 import { AppProviders } from '../AppProviders';
 import { Root } from '../Root';
 
-import {
-  FALLBACK_LANGUAGE,
-  LocalizedXProvider,
-  localeBundle,
-  resolveLanguage,
-  useLanguage,
-} from './index';
+import { FALLBACK_LANGUAGE, localeBundle, resolveLanguage, useLanguage } from './index';
+import { LocalizedXProvider } from './LocalizedXProvider';
+
+/** Görünen metin. Görseldeki SVG `title` öğesi sayılmaz. */
+const VISIBLE = { ignore: 'title, script, style' };
 
 /** 27 Kasım 2026 bir Cuma günüdür. Beklenen ad takvimden gelir, koddan kopyalanmaz. */
 const FRIDAY = '2026-11-27';
@@ -62,7 +60,7 @@ describe('AppProviders: Ant Design ve Day.js aynı dili kullanır', () => {
       </AppProviders>,
     );
     expect(screen.getByRole('status', { name: 'Dil' })).toHaveTextContent('en');
-    expect(screen.getByText('No data')).toBeInTheDocument();
+    expect(screen.getByText('No data', VISIBLE)).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Gün' })).toHaveTextContent('Friday');
     expect(dayjs.locale()).toBe('en');
   });
@@ -74,7 +72,7 @@ describe('AppProviders: Ant Design ve Day.js aynı dili kullanır', () => {
       </AppProviders>,
     );
     expect(screen.getByRole('status', { name: 'Dil' })).toHaveTextContent('tr');
-    expect(screen.getByText('Veri Yok')).toBeInTheDocument();
+    expect(screen.getByText('Veri Yok', VISIBLE)).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Gün' })).toHaveTextContent('Cuma');
     expect(dayjs.locale()).toBe('tr');
   });
@@ -97,7 +95,7 @@ describe('Ant Design X: dil alanları antd nesnesiyle birleşir', () => {
         </LocalizedXProvider>
       </AppProviders>,
     );
-    expect(screen.getByText('No data')).toBeInTheDocument();
+    expect(screen.getByText('No data', VISIBLE)).toBeInTheDocument();
   });
 });
 
@@ -142,7 +140,7 @@ describe('Root: dil açılış verisinden gelir', () => {
     await waitFor(() =>
       expect(screen.getByRole('status', { name: 'Dil' })).toHaveTextContent('en'),
     );
-    expect(screen.getByText('No data')).toBeInTheDocument();
+    expect(screen.getByText('No data', VISIBLE)).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Gün' })).toHaveTextContent('Friday');
   });
 
@@ -153,7 +151,7 @@ describe('Root: dil açılış verisinden gelir', () => {
         <LanguageProbe />
       </Root>,
     );
-    expect(await screen.findByText('Veri Yok')).toBeInTheDocument();
+    expect(await screen.findByText('Veri Yok', VISIBLE)).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Dil' })).toHaveTextContent('tr');
     expect(screen.getByRole('status', { name: 'Gün' })).toHaveTextContent('Cuma');
   });
