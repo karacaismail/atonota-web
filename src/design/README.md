@@ -11,6 +11,7 @@ Tek karar kaynağı `design/source/control-size-config.json` dosyasıdır. Bu kl
 5. antd bileşenleri temayı `AppProviders` içinden alır. antd'nin kendi odak çerçevesi tema düzeyinde kapalıdır. Ek odak stili yazmayın.
 6. Yatay kayması gereken tablo ya da geniş içeriği `data-scroll-x` kapsayıcısına alın. Kapsayıcıya `tabIndex={0}`, `role="region"` ve erişilebilir ad verin. Taşma testi bu kapsayıcının içini saymaz.
 7. Metin bağlantılarının altı çizilidir. Odaklanınca çizgi 2 px vurgu rengi (`--color-ink`) olur. Menü görünümlü bağlantı bu kuralın dışındadır. Böyle bir bağlantıya `data-nav-link` özelliğini verin. Örnek: kabuk menüsünün bağlantıları. Bu bağlantı kendi tek odak göstergesini taşır.
+8. Yeni CSS'te mantıksal yön özelliği kullanın. Örneğin `margin-left` yerine `margin-inline-start` yazın. `left` yerine `inset-inline-start` yazın. `text-align: left` yerine `text-align: start` yazın. Böylece `<html dir="rtl">` olunca yerleşim kendiliğinden döner. Fiziksel yön özelliği yazılırsa `npm run lint` başarısız olur (`scripts/direction-gate.mjs`). Eski kurallar `scripts/direction-gate.allow.json` listesindedir. Liste dosyayı ve tam bildirimi tutar. Aynı dosyaya eklenen yeni fiziksel kural yine hata verir. Bilinen sınır şudur: TS kodunda `left:` ve `right:` anahtarları denetlenmez. Bu adlar orada çoğunlukla geometri değeridir.
 
 ## Değişken listesi
 

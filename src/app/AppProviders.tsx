@@ -8,7 +8,7 @@ import { FocusDimOverlay } from '@/engines/focus-dim';
 import { startFocusMode } from '@/engines/focus-mode';
 import { startHitAreaEngine } from '@/engines/hit-area';
 
-import { LanguageProvider, useLocaleBundle, type SiteFormatting } from './locale';
+import { LanguageProvider, useLocaleBundle, useTextDirection, type SiteFormatting } from './locale';
 import { ThemeModeProvider, useThemeMode, type ThemeModeChoice } from './theme-mode';
 import { usePrefersReducedMotion } from './use-reduced-motion';
 
@@ -39,13 +39,15 @@ function ThemedProviders({ children }: { children: ReactNode }) {
   const csp = useCspConfig();
   const reducedMotion = usePrefersReducedMotion();
   const { antd: locale } = useLocaleBundle();
+  // antd draws in the same direction as `<html dir>` (IC-14).
+  const direction = useTextDirection();
   const theme = useMemo(
     () => buildAntdTheme(resolved, { reducedMotion }),
     [resolved, reducedMotion],
   );
 
   return (
-    <ConfigProvider theme={theme} locale={locale} {...(csp ? { csp } : {})}>
+    <ConfigProvider theme={theme} locale={locale} direction={direction} {...(csp ? { csp } : {})}>
       <AntdApp>
         <BodyTheme />
         {children}
