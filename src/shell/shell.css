@@ -218,7 +218,9 @@ html[data-focus-mode='keyboard']
   min-width: 0;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  /* Kabuk ekran yüksekliğindedir. Bu yüzden içeriği `main` kaydırır (AJA-1435).
+     Bazı sayfalar kendi `shell-body` kutusunu kullanır. O sayfalarda `main` taşmaz ve kaymaz. */
+  overflow: auto;
 }
 
 .shell[data-layout='wide'] .shell-page {
