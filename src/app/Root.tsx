@@ -7,12 +7,12 @@ import type { ModuleEnvironment } from '@/modules';
 import { AppContent } from './App';
 import { appPathname } from './base-path';
 import { AppProviders } from './AppProviders';
-import { useLanguage, useSetLanguage } from './locale';
+import { useLanguage, useSetFormatting, useSetLanguage } from './locale';
 import type { ThemeModeChoice } from './theme-mode';
 import {
   createShellViewData,
   loadShellAccount,
-  loadUserLanguage,
+  loadUserLocale,
   workspaceFromSite,
 } from './view-data';
 
@@ -47,7 +47,8 @@ const ProductPage = lazy(() => import('@/auth/product/ProductPage'));
 
 /**
  * Oturum açılınca dili açılış verisindeki kullanıcı dilinden alır (IC-12).
- * Dil gelene kadar ekran yedek dildedir. İstek başarısızsa dil değişmez.
+ * Saat dilimi ve para birimi de açılış verisinden gelir (IC-13).
+ * Veri gelene kadar ekran yedek dildedir. İstek başarısızsa dil ve biçim değişmez.
  */
 function UserLanguage({
   session,
@@ -59,13 +60,16 @@ function UserLanguage({
   children: ReactNode;
 }) {
   const setLanguage = useSetLanguage();
+  const setFormatting = useSetFormatting();
   useEffect(() => {
     const ctrl = new AbortController();
-    void loadUserLanguage(session.api, user, ctrl.signal).then((language) => {
-      if (!ctrl.signal.aborted && language !== undefined) setLanguage(language);
+    void loadUserLocale(session.api, user, ctrl.signal).then((locale) => {
+      if (ctrl.signal.aborted || locale === undefined) return;
+      setLanguage(locale.language);
+      setFormatting({ time_zone: locale.time_zone, currency: locale.currency });
     });
     return () => ctrl.abort();
-  }, [session, user, setLanguage]);
+  }, [session, user, setLanguage, setFormatting]);
   return children;
 }
 

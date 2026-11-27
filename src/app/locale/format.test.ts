@@ -72,6 +72,12 @@ describe('saat dilimi açılış verisinden gelir (IC-13)', () => {
     ).toBe('2026-07-01T13:05:00.123Z');
   });
 
+  it('saat farkı yazılı değer kesin an olarak okunur', () => {
+    expect(parseFrappeDatetime('2026-11-27T06:05:00Z', 'America/New_York')?.toISOString()).toBe(
+      '2026-11-27T06:05:00.000Z',
+    );
+  });
+
   it('okunamayan tarih-saat değeri sonuç vermez', () => {
     expect(parseFrappeDatetime('tarih yok', 'Europe/Istanbul')).toBeUndefined();
     expect(parseFrappeDatetime('2026-13-40 25:99:00', 'Europe/Istanbul')).toBeUndefined();

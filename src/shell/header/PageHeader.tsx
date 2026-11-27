@@ -16,7 +16,9 @@ import { Button, Dropdown, Input, Segmented, Select, Tag } from 'antd';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { formatNumber, t } from '../messages';
+import { useFormat } from '@/app/locale';
+
+import { t } from '../messages';
 import type { ViewType } from '../tokens';
 import { shellTokens } from '../tokens';
 import { viewIcons } from './viewIcons';
@@ -70,6 +72,7 @@ export interface PageHeaderProps {
  */
 export function PageHeader(p: PageHeaderProps) {
   const { state } = p;
+  const format = useFormat();
   const isForm = p.view === 'form';
   const headerRef = useRef<HTMLElement>(null);
   const [stuck, setStuck] = useState(false);
@@ -122,7 +125,7 @@ export function PageHeader(p: PageHeaderProps) {
                   {busy ? (
                     <span className="shell-skel" aria-hidden="true" />
                   ) : (
-                    formatNumber(p.count)
+                    format.number(p.count)
                   )}
                 </span>
               )}
@@ -154,6 +157,7 @@ export function PageHeader(p: PageHeaderProps) {
 
 function StateLine({ state }: { state: HeaderState }) {
   const s = t.header.state;
+  const format = useFormat();
   // Durum satırı yoksa boş "Kayıt yok" yazılmaz. Sayfa durumu gövdede kendisi anlatır.
   if (state.kind === 'none') return null;
   let body: React.ReactNode;
@@ -197,13 +201,13 @@ function StateLine({ state }: { state: HeaderState }) {
       );
       break;
     case 'selection':
-      body = <span>{s.selection(state.count)}</span>;
+      body = <span>{s.selection(format.number(state.count))}</span>;
       break;
     case 'dirty':
       body = (
         <>
           <span className="shell-dot" aria-hidden="true" />
-          <span>{s.dirty(state.changes)}</span>
+          <span>{s.dirty(format.number(state.changes))}</span>
         </>
       );
       break;
@@ -276,6 +280,7 @@ function Actions(p: PageHeaderProps) {
 
 function Toolbar(p: PageHeaderProps) {
   const isForm = p.view === 'form';
+  const format = useFormat();
   const filters = p.filters ?? [];
   return (
     <div className="shell-hd-tools">
@@ -288,7 +293,9 @@ function Toolbar(p: PageHeaderProps) {
               disabled={p.record.index <= 1}
               onClick={p.record.onPrev}
             />
-            <span>{t.header.recordPos(p.record.index, p.record.total)}</span>
+            <span>
+              {t.header.recordPos(format.number(p.record.index), format.number(p.record.total))}
+            </span>
             <Button
               aria-label={t.header.next}
               icon={<CaretRight aria-hidden="true" />}

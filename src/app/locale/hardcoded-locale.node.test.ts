@@ -26,8 +26,11 @@ const HARDCODED_LOCALE_VALUE = /\b(?:locale|language)(?:\s*:\s*|=\{?\s*)['"](?:t
 const HARDCODED_FORMAT_LOCALE =
   /['"][a-z]{2}-[A-Z]{2}['"]|new\s+Intl\.\w+\(\s*['"]|\.toLocale\w*\(\s*['"]/;
 
-/** Örnek sunucunun açılış verisi. Kullanıcı dili orada veridir, arayüz ayarı değildir. */
-const SAMPLE_DATA = ['mocks/'];
+/**
+ * Örnek sunucunun açılış verisi. Kullanıcı dili orada veridir, arayüz ayarı değildir.
+ * Sahte asistan sunucusu da örnek sunucudur. Türkçe anahtar sözcükleri Türkçe harf kuralıyla arar.
+ */
+const SAMPLE_DATA = ['mocks/', 'ai/agent/mockTransport.ts'];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

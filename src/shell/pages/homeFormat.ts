@@ -1,37 +1,24 @@
 import type { HomeProblem, PendingApproval, RecentChange } from '@/api';
+import type { Formatter } from '@/app/locale';
 
 import { t } from '../messages';
 
 const m = t.home;
 
-/** Tarih "8 Aralık 2026 Salı" biçiminde yazılır. Saat dilimi kaymasın diye UTC okunur. */
-const dayFormat = new Intl.DateTimeFormat('tr-TR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-  weekday: 'long',
-  timeZone: 'UTC',
-});
-
-const DATE = /^(\d{4})-(\d{2})-(\d{2})/;
-const TIME = /[ T](\d{2}):(\d{2})/;
-
-/** `YYYY-MM-DD` değerini gün adıyla yazar. Okunamayan değer olduğu gibi döner. */
-export function formatDay(value: string): string {
-  const match = DATE.exec(value);
-  if (!match) return value;
-  const [, y, mo, d] = match;
-  return dayFormat.format(new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d))));
+/** `YYYY-MM-DD` değerini gün adıyla, kullanıcının diliyle yazar. Okunamayan değer olduğu gibi döner. */
+export function formatDay(value: string, format: Formatter): string {
+  return format.date(value);
 }
 
 /**
- * Sunucu zamanını yazar: "22 Kasım 2026 Pazar günü, saat 09.05."
- * Saat sunucunun yazdığı saattir. Kabuk saati çevirmez ve uydurmaz.
+ * Sunucu zamanını yazar: "22 Kasım 2026 Pazar günü, saat 09:05."
+ * Frappe değeri sitenin saat dilimiyle okunur. Saat yine sitenin saat diliminde yazılır (IC-13).
+ * Saat okunamazsa yalnız gün yazılır. Kabuk saat uydurmaz.
  */
-export function formatMoment(value: string): string {
-  const day = formatDay(value);
-  const time = TIME.exec(value);
-  return time ? `${day} günü, saat ${time[1]}.${time[2]}.` : `${day} günü.`;
+export function formatMoment(value: string, format: Formatter): string {
+  const day = formatDay(value, format);
+  const instant = format.parseFrappeDatetime(value);
+  return instant ? m.moment(day, format.time(instant)) : m.single(day);
 }
 
 /** Talebin sahibi ve türü. Örnek: "Örnek Kişi 3: Örnek Yıllık İzin". */
@@ -40,13 +27,14 @@ export function pendingWho(item: PendingApproval): string {
 }
 
 /** Talebin tarihleri, gün sayısı ve kalan izni. Eksik bilgi yazılmaz, uydurulmaz. */
-export function pendingMeta(item: PendingApproval): string {
+export function pendingMeta(item: PendingApproval, format: Formatter): string {
   const parts: string[] = [];
   const { from_date: from, to_date: to } = item;
-  if (from && to && from !== to) parts.push(m.range(formatDay(from), formatDay(to)));
-  else if (from) parts.push(m.single(formatDay(from)));
-  if (item.total_leave_days !== null) parts.push(m.days(item.total_leave_days));
-  if (item.leave_balance !== null) parts.push(m.balance(item.leave_balance));
+  if (from && to && from !== to)
+    parts.push(m.range(formatDay(from, format), formatDay(to, format)));
+  else if (from) parts.push(m.single(formatDay(from, format)));
+  if (item.total_leave_days !== null) parts.push(m.days(format.number(item.total_leave_days)));
+  if (item.leave_balance !== null) parts.push(m.balance(format.number(item.leave_balance)));
   return parts.join(' ');
 }
 

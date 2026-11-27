@@ -23,7 +23,7 @@ export function doctypeFromSlug(slug: string): string {
   return decodeURIComponent(slug)
     .split(/[-\s]+/)
     .filter(Boolean)
-    .map((word) => word.charAt(0).toLocaleUpperCase('en') + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
 
@@ -36,7 +36,8 @@ type BootstrapSidebar = Bootstrap['sidebars'][number];
  */
 export function moduleSlug(name: string): string {
   // Dilden bağımsız küçültme (G-132): Türkçe kural `Integrations` adını `ıntegrations` yapardı.
-  return name.trim().toLocaleLowerCase('en').split(/\s+/).filter(Boolean).join('-');
+  // `toLowerCase` dile bakmaz. Adres parçası kullanıcının diline göre değişmez.
+  return name.trim().toLowerCase().split(/\s+/).filter(Boolean).join('-');
 }
 
 const truthy = (v: number | boolean | null | undefined) => v === true || v === 1;
@@ -157,20 +158,34 @@ export async function loadShellAccount(
   return { user };
 }
 
+/** Açılış verisindeki kullanıcı dili, saat dilimi ve para birimi. */
+export interface UserLocale {
+  /** Ham dil. Çözümü dil bağlamı yapar. */
+  language: string;
+  time_zone: string;
+  currency: string | null;
+}
+
 /**
- * Oturumdaki kişinin dilini açılış verisinden okur. Ham değer döner; çözümü dil bağlamı yapar.
+ * Oturumdaki kişinin dilini, sitenin saat dilimini ve para birimini açılış verisinden okur (IC-12, IC-13).
  * Açılış verisi başka kullanıcıya aitse ya da istek başarısızsa değer dönmez.
  */
-export async function loadUserLanguage(
+export async function loadUserLocale(
   api: Pick<ApiClient, 'getBootstrap'>,
   user: string,
   signal?: AbortSignal,
-): Promise<string | undefined> {
+): Promise<UserLocale | undefined> {
   try {
     const bootstrap = await api.getBootstrap(signal ? { signal } : {});
-    if (bootstrap.user.name === user) return bootstrap.user.language;
+    if (bootstrap.user.name === user) {
+      return {
+        language: bootstrap.user.language,
+        time_zone: bootstrap.formatting.time_zone,
+        currency: bootstrap.formatting.currency,
+      };
+    }
   } catch {
-    /* Dil okunamazsa ekran yedek dilde kalır. */
+    /* Açılış verisi okunamazsa ekran yedek dilde ve tarayıcının saat diliminde kalır. */
   }
   return undefined;
 }

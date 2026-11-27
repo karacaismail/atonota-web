@@ -1,5 +1,8 @@
 import { Alert, Button, theme } from 'antd';
 import type { CSSProperties, ReactNode } from 'react';
+
+import { useFormat } from '@/app/locale';
+
 import type { Resource } from './data';
 import { useCopy } from './messages';
 import { useModule } from './context';
@@ -97,17 +100,12 @@ export function Pager({
   );
 }
 export function DateValue({ value }: { value: string | null | undefined }) {
-  const env = useModule();
+  const format = useFormat();
   const copy = useCopy();
-  if (!value || !Number.isFinite(Date.parse(value))) return <>{copy.notProvided}</>;
+  if (!value) return <>{copy.notProvided}</>;
+  // Takvim günü saat dilimi olmadan yazılır. Tarih-saat sitenin saat dilimiyle okunur (IC-13).
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
-  const date = new Date(dateOnly ? `${value}T12:00:00Z` : value);
-  const label = new Intl.DateTimeFormat(env?.locale === 'en' ? 'en-GB' : 'tr-TR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    weekday: 'long',
-    ...(dateOnly ? { timeZone: 'UTC' } : { hour: '2-digit', minute: '2-digit' }),
-  }).format(date);
+  const label = dateOnly ? format.date(value) : format.frappeDateTime(value);
+  if (label === value) return <>{copy.notProvided}</>;
   return <time dateTime={value}>{label}</time>;
 }

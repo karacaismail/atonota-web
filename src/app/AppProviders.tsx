@@ -8,7 +8,7 @@ import { FocusDimOverlay } from '@/engines/focus-dim';
 import { startFocusMode } from '@/engines/focus-mode';
 import { startHitAreaEngine } from '@/engines/hit-area';
 
-import { LanguageProvider, useLocaleBundle } from './locale';
+import { LanguageProvider, useLocaleBundle, type SiteFormatting } from './locale';
 import { ThemeModeProvider, useThemeMode, type ThemeModeChoice } from './theme-mode';
 import { usePrefersReducedMotion } from './use-reduced-motion';
 
@@ -63,6 +63,8 @@ export interface AppProvidersProps {
    * Testler dili buradan verir.
    */
   initialLanguage?: string;
+  /** Başlangıç saat dilimi ve para birimi. Oturum açılınca açılış verisinden gelir. Testler buradan verir. */
+  initialFormatting?: SiteFormatting;
   /** Testlerde motorları kapatmak için. Varsayılan açık. */
   engines?: boolean;
 }
@@ -75,6 +77,7 @@ export function AppProviders({
   children,
   initialThemeChoice,
   initialLanguage,
+  initialFormatting,
   engines = true,
 }: AppProvidersProps) {
   useEffect(() => {
@@ -92,7 +95,7 @@ export function AppProviders({
   }, [engines]);
 
   return (
-    <LanguageProvider initialLanguage={initialLanguage}>
+    <LanguageProvider initialLanguage={initialLanguage} initialFormatting={initialFormatting}>
       <ThemeModeProvider {...(initialThemeChoice ? { initialChoice: initialThemeChoice } : {})}>
         <ThemedProviders>{children}</ThemedProviders>
       </ThemeModeProvider>

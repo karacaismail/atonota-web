@@ -1,6 +1,9 @@
+import { useFormat } from '@/app/locale';
+
 import { displayCell } from '../presentation';
 import type { ViewProps } from '../types';
 export default function TimesheetView({ definition, rows }: ViewProps) {
+  const format = useFormat();
   const field = definition.columns.find((item) => item.fieldname === definition.durationField);
   if (!field) return <p data-view="timesheet">Bu görünüm için süre alanı tanımlanmamış.</p>;
   const values = rows.map((row) => row[field.fieldname]);
@@ -11,7 +14,7 @@ export default function TimesheetView({ definition, rows }: ViewProps) {
     <section data-view="timesheet">
       <p>Çalışma süreleri yalnız bu sayfadaki kayıtları kapsar.</p>
       {valid.length !== rows.length && (
-        <p>{rows.length - valid.length} kaydın süresi eksik veya geçersiz.</p>
+        <p>{format.number(rows.length - valid.length)} kaydın süresi eksik veya geçersiz.</p>
       )}
       <div
         className="collection-scroll"
@@ -31,18 +34,14 @@ export default function TimesheetView({ definition, rows }: ViewProps) {
             {rows.map((row) => (
               <tr key={row.name}>
                 <th scope="row">{String(row[definition.titleField] ?? row.name)}</th>
-                <td>{displayCell(row, field)}</td>
+                <td>{displayCell(row, field, format)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
               <th scope="row">Geçerli sürelerin toplamı</th>
-              <td>
-                {new Intl.NumberFormat('tr-TR').format(
-                  valid.reduce((total, value) => total + value, 0),
-                )}
-              </td>
+              <td>{format.number(valid.reduce((total, value) => total + value, 0))}</td>
             </tr>
           </tfoot>
         </table>

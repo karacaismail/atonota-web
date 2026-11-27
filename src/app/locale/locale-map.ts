@@ -23,6 +23,8 @@ export interface LocaleBundle {
   x: XLocale;
   /** Day.js dil adı. Dil dosyası bu modülde yüklenir. */
   dayjs: string;
+  /** `Intl` biçimlerinin dil etiketi. Tarih, sayı, para ve liste bu etiketle biçimlenir (IC-13). */
+  intl: string;
 }
 
 /** Ant Design X'in kendi dil alanları. Bu sürümde boştur. */
@@ -33,6 +35,9 @@ const ANTD: Record<AppLanguage, AntdLocale> = { tr: trTR, en: enUS };
 /** `en` Day.js içinde gömülüdür. `tr` yukarıda yüklenir. */
 const DAYJS: Record<AppLanguage, string> = { tr: 'tr', en: 'en' };
 
+/** `Intl` dil etiketleri. Sabit biçim dili yalnız bu dosyada yazılır. */
+const INTL: Record<AppLanguage, string> = { tr: 'tr-TR', en: 'en-US' };
+
 const BUNDLES = Object.fromEntries(
   (Object.keys(ANTD) as AppLanguage[]).map((language) => [
     language,
@@ -40,11 +45,12 @@ const BUNDLES = Object.fromEntries(
       antd: ANTD[language],
       x: { ...ANTD[language], ...X_FIELDS[language] },
       dayjs: DAYJS[language],
+      intl: INTL[language],
     },
   ]),
 ) as Record<AppLanguage, LocaleBundle>;
 
-/** Bir dilin antd, Ant Design X ve Day.js nesneleri. */
+/** Bir dilin antd, Ant Design X, Day.js ve `Intl` nesneleri. */
 export function localeBundle(language: AppLanguage): LocaleBundle {
   return BUNDLES[language];
 }

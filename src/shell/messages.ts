@@ -1,10 +1,8 @@
 /**
  * Kabuğun görünen metinleri. Metin kod içine gömülmez, buradan alınır.
  * Değer gerektiren metinler işlevdir. Cümle parçalardan birleştirilmez.
+ * Sayılar biçimlenmiş metin olarak gelir. Biçimi çağıran `useFormat()` ile yapar (IC-13).
  */
-const nf = new Intl.NumberFormat('tr-TR');
-
-export const formatNumber = (n: number) => nf.format(n);
 
 export const t = {
   assist: {
@@ -52,8 +50,7 @@ export const t = {
   },
   footer: {
     credit: 'AI kredisi',
-    creditValue: (used: number, total: number) =>
-      `${formatNumber(used)} / ${formatNumber(total)} kullanıldı`,
+    creditValue: (used: string, total: string) => `${used} / ${total} kullanıldı`,
     creditRing: (percent: number) => `Kredinin yüzde ${percent} kısmı kullanıldı`,
     user: 'Kullanıcı',
     signOut: 'Oturumu kapat',
@@ -72,7 +69,7 @@ export const t = {
     removeFilter: (name: string) => `${name} filtresini kaldır`,
     prev: 'Önceki kayıt',
     next: 'Sonraki kayıt',
-    recordPos: (i: number, n: number) => `${formatNumber(i)} / ${formatNumber(n)}`,
+    recordPos: (i: string, n: string) => `${i} / ${n}`,
     more: 'Diğer eylemler',
     state: {
       normal: (at: string) => `Güncel. Son senkron ${at}.`,
@@ -82,11 +79,11 @@ export const t = {
       empty: 'Kayıt yok',
       error: 'Veri güncel değil',
       retry: 'Yeniden dene',
-      selection: (n: number) => `${formatNumber(n)} kayıt seçildi`,
+      selection: (n: string) => `${n} kayıt seçildi`,
       clearSelection: 'Seçimi kaldır',
       bulkDelete: 'Sil',
       bulkExport: 'Dışa aktar',
-      dirty: (n: number) => `${formatNumber(n)} değişiklik kaydedilmedi`,
+      dirty: (n: string) => `${n} değişiklik kaydedilmedi`,
       discard: 'Vazgeç',
       save: 'Kaydet',
     },
@@ -104,7 +101,7 @@ export const t = {
     loading: 'Bekleyen işler yükleniyor.',
     notConnected: 'Ana sayfa bağlantısı kurulmadı. Uygulama girişi kabuğa bağlantı vermeli.',
     loadFailed: 'Bekleyen işler alınamadı. Bağlantınızı denetleyip yeniden deneyin.',
-    pendingTitle: (n: number) => `Onayınızı bekleyen ${formatNumber(n)} izin talebi var`,
+    pendingTitle: (n: string) => `Onayınızı bekleyen ${n} izin talebi var`,
     pendingNone: 'Bekleyen onaylar',
     pendingCleared: 'Onayınızı bekleyen iş kalmadı',
     pendingEmpty: 'Onayınızı bekleyen iş yok. Yeni talep gelince burada görünür.',
@@ -122,8 +119,9 @@ export const t = {
     leaveFallback: 'İzin talebi',
     range: (from: string, to: string) => `${from} gününden ${to} gününe kadar.`,
     single: (day: string) => `${day} günü.`,
-    days: (n: number) => `${formatNumber(n)} gün.`,
-    balance: (n: number) => `Kalan izni ${formatNumber(n)} gün.`,
+    moment: (day: string, time: string) => `${day} günü, saat ${time}.`,
+    days: (n: string) => `${n} gün.`,
+    balance: (n: string) => `Kalan izni ${n} gün.`,
     problemsTitle: 'Sorunlu kayıtlar',
     problemsEmpty: 'Şu an sorunlu kayıt görünmüyor.',
     missingTag: 'Eksik',

@@ -1,3 +1,5 @@
+import { localeBundle } from '@/app/locale';
+
 import { formatRecordMessage } from './messages';
 import { SchemaValidationError } from './schema';
 import type {
@@ -92,7 +94,7 @@ export function formatLeaveBalance(value: unknown, locale: RecordLocale): string
   if ((typeof value !== 'number' && typeof value !== 'string') || value === '') return '';
   const days = Number(value);
   if (!Number.isFinite(days)) return '';
-  return new Intl.NumberFormat(locale === 'tr' ? 'tr-TR' : 'en-US', {
+  return new Intl.NumberFormat(localeBundle(locale).intl, {
     style: 'unit',
     unit: 'day',
     unitDisplay: 'long',

@@ -158,7 +158,7 @@ export interface SampleRow {
 const statuses: RowStatus[] = ['Taslak', 'Gönderildi', 'Onaylandı', 'Reddedildi'];
 
 export function sampleRows(doctype: string, total = 24): SampleRow[] {
-  const prefix = doctype.slice(0, 3).toLocaleUpperCase('en');
+  const prefix = doctype.slice(0, 3).toUpperCase();
   return Array.from({ length: total }, (_, i) => {
     const n = i + 1;
     return {

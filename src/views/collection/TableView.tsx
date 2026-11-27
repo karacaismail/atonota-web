@@ -1,5 +1,8 @@
 import { Checkbox } from 'antd';
 import { Link } from 'react-router-dom';
+
+import { useFormat } from '@/app/locale';
+
 import { displayCell } from './presentation';
 import { isNumeric } from './model';
 import type { ViewProps } from './types';
@@ -15,6 +18,7 @@ export function TableView({
   /** Verilirse kayıt adı (`name` sütunu) kayda giden bağlantı olur. */
   recordHref?: ((name: string) => string) | undefined;
 }) {
+  const format = useFormat();
   return (
     <div
       className="collection-scroll"
@@ -75,10 +79,10 @@ export function TableView({
                 >
                   {recordHref && field.fieldname === 'name' ? (
                     <Link className="collection-record-link" to={recordHref(row.name)}>
-                      {displayCell(row, field)}
+                      {displayCell(row, field, format)}
                     </Link>
                   ) : (
-                    displayCell(row, field)
+                    displayCell(row, field, format)
                   )}
                 </td>
               ))}
