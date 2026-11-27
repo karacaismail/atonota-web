@@ -1,5 +1,4 @@
 import { App as AntdApp, ConfigProvider, theme as antdThemeApi } from 'antd';
-import trTR from 'antd/es/locale/tr_TR';
 import { useEffect, useMemo, type ReactNode } from 'react';
 
 import { buildAntdTheme } from '@/design/antd-theme';
@@ -9,6 +8,7 @@ import { FocusDimOverlay } from '@/engines/focus-dim';
 import { startFocusMode } from '@/engines/focus-mode';
 import { startHitAreaEngine } from '@/engines/hit-area';
 
+import { LanguageProvider, useLocaleBundle } from './locale';
 import { ThemeModeProvider, useThemeMode, type ThemeModeChoice } from './theme-mode';
 import { usePrefersReducedMotion } from './use-reduced-motion';
 
@@ -38,13 +38,14 @@ function ThemedProviders({ children }: { children: ReactNode }) {
   const { resolved } = useThemeMode();
   const csp = useCspConfig();
   const reducedMotion = usePrefersReducedMotion();
+  const { antd: locale } = useLocaleBundle();
   const theme = useMemo(
     () => buildAntdTheme(resolved, { reducedMotion }),
     [resolved, reducedMotion],
   );
 
   return (
-    <ConfigProvider theme={theme} locale={trTR} {...(csp ? { csp } : {})}>
+    <ConfigProvider theme={theme} locale={locale} {...(csp ? { csp } : {})}>
       <AntdApp>
         <BodyTheme />
         {children}
@@ -57,15 +58,25 @@ function ThemedProviders({ children }: { children: ReactNode }) {
 export interface AppProvidersProps {
   children: ReactNode;
   initialThemeChoice?: ThemeModeChoice;
+  /**
+   * Başlangıç dili. Varsayılan yedek dildir. Oturum açılınca dil açılış verisinden gelir.
+   * Testler dili buradan verir.
+   */
+  initialLanguage?: string;
   /** Testlerde motorları kapatmak için. Varsayılan açık. */
   engines?: boolean;
 }
 
 /**
- * Uygulama kökü: tasarım CSS'i, tema modu, antd ConfigProvider,
+ * Uygulama kökü: dil bağlamı, tasarım CSS'i, tema modu, antd ConfigProvider,
  * odak modu motoru, dokunma alanı motoru ve odak perdesi.
  */
-export function AppProviders({ children, initialThemeChoice, engines = true }: AppProvidersProps) {
+export function AppProviders({
+  children,
+  initialThemeChoice,
+  initialLanguage,
+  engines = true,
+}: AppProvidersProps) {
   useEffect(() => {
     ensureDesignStyles();
   }, []);
@@ -81,8 +92,10 @@ export function AppProviders({ children, initialThemeChoice, engines = true }: A
   }, [engines]);
 
   return (
-    <ThemeModeProvider {...(initialThemeChoice ? { initialChoice: initialThemeChoice } : {})}>
-      <ThemedProviders>{children}</ThemedProviders>
-    </ThemeModeProvider>
+    <LanguageProvider initialLanguage={initialLanguage}>
+      <ThemeModeProvider {...(initialThemeChoice ? { initialChoice: initialThemeChoice } : {})}>
+        <ThemedProviders>{children}</ThemedProviders>
+      </ThemeModeProvider>
+    </LanguageProvider>
   );
 }

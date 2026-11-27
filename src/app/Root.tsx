@@ -7,8 +7,14 @@ import type { ModuleEnvironment } from '@/modules';
 import { AppContent } from './App';
 import { appPathname } from './base-path';
 import { AppProviders } from './AppProviders';
+import { useLanguage, useSetLanguage } from './locale';
 import type { ThemeModeChoice } from './theme-mode';
-import { createShellViewData, loadShellAccount, workspaceFromSite } from './view-data';
+import {
+  createShellViewData,
+  loadShellAccount,
+  loadUserLanguage,
+  workspaceFromSite,
+} from './view-data';
 
 export interface RootProps {
   session: PlatformSession;
@@ -39,6 +45,30 @@ const loadModuleEnvironment = () => import('@/shell/view-data/modules');
 /** Tanıtım sayfası ayrı parçadır. Parça yalnız bu adreste yüklenir. */
 const ProductPage = lazy(() => import('@/auth/product/ProductPage'));
 
+/**
+ * Oturum açılınca dili açılış verisindeki kullanıcı dilinden alır (IC-12).
+ * Dil gelene kadar ekran yedek dildedir. İstek başarısızsa dil değişmez.
+ */
+function UserLanguage({
+  session,
+  user,
+  children,
+}: {
+  session: PlatformSession;
+  user: string;
+  children: ReactNode;
+}) {
+  const setLanguage = useSetLanguage();
+  useEffect(() => {
+    const ctrl = new AbortController();
+    void loadUserLanguage(session.api, user, ctrl.signal).then((language) => {
+      if (!ctrl.signal.aborted && language !== undefined) setLanguage(language);
+    });
+    return () => ctrl.abort();
+  }, [session, user, setLanguage]);
+  return children;
+}
+
 /** Oturum açıkken kabuğun veri bağlantısını kurar: koleksiyon kaynağı ve modül ortamı. */
 function SignedIn({
   session,
@@ -49,6 +79,7 @@ function SignedIn({
   user: string;
   dataMode: ModuleEnvironment['mode'];
 }) {
+  const locale = useLanguage();
   const [fullName, setFullName] = useState<string | undefined>(undefined);
   useEffect(() => {
     const ctrl = new AbortController();
@@ -57,12 +88,23 @@ function SignedIn({
     });
     return () => ctrl.abort();
   }, [session, user]);
-  // Ortam kurulduğu oturum, kullanıcı ve kiple saklanır. Biri değişince eski ortam kullanılmaz.
+  // Ortam kurulduğu oturum, kullanıcı, kip ve dille saklanır. Biri değişince eski ortam kullanılmaz.
   const [loaded, setLoaded] = useState<
-    { session: PlatformSession; user: string; dataMode: string; env: ModuleEnvironment } | undefined
+    | {
+        session: PlatformSession;
+        user: string;
+        dataMode: string;
+        locale: string;
+        env: ModuleEnvironment;
+      }
+    | undefined
   >(undefined);
   const modules =
-    loaded && loaded.session === session && loaded.user === user && loaded.dataMode === dataMode
+    loaded &&
+    loaded.session === session &&
+    loaded.user === user &&
+    loaded.dataMode === dataMode &&
+    loaded.locale === locale
       ? loaded.env
       : undefined;
   useEffect(() => {
@@ -73,15 +115,15 @@ function SignedIn({
         api: session.api,
         tenant: session.config.siteUrl,
         user,
-        locale: 'tr',
+        locale,
         mode: dataMode,
       });
-      setLoaded({ session, user, dataMode, env });
+      setLoaded({ session, user, dataMode, locale, env });
     });
     return () => {
       active = false;
     };
-  }, [session, user, dataMode]);
+  }, [session, user, dataMode, locale]);
   // Veri bağlantısı yalnız oturum ya da kullanıcı değişince yeniden kurulur. Ad sonradan gelir.
   // Çalışma alanı oturumun sitesidir. Adres çözülemezse alan eklenmez; seçici yalnız logoyu gösterir.
   const base = useMemo(() => {
@@ -128,7 +170,11 @@ export function Root({
   return (
     <AppProviders {...(initialThemeChoice ? { initialThemeChoice } : {})} engines={engines}>
       <AuthGate session={session}>
-        {(user) => children ?? <SignedIn session={session} user={user} dataMode={dataMode} />}
+        {(user) => (
+          <UserLanguage session={session} user={user}>
+            {children ?? <SignedIn session={session} user={user} dataMode={dataMode} />}
+          </UserLanguage>
+        )}
       </AuthGate>
     </AppProviders>
   );

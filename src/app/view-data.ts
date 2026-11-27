@@ -158,6 +158,24 @@ export async function loadShellAccount(
 }
 
 /**
+ * Oturumdaki kişinin dilini açılış verisinden okur. Ham değer döner; çözümü dil bağlamı yapar.
+ * Açılış verisi başka kullanıcıya aitse ya da istek başarısızsa değer dönmez.
+ */
+export async function loadUserLanguage(
+  api: Pick<ApiClient, 'getBootstrap'>,
+  user: string,
+  signal?: AbortSignal,
+): Promise<string | undefined> {
+  try {
+    const bootstrap = await api.getBootstrap(signal ? { signal } : {});
+    if (bootstrap.user.name === user) return bootstrap.user.language;
+  } catch {
+    /* Dil okunamazsa ekran yedek dilde kalır. */
+  }
+  return undefined;
+}
+
+/**
  * Çalışma alanı seçicinin verisi. Bu sürümde çalışma alanı oturumun kiracısıdır (Frappe sitesi).
  * Ad, site adresinin alan adıdır. Örnek: `https://acme.atonota.net` -> `acme.atonota.net`.
  * Sunucuda kullanıcının birden çok kiracısını veren uç yoktur; liste tek öğedir.

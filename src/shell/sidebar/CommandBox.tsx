@@ -1,4 +1,5 @@
-import { Prompts, Sender, XProvider } from '@ant-design/x';
+import { Prompts, Sender } from '@ant-design/x';
+import { LocalizedXProvider } from '@/app/locale/LocalizedXProvider';
 import { Segmented } from 'antd';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -56,7 +57,7 @@ export function CommandBox({
   };
 
   return (
-    <XProvider>
+    <LocalizedXProvider>
       <section className="shell-cmd" aria-label={t.command.label}>
         <div className="shell-cmd-box">
           <Segmented<CommandMode>
@@ -88,6 +89,6 @@ export function CommandBox({
           </div>
         )}
       </section>
-    </XProvider>
+    </LocalizedXProvider>
   );
 }
