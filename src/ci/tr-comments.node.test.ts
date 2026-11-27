@@ -46,6 +46,26 @@ describe('Türkçe yorumu tanıma', () => {
   });
 });
 
+describe('inceleme bulgu kimlikleri', () => {
+  // A finding ID is a capital O-umlaut, an optional hyphen and digits. The ID does not make a comment Turkish.
+  it('yalnız bulgu kimliği içeren İngilizce yorumu saymaz', () => {
+    expect(isTurkishComment('Tab and Shift+Tab close the list (Ö-1).')).toBe(false);
+    expect(isTurkishComment('Accessibility audit findings (Ö1, Ö2, Ö3, Ö5, Ö6, K1).')).toBe(false);
+    expect(isTurkishComment('The error appears as a short toast (Ö-2).')).toBe(false);
+    expect(isTurkishComment('Keyboard follows the APG menu button pattern (Ö8):')).toBe(false);
+  });
+
+  it('gerçek Türkçe kelimeyi yine sayar', () => {
+    expect(isTurkishComment('Önce testi yazın')).toBe(true);
+    expect(isTurkishComment('Ö1 bulgusu: Önce testi yazın')).toBe(true);
+    expect(isTurkishComment('Close the list (Ö1) and the ü key')).toBe(true);
+    // An O-umlaut that is not part of the pattern is not exempt.
+    expect(isTurkishComment('Ö-A step')).toBe(true);
+    expect(isTurkishComment('XÖ1 step')).toBe(true);
+    expect(isTurkishComment('Ö1a step')).toBe(true);
+  });
+});
+
 describe('yorumları ayrıştırıcıyla bulma', () => {
   it('TypeScript dosyasında Türkçe yorumu sayar', () => {
     const ts = [
