@@ -69,18 +69,18 @@ export interface CollectionViewProps {
   source: CollectionSource;
   mode?: 'dark' | 'light';
   /**
-   * Gruplu sayım ve toplam kaynağı (`platform_core.api.collection.group_summary`).
-   * Verilmezse Pivot ve Rapor yalnız gelen sayfayı özetler.
+   * Source of grouped counts and totals (`platform_core.api.collection.group_summary`).
+   * If not given, Pivot and Report summarise only the loaded page.
    */
   summarySource?: CollectionSummarySource | undefined;
   /**
-   * Tablo dışındaki görünümleri açar. Varsayılan kapalıdır.
-   * Tipli `group_summary` istemcisi `main` dalına gelene kadar ana uygulamada açılmaz.
+   * Turns on the views other than the table. Off by default.
+   * It stays off in the main app until the typed `group_summary` client reaches `main`.
    */
   enableExperimentalCollectionViews?: boolean;
   /**
-   * Kaydın adresini verir. Verilirse tablodaki kayıt adı kayda giden bağlantı olur.
-   * Adres sözleşmesi kabuğundur; görünüm adres üretmez.
+   * Returns the record's address. If given, the record name in the table links to the record.
+   * The shell owns the address contract. The view does not build addresses.
    */
   recordHref?: ((name: string) => string) | undefined;
 }

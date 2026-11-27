@@ -1,8 +1,8 @@
 import type { DropdownItem } from './Dropdown';
 
 /**
- * Arama metnine uyan öğeleri gruplar. Harf karşılaştırması kullanıcının diliyle yapılır (IC-13).
- * Örnek: Türkçede "IRMAK" araması "ırmak" ile eşleşir.
+ * Groups the items that match the search text. Letters are compared in the user's language (IC-13).
+ * Example: in Turkish, the search "IRMAK" matches "irmak" spelt with a dotless i (U+0131).
  */
 export function groupDropdownItems(
   items: readonly DropdownItem[],

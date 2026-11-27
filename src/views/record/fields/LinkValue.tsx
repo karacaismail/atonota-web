@@ -11,9 +11,9 @@ export interface LinkValueProps {
 }
 
 /**
- * Salt okunur bağlantı alanı. Hedef kaydın adını gösterir ve kayda bağlantı verir.
- * Sunucuya istek atmaz. Görünen bilgi yalnız bu kayıtta zaten okunabilen addır.
- * Böylece izni olmayan hedef kaydın başka bilgisi sızmaz. Hedef sayfa izni kendisi denetler.
+ * Read-only link field. Shows the target record's name and links to the record.
+ * It sends no server request. The only data shown is the name already readable in this record.
+ * So no other data of an unpermitted target record leaks. The target page checks access itself.
  */
 export function LinkValue({ targetDoctype, value, locale, a11y }: LinkValueProps) {
   const renderLink = useRecordLinkRenderer();

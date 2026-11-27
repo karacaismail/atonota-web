@@ -1,14 +1,15 @@
 import { createContext, type ReactNode, useContext } from 'react';
 
-/** Bağlantı alanının hedef kaydı. */
+/** Target record of a link field. */
 export interface RecordLinkTarget {
   doctype: string;
   name: string;
 }
 
 /**
- * Hedef kayda giden bağlantıyı çizer. Uygulama yönlendiricinin bağlantısını verir.
- * Kayıt görünümü yönlendiriciyi bilmez. Bağlantı kurulamıyorsa `null` döner; ad düz metin kalır.
+ * Renders the link to the target record. The app supplies the router's link.
+ * The record view does not know the router. Returns `null` if no link can be built; the name stays
+ * plain text.
  */
 export type RecordLinkRenderer = (target: RecordLinkTarget, children: ReactNode) => ReactNode;
 

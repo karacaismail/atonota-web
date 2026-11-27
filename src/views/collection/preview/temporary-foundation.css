@@ -1,5 +1,5 @@
-/* Yalnız önizleme için geçici dokunma alanı kopyası.
- * Kaldırma koşulu: foundation main dalına girince bu kopya silinir. */
+/* Temporary copy of the touch target, for the preview only.
+ * Removal condition: delete this copy when foundation reaches the main branch. */
 [data-collection-preview] .collection-hit {
   position: relative;
 }

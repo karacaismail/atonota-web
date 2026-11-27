@@ -2,8 +2,8 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../../../../tests/setup/playwright-fixtures';
 
 /**
- * Kayıt deneme sayfası. e2e derlemesi sayfayı bu yolda sunar (vite.config.ts, e2eInputs).
- * Testler kök Playwright kapısında koşar; ayrı ayar dosyası yoktur (AGENTS.md).
+ * Record harness page. The e2e build serves the page at this path (vite.config.ts, e2eInputs).
+ * Tests run in the root Playwright gate; there is no separate config file (AGENTS.md).
  */
 const HARNESS = '/src/views/record/harness/';
 
@@ -48,7 +48,7 @@ test.describe('kayıt formu yerleşimi ve 320 px uyumu', () => {
     await expect(amountInput).toBeVisible();
     const box = await amountInput.boundingBox();
     expect(box).not.toBeNull();
-    // Önemli 4: 320 px'te bile sayı giriş kutusu okunur genişlikte kalmalı (0 px olmamalı).
+    // Major 4: even at 320 px the number input must stay readable in width (not 0 px).
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(72);
     expect(await overflowX(page)).toBeLessThanOrEqual(0);
   });
@@ -61,9 +61,9 @@ test.describe('imza alanı ve bağlantı araması', () => {
     const canvas = page.getByRole('img', { name: 'Onay İmzası' });
     await canvas.scrollIntoViewIfNeeded();
 
-    // Yük altında yerleşim ilk çizimden sonra da değişebilir. O zaman çizgi eski kutuya
-    // düşer (inceleme 2, K-1). Çizimden önce tuvalin yeri ve boyutu durmalıdır. Tuvalin
-    // piksel boyutu da görünen boyuta ve ekran yoğunluğuna eşit olmalıdır.
+    // Under load the layout can still change after the first paint. The stroke then lands in
+    // the old box (review 2, K-1). The canvas position and size must settle before drawing. The
+    // canvas pixel size must also match its displayed size and the screen density.
     const layout = () =>
       canvas.evaluate((el) => {
         const c = el as HTMLCanvasElement;
@@ -93,19 +93,19 @@ test.describe('imza alanı ve bağlantı araması', () => {
     expect(box).not.toBeNull();
     if (!box) return;
 
-    // Sol yarıda birinci çizgi
+    // First stroke in the left half
     await page.mouse.move(box.x + box.width * 0.15, box.y + box.height * 0.3);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * 0.35, box.y + box.height * 0.5, { steps: 6 });
     await page.mouse.up();
 
-    // Sağ yarıda ikinci çizgi (1440 px geniş tuvalde kesilmemeli)
+    // Second stroke in the right half (must not be clipped on a 1440 px wide canvas)
     await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.35);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * 0.88, box.y + box.height * 0.65, { steps: 6 });
     await page.mouse.up();
 
-    // Mürekkep tek okumayla değil, yoklamayla okunur. Çizim bir sonraki karede görünebilir.
+    // Ink is read by polling, not a single read. The drawing may appear on the next frame.
     const ink = () =>
       canvas.evaluate((el) => {
         const c = el as HTMLCanvasElement;
@@ -135,13 +135,13 @@ test.describe('imza alanı ve bağlantı araması', () => {
     await expect(page.getByText('1 kaydedilmemiş değişiklik')).toBeVisible();
   });
 
-  // Her davranış kendi testindedir. Linux WebKit yük altında kareleri saniyelerce geciktirir.
-  // Tek testte sıralanan adımlar süreyi birbirine yükler (inceleme 1, Ö-1). Beklentiler aynıdır.
+  // Each behaviour has its own test. Under load Linux WebKit delays frames by seconds.
+  // Steps chained in one test add up their time (review 1, Ö-1). The expectations are unchanged.
   test('yazarak imzalama gerçek tarayıcıda PNG üretir', async ({ page }) => {
     await page.goto(HARNESS);
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
-    // Küçük 1: Yazarak imzalama gerçek tarayıcıda PNG üretmeli
+    // Minor 1: signing by typing must produce a PNG in a real browser
     await page.getByText('Yazarak imzala').click();
     await page.getByLabel('İmza metni').fill('Örnek İmza');
     await page.getByRole('button', { name: 'İmzayı uygula' }).click();
@@ -155,7 +155,7 @@ test.describe('imza alanı ve bağlantı araması', () => {
     await page.goto(HARNESS);
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
-    // Küçük 12: Bölüm kartında dekoratif kenarlık olmamalı (yalnız gölge / yüzey tonu)
+    // Minor 12: the section card must have no decorative border (only shadow / surface tone)
     const cardBorderTop = await page
       .locator('.rv-section-card')
       .first()
@@ -203,15 +203,16 @@ test.describe('odak kuralları', () => {
     await page.goto(HARNESS);
     await expect(page.getByRole('heading', { level: 1, name: 'Örnek Kişi' })).toBeVisible();
 
-    // Odak göstergesi geçiş hareketiyle gelir. Ölçüm hareketin bitiş değerinde yapılır.
+    // The focus indicator arrives with a transition. Measure at the transition's end value.
     const inspectFocusedChain = async () =>
       page.evaluate(() => {
-        // Hareketler beklenmez, bitiş değerine atlatılır (`finish()`). Bekleme çizim karesine
-        // bağlıdır. Linux WebKit yazılımla çizer. Orada kilitli kart gölgesi (`layer7`) yüzünden
-        // bir kare saniyeler sürer. O zaman 2 saniyelik yoklama doluyordu (PR #3 CI hatası).
-        // `getAnimations()` stili hemen hesaplar. Yeni geçiş de bu listeye girer.
-        // Yalnız biten hareketler atlatılır. Sonsuz döngülü hareket (yükleme simgesi gibi)
-        // `finish()` ile bitmez, hata verir (inceleme 2, Ö4).
+        // Animations are not awaited; they jump to their end value (`finish()`). Waiting depends
+        // on paint frames. Linux WebKit paints in software. There the locked card shadow
+        // (`layer7`) makes one frame take seconds. The 2-second poll then ran out
+        // (PR #3 CI failure).
+        // `getAnimations()` computes style at once. A new transition also enters this list.
+        // Only finite animations are skipped. An infinite animation (like a loading icon)
+        // does not end with `finish()`; it throws (review 2, Ö4).
         for (const animation of document.getAnimations()) {
           const end = animation.effect?.getComputedTiming().endTime;
           if (typeof end === 'number' && Number.isFinite(end)) animation.finish();
@@ -305,7 +306,7 @@ test.describe('odak kuralları', () => {
       visitedCount += 1;
       expect(check.visibleOutlines, `Tab adımı ${step} outline bulundu`).toEqual([]);
       expect(check.spreadRings, `Tab adımı ${step} çevreleyen gölge bulundu`).toEqual([]);
-      // antd bazı denetimlerde odak sınıfını bir sonraki çizimde ekler. Gösterge kısa süre beklenir.
+      // antd adds the focus class on the next paint for some controls. Wait briefly for it.
       await expect
         .poll(async () => (await inspectFocusedChain()).hasUnderline, {
           message: `Tab adımı ${step} alt çizgi göstergesi eksik`,
@@ -319,7 +320,7 @@ test.describe('odak kuralları', () => {
 
     expect(visitedCount).toBeGreaterThanOrEqual(5);
 
-    // WebKit'te Tab ile atlanabilen düğme ve seçim öğelerini ayrıca doğrudan odakla denetle
+    // WebKit may skip buttons and select items on Tab; also check them with direct focus
     for (const target of [
       page.getByRole('button', { name: 'Sonraki kayıt' }),
       page.getByRole('checkbox', { name: 'Ödendi' }),

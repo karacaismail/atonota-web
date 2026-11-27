@@ -1,6 +1,6 @@
 /**
- * "Yönetim" sayfasının "Kullanıcılar" bölümündeki ekran metinleri (G-98).
- * Metinler G-98 tasarım belgesinin 10. bölümünden gelir.
+ * Screen texts of the "Users" section on the "Administration" page (G-98).
+ * The texts come from section 10 of the G-98 design document.
  */
 import { useModule } from '../context';
 

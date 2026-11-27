@@ -42,11 +42,11 @@
   overflow-wrap: break-word;
 }
 /*
- * Kayıt kimliği (örnek: izin kaydının adı) uzun ve kesintisiz olabilir.
- * O zaman `overflow-wrap: break-word` kelimeyi ortadan böler.
- * Chromium, bölünen kelimede harf çifti aralığını (kerning) satır sonunda yanlış ölçer.
- * Linux'ta yazı ölçüleri tam piksele yuvarlanır ve satır kutusundan 1 px taşar.
- * Kimlik bir koddur, harf çifti aralığı gerekmez. Bu yüzden yalnız burada kapatılır.
+ * A record ID (for example, a permission record's name) can be long and unbroken.
+ * Then `overflow-wrap: break-word` splits the word in the middle.
+ * Chromium mismeasures kerning at the line end in a split word.
+ * On Linux, text metrics round to whole pixels and overflow the line box by 1 px.
+ * An ID is code and needs no kerning. So kerning is turned off only here.
  */
 .module-identifier {
   font-kerning: none;

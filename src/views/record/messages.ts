@@ -248,7 +248,7 @@ export function formatRecordMessage(
 }
 
 export function formatRecordInteger(locale: RecordLocale, value: number): string {
-  // Biçim dili dil eşleme dosyasından gelir (IC-13).
+  // The formatting locale comes from the locale mapping file (IC-13).
   return new Intl.NumberFormat(localeBundle(locale).intl, { maximumFractionDigits: 0 }).format(
     value,
   );

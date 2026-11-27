@@ -70,7 +70,7 @@ test('table preserves readability, keyboard focus, selection and URL history', a
   await expect(page.getByText('ORNEK-0001', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const scroller = page.getByRole('region', { name: 'Kayıt tablosu yatay kaydırma' });
-  // Dar telefonda tablo kendi kapsayıcısında kayar. Geniş ekranda sığabilir.
+  // On a narrow phone the table scrolls inside its own container. On a wide screen it may fit.
   if ((page.viewportSize()?.width ?? 0) <= 400)
     expect(await scroller.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
       true,
@@ -143,7 +143,7 @@ test('loads only requested views and supports keyboard dropdown navigation', asy
   await expect(page.getByRole('combobox', { name: 'Görünüm', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('listbox')).not.toBeVisible();
-  // Arama ortak istemciyle /api/v2/document ucuna `like` süzgeci olarak gider.
+  // Search goes through the shared client to /api/v2/document as a `like` filter.
   const searched = page.waitForRequest((request) => {
     const url = new URL(request.url());
     return (

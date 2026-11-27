@@ -30,10 +30,10 @@ export function isNumeric(field: CollectionField) {
 }
 
 /**
- * Seçim alanının seçeneklerini okur. Boş değerli seçenek alınmaz.
- * Frappe'de boş seçenek "değer yok" demektir. Süzgeç zaten "Tümü" seçeneğini kendisi ekler.
- * Biçimi bozuk seçenek atlanır. Tek bir bozuk seçenek bütün listeyi kapatmaz.
- * Etiketi boş olan seçenek değerini etiket olarak kullanır.
+ * Reads the options of a select field. An option with an empty value is skipped.
+ * In Frappe an empty option means "no value". The filter already adds the "All" option itself.
+ * A malformed option is skipped. One malformed option does not break the whole list.
+ * An option with an empty label uses its value as the label.
  */
 function readChoices(items: unknown[]): CollectionField['choices'] {
   return items.flatMap((item) => {

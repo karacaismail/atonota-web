@@ -27,7 +27,7 @@ export default function AdministrationPage() {
     [explain, query],
   );
   const read = useRead(query && explain ? load : null, JSON.stringify(query));
-  // Yardımcı rol bu sayfada yalnız kullanıcılar bölümünü görür (G-168). Sunucu yine denetler.
+  // The assistant role sees only the users section on this page (G-168). The server still checks.
   const readOnly = isReadOnly(useRoles());
   return (
     <ModuleFrame title={copy.administration}>

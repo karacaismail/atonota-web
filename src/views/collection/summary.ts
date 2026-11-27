@@ -8,12 +8,12 @@ import type {
   GroupSummaryRequest,
 } from './types';
 
-/** Sözleşmedeki en büyük grup sayısı. */
+/** The largest group count in the contract. */
 export const SUMMARY_GROUP_LIMIT = 100;
 
 /**
- * Liste sorgusundan `group_summary` isteği kurar. Süzgeçler listeyle aynıdır.
- * Sayfa ve sıralama özetin konusu değildir. Gruplama alanı yoksa istek kurulmaz.
+ * Builds a `group_summary` request from the list query. The filters match the list.
+ * Paging and sorting do not apply to the summary. With no group-by field, no request is built.
  */
 export function toGroupSummaryRequest(
   definition: CollectionDefinition,
@@ -42,9 +42,9 @@ function count(value: unknown, minimum: number): number {
 }
 
 /**
- * İstemcinin döndüğü özeti doğrular.
- * Biçim sözleşmedeki `message` nesnesidir. Ad dönüşümü `listDocuments` ile aynıdır:
- * `total_count` alanı `totalCount` olur.
+ * Validates the summary that the client returns.
+ * The shape is the contract's `message` object. Names convert as in `listDocuments`:
+ * the `total_count` field becomes `totalCount`.
  */
 export function parseGroupSummary(input: unknown): GroupSummary {
   const summary = record(input);

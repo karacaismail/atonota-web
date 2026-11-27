@@ -8,8 +8,8 @@ import { RecordLinkProvider, type RecordLinkRenderer } from '../recordLink';
 import type { DocField, DocTypeMeta, LinkOption, RecordDataAdapter } from '../types';
 
 /**
- * Arka uç bağlantı alanı için `link-select` bileşen adını yollar
- * (`platform_core/shell/catalog.py`, FIELD_COMPONENTS). Arayüz bu adı tanımalıdır.
+ * The backend sends the `link-select` component name for link fields
+ * (`platform_core/shell/catalog.py`, FIELD_COMPONENTS). The UI must recognise this name.
  */
 const META: DocTypeMeta = {
   schema: {
@@ -91,7 +91,7 @@ describe('bağlantı alanı: arka ucun link-select bileşen adı', () => {
         expect.objectContaining({ doctype: 'Örnek Kayıt', txt: 'veri' }),
       ),
     );
-    // Klavyeyle seçim gerçek tarayıcıda denenir (src/app/e2e/panel-link.spec.ts).
+    // Keyboard selection is tested in a real browser (src/app/e2e/panel-link.spec.ts).
     await user.click(await screen.findByText('Örnek veri 2'));
     expect(onChange).toHaveBeenCalledWith('ilgili_kayit', 'ORNEK-0002');
   });
@@ -120,7 +120,7 @@ describe('bağlantı alanı: salt okunur görünüm', () => {
       `/ornek/${encodeURIComponent('Örnek Kayıt')}/ORNEK-0001`,
     );
     expect(screen.queryByRole('combobox')).toBeNull();
-    // Salt okunur görünüm hedef kaydın başka bilgisini istemez. İzni olmayan kayıt sızmaz.
+    // The read-only view requests no other data of the target record. No unpermitted record leaks.
     expect(searchLink).not.toHaveBeenCalled();
   });
 

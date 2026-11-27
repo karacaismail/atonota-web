@@ -1,22 +1,22 @@
 /**
- * Sayfa içindeki yazma denetimleri (G-168, G-169, G-170).
- * Menü ve sayfa kapısı rol adı kullanmaz. Onlar sunucunun okuma yetkisine bakar (`src/shell/nav.ts`).
- * Yazma düğmesi ise rolün işine bağlıdır. Roller açılış verisinden (`get_bootstrap`) okunur.
- * Bu süzgeç yalnız ekranı düzenler. Yetkiyi sunucu her istekte yine denetler.
+ * In-page write checks (G-168, G-169, G-170).
+ * The menu and page gate use no role names. They use server read permission (`src/shell/nav.ts`).
+ * Write buttons depend on the role's job. Roles are read from the bootstrap data (`get_bootstrap`).
+ * This filter only shapes the screen. The server still checks permission on every request.
  */
 import { useCallback } from 'react';
 
 import { useModule } from './context';
 import { useRead } from './data';
 
-/** Yardımcı roller yalnız okur. Örnek: "Reseller Assistant" yeni müşteri isteği gönderemez. */
+/** Assistant roles only read. Example: "Reseller Assistant" cannot send a new customer request. */
 const ASSISTANT_ROLES: readonly string[] = ['Tenant Admin Assistant', 'Reseller Assistant'];
-/** Yönetici rollerinden biri varsa kişi yazabilir. */
+/** A person with any admin role can write. */
 const ADMIN_ROLES: readonly string[] = ['Tenant Admin', 'Reseller Admin', 'System Manager'];
-/** Yeni müşteri isteğini yalnız bayi yöneticisi gönderir (G-169). */
+/** Only the reseller admin sends a new customer request (G-169). */
 export const CUSTOMER_REQUEST_ROLE = 'Reseller Admin';
 
-/** Kişi yalnız okuyorsa `true` döner. Rol bilgisi yoksa `false` döner. Sunucu yine denetler. */
+/** `true` if the person only reads. `false` without role data. The server still checks. */
 export function isReadOnly(roles: readonly string[] | undefined): boolean {
   if (!roles) return false;
   return (
@@ -35,8 +35,8 @@ function rolesOf(profile: unknown): readonly string[] | undefined {
 }
 
 /**
- * Kişinin rolleri. Ortam rolleri verirse onlar kullanılır. Yoksa açılış verisi okunur.
- * Yanıt gelene kadar `undefined` döner. Bu sürede yazma düğmesi görünmez.
+ * The person's roles. Roles from the environment are used if given. Else bootstrap data is read.
+ * Returns `undefined` until the response arrives. Write buttons stay hidden meanwhile.
  */
 export function useRoles(): readonly string[] | undefined {
   const env = useModule();

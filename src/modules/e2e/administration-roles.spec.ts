@@ -1,12 +1,12 @@
-// G-98 (AJA-794): "Yönetim" sayfasının rol matrisi, kullanıcı izinleri, erişim kuralları,
-// değişiklik kaydı ve "Erişimi açıkla" formu. Sahte sunucu `src/mocks/admin.ts` dosyasındadır.
+// G-98 (AJA-794): the role matrix, user permissions, access rules, change log and
+// "Explain access" form of the "Administration" page. The mock server is in `src/mocks/admin.ts`.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '../../../tests/setup/playwright-fixtures';
 
 const PATH = '/administration';
 const ROLE = 'Örnek Satış Rolü';
 
-/** antd Select'i yalnız klavyeyle seçer: odak, aşağı ok ve Enter. */
+/** Picks an antd Select option with the keyboard only: focus, down arrow and Enter. */
 async function chooseByKeyboard(page: Page, label: string, option: string) {
   const input = page.getByLabel(label, { exact: true });
   await input.focus();
@@ -18,13 +18,13 @@ async function chooseByKeyboard(page: Page, label: string, option: string) {
     await page.keyboard.press('ArrowDown');
   }
   await page.keyboard.press('Enter');
-  // Açılır panelin kapanma hareketi bitene kadar beklenir. Panel taşma ölçümünü bozmasın.
+  // Wait until the dropdown closing motion ends, so the panel does not skew the overflow check.
   await expect(page.locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')).toHaveCount(
     0,
   );
 }
 
-/** antd pencereyi açınca odağı pencereye taşır. Klavye testi bu anı bekler. */
+/** antd moves focus into the dialog when it opens. The keyboard test waits for that moment. */
 async function waitForDialogFocus(page: Page) {
   await expect
     .poll(() => page.evaluate(() => Boolean(document.activeElement?.closest('.ant-modal'))))
@@ -64,14 +64,14 @@ test('the role matrix saves a change after a before and after review', async ({ 
   await expect(page.getByText('1 değişiklik var')).toBeVisible();
   expect(writes).toEqual([]);
 
-  // Düğmeler klavyeyle açılır. WebKit tıklanan düğmeye odak vermez; Safari de vermez.
+  // Buttons are opened with the keyboard. WebKit does not focus a clicked button; nor does Safari.
   const save = page.getByRole('button', { name: 'Kaydet', exact: true });
   await save.focus();
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('Leave Application, Silme: önce kapalı, sonra açık');
   await waitForDialogFocus(page);
-  // Escape pencereyi kapatır ve odak açan düğmeye döner. Hiçbir şey gönderilmez.
+  // Escape closes the dialog and focus returns to the opening button. Nothing is sent.
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(save).toBeFocused();
@@ -82,7 +82,7 @@ test('the role matrix saves a change after a before and after review', async ({ 
   await page.getByRole('button', { name: 'Değişiklikleri kaydet' }).click();
   await expect(page.getByText('Değişiklikler kaydedildi.')).toBeVisible();
   expect(writes).toEqual(['POST']);
-  // Panel matrisi sunucudan yeniden okur. Sunucu da değişikliği tutar.
+  // The panel re-reads the matrix from the server. The server also keeps the change.
   await expect(box).toBeChecked();
   await expect(page.getByText('1 değişiklik var')).toHaveCount(0);
 });
@@ -111,17 +111,17 @@ test('the role matrix scrolls in its own box and the page does not', async ({ pa
     }));
     expect(box.scroll).toBeGreaterThan(box.client);
     await expect(page.getByText('Tablo sağa kayar.')).toBeVisible();
-    // Kutu klavyeyle odaklanır ve ok tuşuyla kayar.
+    // The box takes keyboard focus and scrolls with the arrow key.
     await matrix.focus();
     await page.keyboard.press('ArrowRight');
     await expect.poll(() => matrix.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
-    // "Kayıt türü" sütunu kaydırmada görünür kalır.
+    // The "Record type" column stays visible while scrolling.
     const header = matrix.getByRole('columnheader', { name: 'Kayıt türü' });
     const left = await header.evaluate((cell) => cell.getBoundingClientRect().left);
     const boxLeft = await matrix.evaluate((element) => element.getBoundingClientRect().left);
     expect(Math.abs(left - boxLeft)).toBeLessThanOrEqual(1);
   }
-  // Kayıt türü adı kelime ortasından bölünmez.
+  // A record type name is not broken mid-word.
   const cell = matrix.getByRole('rowheader', { name: 'Leave Application' }).first();
   const lines = await cell.evaluate((element) => {
     const range = document.createRange();
@@ -155,7 +155,7 @@ test('the account adds a user permission', async ({ page }) => {
 test('the account adds an access rule', async ({ page }) => {
   await open(page);
   const section = page.getByRole('region', { name: 'Kullanıcı izinleri ve kurallar' });
-  // Sekme klavyeyle seçilir: odak seçili sekmede, sağ ok ve Enter.
+  // The tab is chosen with the keyboard: focus on the selected tab, right arrow and Enter.
   await section.getByRole('tab', { name: 'Kullanıcı izinleri' }).focus();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');

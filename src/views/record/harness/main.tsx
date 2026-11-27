@@ -1,8 +1,8 @@
 /**
- * Kayıt ekranı deneme sayfası. Yalnız geliştirme ve tarayıcı testleri içindir.
+ * Record screen harness page. Only for development and browser tests.
  *
- * GEÇİCİ: `foundation` işinin `src/design` ve `src/app` sağlayıcısı `main` dalına
- * birleşince ortak tema sağlayıcısını kullanacaktır.
+ * TEMPORARY: once the `src/design` and `src/app` provider of the `foundation` work merge into
+ * `main`, this page will use the shared theme provider.
  */
 import '@fontsource-variable/outfit';
 import '@fontsource/jetbrains-mono/400.css';

@@ -76,14 +76,14 @@ const CATALOG_DEFINITIONS: Readonly<Record<string, Omit<CatalogEntry, 'supported
     kind: 'field',
     canonicalType: 'Link',
     minCatalogVersion: 1,
-    // Arka uç `link-select` adını yollar (frappesetup backend: platform_core/shell/catalog.py).
+    // The backend sends `link-select` (frappesetup backend: platform_core/shell/catalog.py).
     allowedComponents: ['link', 'link-select', 'select'],
   },
   'Dynamic Link': {
     kind: 'field',
     canonicalType: 'Dynamic Link',
     minCatalogVersion: 1,
-    // Bilerek `link-select` yok: arka ucun Dynamic Link alanı bu işte desteklenmeyen alan kalır.
+    // No `link-select` on purpose: the backend Dynamic Link field stays unsupported in this work.
     allowedComponents: ['dynamic-link', 'link', 'select'],
   },
   Date: {
@@ -114,7 +114,7 @@ const CATALOG_DEFINITIONS: Readonly<Record<string, Omit<CatalogEntry, 'supported
     kind: 'field',
     canonicalType: 'Text',
     minCatalogVersion: 1,
-    // Arka uç Small Text, Text ve Long Text için `text-area` adını yollar
+    // The backend sends `text-area` for Small Text, Text and Long Text
     // (frappesetup backend: platform_core/shell/catalog.py).
     allowedComponents: ['text', 'textarea', 'text-area'],
   },

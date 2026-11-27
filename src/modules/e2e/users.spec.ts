@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '../../../tests/setup/playwright-fixtures';
 
-// G-98: the "Tenant Admin" manages the tenant's users on the "Yönetim" page.
+// G-98: the "Tenant Admin" manages the tenant's users on the "Administration" page.
 // The mock server answers the user, role profile, invitation and role profile endpoints.
 const PATH = '/administration';
 

@@ -1,11 +1,11 @@
 /**
- * GEÇİCİ / BORC(foundation): Kayıt ekranı tasarım token bağdaştırıcısı.
+ * TEMPORARY / BORC(foundation): Record screen design token adapter.
  *
- * Kaldırma koşulu: `foundation` işinin `src/design` modülü `main` dalına birleştiğinde
- * bu dosya tamamen silinecek ve `RecordView` doğrudan `src/design` temasını ve CSS
- * değişkenlerini kullanacaktır (Review 2 Önemli 5).
+ * Removal condition: when the `src/design` module of the `foundation` work merges into `main`,
+ * this file is deleted entirely and `RecordView` uses the `src/design` theme and CSS
+ * variables directly (Review 2 Major 5).
  *
- * Tek kaynak: `design/source/control-size-config.json`.
+ * Single source: `design/source/control-size-config.json`.
  */
 import controlSizeConfig from '@design-source/control-size-config.json';
 import { theme as antdTheme, type ThemeConfig } from 'antd';
@@ -22,7 +22,7 @@ const BASE_ANTD_TOKENS = antdTheme.getDesignToken();
  * Central phone breakpoint (<= screenSMMax) and link search debounce delay from design tokens.
  * The design source has no dedicated search-delay token yet. The debounce reuses the shortest
  * interaction delay in the source (`sidebar.flyout.closeDelay`, 180 ms) so the value stays central.
- * Kaldırma koşulu: `foundation` ortak bir arama bekleme tokenı eklerse bu değer ona bağlanır.
+ * Removal condition: if `foundation` adds a shared search-delay token, bind this value to it.
  */
 export const RECORD_PHONE_MAX_WIDTH_PX: number = BASE_ANTD_TOKENS.screenSMMax;
 export const RECORD_LINK_SEARCH_DEBOUNCE_MS: number = controlSizeConfig.sidebar.flyout.closeDelay;

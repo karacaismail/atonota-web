@@ -106,11 +106,11 @@ export interface CatalogFieldProps {
   compactCell?: boolean | undefined;
   onChange: (fieldname: string, nextValue: unknown) => void;
   onFieldAction?: ((field: DocField) => void) | undefined;
-  /** Verilirse uzun metin alanında tek bir "Yardımcıyla yaz" düğmesi görünür. */
+  /** If given, a single "Write with assistant" button shows on long text fields. */
   onAssistField?: ((request: RecordAssistRequest) => void) | undefined;
 }
 
-/** Yardımcının açıldığı zor alanlar: serbest uzun metin. Kod ve JSON bu kapsamda değildir. */
+/** Hard fields that open the assistant: free long text. Code and JSON are out of scope. */
 const ASSISTABLE_TYPES: ReadonlySet<string> = new Set([
   'Small Text',
   'Text',

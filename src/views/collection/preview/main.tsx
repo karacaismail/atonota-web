@@ -12,10 +12,11 @@ import { TemporaryFoundation } from './TemporaryFoundation';
 import './preview.css';
 
 /**
- * Önizleme ortak API istemcisini kullanır. Kayıtlar ortak sahte sunucu işleyicilerinden (MSW) gelir.
- * `@/mocks/start` işçiyi `onUnhandledFrame: 'error'` ile açar. O ayar işçi sayfayı denetlerken
- * ikinci sayfa yüklemesini (HTML ve dosya isteklerini) reddeder. Önizleme bu yüzden işçiyi
- * aynı işleyicilerle ama `bypass` ayarıyla açar. Ortak dosya düzelince `startApiMocks` kullanılır.
+ * The preview uses the shared API client. Records come from the shared mock server handlers (MSW).
+ * `@/mocks/start` starts the worker with `onUnhandledFrame: 'error'`. While the worker controls
+ * the page, that setting rejects a second page load (HTML and file requests). So the preview
+ * starts the worker with the same handlers but with `bypass`. Use `startApiMocks` once the
+ * shared file is fixed.
  */
 async function startPreviewMocks(): Promise<boolean> {
   if (!(import.meta.env.DEV || import.meta.env.VITE_API_MOCKS === 'on')) return false;
@@ -35,7 +36,7 @@ const api = createApiSource(
     csrf: createCsrfStore(mocks.active ? mocks.csrfToken : undefined),
   }),
 );
-// Yükleniyor, boş ve hata durumları yalnız önizlemede elle seçilir.
+// The loading, empty and error states are chosen by hand only in the preview.
 const source: CollectionSource =
   state === 'loading'
     ? {

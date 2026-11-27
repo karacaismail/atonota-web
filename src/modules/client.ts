@@ -6,7 +6,7 @@ export const ACCESS_RULE_DOCTYPE = 'PLT Access Rule';
 const resource = (doctype: string, name?: string) =>
   `/api/resource/${encodeURIComponent(doctype)}${name === undefined ? '' : `/${encodeURIComponent(name)}`}`;
 
-/** Kayıt ucunun yanıtını açar. Hata ortak istemcinin hata türüyle fırlatılır. */
+/** Unwraps the document endpoint response. Errors use the shared client's error type. */
 async function documentData(
   api: ApiClient,
   request: Parameters<ApiClient['frappeDocument']>[0],
@@ -107,13 +107,13 @@ export function createModuleClient(api: ApiClient): ModuleClient {
     getProposal: (id, options) => api.getProposal(id, options),
     approveProposal: (id, digest, options) => api.approveProposal(id, digest, options),
     rejectProposal: (id, options) => api.rejectProposal(id, options),
-    // Bağlı hesap istemcisi ayrı parçadadır. Yalnız hesap sayfası açılınca yüklenir.
+    // The linked account client is a separate chunk. It loads only when the account page opens.
     linkedAccounts: () => import('../api/login-client').then((m) => m.createLoginClient(api)),
-    // Sağlayıcı istemcisi ayrı parçadadır. Yalnız sayfa açılınca yüklenir (ilk yük bütçesi).
+    // The provider client is a separate chunk. It loads only when the page opens (load budget).
     aiProviders: () => import('../api/provider-client').then((m) => m.createProviderClient(api)),
-    // Bayi istemcisi ayrı parçadadır. Yalnız "Müşteriler" sayfası açılınca yüklenir.
+    // The reseller client is a separate chunk. It loads only when the "Customers" page opens.
     resellers: () => import('../api/reseller-client').then((m) => m.createResellerClient(api)),
-    // Kullanıcı yönetimi istemcisi ayrı parçadadır. Yalnız "Yönetim" sayfası açılınca yüklenir.
+    // The user admin client is a separate chunk. It loads only when the "Administration" page opens.
     userAdmin: () =>
       import('./administration/users-client').then((m) => m.createUserAdminClient(api)),
   };

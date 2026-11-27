@@ -19,7 +19,7 @@ export interface FieldShellProps {
   sourceNote?: string | undefined;
   hideLabel?: boolean | undefined;
   children: (a11y: FieldControlA11yProps) => ReactNode;
-  /** Uzun metin alanının yardımcı düğmesi. Etiket kimliğini alır; düğme alan adıyla tanımlanır. */
+  /** Assistant button of a long text field. Takes the label id; the field name labels it. */
   assistAction?: ((labelId: string) => ReactNode) | undefined;
 }
 

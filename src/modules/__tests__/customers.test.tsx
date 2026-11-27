@@ -1,6 +1,6 @@
-// "Müşteriler" sayfası (G-169, G-170, AJA-834). Test koddan önce yazıldı.
-// Sayfa bayinin bağlı müşterilerini ve site durumlarını gösterir.
-// "Reseller Admin" yeni müşteri isteği gönderir. "Reseller Assistant" yalnız okur.
+// The "Customers" page (G-169, G-170, AJA-834). The test was written before the code.
+// The page shows the reseller's linked customers and their site statuses.
+// "Reseller Admin" sends a new customer request. "Reseller Assistant" only reads.
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

@@ -171,8 +171,9 @@ export function parseApproval(value: unknown) {
   };
 }
 /**
- * Önerinin süresi doldu mu? Sunucu durumu henüz `pending` olsa da son zaman geçtiyse doldu sayılır.
- * Liste bu öneriyi "Süresi doldu" diye yazar; onay düğmesi görünmez.
+ * Has the proposal expired? Past its deadline it counts as expired,
+ * even if the server status is still `pending`.
+ * The list shows this proposal as "Expired"; the approve button is hidden.
  */
 export function proposalExpired(proposal: Proposal, now = Date.now()): boolean {
   if (proposal.result !== '') return false;

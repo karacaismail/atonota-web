@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page } from '@playwright/test';
 import designSource from '../../../../design/source/control-size-config.json' with { type: 'json' };
 
-// Ortak deneme yolu (AGENTS.md, src/shell/routes.ts). Yalnız e2e derlemesinde açılır.
+// Shared demo route (AGENTS.md, src/shell/routes.ts). It opens only in the e2e build.
 const demo = '/_demo/controls';
 
 async function box(locator: Locator) {

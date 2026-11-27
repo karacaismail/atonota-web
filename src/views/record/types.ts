@@ -71,8 +71,8 @@ export interface DocField {
 }
 
 /**
- * Yardımcı paneli açma isteği. Form yalnız bu olayı verir. Alan değerini değiştirmez.
- * Öneri kullanıcı onaylayınca ayrı bir değişiklik olarak alana yazılır.
+ * Request to open the assistant panel. The form only emits this event. It does not change the
+ * field value. Once the user approves, the suggestion is written to the field as a separate change.
  */
 export interface RecordAssistRequest {
   doctype: string;

@@ -50,16 +50,16 @@ export interface ListRequest {
   limit_start: number;
   limit_page_length: number;
 }
-/** Frappe toplam sayı vermez. Sonraki sayfa yalnız `hasNextPage` ile bilinir. */
+/** Frappe gives no total count. Only `hasNextPage` tells whether a next page exists. */
 export interface CollectionPage {
   data: CollectionRow[];
   hasNextPage: boolean;
 }
-/** Liste kaynağı. Üretimde `createApiSource` ortak `listDocuments` istemcisine bağlanır. */
+/** List source. In production, `createApiSource` connects to the shared `listDocuments` client. */
 export interface CollectionSource {
   list: (request: ListRequest, signal: AbortSignal) => Promise<unknown>;
 }
-/** `platform_core.api.collection.group_summary` isteği. Sayfa sınırı yoktur. */
+/** The `platform_core.api.collection.group_summary` request. It has no page limit. */
 export interface GroupSummaryRequest {
   doctype: string;
   groupBy: string;
@@ -74,12 +74,12 @@ export interface GroupSummaryGroup {
 }
 export interface GroupSummary {
   groups: GroupSummaryGroup[];
-  /** Süzgece uyan ve okunabilen bütün kayıtların sayısı. */
+  /** The count of all readable records that match the filter. */
   totalCount: number;
-  /** Grup sınırı yüzünden grup atlandıysa doğrudur. */
+  /** True if groups were dropped because of the group limit. */
   truncated: boolean;
 }
-/** Özet kaynağı. Tipli `group_summary` istemcisi `main` dalına gelince ona bağlanır. */
+/** Summary source. It will use the typed `group_summary` client once that reaches `main`. */
 export interface CollectionSummarySource {
   groupSummary: (request: GroupSummaryRequest, signal: AbortSignal) => Promise<unknown>;
 }

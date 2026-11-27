@@ -5,7 +5,7 @@ test('access form keeps its draft when resized and its branded dropdown opens', 
   page,
 }) => {
   await page.goto('/administration');
-  // Sayfada rol seçicisi de var. Test yalnız "Erişimi açıkla" formunu kullanır.
+  // The page also has a role picker. The test only uses the "Explain access" form.
   const form = page.getByRole('region', { name: 'Erişimi açıkla' });
   await form.getByLabel('Kayıt türü', { exact: true }).fill('Example Proposal Template');
   await form.getByLabel('Kayıt', { exact: true }).fill('example-record');

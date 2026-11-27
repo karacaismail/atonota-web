@@ -1,7 +1,7 @@
-// G-98: the user management endpoints of the "Yönetim" page.
+// G-98: the user management endpoints of the "Administration" page.
 //
 // This file stays out of the first load. The module client loads it with `import()` only when
-// the "Kullanıcılar" section opens. Every request goes through the shared client (SZ-5):
+// the "Users" section opens. Every request goes through the shared client (SZ-5):
 // `listDocuments` and `frappeDocument` own the site root, the CSRF header, the timeout and the
 // session handling. The server checks the "Tenant Admin" role on every request.
 import type { ApiClient } from '../../api';

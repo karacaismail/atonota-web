@@ -40,7 +40,7 @@ export interface ModuleClient {
     },
     options: RequestOptions,
   ) => Promise<unknown>;
-  /** G-62 ve G-98: rol, izin satırı, kullanıcı izni, erişim kuralı ve değişiklik kaydı uçları. */
+  /** G-62 and G-98: role, permission row, user permission, access rule and change log endpoints. */
   admin?: AdminClient;
   listProposals?: (
     query: { limit: number; start: number },
@@ -50,27 +50,31 @@ export interface ModuleClient {
   approveProposal?: (id: string, digest: string, options: RequestOptions) => Promise<unknown>;
   rejectProposal?: (id: string, options: RequestOptions) => Promise<unknown>;
   /**
-   * AtonotA Login bağlı hesap istemcisini yükler (G-160). İstemci kodu ilk yüke girmez;
-   * yalnız hesap sayfasının "Bağlı hesaplar" bölümü çağırınca iner.
+   * Loads the AtonotA Login linked account client (G-160). Its code is not in the initial load;
+   * it downloads only when the account page's "Linked accounts" section calls it.
    */
   linkedAccounts?: () => Promise<LinkedAccountsClient>;
   /**
-   * Yapay zekâ sağlayıcı istemcisini yükler: katalog, bağlantı listesi, kayıt ve deneme.
-   * İstemci kodu ilk yüke girmez; yalnız "Yapay zekâ sağlayıcıları" sayfası çağırınca iner.
+   * Loads the AI provider client: catalogue, connection list, save and test.
+   * The client code is not in the initial load;
+   * it downloads only when the "AI providers" page calls it.
    */
   aiProviders?: () => Promise<AiProviderClient>;
   /**
-   * Bayi istemcisini yükler (G-169, G-170). İstemci kodu ilk yüke girmez;
-   * yalnız "Müşteriler" sayfası çağırınca iner.
+   * Loads the reseller client (G-169, G-170). The client code is not in the initial load;
+   * it downloads only when the "Customers" page calls it.
    */
   resellers?: () => Promise<ResellerClient>;
   /**
-   * Kullanıcı yönetimi istemcisini yükler (G-98): kullanıcı listesi, davet ve rol profili.
-   * İstemci kodu ilk yüke girmez; yalnız "Yönetim" sayfası çağırınca iner.
+   * Loads the user admin client (G-98): user list, invitation and role profile.
+   * The client code is not in the initial load; it downloads only when "Administration" calls it.
    */
   userAdmin?: () => Promise<UserAdminClient>;
 }
-/** Bayi uçları. Ortak istemci yanıtları sözleşmeyle denetler. Yetkiyi sunucu denetler. */
+/**
+ * Reseller endpoints. The shared client checks responses against the contract.
+ * The server checks permission.
+ */
 export interface ResellerClient {
   listCustomers: (options: RequestOptions) => Promise<ResellerCustomer[]>;
   customerStatus: (tenant: string, options: RequestOptions) => Promise<CustomerStatus>;
@@ -79,14 +83,14 @@ export interface ResellerClient {
     options: RequestOptions,
   ) => Promise<CustomerRequest>;
 }
-/** Kiracının bir kullanıcısı. Ad, Frappe kullanıcı kimliğidir (e-posta). */
+/** A user of the tenant. The name is the Frappe user ID (email). */
 export interface TenantUser {
   name: string;
   fullName: string;
   enabled: boolean;
   lastLogin: string | null;
 }
-/** Rol profili ve roller sunucu bu alanları gizlerse yoktur. Boş liste "profil yok" demektir. */
+/** Profiles and roles are absent if the server hides them. An empty list means "no profile". */
 export interface UserRecord extends TenantUser {
   roleProfiles?: string[];
   roles?: string[];
@@ -100,7 +104,7 @@ export interface InvitePreview {
   digest: string;
   operations: { operation: string; target?: string; destructive: boolean }[];
 }
-/** Kullanıcı yönetimi uçları. Sunucu her istekte rolü yeniden denetler. */
+/** User admin endpoints. The server rechecks the role on every request. */
 export interface UserAdminClient {
   listUsers: (
     query: { start: number },
@@ -112,7 +116,7 @@ export interface UserAdminClient {
     name: string,
     options?: RequestOptions,
   ) => Promise<{ name: string; roles: string[] }>;
-  /** Önizleme yalnız okur. Dönen özet, gönderme isteğinin onayıdır. */
+  /** The preview only reads. The returned digest confirms the send request. */
   previewInvite: (input: InviteInput, options?: RequestOptions) => Promise<InvitePreview>;
   sendInvite: (input: InviteInput, digest: string, options?: RequestOptions) => Promise<void>;
   setRoleProfiles: (
@@ -123,8 +127,9 @@ export interface UserAdminClient {
 }
 export type { AiConnectionListing };
 /**
- * Yönetim sayfasının rol ve yetki uçları. Ortak istemci yanıtı açar. Sayfa alanları
- * `../contracts` ayrıştırıcılarıyla denetler. Sunucu her istekte yetkiyi yeniden denetler.
+ * Role and permission endpoints of the administration page. The shared client unwraps the response.
+ * The page checks fields with the `../contracts` parsers.
+ * The server rechecks permission on every request.
  */
 export interface AdminClient {
   listRoles: (options: RequestOptions) => Promise<unknown>;
@@ -154,16 +159,16 @@ export interface AdminClient {
     options: RequestOptions,
   ) => Promise<unknown>;
 }
-/** Bağlı hesap uçları. Ortak istemci yanıtları sözleşmeyle denetler. */
+/** Linked account endpoints. The shared client checks responses against the contract. */
 export interface LinkedAccountsClient {
   listLinkedAccounts: (options: RequestOptions) => Promise<LinkedAccounts>;
-  /** Bir platform bağını kaldırır. Son giriş yolunda sunucu 409 `LastSignInMethod` döner. */
+  /** Removes a platform link. On the last sign-in method it returns 409 `LastSignInMethod`. */
   unlinkAccount: (provider: string, options: RequestOptions) => Promise<LinkedAccounts>;
 }
-/** Sayfanın kullandığı sağlayıcı uçları. Ortak istemci yanıtları sözleşmeyle denetler. */
+/** Provider endpoints used by the page. The shared client checks responses against the contract. */
 export interface AiProviderClient {
   listProviderCatalog: (options: RequestOptions) => Promise<ProviderCatalog>;
-  /** Satırlar ham kayıttır. Sayfa yalnız bilinen alanları okur. Parola alanı istenmez. */
+  /** Rows are raw records. The page reads only known fields. The password field is not fetched. */
   listAiConnections: (options: RequestOptions) => Promise<AiConnectionListing>;
   saveProviderConnection: (
     input: ConnectionInput,

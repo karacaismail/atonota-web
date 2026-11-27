@@ -1,4 +1,4 @@
-/* G-98 "Kullanıcılar" bölümü. Değerler tasarım tokenlarından gelir. */
+/* G-98 "Users" section. Values come from design tokens. */
 .users-primary {
   align-self: stretch;
 }
@@ -10,7 +10,7 @@
 .users-back {
   align-self: flex-start;
 }
-/* Satırı kenarlık değil yüzey tonu ayırır. Satırın tamamı kayda gider. */
+/* A surface tone, not a border, separates rows. The whole row links to the record. */
 .users-row {
   display: flex;
   flex-direction: column;
@@ -69,7 +69,7 @@
   margin: 0;
   padding-inline-start: var(--module-padding);
 }
-/* Önce ve sonra listeleri telefonda alt alta, geniş pencerede yan yana durur. */
+/* The before and after lists stack on a phone and sit side by side in a wide window. */
 .users-compare {
   display: grid;
   gap: var(--module-gap);

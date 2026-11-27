@@ -11,10 +11,10 @@ const format = createFormatter({ language: 'tr' });
 import { sampleMeta } from './sample';
 
 /**
- * Sunucunun Communication için verdiği şemanın kısaltılmış biçimi (AJA-812, G-63).
- * Alanlar Frappe v16 `communication.json` dosyasından alındı.
- * Sunucu bileşen adlarını `platform_core/shell/catalog.py` içindeki tablodan verir.
- * `communication_medium` seçenekleri boş bir seçenekle başlar. Frappe'de bu "değer yok" demektir.
+ * Shortened form of the schema the server returns for Communication (AJA-812, G-63).
+ * The fields come from the Frappe v16 `communication.json` file.
+ * The server takes component names from the table in `platform_core/shell/catalog.py`.
+ * The `communication_medium` options start with an empty option. In Frappe this means "no value".
  */
 function communicationMeta() {
   const field = (extra: Record<string, unknown>) => ({

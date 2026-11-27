@@ -1,6 +1,6 @@
 /**
- * Kontrol deneme sayfası. Yalnız e2e derlemesinde `/_demo/controls` yolunda açılır.
- * Rota satırı `src/shell/routes.ts` içindedir.
+ * Controls demo page. It opens at `/_demo/controls` only in the e2e build.
+ * The route line is in `src/shell/routes.ts`.
  */
 import { useState } from 'react';
 

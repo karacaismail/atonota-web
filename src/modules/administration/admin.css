@@ -1,10 +1,10 @@
-/* G-98 rol ve yetki ekranları. Değerler tasarım tokenlarından gelir. */
+/* G-98 role and permission screens. Values come from design tokens. */
 .admin-matrix-table th,
 .admin-matrix-table td {
   min-width: var(--table-col-min-action);
 }
 .admin-matrix-table th:first-child {
-  /* "Kayıt türü" sütunu yatay kaydırmada solda sabit kalır. */
+  /* The "Record type" column stays fixed on the left during horizontal scrolling. */
   position: sticky;
   left: 0;
   z-index: 1;
@@ -15,7 +15,7 @@
   vertical-align: bottom;
 }
 .admin-matrix-table td {
-  /* Gizli metin bu hücreye göre konumlanır. Yoksa kaydırma kutusundan taşar. */
+  /* Hidden text is positioned relative to this cell. Otherwise it overflows the scroll box. */
   position: relative;
   text-align: center;
 }
@@ -63,7 +63,7 @@
   padding: 0;
   margin-bottom: var(--space-xs);
 }
-/* antd sekme taşma düğmesi tarayıcının düğme yazı boyutunu alır. Yazı 14 px altına inmesin. */
+/* The antd tab overflow button takes the browser's button font size. Keep text at 14 px or more. */
 .module-page .ant-tabs-nav-more {
   font-size: var(--module-font);
 }

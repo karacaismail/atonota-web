@@ -187,8 +187,8 @@ export interface RecordViewProps {
   name?: string | undefined;
   createMode?: boolean | undefined;
   /**
-   * Kayıt verisinin kaynağı. Uygulama girişi oturumun ortak API istemcisiyle kurar
-   * (`createFrappeRecordAdapter({ api })`). Varsayılan bağdaştırıcı yoktur (SZ-5).
+   * Source of the record data. The app entry builds it with the session's shared API client
+   * (`createFrappeRecordAdapter({ api })`). There is no default adapter (SZ-5).
    */
   adapter: RecordDataAdapter;
   locale?: RecordLocale | undefined;
@@ -200,13 +200,13 @@ export interface RecordViewProps {
   onCreateNew?: (() => void) | undefined;
   onSignIn?: (() => void) | undefined;
   /**
-   * Salt okunur bağlantı alanındaki hedef kayda bağlantı çizer. Uygulama yönlendiricinin
-   * bağlantısını verir. Verilmezse hedef kaydın adı düz metin olarak görünür.
+   * Renders the link to the target record of a read-only link field. The app supplies the
+   * router's link. If omitted, the target record's name shows as plain text.
    */
   renderRecordLink?: RecordLinkRenderer | undefined;
   /**
-   * Uzun metin alanındaki "Yardımcıyla yaz" düğmesinin olayı. Uygulama yardımcı paneli açar.
-   * Form alanı değiştirmez. Verilmezse düğme görünmez.
+   * Handler of the "Write with assistant" button on long text fields. The app opens the assistant
+   * panel. The form does not change the field. If omitted, the button is hidden.
    */
   onAssistField?: ((request: RecordAssistRequest) => void) | undefined;
 }

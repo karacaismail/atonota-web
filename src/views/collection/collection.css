@@ -212,8 +212,8 @@
 .collection .collection-input-suffix {
   display: none;
 }
-/* Geçici odak stili kopyası (Küçük 3).
- * Kaldırma koşulu: foundation main dalına girince bu kopya silinir. */
+/* Temporary copy of the focus style (Minor 3).
+ * Removal condition: delete this copy when foundation reaches the main branch. */
 .collection-scroll:focus,
 .collection .collection-hit:focus,
 .collection .collection-hit :focus,
@@ -267,8 +267,8 @@ html[data-focus-mode='keyboard'] .collection .collection-hit :focus-visible {
     transition: none;
   }
 }
-/* Geçici odak stili kopyasının yüksek karşıtlık bölümü (Küçük 3).
- * Kaldırma koşulu: foundation main dalına girince bu kopya silinir. */
+/* High-contrast part of the temporary focus style copy (Minor 3).
+ * Removal condition: delete this copy when foundation reaches the main branch. */
 @media (forced-colors: active) {
   html[data-focus-mode='keyboard'] .collection-scroll:focus-visible,
   html[data-focus-mode='keyboard'] .collection .collection-hit:focus-visible,
@@ -281,9 +281,9 @@ html[data-focus-mode='keyboard'] .collection .collection-hit :focus-visible {
   }
 }
 
-/* Geçici dokunma alanı stili kopyası (Küçük 4).
- * Kaldırma koşulu: foundation main dalına girince bu kopya silinir.
- * Giriş ve seçim kökleri genişletilmiş kenarı taşır; iç kontroller doğrudan etkileşimli kalır. */
+/* Temporary copy of the touch target style (Minor 4).
+ * Removal condition: delete this copy when foundation reaches the main branch.
+ * Input and select roots carry the extended edge. Inner controls stay directly interactive. */
 .collection-input::after,
 .collection-select::after {
   pointer-events: auto;

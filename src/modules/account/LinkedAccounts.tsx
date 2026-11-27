@@ -1,8 +1,10 @@
-// Hesap sayfasındaki "Bağlı hesaplar" bölümü (AtonotA Login, G-160).
-// Liste sunucudan gelir. Kodda platform listesi yoktur.
-// Bağlama bir sayfa geçişidir: tarayıcı backend'in `start_link` yoluna gider. Tarayıcı belirteç tutmaz.
-// Bağı kaldırma önce onay ister. Son giriş yolu kaldırılamaz; son kararı sunucu verir.
-// İstemci ayrı parçadır (`linkedAccounts`). Parça yalnız bu bölüm açılınca yüklenir.
+// The "Linked accounts" section on the account page (AtonotA Login, G-160).
+// The list comes from the server. The code holds no platform list.
+// Linking is a page navigation: the browser goes to the backend's `start_link` route.
+// The browser holds no token.
+// Unlinking asks for confirmation first. The last sign-in method cannot be removed;
+// the server makes the final decision.
+// The client is a separate chunk (`linkedAccounts`). The chunk loads only when this section opens.
 import { Alert, Button } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -15,12 +17,12 @@ import linkedMessages from './messages.json';
 import type { LinkedAccountsClient } from '../runtime';
 import { ResourceView, Section } from '../shared';
 
-/** Bağlamadan sonra dönülecek yol: hesap sayfası. Değer yalnız bu sayfanın parçasındadır. */
+/** The path back after linking: the account page. The value is only in this page's chunk. */
 const ACCOUNT_PATH = '/account';
 
 /**
- * Bölümün metinleri. Katalog yalnız hesap sayfasının parçasına girer (ilk yük bütçesi).
- * Ortak hata metinleri modül kataloğundan gelir.
+ * The section's texts. The catalogue goes only into the account page's chunk (initial load budget).
+ * Shared error texts come from the module catalogue.
  */
 function useCopy() {
   const env = useModule();
@@ -31,7 +33,7 @@ function fill(template: string, name: string): string {
   return template.replaceAll('{name}', name);
 }
 
-/** Bu bağ kaldırılırsa kullanıcının giriş yolu kalır mı? */
+/** Does the user keep a sign-in method if this link is removed? */
 function canUnlink(accounts: Accounts): boolean {
   const linked = accounts.providers.filter((item) => item.linked).length;
   return linked + accounts.local_sign_in_methods > 1;
@@ -44,11 +46,11 @@ type Outcome =
 
 interface RowProps {
   provider: LinkedProvider;
-  /** Bu bağ kaldırılırsa giriş yolu kalır mı? */
+  /** Is a sign-in method left if this link is removed? */
   removable: boolean;
   confirming: boolean;
   pending: boolean;
-  /** Doğruysa odak bu satırın "hesabını bağla" bağlantısına gider. Bağ kaldırılınca olur. */
+  /** If true, focus moves to this row's "link account" link. This happens after unlinking. */
   focusLink: boolean;
   onAsk: () => void;
   onCancel: () => void;
@@ -75,9 +77,9 @@ function ProviderRow({
   const href = env ? startLinkUrl(env.tenant, provider.alias, ACCOUNT_PATH) : undefined;
 
   useEffect(() => {
-    // Onay açılınca odak "Vazgeç" düğmesine gider.
-    // Vazgeçilince odak kaldırma düğmesine döner. Bağ kalktıysa o düğme yoktur;
-    // o zaman odak aynı satırdaki "hesabını bağla" bağlantısına gider (aşağıdaki etki).
+    // When the confirmation opens, focus moves to the "Cancel" button.
+    // On cancel, focus returns to the remove button. If the link is gone, that button is gone too;
+    // then focus moves to the "link account" link in the same row (the effect below).
     if (confirming) cancelRef.current?.focus();
     else if (wasConfirming.current) askRef.current?.focus();
     wasConfirming.current = confirming;
@@ -128,7 +130,7 @@ export function LinkedAccounts() {
   const env = useModule();
   const copy = useCopy();
   const loadClient = env?.client?.linkedAccounts;
-  // İstemci bir kez yüklenir. Okuma ve kaldırma aynı istemciyi kullanır.
+  // The client loads once. Reading and unlinking use the same client.
   const getClient = useMemo(() => {
     if (!loadClient) return null;
     let cached: Promise<LinkedAccountsClient> | undefined;
@@ -142,7 +144,7 @@ export function LinkedAccounts() {
     [getClient],
   );
   const read = useRead(load, 'linked-accounts');
-  // Kaldırmadan sonra sunucunun döndüğü yeni liste. Yeniden okuma gerekmez.
+  // The new list the server returns after unlinking. No re-read is needed.
   const [latest, setLatest] = useState<Accounts | undefined>(undefined);
   const [confirming, setConfirming] = useState<string | undefined>(undefined);
   const [pending, setPending] = useState(false);
@@ -190,8 +192,8 @@ export function LinkedAccounts() {
             <>
               <p>{copy.linkedIntro}</p>
               {/*
-               * Durum bölgesi baştan boş çizilir. Metin sonra yazılır. Böylece ekran okuyucu
-               * yeni metni duyar (inceleme 2, bulgu 4). Bekleme ve sonuç aynı bölgededir.
+               * The status region is rendered empty first. The text is written later, so the
+               * screen reader announces it (review 2, finding 4). Pending and result share it.
                */}
               <p role="status" data-testid="linked-status">
                 {pending
