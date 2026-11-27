@@ -118,3 +118,13 @@ test('keyboard error focus has one underline and no surrounding ring', async ({ 
   await page.keyboard.press('Shift+Tab');
   await expect(type).toBeFocused();
 });
+
+// The harness language is the sample user's language (Turkish). `?lang=` sets another language.
+// The fallback language is not used, so a fallback change does not break the Turkish tests (AJA-2408).
+test('the harness follows the lang parameter instead of the fallback language', async ({
+  page,
+}) => {
+  await page.goto(`${FORM}&lang=en`);
+  await page.getByRole('button', { name: 'Talebi gönder' }).click();
+  await expect(page.getByRole('status')).toHaveText('3 fields have errors.');
+});
