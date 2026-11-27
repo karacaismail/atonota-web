@@ -88,3 +88,34 @@ describe('saat dilimi açılış verisinden gelir (IC-13)', () => {
     expect(en.frappeDateTime('2026-11-27 09:05:00')).toBe('Friday, November 27, 2026 at 09:05 AM');
   });
 });
+
+describe('bozuk açılış verisi biçimleri düşürmez (IC-13)', () => {
+  const instant = new Date(Date.UTC(2026, 10, 27, 6, 5));
+
+  it('geçersiz saat dilimi yok sayılır ve tarayıcının saat dilimi kullanılır', () => {
+    const broken = createFormatter({ language: 'en', timeZone: 'Mars/Base', currency: null });
+    const browser = createFormatter({ language: 'en', timeZone: null, currency: null });
+    expect(broken.timeZone).toBeUndefined();
+    expect(broken.time(instant)).toBe(browser.time(instant));
+    expect(broken.frappeDateTime('2026-11-27 09:05:00')).toBe(
+      browser.frappeDateTime('2026-11-27 09:05:00'),
+    );
+  });
+
+  it('geçersiz saat dilimiyle Frappe değeri tarayıcının saatiyle okunur', () => {
+    expect(parseFrappeDatetime('2026-11-27 09:05:00', 'Mars/Base')).toEqual(
+      new Date(2026, 10, 27, 9, 5, 0),
+    );
+  });
+
+  it('geçersiz site para birimi yok sayılır ve tutar düz sayı yazılır', () => {
+    const en = createFormatter({ language: 'en', timeZone: 'UTC', currency: 'XX' });
+    expect(en.currencyCode).toBeNull();
+    expect(en.currency(1234.5)).toBe('1,234.5');
+  });
+
+  it('geçersiz para kodu verilirse tutar düz sayı yazılır', () => {
+    const en = createFormatter({ language: 'en', timeZone: 'UTC', currency: 'TRY' });
+    expect(en.currency(1234.5, 'XX')).toBe('1,234.5');
+  });
+});
