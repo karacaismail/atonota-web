@@ -43,7 +43,7 @@ export interface Formatter {
   date: (value: string) => string;
   /** Hour and minute, in the site's time zone. */
   time: (value: Date) => string;
-  /** Day and time, in the site's time zone. */
+  /** Day and time, in the site's time zone. A repeated daylight saving hour also shows the zone abbreviation. */
   dateTime: (value: Date) => string;
   /** Frappe datetime value. The value is read in the site's time zone. An unparseable value is returned as is. */
   frappeDateTime: (value: string) => string;
@@ -134,6 +134,25 @@ function zoneOffset(instant: number, timeZone: string): number {
   return wall - Math.floor(instant / 1000) * 1000;
 }
 
+/** Six hours in milliseconds. Every daylight saving shift is shorter than this. */
+const SIX_HOURS = 6 * 60 * 60 * 1000;
+
+/**
+ * Reports whether the wall clock time of an instant happens twice in the time zone.
+ * Example: in London 01:30 on 25 October 2026 is first BST, then GMT.
+ */
+function isRepeatedWallTime(instant: number, timeZone: string): boolean {
+  const offset = zoneOffset(instant, timeZone);
+  const wall = instant + offset;
+  const neighbours = [
+    zoneOffset(instant - SIX_HOURS, timeZone),
+    zoneOffset(instant + SIX_HOURS, timeZone),
+  ];
+  return neighbours.some(
+    (other) => other !== offset && zoneOffset(wall - other, timeZone) === other,
+  );
+}
+
 /**
  * Parses a Frappe datetime value in the site's time zone.
  * The Frappe value carries no time zone. Example: `2026-11-27 09:05:00` in Istanbul is 06:05 UTC.
@@ -190,6 +209,18 @@ export function createFormatter(settings: FormatSettings): Formatter {
   const dayFormat = new Intl.DateTimeFormat(intl, { ...DAY, timeZone: 'UTC' });
   const timeFormat = new Intl.DateTimeFormat(intl, { ...TIME, ...zone });
   const dateTimeFormat = new Intl.DateTimeFormat(intl, { ...DAY, ...TIME, ...zone });
+  // On a daylight saving night one hour is repeated. The zone abbreviation then tells the two instants apart.
+  const zonedDateTimeFormat = new Intl.DateTimeFormat(intl, {
+    ...DAY,
+    ...TIME,
+    ...zone,
+    timeZoneName: 'short',
+  });
+  const activeZone = dateTimeFormat.resolvedOptions().timeZone;
+  const formatDateTime = (value: Date) =>
+    isRepeatedWallTime(value.getTime(), activeZone)
+      ? zonedDateTimeFormat.format(value)
+      : dateTimeFormat.format(value);
   const listFormat = new Intl.ListFormat(intl, { type: 'conjunction' });
   const parse = (value: string) => parseFrappeDatetime(value, timeZone);
   const unit = distanceUnit({
@@ -213,10 +244,10 @@ export function createFormatter(settings: FormatSettings): Formatter {
       return day ? dayFormat.format(day) : value;
     },
     time: (value) => timeFormat.format(value),
-    dateTime: (value) => dateTimeFormat.format(value),
+    dateTime: formatDateTime,
     frappeDateTime: (value) => {
       const instant = parse(value);
-      return instant ? dateTimeFormat.format(instant) : value;
+      return instant ? formatDateTime(instant) : value;
     },
     parseFrappeDatetime: parse,
     currency: (value, code) => {
