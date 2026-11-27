@@ -9,7 +9,7 @@ import '@fontsource/jetbrains-mono/400.css';
 
 import { StrictMode, useState } from 'react';
 
-import { FALLBACK_LANGUAGE } from '@/app/locale';
+import { FALLBACK_LANGUAGE, textMatches } from '@/app/locale';
 
 import { createRoot } from 'react-dom/client';
 import { EMPTY_LEAVE_CONTEXT, LEAVE_CONTEXT, LEAVE_META } from './leaveFixture';
@@ -324,7 +324,7 @@ export function HarnessApp() {
         { value: 'DEP-ENG', label: 'Mühendislik', description: 'Yazılım geliştirme' },
         { value: 'DEP-OPS', label: 'Operasyon', description: 'Saha operasyonları' },
       ];
-      return txt ? all.filter((item) => item.label.toLowerCase().includes(txt.toLowerCase())) : all;
+      return all.filter((item) => textMatches(item.label, txt ?? ''));
     },
   };
 

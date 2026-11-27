@@ -9,6 +9,7 @@ import type {
   ShellWorkspaceData,
 } from '@/shell/view-data';
 import type { CollectionSource } from '@/views/collection/source';
+import { capitalizeCode, foldCode } from './locale/code';
 
 // This file is in the initial-load chunk. The collection source and definition builder must not be in the initial load.
 // The chain is fetched via `import()` only when the list route makes its first request (orchestrator addendum: initial load).
@@ -23,7 +24,7 @@ export function doctypeFromSlug(slug: string): string {
   return decodeURIComponent(slug)
     .split(/[-\s]+/)
     .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map(capitalizeCode)
     .join(' ');
 }
 
@@ -36,8 +37,8 @@ type BootstrapSidebar = Bootstrap['sidebars'][number];
  */
 export function moduleSlug(name: string): string {
   // Locale-independent lowercasing (G-132): the Turkish rule would turn the leading `I` of `Integrations` into a dotless i (U+0131).
-  // `toLowerCase` is locale-independent. The URL segment does not vary with the user's language.
-  return name.trim().toLowerCase().split(/\s+/).filter(Boolean).join('-');
+  // `foldCode` is locale-independent. The URL segment does not vary with the user's language.
+  return foldCode(name).split(/\s+/).filter(Boolean).join('-');
 }
 
 const truthy = (v: number | boolean | null | undefined) => v === true || v === 1;
