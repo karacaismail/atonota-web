@@ -27,12 +27,17 @@ function FormatProbe() {
       <output aria-label="Sayı">{format.number(1234.5)}</output>
       <output aria-label="Tarih">{format.date('2026-11-27')}</output>
       <output aria-label="Saat">{format.time(INSTANT)}</output>
+      <output aria-label="Biçim dili">{format.intl}</output>
+      <output aria-label="Para">{format.currency(1234.5)}</output>
+      <output aria-label="Kısa tarih">
+        {new Intl.DateTimeFormat(format.intl, { timeZone: 'UTC' }).format(new Date('2026-11-27'))}
+      </output>
     </>
   );
 }
 
 describe('useFormat: biçim dil bağlamından gelir', () => {
-  it('dil en olunca tarih ve sayı İngilizce biçimde görünür', () => {
+  it('dil en olunca tarih ve sayı en-GB biçiminde görünür', () => {
     render(
       <AppProviders
         engines={false}
@@ -44,22 +49,48 @@ describe('useFormat: biçim dil bağlamından gelir', () => {
     );
     expect(screen.getByRole('status', { name: 'Sayı' })).toHaveTextContent('1,234.5');
     expect(screen.getByRole('status', { name: 'Tarih' })).toHaveTextContent(
-      'Friday, November 27, 2026',
+      'Friday, 27 November 2026',
     );
     expect(screen.getByRole('status', { name: 'Saat dilimi' })).toHaveTextContent(
       'America/New_York',
     );
-    expect(screen.getByRole('status', { name: 'Saat' })).toHaveTextContent('01:05 AM');
+    expect(screen.getByRole('status', { name: 'Saat' })).toHaveTextContent(/^01:05$/);
   });
 
-  it('dil boşsa biçim yedek dil tr ile yapılır', () => {
+  it.each([
+    ['boşsa', ''],
+    ['desteklenmiyorsa', 'de'],
+  ])('dil %s biçim yedek dil en-GB ile yapılır', (_case, raw) => {
     render(
-      <AppProviders engines={false} initialLanguage="">
+      <AppProviders
+        engines={false}
+        initialLanguage={raw}
+        initialFormatting={{ time_zone: 'Europe/London', currency: 'GBP' }}
+      >
         <FormatProbe />
       </AppProviders>,
     );
+    expect(screen.getByRole('status', { name: 'Biçim dili' })).toHaveTextContent('en-GB');
+    expect(screen.getByRole('status', { name: 'Sayı' })).toHaveTextContent('1,234.5');
+    expect(screen.getByRole('status', { name: 'Para' })).toHaveTextContent('£1,234.50');
+    expect(screen.getByRole('status', { name: 'Tarih' })).toHaveTextContent(
+      'Friday, 27 November 2026',
+    );
+    expect(screen.getByRole('status', { name: 'Kısa tarih' })).toHaveTextContent('27/11/2026');
+    expect(screen.getByRole('status', { name: 'Saat' })).toHaveTextContent(/^06:05$/);
+  });
+
+  it('dil tr ise biçim Türkçe kalır', () => {
+    render(
+      <AppProviders engines={false} initialLanguage="tr" initialFormatting={{ currency: 'TRY' }}>
+        <FormatProbe />
+      </AppProviders>,
+    );
+    expect(screen.getByRole('status', { name: 'Biçim dili' })).toHaveTextContent('tr-TR');
     expect(screen.getByRole('status', { name: 'Sayı' })).toHaveTextContent('1.234,5');
+    expect(screen.getByRole('status', { name: 'Para' })).toHaveTextContent('1.234,50');
     expect(screen.getByRole('status', { name: 'Tarih' })).toHaveTextContent('27 Kasım 2026 Cuma');
+    expect(screen.getByRole('status', { name: 'Kısa tarih' })).toHaveTextContent('27.11.2026');
   });
 });
 
@@ -67,8 +98,9 @@ describe('ekran biçimleri kullanıcının dilini kullanır', () => {
   const en = createFormatter({ language: 'en', timeZone: 'Europe/Istanbul', currency: 'TRY' });
 
   it('ana sayfanın tarihi ve saati İngilizce biçimde yazılır', () => {
-    expect(formatMoment('2026-11-27 09:05:00', en)).toContain('Friday, November 27, 2026');
-    expect(formatMoment('2026-11-27 09:05:00', en)).toContain('09:05 AM');
+    expect(formatMoment('2026-11-27 09:05:00', en)).toContain('Friday, 27 November 2026');
+    expect(formatMoment('2026-11-27 09:05:00', en)).toContain('09:05');
+    expect(formatMoment('2026-11-27 09:05:00', en)).not.toMatch(/AM|PM/);
     expect(
       pendingMeta(
         {
@@ -98,7 +130,7 @@ describe('ekran biçimleri kullanıcının dilini kullanır', () => {
         choices: [],
       }) as never as CollectionField;
     expect(displayCell({ name: 'A', v: '2026-11-27' }, field('Date', 'date'), en)).toContain(
-      'Friday, November 27, 2026',
+      'Friday, 27 November 2026',
     );
     expect(displayCell({ name: 'A', v: 1234.5 }, field('Float', 'number'), en)).toBe('1,234.5');
   });
@@ -147,7 +179,7 @@ describe('Root: saat dilimi ve para birimi açılış verisinden gelir', () => {
         'America/New_York',
       ),
     );
-    expect(screen.getByRole('status', { name: 'Saat' })).toHaveTextContent('01:05 AM');
+    expect(screen.getByRole('status', { name: 'Saat' })).toHaveTextContent(/^01:05$/);
     expect(screen.getByRole('status', { name: 'Sayı' })).toHaveTextContent('1,234.5');
   });
 });

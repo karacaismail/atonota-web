@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ApiError, type ApiClient } from '@/api';
+import { LanguageProvider } from '@/app/locale';
 import type * as RecordModule from '@/views/record';
 import type { RecordDataAdapter, RecordViewProps } from '@/views/record';
 
@@ -78,12 +79,17 @@ describe('RecordRoute', () => {
     render(
       <RecordRoute api={api} module="hr" doctype="leave-application" name="HR-LAP-2026-00001" />,
     );
-    expect(screen.getByText('Leave Application|HR-LAP-2026-00001|tr')).toBeInTheDocument();
+    // Dil sağlayıcısı yoksa yedek dil geçerlidir. Yedek dil İngiliz İngilizcesidir (AJA-1407).
+    expect(screen.getByText('Leave Application|HR-LAP-2026-00001|en')).toBeInTheDocument();
   });
 
-  it('kodlanmış kayıt adını çözer', () => {
+  it('kodlanmış kayıt adını çözer ve kullanıcının dilini verir', () => {
     const { api } = fakeApi();
-    render(<RecordRoute api={api} module="core" doctype="user" name="kisi%40example.test" />);
+    render(
+      <LanguageProvider initialLanguage="tr">
+        <RecordRoute api={api} module="core" doctype="user" name="kisi%40example.test" />
+      </LanguageProvider>,
+    );
     expect(screen.getByText('User|kisi@example.test|tr')).toBeInTheDocument();
   });
 
