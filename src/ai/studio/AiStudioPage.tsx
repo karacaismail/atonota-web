@@ -9,17 +9,17 @@ import { AiStudio } from './AiStudio';
 import { NOT_CONNECTED } from './content';
 import { createFlowDemoTransport } from './flowDemo';
 
-/** Yalnız e2e derlemesinde: sahte taşıyıcı açılır. Üretim derlemesinde bu dal yoktur. */
+/** E2E build only: the mock transport is enabled. The production build has no such branch. */
 const E2E = import.meta.env.MODE === 'e2e';
 
-/** Yalnız e2e derlemesinde: `?gecikme=<ms>` sahte akışın iki olay arasındaki beklemesini ayarlar. */
+/** E2E build only: `?gecikme=<ms>` sets the mock stream's wait between two events. */
 function e2eDelayMs(): number {
   if (!E2E || typeof window === 'undefined') return 0;
   const value = Number(new URLSearchParams(window.location.search).get('gecikme'));
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
-/** Model geçidi bağlantısı yoksa ekran bunu açıkça yazar. Sahte ilerleme gösterilmez. */
+/** If there is no model gateway connection, the screen says so plainly. No fake progress is shown. */
 function NotConnected() {
   return (
     <section className="ai-not-connected" aria-labelledby="ai-not-connected-title">
@@ -33,11 +33,11 @@ function NotConnected() {
 }
 
 /**
- * AI Studio sayfası. Kabuk `/panel/ai` yolunda bu dosyayı tembel yükler (`src/shell/routes.ts`).
- * Taşıyıcı kabuğun veri bağlantısından gelir (`ShellViewData.ai`). Kaynak adı ekranda yazar (AX-7).
- * Bağlantı yoksa canlı panel "bağlantı kurulmadı" yazar; sahte ajan çalışmaz.
- * Sahte taşıyıcı yalnız e2e derlemesinde açılır ve "Sahte sunucu" diye yazar.
- * Tarayıcı testleri iptal akışını sınarken sahte akışı `?gecikme=` ile bekletir; üretimde yoktur.
+ * AI Studio page. The shell lazy-loads this file at the `/panel/ai` route (`src/shell/routes.ts`).
+ * The transport comes from the shell's data connection (`ShellViewData.ai`). The source name is shown on screen (AX-7).
+ * With no connection, the live panel says the connection is not set up (`NOT_CONNECTED`). No mock agent runs.
+ * The mock transport is enabled only in the e2e build and is labelled "Sahte sunucu" (mock server).
+ * Browser tests delay the mock stream with `?gecikme=` while testing the cancel flow. Production has no such delay.
  */
 export default function AiStudioPage() {
   const ai = useViewData()?.ai;

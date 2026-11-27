@@ -1,17 +1,17 @@
 // @vitest-environment node
-// Depoda kişisel klasör yolu kalmasın diye yazılan denetim.
+// Check that keeps personal folder paths out of the repository.
 //
-// Depo herkese açıktır. Bir test dosyası geliştiricinin bilgisayarındaki görüntü klasörünü
-// sabit yol olarak yazmıştı. Bu denetim Git'e giren bütün metin dosyalarını tarar.
-// macOS kullanıcı klasörü ("/Users/<ad>/") ve Linux ev klasörü ("/home/<ad>/") yakalanır.
-// Görüntü ve geçici dosya klasörü ortam değişkeninden ya da test çıktısından alınmalıdır.
+// The repository is public. A test file once hard-coded the screenshot folder on a developer's
+// computer. This check scans every text file tracked by Git.
+// It catches the macOS user folder ("/Users/<name>/") and the Linux home folder ("/home/<name>/").
+// Screenshot and temporary folders must come from an environment variable or the test output.
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = join(import.meta.dirname, '..', '..');
-// Kalıp parçalı yazıldı. Böylece bu dosya kendi kalıbına takılmaz.
+// The pattern is written in parts, so this file does not match its own pattern.
 const PERSONAL_PATH = new RegExp(
   ['/Use', 'rs/[A-Za-z0-9._-]+/|/ho', 'me/[A-Za-z0-9._-]+/'].join(''),
 );
@@ -30,7 +30,7 @@ export function findPersonalPaths(files: string[], read: (file: string) => strin
     try {
       text = read(file);
     } catch {
-      continue; // Silinmiş ama henüz commit edilmemiş dosya.
+      continue; // File deleted but not yet committed.
     }
     text.split('\n').forEach((line, index) => {
       if (PERSONAL_PATH.test(line)) hits.push(`${file}:${index + 1}`);

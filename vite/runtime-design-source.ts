@@ -1,7 +1,7 @@
 import source from '../design/source/control-size-config.json' with { type: 'json' };
 
 const { defaultColor, defaultHoverColor } = source.derived.antdTheme.components.Button;
-// Karar metinleri (decision) çalışma verisine girmez.
+// Decision texts (decision) do not go into the runtime data.
 const { decision: _lightPaletteDecision, ...lightPalette } = source.lightPalette;
 const { decision: _layoutDecision, ...layoutTokens } = source.layoutTokens;
 
