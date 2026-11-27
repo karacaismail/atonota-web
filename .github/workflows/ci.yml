@@ -32,6 +32,9 @@ jobs:
           cache: npm
       - name: Bağımlılıkları kur
         run: npm ci
+      # Kopya frappesetup main dalındaki dosyayla bayt bayt aynı olmalı. Kaynak alınamazsa adım başarısız olur.
+      - name: Kural kopyası frappesetup ile aynı mı
+        run: node scripts/standards-gate.mjs
       - name: Lint
         run: npm run lint
       - name: Typecheck
