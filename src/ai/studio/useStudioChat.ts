@@ -1,12 +1,14 @@
 import { useXAgent, useXChat } from '@ant-design/x';
-import { useCallback, useLayoutEffect, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 
 import type { GenUIAction, GenUIActionResult, GenUIDecisions } from '@/genui';
 
 import { emptyAssistant, runAgent } from '../agent';
 import type { AgentIntent, AgentTransport, ChatMessage, UserMessage } from '../agent';
-import { acceptChunk, newIdempotencyKey } from './generation';
+import { acceptChunk } from './generation';
 import type { Generation } from './generation';
+import { createKeyStore } from './idempotencyStore';
+import type { KeyScope } from './idempotencyStore';
 
 interface AgentInput {
   message: ChatMessage;
@@ -17,6 +19,8 @@ interface AgentInput {
   generation: Generation;
   controller: AbortController;
   idempotencyKey?: string;
+  /** Approval block whose stored key is removed when a final result arrives. */
+  settles?: string;
 }
 
 /** User message shown for a regenerate request. Carries no approval data. */
@@ -121,12 +125,27 @@ function finalize<T extends StoredMessage>(list: readonly T[]): T[] {
  * - An approved operation carries its own idempotency key (AJA-1749).
  * - Regenerate asks only for the reply text. It does not send approval data.
  * - If an approved request drops, a retry asks for the operation's status.
+ *
+ * Idempotency key storage (AJA-1860, contract AJA-1749):
+ * - With a team and account scope, the key lives in `localStorage`. A reload keeps it.
+ * - The same approval sends the same key again while its result is unknown.
+ * - A status query for that approval carries the same key.
+ * - A final result removes the key: `done`, or an `error` event sent by the server.
+ *   A dropped connection, a timeout or a stop leaves the result unknown. The key stays.
+ * - A key older than 23 hours is not resent. The client asks for the status instead.
  */
-export function useStudioChat(transport: AgentTransport, conversationId = 'default') {
+export function useStudioChat(
+  transport: AgentTransport,
+  conversationId = 'default',
+  scope: KeyScope | null = null,
+) {
   const active = useRef<{ generation: Generation; controller: AbortController } | null>(null);
   const conversation = useRef(conversationId);
   const counter = useRef(0);
   const usedActions = useRef(new Set<string>());
+  const team = scope?.team;
+  const user = scope?.user;
+  const keys = useMemo(() => createKeyStore(team && user ? { team, user } : null), [team, user]);
 
   useLayoutEffect(() => {
     conversation.current = conversationId;
@@ -134,10 +153,21 @@ export function useStudioChat(transport: AgentTransport, conversationId = 'defau
 
   const [agent] = useXAgent<ChatMessage, AgentInput, ChatMessage>({
     request: (
-      { message, messages, intent = 'message', actionId, generation, controller, idempotencyKey },
+      {
+        message,
+        messages,
+        intent = 'message',
+        actionId,
+        generation,
+        controller,
+        idempotencyKey,
+        settles,
+      },
       { onUpdate, onSuccess, onStream },
     ) => {
       onStream?.(controller);
+      // An `error` event comes from the server, so the result is known.
+      let serverError = false;
       const current = () =>
         acceptChunk(generation, active.current?.generation ?? null, conversation.current);
       void runAgent({
@@ -151,9 +181,13 @@ export function useStudioChat(transport: AgentTransport, conversationId = 'defau
         },
         signal: controller.signal,
         onUpdate: (update) => {
+          if (update.phase === 'error') serverError = true;
           if (current()) onUpdate(update);
         },
       }).then((final) => {
+        if (settles && idempotencyKey && (final.phase === 'done' || serverError)) {
+          keys.release(settles, idempotencyKey);
+        }
         // A stopped or switched-away generation writes nothing. Not even its final state.
         if (!current()) return;
         active.current = null;
@@ -210,17 +244,36 @@ export function useStudioChat(transport: AgentTransport, conversationId = 'defau
         if (usedActions.current.has(actionId)) return 'used';
         usedActions.current.add(actionId);
       }
+      const held = actionId && isApproval(message) ? keys.acquire(actionId) : null;
       const { generation, controller } = begin();
+      if (actionId && held?.expired) {
+        // The key is older than 23 hours. The approval is not resent. Its status is asked.
+        onRequest({
+          message: {
+            role: 'user',
+            text: STATUS_TEXT,
+            statusOf: actionId,
+            clientId: generation.messageId,
+          },
+          intent: 'status',
+          actionId,
+          generation,
+          controller,
+          idempotencyKey: held.key,
+          settles: actionId,
+        });
+        return 'accepted';
+      }
       onRequest({
         message: { ...message, clientId: generation.messageId },
         intent: 'message',
         generation,
         controller,
-        ...(isApproval(message) ? { idempotencyKey: newIdempotencyKey() } : {}),
+        ...(actionId && held ? { idempotencyKey: held.key, settles: actionId } : {}),
       });
       return 'accepted';
     },
-    [begin, onRequest],
+    [begin, keys, onRequest],
   );
 
   /** Stops the reply. The reply stays on screen as "stopped". */
@@ -264,10 +317,13 @@ export function useStudioChat(transport: AgentTransport, conversationId = 'defau
         const message: UserMessage = failed
           ? { role: 'user', text: STATUS_TEXT, statusOf: actionId }
           : { role: 'user', text: REGENERATE_TEXT };
+        // The status query carries the pending key of the approval, if there is one.
+        const held = failed ? keys.peek(actionId) : null;
         onRequest({
           message: { ...message, clientId: generation.messageId },
           intent: failed ? 'status' : 'regenerate',
           ...(failed ? { actionId } : {}),
+          ...(held ? { idempotencyKey: held.key, settles: actionId } : {}),
           generation,
           controller,
         });
@@ -284,7 +340,7 @@ export function useStudioChat(transport: AgentTransport, conversationId = 'defau
         controller,
       });
     },
-    [begin, messages, onRequest, setMessages],
+    [begin, keys, messages, onRequest, setMessages],
   );
 
   /** What the reply's retry button does: a status query or a retry. */

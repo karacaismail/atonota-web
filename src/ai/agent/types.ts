@@ -71,7 +71,8 @@ export interface AgentRequest {
   actionId?: string;
   /**
    * Idempotency key of an approved operation (AJA-1749). Lower-case UUID 4.
-   * Only a new approval with `intent: 'message'` carries it. Regenerate and status requests do not.
+   * A new approval with `intent: 'message'` carries it. A status query for the same operation
+   * carries the same key while its result is unknown (AJA-1860). Regenerate does not carry it.
    * The HTTP adapter sends it in the `Idempotency-Key` header.
    */
   idempotencyKey?: string;

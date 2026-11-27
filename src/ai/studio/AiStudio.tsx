@@ -18,6 +18,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import type { GenUIAction, GenUIActionResult } from '@/genui';
 import { useGenuiVars } from '@/genui/useGenuiVars';
+import { useViewData } from '@/shell/view-data';
 
 import { MOCK_SOURCE } from '../agent';
 import type {
@@ -34,6 +35,7 @@ import { AssistantBody } from './AssistantBody';
 import { ConversationsPanel, type StudioConversation } from './ConversationsPanel';
 import { createFlowDemoTransport } from './flowDemo';
 import { FlowSteps } from './FlowSteps';
+import { scopeOf } from './idempotencyStore';
 import { ModePicker } from './ModePicker';
 import { SLASH_COMMANDS, WELCOME_PROMPTS } from './content';
 import { useFlow } from './useFlow';
@@ -65,6 +67,8 @@ type FileItems = NonNullable<AttachmentsProps['items']>;
 
 function StudioInner({ transport, source }: { transport: AgentTransport; source: AgentSource }) {
   const { message: toast } = App.useApp();
+  // Team and account of the session. Idempotency keys are stored under them (AJA-1860).
+  const scope = scopeOf(useViewData());
   const vars = useGenuiVars();
   const titleId = useId();
   const wide = useMediaQuery(WIDE_QUERY);
@@ -74,7 +78,7 @@ function StudioInner({ transport, source }: { transport: AgentTransport; source:
   const [mode, setMode] = useState<AgentMode>('ask');
   const { flow, flowTransport, start, approve, forget } = useFlow(transport, activeKey);
   const { messages, setMessages, send, cancel, detach, regenerate, retryKind, busy } =
-    useStudioChat(flowTransport, activeKey);
+    useStudioChat(flowTransport, activeKey, scope);
   const store = useRef<Record<string, StoredMessages>>({});
   const nextId = useRef(2);
   // When the drawer closes, focus returns to the button that opened it.
