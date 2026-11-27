@@ -13,6 +13,12 @@ const LOCALE_MAP = 'app/locale/locale-map.ts';
 const HARDCODED_LOCALE =
   /from\s+['"](?:antd\/(?:es\/|lib\/)?locale\/\w+|dayjs\/locale\/[\w-]+)['"]|import\s+['"]dayjs\/locale\//;
 
+/**
+ * Dil değerinin sabit yazımı. Örnek: `locale: 'tr'`, `locale="tr"`, `locale={'en'}`.
+ * Varsayılan değer (`props.locale ?? 'tr'`, `{ locale = 'tr' }`) bu kurala girmez; o yazım bileşenin yedeğidir.
+ */
+const HARDCODED_LOCALE_VALUE = /\blocale(?:\s*:\s*|=\{?\s*)['"](?:tr|en)['"]/;
+
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
@@ -39,5 +45,25 @@ describe('sabit dil yalnız eşleme dosyasındadır', () => {
   it('oturum açılınca modül ortamına sabit dil verilmez', () => {
     const root = readFileSync(join(SRC, 'app/Root.tsx'), 'utf8');
     expect(root).not.toMatch(/locale:\s*['"](?:tr|en)['"]/);
+  });
+
+  it('bileşene ve bağdaştırıcıya dil sabit yazılmaz', () => {
+    const offenders = sourceFiles(SRC)
+      .map((path) => relative(SRC, path))
+      .filter((path) => !path.startsWith('app/locale/'))
+      .filter((path) => HARDCODED_LOCALE_VALUE.test(readFileSync(join(SRC, path), 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+
+  it('sabit dil denetimi örnek yazımları yakalar (olumsuz örnek)', () => {
+    for (const sample of [
+      "createFrappeRecordAdapter({ api, locale: 'tr' })",
+      '<RecordView locale="tr" />',
+      "<RecordView locale={'en'} />",
+    ]) {
+      expect(HARDCODED_LOCALE_VALUE.test(sample), sample).toBe(true);
+    }
+    expect(HARDCODED_LOCALE_VALUE.test('<RecordView locale={language} />')).toBe(false);
+    expect(HARDCODED_LOCALE_VALUE.test("{ locale = 'tr', name }")).toBe(false);
   });
 });
