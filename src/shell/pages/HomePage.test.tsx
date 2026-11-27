@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { HomeSummary } from '@/api';
+import { LanguageProvider } from '@/app/locale';
 
 import { sampleAgents } from '../sampleData';
 import type { ShellHomeData, ShellViewData } from '../view-data';
@@ -79,12 +80,15 @@ function fakeHome(over: Partial<ShellHomeData> = {}): ShellHomeData {
 }
 
 function mount(data: ShellViewData | null) {
+  // Tarih ve sayılar Türkçe biçimle sınanır. Yedek dil en-GB olduğu için dil açıkça verilir.
   return render(
-    <MemoryRouter initialEntries={['/']}>
-      <ViewDataProvider value={data}>
-        <HomePage />
-      </ViewDataProvider>
-    </MemoryRouter>,
+    <LanguageProvider initialLanguage="tr">
+      <MemoryRouter initialEntries={['/']}>
+        <ViewDataProvider value={data}>
+          <HomePage />
+        </ViewDataProvider>
+      </MemoryRouter>
+    </LanguageProvider>,
   );
 }
 

@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
+import { LanguageProvider } from '@/app/locale';
+
 import type { PageHeaderProps } from './PageHeader';
 import { PageHeader } from './PageHeader';
 
@@ -17,10 +19,13 @@ function renderHeader(p: Partial<PageHeaderProps> = {}) {
     primaryAction: { label: 'Yeni teklif', onClick: vi.fn() },
     ...p,
   };
+  // Sayaç Türkçe biçimle sınanır. Yedek dil en-GB olduğu için dil açıkça verilir.
   render(
-    <MemoryRouter>
-      <PageHeader {...props} />
-    </MemoryRouter>,
+    <LanguageProvider initialLanguage="tr">
+      <MemoryRouter>
+        <PageHeader {...props} />
+      </MemoryRouter>
+    </LanguageProvider>,
   );
   return props;
 }

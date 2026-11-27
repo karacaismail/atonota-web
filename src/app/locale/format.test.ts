@@ -10,13 +10,17 @@ describe('createFormatter: biçim dili kullanıcının dilidir (IC-13)', () => {
   const en = createFormatter({ language: 'en', timeZone: 'UTC', currency: 'TRY' });
   const tr = createFormatter({ language: 'tr', timeZone: 'UTC', currency: 'TRY' });
 
-  it('dil en olunca sayı İngilizce biçimde yazılır', () => {
+  it('dil en olunca sayı İngiliz İngilizcesi biçiminde yazılır', () => {
     expect(en.number(1234567.5)).toBe('1,234,567.5');
     expect(tr.number(1234567.5)).toBe('1.234.567,5');
   });
 
-  it('dil en olunca tarih İngilizce biçimde yazılır', () => {
-    expect(en.date(FRIDAY)).toBe('Friday, November 27, 2026');
+  it('dil en olunca tarih İngiliz İngilizcesi biçiminde yazılır', () => {
+    expect(en.intl).toBe('en-GB');
+    expect(en.date(FRIDAY)).toBe('Friday, 27 November 2026');
+    expect(new Intl.DateTimeFormat(en.intl, { timeZone: 'UTC' }).format(new Date(FRIDAY))).toBe(
+      '27/11/2026',
+    );
     expect(tr.date(FRIDAY)).toBe('27 Kasım 2026 Cuma');
   });
 
@@ -30,13 +34,17 @@ describe('createFormatter: biçim dili kullanıcının dilidir (IC-13)', () => {
     expect(tr.currency(1234.5)).toContain('1.234,50');
   });
 
+  it('İngiliz sterlini en-GB biçiminde yazılır', () => {
+    expect(en.currency(1234.5, 'GBP')).toBe('£1,234.50');
+  });
+
   it('para birimi yoksa tutar düz sayı olarak yazılır', () => {
     const none = createFormatter({ language: 'en', timeZone: 'UTC', currency: null });
     expect(none.currency(1234.5)).toBe('1,234.5');
   });
 
   it('liste kullanıcının diliyle bağlanır', () => {
-    expect(en.list(['a', 'b', 'c'])).toBe('a, b, and c');
+    expect(en.list(['a', 'b', 'c'])).toBe('a, b and c');
     expect(tr.list(['a', 'b', 'c'])).toBe('a, b ve c');
   });
 });
@@ -85,7 +93,7 @@ describe('saat dilimi açılış verisinden gelir (IC-13)', () => {
 
   it('Frappe tarih-saat değeri sitenin saatiyle ve kullanıcının diliyle yazılır', () => {
     const en = createFormatter({ language: 'en', timeZone: 'America/New_York', currency: null });
-    expect(en.frappeDateTime('2026-11-27 09:05:00')).toBe('Friday, November 27, 2026 at 09:05 AM');
+    expect(en.frappeDateTime('2026-11-27 09:05:00')).toBe('Friday, 27 November 2026 at 09:05');
   });
 });
 

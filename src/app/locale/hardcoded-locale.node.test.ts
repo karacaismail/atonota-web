@@ -52,7 +52,9 @@ describe('sabit dil yalnız eşleme dosyasındadır', () => {
   it('eşleme dosyası iki dili de içe aktarır', () => {
     const map = readFileSync(join(SRC, LOCALE_MAP), 'utf8');
     expect(map).toMatch(/antd\/(?:es\/)?locale\/tr_TR/);
-    expect(map).toMatch(/antd\/(?:es\/)?locale\/en_US/);
+    // Arayüzün İngilizcesi İngiliz İngilizcesidir (AJA-1407).
+    expect(map).toMatch(/antd\/(?:es\/)?locale\/en_GB/);
+    expect(map).toMatch(/dayjs\/locale\/en-gb/);
   });
 
   it('oturum açılınca modül ortamına sabit dil verilmez', () => {
