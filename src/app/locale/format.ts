@@ -24,9 +24,9 @@ export interface Formatter {
   language: AppLanguage;
   /** `Intl` dil etiketi. */
   intl: string;
-  /** Sitenin saat dilimi. Açılış verisi gelmediyse tanımsızdır. */
+  /** Sitenin saat dilimi. Açılış verisi gelmediyse ya da tanınmazsa tanımsızdır. */
   timeZone: string | undefined;
-  /** Sitenin para birimi. Seçilmediyse `null` olur. */
+  /** Sitenin para birimi. Seçilmediyse ya da tanınmazsa `null` olur. */
   currencyCode: string | null;
   number: (value: number, options?: Intl.NumberFormatOptions) => string;
   /** Takvim günü. Örnek: `2026-11-27` -> "27 Kasım 2026 Cuma". Okunamayan değer olduğu gibi döner. */
@@ -72,6 +72,28 @@ function calendarDay(value: string): Date | undefined {
     : undefined;
 }
 
+/** `Intl` saat dilimini tanırsa adı döner. Tanımazsa sonuç vermez. Örnek: `Mars/Base`. */
+function validTimeZone(timeZone: string | null | undefined): string | undefined {
+  if (!timeZone) return undefined;
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone });
+    return timeZone;
+  } catch {
+    return undefined;
+  }
+}
+
+/** `Intl` para kodunu tanırsa kodu döner. Tanımazsa `null` döner. Örnek: `XX`. */
+function validCurrency(code: string | null | undefined): string | null {
+  if (!code) return null;
+  try {
+    new Intl.NumberFormat(undefined, { style: 'currency', currency: code });
+    return code;
+  } catch {
+    return null;
+  }
+}
+
 /** Saat diliminin bir andaki farkı, milisaniye. Örnek: İstanbul için +3 saat. */
 function zoneOffset(instant: number, timeZone: string): number {
   const parts = new Intl.DateTimeFormat(undefined, {
@@ -101,7 +123,7 @@ function zoneOffset(instant: number, timeZone: string): number {
 /**
  * Frappe tarih-saat değerini sitenin saat dilimiyle okur.
  * Frappe değeri saat dilimi taşımaz. Örnek: `2026-11-27 09:05:00` İstanbul'da 06.05 UTC olur.
- * Saat dilimi verilmezse değer tarayıcının saat dilimiyle okunur.
+ * Saat dilimi verilmezse ya da tanınmazsa değer tarayıcının saat dilimiyle okunur.
  */
 export function parseFrappeDatetime(
   value: string,
@@ -136,18 +158,20 @@ export function parseFrappeDatetime(
   ) {
     return undefined;
   }
-  if (!timeZone) return new Date(y, mo - 1, d, h, mi, s, ms);
+  const zone = validTimeZone(timeZone);
+  if (!zone) return new Date(y, mo - 1, d, h, mi, s, ms);
   // Fark yaz saatine göre değişir. İlk tahminin farkı ikinci kez denetlenir.
-  const first = wall - zoneOffset(wall, timeZone);
-  const second = wall - zoneOffset(first, timeZone);
+  const first = wall - zoneOffset(wall, zone);
+  const second = wall - zoneOffset(first, zone);
   return new Date(second);
 }
 
 /** Dil, saat dilimi ve para birimiyle biçimleyici kurar. */
 export function createFormatter(settings: FormatSettings): Formatter {
   const intl = localeBundle(settings.language).intl;
-  const timeZone = settings.timeZone || undefined;
-  const currencyCode = settings.currency || null;
+  // Bozuk açılış verisi ekranı düşürmez. Tanınmayan saat dilimi ve para kodu yok sayılır.
+  const timeZone = validTimeZone(settings.timeZone);
+  const currencyCode = validCurrency(settings.currency);
   const zone = timeZone ? { timeZone } : {};
   const dayFormat = new Intl.DateTimeFormat(intl, { ...DAY, timeZone: 'UTC' });
   const timeFormat = new Intl.DateTimeFormat(intl, { ...TIME, ...zone });
@@ -173,7 +197,7 @@ export function createFormatter(settings: FormatSettings): Formatter {
     },
     parseFrappeDatetime: parse,
     currency: (value, code) => {
-      const currency = code || currencyCode;
+      const currency = code ? validCurrency(code) : currencyCode;
       return currency
         ? new Intl.NumberFormat(intl, { style: 'currency', currency }).format(value)
         : new Intl.NumberFormat(intl).format(value);
