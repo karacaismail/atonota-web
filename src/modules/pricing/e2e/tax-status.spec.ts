@@ -31,7 +31,7 @@ async function fourPartsTogether(card: Locator, viewport: { width: number; heigh
   expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(viewport.width + 0.5);
   // The whole card fits on one screen, so the four parts can be seen together.
   expect(cardBox.height).toBeLessThanOrEqual(viewport.height);
-  const boxes = [];
+  const boxes: Awaited<ReturnType<typeof box>>[] = [];
   for (const part of PARTS) {
     const item = card.getByTestId(`plan-price-${part}`);
     await expect(item).toBeVisible();

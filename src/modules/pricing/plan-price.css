@@ -1,0 +1,48 @@
+/* Plan price card (AJA-1761). Values come only from the central tokens (src/design/README.md). */
+.plan-price {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-inline-size: 0;
+  padding: var(--space-md);
+  border-radius: var(--card-radius);
+  background: var(--color-bg-panel-alt);
+  color: var(--color-text);
+  font-size: var(--font-body);
+}
+
+.plan-price > * {
+  margin: 0;
+}
+
+/* Text wraps only between words. Only strings longer than a line break inside (no `anywhere`). */
+.plan-price-name,
+.plan-price-line,
+.plan-price-tax,
+.plan-price-step {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.plan-price-name {
+  font-size: var(--font-h3);
+  font-weight: var(--font-weight-lg);
+}
+
+.plan-price-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-xs);
+}
+
+.plan-price-amount {
+  font-size: var(--font-h2);
+  font-weight: var(--font-weight-lg);
+  white-space: nowrap;
+}
+
+.plan-price-unit,
+.plan-price-step {
+  color: var(--color-text-quiet);
+}
