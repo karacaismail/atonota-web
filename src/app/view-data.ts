@@ -1,6 +1,7 @@
 import { createElement, lazy } from 'react';
 
 import type { ApiClient } from '@/api';
+import type { LocaleTag } from './locale';
 import type {
   RecordAddress,
   ShellAccount,
@@ -156,6 +157,27 @@ export async function loadShellAccount(
     /* If the name cannot be read, the card shows the ID. */
   }
   return { user };
+}
+
+/**
+ * Writes the chosen locale to the session user's profile (AJA-1772).
+ * The request is a target state: sending the same locale twice gives the same profile.
+ * Frappe's standard record endpoint is used; the server checks permission.
+ * If the server refuses, the shared error is thrown and the screen keeps the old language.
+ */
+export async function saveUserLanguage(
+  api: Pick<ApiClient, 'frappeDocument'>,
+  user: string,
+  locale: LocaleTag,
+  signal: AbortSignal,
+): Promise<void> {
+  const response = await api.frappeDocument({
+    method: 'PUT',
+    path: `/api/v2/document/User/${encodeURIComponent(user)}`,
+    body: { language: locale },
+    signal,
+  });
+  if (!response.ok) throw response.error;
 }
 
 /** User language, time zone and currency from the bootstrap data. */

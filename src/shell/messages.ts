@@ -88,6 +88,15 @@ export const t = {
       save: 'Kaydet',
     },
   },
+  /** Language choice test page (AJA-1772). Only in the e2e build. */
+  languageDemo: {
+    title: 'Dil denemesi',
+    intro: 'Formu doldurun. Sonra menüden dili değiştirin. Yazdıklarınız kalır.',
+    form: 'Talep',
+    subject: 'Konu',
+    draft: 'Taslak',
+    filter: 'Süzgeç',
+  },
   demo: {
     title: 'Kabuk denemesi',
     linkBefore: 'Sorunuz varsa',
