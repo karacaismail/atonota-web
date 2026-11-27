@@ -17,6 +17,15 @@ const LIST = `/ornek/${encodeURIComponent('örnek-kayıt')}`;
 
 /** A record the mock server knows: the record form is really drawn. `/satis/teklif/TEK-0003` gives an error. */
 const RECORD = `${LIST}/ORNEK-0003`;
+/**
+ * Finds the link to a record.
+ * A wide list draws the record as a table row; a narrow list draws it as a card. Both hold the link.
+ */
+const recordLink = (page: Page, name: string) =>
+  page
+    .getByRole('row', { name: new RegExp(name) })
+    .or(page.getByRole('listitem').filter({ hasText: name }))
+    .getByRole('link', { name, exact: true });
 
 /** Shell test page. There is no record connection; the record URL draws the shell's sample form. */
 const harness = (path: string) => `/src/shell/harness/?yol=${encodeURIComponent(path)}`;
@@ -241,8 +250,7 @@ test.describe('header ve sayfalar', () => {
 
   test('listede kayıt satırına basınca kayıt sayfası açılır', async ({ page }) => {
     await page.goto(LIST);
-    const row = page.getByRole('row', { name: /ORNEK-0003/ });
-    await row.getByRole('link', { name: 'ORNEK-0003' }).click();
+    await recordLink(page, 'ORNEK-0003').click();
     await expect.poll(() => new URL(page.url()).pathname).toBe(RECORD);
     await expect(page.getByRole('textbox', { name: /Örnek başlık/ })).toHaveValue('Örnek veri 3');
   });
@@ -253,10 +261,7 @@ test.describe('header ve sayfalar', () => {
     // The mock server runs inside the page; its state resets when the page reloads.
     // So the record is opened from the list and navigation goes back and forward within the app.
     await page.goto(LIST);
-    await page
-      .getByRole('row', { name: /ORNEK-0003/ })
-      .getByRole('link', { name: 'ORNEK-0003' })
-      .click();
+    await recordLink(page, 'ORNEK-0003').click();
     const title = page.getByRole('textbox', { name: /Örnek başlık/ });
     await expect(title).toHaveValue('Örnek veri 3');
     await title.fill('Kaydedilen başlık');
