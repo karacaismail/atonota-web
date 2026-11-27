@@ -14,10 +14,13 @@ const HARDCODED_LOCALE =
   /from\s+['"](?:antd\/(?:es\/|lib\/)?locale\/\w+|dayjs\/locale\/[\w-]+)['"]|import\s+['"]dayjs\/locale\//;
 
 /**
- * Dil değerinin sabit yazımı. Örnek: `locale: 'tr'`, `locale="tr"`, `locale={'en'}`.
+ * Dil değerinin sabit yazımı. Örnek: `locale: 'tr'`, `locale="tr"`, `language: 'tr'`.
  * Varsayılan değer (`props.locale ?? 'tr'`, `{ locale = 'tr' }`) bu kurala girmez; o yazım bileşenin yedeğidir.
  */
-const HARDCODED_LOCALE_VALUE = /\blocale(?:\s*:\s*|=\{?\s*)['"](?:tr|en)['"]/;
+const HARDCODED_LOCALE_VALUE = /\b(?:locale|language)(?:\s*:\s*|=\{?\s*)['"](?:tr|en)['"]/;
+
+/** Örnek sunucunun açılış verisi. Kullanıcı dili orada veridir, arayüz ayarı değildir. */
+const SAMPLE_DATA = ['mocks/'];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -51,6 +54,7 @@ describe('sabit dil yalnız eşleme dosyasındadır', () => {
     const offenders = sourceFiles(SRC)
       .map((path) => relative(SRC, path))
       .filter((path) => !path.startsWith('app/locale/'))
+      .filter((path) => !SAMPLE_DATA.some((dir) => path.startsWith(dir)))
       .filter((path) => HARDCODED_LOCALE_VALUE.test(readFileSync(join(SRC, path), 'utf8')));
     expect(offenders).toEqual([]);
   });
@@ -60,10 +64,14 @@ describe('sabit dil yalnız eşleme dosyasındadır', () => {
       "createFrappeRecordAdapter({ api, locale: 'tr' })",
       '<RecordView locale="tr" />',
       "<RecordView locale={'en'} />",
+      "getDocTypeMeta({ doctype, language: 'tr', signal })",
     ]) {
       expect(HARDCODED_LOCALE_VALUE.test(sample), sample).toBe(true);
     }
     expect(HARDCODED_LOCALE_VALUE.test('<RecordView locale={language} />')).toBe(false);
     expect(HARDCODED_LOCALE_VALUE.test("{ locale = 'tr', name }")).toBe(false);
+    expect(HARDCODED_LOCALE_VALUE.test('getDocTypeMeta({ doctype, language, signal })')).toBe(
+      false,
+    );
   });
 });
